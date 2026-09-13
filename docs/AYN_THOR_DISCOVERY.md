@@ -104,7 +104,7 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - Hosted CI is `.github/workflows/github.yml`. It builds packages across desktop/mobile platforms, builds/tests multiple Linux compiler combinations, validates server startup, validates JSON, checks relative includes, enforces LF line endings, and runs Markdown lint. Android packaging produces APK and AAB artifacts.
 - Official release flow builds from `master`, stages versioned platform artifacts, source archives including submodules, and creates a draft GitHub release. The Thor fork should add a branch-scoped ARM64 Android workflow that never publishes to VCMI infrastructure and later publishes prereleases only from hardware-validated checkpoints.
 - Repository submodules are GoogleTest, VCMI innoextract, VCMI dependencies, and Discord presence. They were not initialized during read-only discovery.
-- Current local readiness: Android SDK and ADB exist; NDK `27.0.12077973` is installed. CMake, Ninja, Conan, Qt/androiddeployqt, Java, and clang-format are not on `PATH`, though reusable JDK 17 directories exist. Windows Android builds are not claimed supported by upstream documentation, so establishing and documenting a reproducible local build is a prerequisite to candidate validation. Use a short temporary drive mapping if generated NDK paths exceed Windows limits.
+- Current local readiness: Android SDK and ADB exist; an isolated Conan/CMake/Ninja toolchain and NDK r29 are available. Windows is suitable for focused source checks, but the official ARM64 dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation. Use Linux/JDK 17 CI for a complete candidate APK. The exact repeatable procedure is in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
 
 ## Licensing and original assets
 
@@ -121,4 +121,4 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - `GameEngine::updateFrame()` is the preferred one-shot request consumer on `MainGUI`.
 - `CCallback` and existing controllers are the preferred semantic action executors; the server remains authoritative.
 - The Qt launcher and separate Qt map editor require their own future designs. They must not be forced through the SDL bridge.
-- Proposed Slice 1, its acceptance tests, and regression risks are maintained in `AYN_THOR_BACKLOG.md` and await user approval.
+- Slice 1 and Slice 2 have been implemented and hardware-validated. Their acceptance history, remaining roadmap, and approval boundary are maintained in `AYN_THOR_BACKLOG.md`; the build/device hand-off is in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.

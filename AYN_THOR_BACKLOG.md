@@ -6,7 +6,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slice 1 implementation and validation.
+- Phase: Slices 1 and 2 implemented, CI-built, and hardware-validated.
 - Status: `hardware validated`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
@@ -14,10 +14,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Working branch: `ayn-thor-dual-screen`, published from the clean upstream baseline.
 - Remote safety: `origin` points to the CapnChaosDK fork; the local `upstream` push URL is disabled.
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
-- Build readiness: pinned submodules and the official ARM64 Android dependency cache are initialized. An isolated Conan/CMake/Ninja toolchain and NDK r29 are available locally. Android Java/Gradle compilation succeeds, but the official dependency cache contains Linux-host Qt code generators, so this Windows host cannot complete native APK generation. A Linux CI/build host is required for the candidate APK.
-- Product code changed: yes, locally and uncommitted.
-- Hardware validation claimed: yes; user confirms the lower command-deck panel is visible, inert touch does not steal focus, and resume/toggle checks pass.
-- Approval to implement a feature slice: yes; Slice 1 approved by the user on 2026-09-13.
+- Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
+- Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
+- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`.
+- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions.
+- Approval to implement feature slices: yes; Slices 1 and 2 were approved by the user on 2026-09-13.
 
 ## Working rules
 
@@ -58,7 +59,7 @@ The architecture report identifies the client/server threading model, Android Qt
 
 ## Proposed Slice 1: inert dual-display presentation foundation
 
-Status: `approved, in progress`
+Status: `hardware validated`
 
 This is deliberately smaller than a context bridge or command implementation. It proves packaging, display choice, lifecycle safety, and upper-screen independence before gameplay state crosses the boundary.
 
@@ -146,7 +147,7 @@ Acceptance requires the shell to remain inert, upper-screen input to remain unch
 
 ## Proposed Slice 2: read-only context publication seam
 
-Status: `proposed`
+Status: `hardware validated`
 
 The first gameplay-facing increment should publish a bounded, revisioned read-only context record to the Android deck while leaving all native input and rules unchanged. The initial context is limited to a safe transitional/main-menu state so no hero, town, battle, or save data is exposed prematurely.
 
@@ -155,7 +156,7 @@ The first gameplay-facing increment should publish a bounded, revisioned read-on
 - Render only the title/status in the existing deck shell; no buttons, hit regions, commands, JNI mutation calls, or coordinate injection.
 - Add parity tests for revision ordering, invalidation to `UNKNOWN`, lifecycle restart, and standard-build isolation.
 
-This slice requires explicit approval before native gameplay code is modified.
+This slice required explicit approval before native gameplay code was modified.
 
 Implementation started: `lib/thor/ThorContextStore` provides a mutex-protected latest-record handoff with monotonic revisions and an explicit `UNKNOWN` fallback. `CMainMenu::activate()` now publishes the first safe `MAIN_MENU` record through the existing Android VM helper; Java forwards it to the activity main thread, drops stale revisions, and renders localized read-only title/status text. Focused native store tests cover initial fallback, revision ordering, and empty identifiers. No command or mutable gameplay path exists.
 
@@ -263,8 +264,18 @@ Populate repository-specific commands and paths only after discovery.
 - The real Android Gradle module compiles the Thor Java/resources and passes all five `ThorDisplaySelectorTest` tests in a generated validation copy.
 - Generated Thor debug identity verified: application ID `is.xyz.vcmi.thor.debug`, `BuildConfig.AYN_THOR_BUILD=true`, label `VCMI Thor debug`, and provider authorities follow the Thor application ID.
 - Standard debug generation verified: application ID `is.xyz.vcmi.debug` and `BuildConfig.AYN_THOR_BUILD=false`.
-- A connected AYN Thor is visible over ADB. No APK has been installed or launched because no complete candidate APK exists yet.
-- Implementation remains uncommitted, as required before hardware validation.
+- Linux/JDK 17 CI built the complete ARM64 candidate; GitHub Actions run `34763508118` produced the verified artifact.
+- The APK was installed and explicitly launched on the connected AYN Thor. The user confirmed the lower inert deck, independent upper-screen input, panel toggle, and pause/resume behavior.
+- The validated implementation was committed as `ed8e57130` and pushed to `origin/ayn-thor-dual-screen`.
+
+### Slice 2 automated validation — 2026-09-13
+
+- Source checkpoint: `ed8e57130`; implementation commit: `9300bcc59`.
+- The native context-store source passed an Android NDK C++20 syntax check. Android resources and modified Java sources compiled without source errors.
+- The Windows Gradle task could not close an Android dependency-cache JAR when run under Android Studio's JDK 25; this is a host/JDK limitation, not a source failure. Linux/JDK 17 CI is the authoritative package gate.
+- Linux/JDK 17 CI run `34774388683` built and tested the ARM64 APK. The downloaded ZIP digest was `bf26453182d82cf5ef6d9f7ad7a4c454e98f28f0ace9182dd311caa661d25f83`; the embedded APK SHA-256 was `683c8213256d0e18277569dfa1f2972827654b9cdbd6b15b2681ccf27d3d672c`.
+- The verified APK was installed over the existing Thor package with data preserved. The user confirmed `Main menu / Choose a game mode` on the lower deck; ADB logs recorded `MAIN_MENU` revisions 1 through 3 and no fatal exception.
+- The implementation was pushed to `origin/ayn-thor-dual-screen`.
 
 For each approved slice:
 
@@ -289,4 +300,4 @@ For releases, first approve a cleanup-only scope, reconcile documentation/histor
 
 ## Next action
 
-The exact ARM64 APK is installed and explicitly running on the connected AYN Thor. Automated process/display/log checks pass, and the user confirms the lower command-deck presentation, inert touch, resume, and toggle behavior all pass. Slice 1 is ready to commit.
+Slices 1 and 2 are committed, pushed, and hardware-validated. Before proposing Slice 3, start from the hand-off checklist in `docs/AYN_THOR_BUILD_PLAYBOOK.md`, choose one bounded read-only context, and obtain fresh approval. Do not add native commands, coordinate injection, or mutable gameplay state without a separately approved design.
