@@ -2,6 +2,8 @@
 <resources>
     <string name="thor_deck_title">VCMI command deck</string>
     <string name="thor_deck_status">Companion controls will appear here</string>
+    <string name="thor_context_main_menu">Main menu</string>
+    <string name="thor_context_main_menu_status">Choose a game mode</string>
     <string name="server_name">VCMI Server</string>
     <string name="notification_channel_running">Running in background</string>
     <string name="notification_channel_game">Game events</string>

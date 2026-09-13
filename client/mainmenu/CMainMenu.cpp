@@ -11,6 +11,11 @@
 #include "CMainMenu.h"
 
 #include "../../lib/network/NetworkDiscovery.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+#include <atomic>
+#endif
 #include "CCampaignScreen.h"
 #include "CHighScoreScreen.h"
 #include "CreditsScreen.h"
@@ -124,6 +129,15 @@ void CMenuScreen::show(Canvas & to)
 void CMenuScreen::activate()
 {
 	CIntObject::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	static std::atomic<std::uint64_t> revision{0};
+	ThorContextRecord context;
+	context.revision = ++revision;
+	context.contextId = "MAIN_MENU";
+	if(thorContextStore().publish(context))
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+#endif
 }
 
 void CMenuScreen::switchToTab(size_t index)

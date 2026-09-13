@@ -133,7 +133,7 @@ Each milestone must be decomposed further after repository discovery. No item be
 
 ## Proposed next slice: measured deck shell and diagnostics
 
-Status: `proposed`
+Status: `hardware validated`
 
 With Slice 1 hardware-validated, the next bounded step is to turn the generic companion into a measured, read-only deck shell without crossing into gameplay mutation or input injection.
 
@@ -143,6 +143,25 @@ With Slice 1 hardware-validated, the next bounded step is to turn the generic co
 - Add focused layout/diagnostic tests and repeat the existing standard-build regression checks.
 
 Acceptance requires the shell to remain inert, upper-screen input to remain unchanged, no stale presentation after lifecycle/display changes, and no proprietary artwork or game-data dependency.
+
+## Proposed Slice 2: read-only context publication seam
+
+Status: `proposed`
+
+The first gameplay-facing increment should publish a bounded, revisioned read-only context record to the Android deck while leaving all native input and rules unchanged. The initial context is limited to a safe transitional/main-menu state so no hero, town, battle, or save data is exposed prematurely.
+
+- Define a small native-owned record: context identifier, monotonically increasing revision, title/status strings, and an explicit `UNKNOWN` fallback.
+- Publish immutable records through a thread-safe handoff; Android consumes the latest complete revision on the main thread and drops stale revisions.
+- Render only the title/status in the existing deck shell; no buttons, hit regions, commands, JNI mutation calls, or coordinate injection.
+- Add parity tests for revision ordering, invalidation to `UNKNOWN`, lifecycle restart, and standard-build isolation.
+
+This slice requires explicit approval before native gameplay code is modified.
+
+Implementation started: `lib/thor/ThorContextStore` provides a mutex-protected latest-record handoff with monotonic revisions and an explicit `UNKNOWN` fallback. `CMainMenu::activate()` now publishes the first safe `MAIN_MENU` record through the existing Android VM helper; Java forwards it to the activity main thread, drops stale revisions, and renders localized read-only title/status text. Focused native store tests cover initial fallback, revision ordering, and empty identifiers. No command or mutable gameplay path exists.
+
+Local validation: the new native store compiles with the Android NDK C++20 compiler, Android resource processing succeeds, and the modified Java sources compile without source errors. Gradle cannot mark the Java task successful on this host because Android Studio currently supplies JDK 25, whose compiler fails while closing an Android dependency cache file; Linux/JDK 17 CI remains the authoritative APK gate.
+
+Hardware validation: the CI-built ARM64 APK was installed over the existing Thor app, preserving game data. The user confirmed the deck changes to “Main menu / Choose a game mode,” and device logs recorded `MAIN_MENU` context revisions 1–3 with no fatal exception.
 
 ### Milestone 1: dual-screen foundation
 

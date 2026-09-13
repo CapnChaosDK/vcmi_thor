@@ -18,6 +18,7 @@ final class ThorSecondScreenPresentation extends Presentation
     // The shell scales from these proportions and remains safe on other presentation displays.
     private static final float REFERENCE_WIDTH = 1080f;
     private static final float REFERENCE_HEIGHT = 1240f;
+    private ThorFoundationView foundationView;
 
     ThorSecondScreenPresentation(final Context context, final Display display)
     {
@@ -41,9 +42,15 @@ final class ThorSecondScreenPresentation extends Presentation
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         }
 
-        final ThorFoundationView view = new ThorFoundationView(getContext());
-        view.setContentDescription(getContext().getString(R.string.thor_deck_title));
-        setContentView(view);
+        foundationView = new ThorFoundationView(getContext());
+        foundationView.setContentDescription(getContext().getString(R.string.thor_deck_title));
+        setContentView(foundationView);
+    }
+
+    void updateContext(final String contextId, final String title, final String status)
+    {
+        if (foundationView != null)
+            foundationView.updateContext(contextId, title, status);
     }
 
     private static final class ThorFoundationView extends View
@@ -57,8 +64,8 @@ final class ThorSecondScreenPresentation extends Presentation
         private static final int TEXT = Color.rgb(244, 229, 184);
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final String title;
-        private final String status;
+        private String title;
+        private String status;
 
         ThorFoundationView(final Context context)
         {
@@ -70,6 +77,22 @@ final class ThorSecondScreenPresentation extends Presentation
             setFocusable(false);
         }
 
+        void updateContext(final String contextId, final String publishedTitle, final String publishedStatus)
+        {
+            if ("MAIN_MENU".equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_main_menu);
+                status = getContext().getString(R.string.thor_context_main_menu_status);
+            }
+            else
+            {
+                title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_deck_title) : publishedTitle;
+                status = publishedStatus.isEmpty() ? getContext().getString(R.string.thor_deck_status) : publishedStatus;
+            }
+            setContentDescription(title + ". " + status);
+            invalidate();
+        }
+
         @Override
         protected void onDraw(final Canvas canvas)
         {
@@ -77,8 +100,9 @@ final class ThorSecondScreenPresentation extends Presentation
 
             final float density = getResources().getDisplayMetrics().density;
             final float referenceScale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
-            final float margin = Math.max(16f * density, Math.min(getWidth(), getHeight()) * 0.035f,
-                    Math.min(getWidth(), getHeight()) * 0.045f * referenceScale);
+            final float margin = Math.max(16f * density,
+                    Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
+                            Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
             final float bevel = Math.max(3f * density, margin * 0.16f);
             final float contentWidth = Math.max(0f, getWidth() - margin * 2f);
             final float contentHeight = Math.max(0f, getHeight() - margin * 2f);

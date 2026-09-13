@@ -43,6 +43,21 @@ public class NativeMethods
     public static native void initClassloader();
     public static native void heroesDataUpdate();
 
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorContext(final long revision, final String contextId,
+                                          final String title, final String status)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorContext(revision, contextId, title, status));
+    }
+
     public static void setupMsg(final Messenger msg)
     {
         serverMessengerRef = new WeakReference<>(msg);

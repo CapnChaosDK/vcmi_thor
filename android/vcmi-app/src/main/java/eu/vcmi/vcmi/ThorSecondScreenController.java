@@ -16,6 +16,10 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private ThorSecondScreenPresentation presentation;
+    private long contextRevision;
+    private String contextId = "UNKNOWN";
+    private String contextTitle = "";
+    private String contextStatus = "";
     private boolean started;
     private boolean resumed;
 
@@ -65,6 +69,20 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     {
         stop();
         mainHandler.removeCallbacksAndMessages(null);
+    }
+
+    void publishContext(final long revision, final String id, final String title, final String status)
+    {
+        if (revision <= contextRevision)
+            return;
+
+        contextRevision = revision;
+        contextId = id == null || id.isEmpty() ? "UNKNOWN" : id;
+        contextTitle = title == null ? "" : title;
+        contextStatus = status == null ? "" : status;
+        Log.i(LOG_TAG, "Context " + contextId + " revision " + contextRevision);
+        if (presentation != null)
+            presentation.updateContext(contextId, contextTitle, contextStatus);
     }
 
     @Override
@@ -117,6 +135,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         {
             newPresentation.show();
             presentation = newPresentation;
+            newPresentation.updateContext(contextId, contextTitle, contextStatus);
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)

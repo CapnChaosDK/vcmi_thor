@@ -312,6 +312,7 @@ set(lib_MAIN_SRCS
 	BasicTypes.cpp
 	BattleFieldHandler.cpp
 	CAndroidVMHelper.cpp
+	thor/ThorContext.cpp
 	CBonusTypeHandler.cpp
 	CCreatureHandler.cpp
 	ConditionalWait.cpp

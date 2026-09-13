@@ -89,6 +89,23 @@ void CAndroidVMHelper::callCustomMethod(const std::string & cls, const std::stri
 	fun(env, javaHelper, methodId);
 }
 
+void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::string & contextId,
+										 const std::string & title, const std::string & status)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorContext",
+		"(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+		[revision, &contextId, &title, &status](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jstring javaContextId = env->NewStringUTF(contextId.c_str());
+			jstring javaTitle = env->NewStringUTF(title.c_str());
+			jstring javaStatus = env->NewStringUTF(status.c_str());
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), javaContextId, javaTitle, javaStatus);
+			env->DeleteLocalRef(javaContextId);
+			env->DeleteLocalRef(javaTitle);
+			env->DeleteLocalRef(javaStatus);
+		}, true);
+}
+
 jclass CAndroidVMHelper::findClass(const std::string & name, bool classloaded)
 {
 	if(alwaysUseLoadedClass || classloaded)

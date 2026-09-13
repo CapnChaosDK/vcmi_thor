@@ -14,6 +14,7 @@
 #ifdef VCMI_ANDROID
 
 #include <jni.h>
+#include <cstdint>
 #include <string>
 
 /// helper class that allows access to java vm to communicate with java code from native
@@ -39,6 +40,9 @@ public:
 
 	void callCustomMethod(const std::string & cls, const std::string & method, const std::string & signature,
 						  std::function<void(JNIEnv *, jclass, jmethodID)> fun, bool classloaded = false);
+
+	void publishThorContext(std::uint64_t revision, const std::string & contextId,
+							const std::string & title, const std::string & status);
 
 	static void cacheVM(JNIEnv * env);
 
