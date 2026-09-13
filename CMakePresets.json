@@ -374,6 +374,15 @@
             }
         },
         {
+            "name": "android-thor-release",
+            "displayName": "Android AYN Thor release",
+            "description": "VCMI AYN Thor Android build",
+            "inherits": "android-conan-ninja-release",
+            "cacheVariables": {
+                "TARGET_AYN_THOR": "ON"
+            }
+        },
+        {
             "name": "portmaster-release",
             "displayName": "PortMaster",
             "description": "VCMI PortMaster",
@@ -546,6 +555,11 @@
         {
             "name": "android-daily-release",
             "configurePreset": "android-daily-release",
+            "inherits": "android-conan-ninja-release"
+        },
+        {
+            "name": "android-thor-release",
+            "configurePreset": "android-thor-release",
             "inherits": "android-conan-ninja-release"
         },
         {

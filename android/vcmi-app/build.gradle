@@ -1,6 +1,8 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.github.zellius.shortcut-helper'
 
+def aynThorBuild = (project.findProperty('aynThorBuild') ?: 'false').toBoolean()
+
 android {
 	/*******************************************************
 	 * The following variables:
@@ -29,7 +31,7 @@ android {
 	packagingOptions.jniLibs.useLegacyPackaging true
 
 	defaultConfig {
-		applicationId "is.xyz.vcmi"
+		applicationId aynThorBuild ? "is.xyz.vcmi.thor" : "is.xyz.vcmi"
 
 		compileSdk = androidCompileSdkVersion.takeAfter("-") as Integer // has "android-" prepended
 		minSdk = qtMinSdkVersion as Integer
@@ -37,6 +39,7 @@ android {
 
 		versionCode 1800
 		versionName "1.8.0"
+		buildConfigField "boolean", "AYN_THOR_BUILD", aynThorBuild.toString()
 	}
 
 	sourceSets {
@@ -48,6 +51,9 @@ android {
 			java.srcDirs = [qt5AndroidDir + '/src', 'src', SDL_JAVA_SRC_DIR]
 			aidl.srcDirs = [qt5AndroidDir + '/src', 'src', 'aidl']
 			res.srcDirs = [qt5AndroidDir + '/res', 'src/main/res', '../res']
+		}
+		test {
+			java.srcDirs = ['test/java']
 		}
 	}
 
@@ -63,7 +69,7 @@ android {
 			debuggable true
 			applicationIdSuffix '.debug'
 			manifestPlaceholders = [
-				applicationLabel: 'VCMI debug',
+				applicationLabel: aynThorBuild ? 'VCMI Thor debug' : 'VCMI debug',
 				applicationVariant: 'debug',
 			]
 			ndk {
@@ -157,4 +163,5 @@ dependencies {
 	// later versions require API level 21
 	implementation('androidx.appcompat:appcompat:1.6.1')
 	implementation('androidx.documentfile:documentfile:1.0.1')
+	testImplementation('junit:junit:4.13.2')
 }

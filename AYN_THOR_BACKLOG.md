@@ -6,18 +6,18 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: first-slice approval.
-- Status: `proposed`.
+- Phase: Slice 1 implementation and validation.
+- Status: `hardware validated`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
 - Working branch: `ayn-thor-dual-screen`, published from the clean upstream baseline.
 - Remote safety: `origin` points to the CapnChaosDK fork; the local `upstream` push URL is disabled.
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
-- Build readiness: source inspection is complete, but the checkout's submodules are not initialized and the local Windows environment has no VCMI CMake, Ninja, Conan, Qt, or Java tools on `PATH`. Android SDK platform tools and NDK `27.0.12077973` are installed; JDK 17 candidates exist outside `PATH`. Resolve the supported Windows Android toolchain before the first candidate build.
-- Product code changed: no.
-- Hardware validation claimed: no.
-- Approval to implement a feature slice: no.
+- Build readiness: pinned submodules and the official ARM64 Android dependency cache are initialized. An isolated Conan/CMake/Ninja toolchain and NDK r29 are available locally. Android Java/Gradle compilation succeeds, but the official dependency cache contains Linux-host Qt code generators, so this Windows host cannot complete native APK generation. A Linux CI/build host is required for the candidate APK.
+- Product code changed: yes, locally and uncommitted.
+- Hardware validation claimed: yes; user confirms the lower command-deck panel is visible, inert touch does not steal focus, and resume/toggle checks pass.
+- Approval to implement a feature slice: yes; Slice 1 approved by the user on 2026-09-13.
 
 ## Working rules
 
@@ -58,7 +58,7 @@ The architecture report identifies the client/server threading model, Android Qt
 
 ## Proposed Slice 1: inert dual-display presentation foundation
 
-Status: `proposed, pending user approval`
+Status: `approved, in progress`
 
 This is deliberately smaller than a context bridge or command implementation. It proves packaging, display choice, lifecycle safety, and upper-screen independence before gameplay state crosses the boundary.
 
@@ -130,6 +130,19 @@ Focused Thor hardware checklist after build/install/explicit launch:
 ## Roadmap
 
 Each milestone must be decomposed further after repository discovery. No item below is approved merely by appearing here.
+
+## Proposed next slice: measured deck shell and diagnostics
+
+Status: `proposed`
+
+With Slice 1 hardware-validated, the next bounded step is to turn the generic companion into a measured, read-only deck shell without crossing into gameplay mutation or input injection.
+
+- Record the Thor secondary panel's observed metrics (1080 x 1240, presentation-capable display) and define density-safe margins, typography tiers, and region bounds.
+- Keep the existing inert presentation and add only lifecycle/display diagnostics that can identify selection, replacement, dismissal, and recreation in logs.
+- Define a stable shell contract for a future read-only context card: title, status, revision, and bounded content regions; do not publish gameplay state yet.
+- Add focused layout/diagnostic tests and repeat the existing standard-build regression checks.
+
+Acceptance requires the shell to remain inert, upper-screen input to remain unchanged, no stale presentation after lifecycle/display changes, and no proprietary artwork or game-data dependency.
 
 ### Milestone 1: dual-screen foundation
 
@@ -219,6 +232,21 @@ Each milestone must be decomposed further after repository discovery. No item be
 
 Populate repository-specific commands and paths only after discovery.
 
+### Slice 1 automated validation — 2026-09-13
+
+- Source baseline: `819259d97f1de9262b97811ccb081346c20ffef2`; planning checkpoint: `2c936cb37`.
+- Pinned repository submodules initialized successfully.
+- CMake preset JSON parsing and source whitespace checks pass.
+- Conan ARM64 dependency resolution succeeds with VCMI's `dependencies-android-arm64-v8a` cache and NDK r29.
+- The Thor CMake preset reaches generation on Windows. Full generation is blocked because VCMI's official Android dependency bundle carries Linux-host Qt tools (`moc`/later `androiddeployqt`), which cannot execute on Windows.
+- The new Android display classes compile against Android API 35.
+- The modified `VcmiSDLActivity` and new display classes compile against the real SDL 3.4.14 Android library.
+- The real Android Gradle module compiles the Thor Java/resources and passes all five `ThorDisplaySelectorTest` tests in a generated validation copy.
+- Generated Thor debug identity verified: application ID `is.xyz.vcmi.thor.debug`, `BuildConfig.AYN_THOR_BUILD=true`, label `VCMI Thor debug`, and provider authorities follow the Thor application ID.
+- Standard debug generation verified: application ID `is.xyz.vcmi.debug` and `BuildConfig.AYN_THOR_BUILD=false`.
+- A connected AYN Thor is visible over ADB. No APK has been installed or launched because no complete candidate APK exists yet.
+- Implementation remains uncommitted, as required before hardware validation.
+
 For each approved slice:
 
 1. Record source revision and pre-existing changes.
@@ -242,4 +270,4 @@ For releases, first approve a cleanup-only scope, reconcile documentation/histor
 
 ## Next action
 
-Await explicit approval or requested changes to Proposed Slice 1. Do not implement it before approval.
+The exact ARM64 APK is installed and explicitly running on the connected AYN Thor. Automated process/display/log checks pass, and the user confirms the lower command-deck presentation, inert touch, resume, and toggle behavior all pass. Slice 1 is ready to commit.

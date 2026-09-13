@@ -35,6 +35,7 @@ public class VcmiSDLActivity extends SDLActivity
     Messenger mServiceMessenger = null;
     boolean mIsServerServiceBound;
     private View mProgressBar;
+    private ThorSecondScreenController mThorSecondScreenController;
 
     private ServiceConnection mServerServiceConnection = new ServiceConnection()
     {
@@ -115,6 +116,9 @@ public class VcmiSDLActivity extends SDLActivity
 
         setContentView(outerLayout);
 
+        if (BuildConfig.AYN_THOR_BUILD)
+            mThorSecondScreenController = new ThorSecondScreenController(this);
+
         VcmiSDLActivity.this.setWindowStyle(true); // set fullscreen
 
         Notifications.createChannels(this);
@@ -124,6 +128,9 @@ public class VcmiSDLActivity extends SDLActivity
     @Override
     protected void onDestroy()
     {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.destroy();
+
         unbindServer();
         Notifications.setForeground(this, false);
         Notifications.stopService(this);
@@ -134,18 +141,41 @@ public class VcmiSDLActivity extends SDLActivity
         System.exit(0);
     }
 
+    @Override
+    protected void onStart()
+    {
+        super.onStart();
+
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.start();
+    }
+
+    @Override
+    protected void onStop()
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.stop();
+
+        super.onStop();
+    }
+
 
     @Override
     protected void onResume()
     {
         super.onResume();
         Notifications.setForeground(this, true);
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.resume();
         scheduleInputFocusRestore();
     }
 
     @Override
     protected void onPause()
     {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.pause();
+
         Notifications.setForeground(this, false);
         super.onPause();
     }
