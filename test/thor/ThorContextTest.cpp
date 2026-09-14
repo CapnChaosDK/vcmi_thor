@@ -29,12 +29,13 @@ TEST(ThorContextMappingTest, MapsApprovedMainMenuTabs)
 {
 	EXPECT_EQ(thorContextIdForMainMenuTab("main"), ThorContextIds::MAIN_MENU);
 	EXPECT_EQ(thorContextIdForMainMenuTab("new"), ThorContextIds::MAIN_MENU_NEW_GAME);
+	EXPECT_EQ(thorContextIdForMainMenuTab("load"), ThorContextIds::MAIN_MENU_LOAD_GAME);
 }
 
 TEST(ThorContextMappingTest, UnsupportedMainMenuTabsFallBackToUnknown)
 {
-	EXPECT_EQ(thorContextIdForMainMenuTab("load"), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForMainMenuTab("campaign"), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForMainMenuTab("credits"), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForMainMenuTab(""), ThorContextIds::UNKNOWN);
+	EXPECT_EQ(thorContextIdForMainMenuTab("load/"), ThorContextIds::UNKNOWN);
 }

@@ -12,5 +12,6 @@ public class ThorContextIdsTest
         assertEquals("UNKNOWN", ThorContextIds.UNKNOWN);
         assertEquals("MAIN_MENU", ThorContextIds.MAIN_MENU);
         assertEquals("MAIN_MENU_NEW_GAME", ThorContextIds.MAIN_MENU_NEW_GAME);
+        assertEquals("MAIN_MENU_LOAD_GAME", ThorContextIds.MAIN_MENU_LOAD_GAME);
     }
 }
