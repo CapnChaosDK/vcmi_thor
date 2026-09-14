@@ -6,7 +6,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 and 2 implemented, CI-built, and hardware-validated.
+- Phase: Slices 1, 2, and 3 are implemented, CI-built, and hardware-validated.
 - Status: `hardware validated`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
@@ -16,9 +16,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
 - Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
-- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`.
-- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions.
-- Approval to implement feature slices: yes; Slices 1 and 2 were approved by the user on 2026-09-13.
+- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation.
+- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks.
+- Approval to implement feature slices: yes; Slices 1, 2, and 3 were approved by the user on 2026-09-13.
 
 ## Working rules
 
@@ -164,6 +164,46 @@ Local validation: the new native store compiles with the Android NDK C++20 compi
 
 Hardware validation: the CI-built ARM64 APK was installed over the existing Thor app, preserving game data. The user confirmed the deck changes to “Main menu / Choose a game mode,” and device logs recorded `MAIN_MENU` context revisions 1–3 with no fatal exception.
 
+## Approved Slice 3: read-only New Game submenu context
+
+Status: `hardware validated`
+
+Approved by the user on 2026-09-13. This slice adds one new read-only context, `MAIN_MENU_NEW_GAME`, within the existing main-menu owner.
+
+### 1. Approved user-visible behavior
+
+- Entering New Game changes the lower deck to `New game / Choose single-player, multiplayer, campaign, or tutorial`.
+- Returning to the root menu restores the existing `Main menu / Choose a game mode` card.
+- Load, Campaign, Credits, malformed, and other unsupported tabs publish `UNKNOWN` so the New Game label cannot remain stale.
+- The lower deck remains inert and cannot change gameplay or upper-screen UI state.
+
+### 2. Implementation boundary and responsibilities
+
+- Native code maps configured main-menu tab names to stable context identifiers and owns the monotonic revision.
+- Android maps the approved identifier to bounded localizable text and drops stale revisions as before.
+- Thor-only behavior remains behind the existing build boundary.
+- No action identifiers, buttons, hit regions, Java-to-native calls, gameplay data, coordinate injection, or mutable state are added.
+
+### 3. Focused acceptance tests
+
+- Native mapping covers `main`, `new`, every currently unsupported tab, and malformed input.
+- Native and Android identifiers remain in parity; revisions remain monotonic and stale records remain rejected.
+- Standard-build isolation, Android compilation/resources/tests/lint, focused native tests, and ARM64 packaging pass.
+
+### 4. Focused Thor hardware checklist
+
+1. The root menu shows the existing Main menu card; New Game shows the new card; Back restores the root card.
+2. Load, Campaign, and Credits never retain the New Game card and instead show the safe fallback.
+3. Panel toggle and pause/resume while on New Game restore exactly one presentation with the latest card.
+4. Lower touch remains inert, and upper touch/controller focus and operation remain unchanged.
+
+### 5. Important regression risks
+
+- Configurable or mod-added tabs may have unexpected names or ordering; mapping must use names and fail to `UNKNOWN`.
+- Activation and tab switching can publish close together; revisions must remain monotonic without leaving stale text.
+- Presentation recreation must render the controller's latest complete record.
+- New context rendering must not change focus, lifecycle cleanup, package identity, or standard-build behavior.
+
 ### Milestone 1: dual-screen foundation
 
 - Slice 1: inert presentation foundation (proposed above).
@@ -277,6 +317,15 @@ Populate repository-specific commands and paths only after discovery.
 - The verified APK was installed over the existing Thor package with data preserved. The user confirmed `Main menu / Choose a game mode` on the lower deck; ADB logs recorded `MAIN_MENU` revisions 1 through 3 and no fatal exception.
 - The implementation was pushed to `origin/ayn-thor-dual-screen`.
 
+### Slice 3 automated and hardware validation — 2026-09-14
+
+- Source checkpoint: `43dd715ae`; temporary CI candidate: `c57f34123`.
+- The native Thor context module passed an ARM64 Android NDK C++20 syntax check. The Android source and resources compiled under JDK 17; local cache cleanup continued to show the known Windows JAR-close limitation after successful compilation.
+- Linux/JDK 17 CI run `34777738191` passed focused native context tests, complete ARM64 packaging, package identity and checksum verification, artifact upload, and Android unit tests.
+- The GitHub artifact ZIP SHA-256 was `b74383997da509410629d74b300cc72a8fd3a86ef376ac616ba059c92e9665fc`; the embedded and locally verified APK SHA-256 was `6f18f1c54b408eeb6b1b10a64eb5afd1ec189135d055cdbb3eb48056469632b9`.
+- The verified APK was installed over `is.xyz.vcmi.thor` with data preserved and launched on an AYN Thor. Automated checks confirmed both displays were on, the presentation-capable 1080 x 1240 lower display was available, the process was running, `MAIN_MENU` revisions were monotonic, and no fatal exception was present.
+- The user confirmed the entire focused manual checklist passed: root/New Game/Back context changes, unsupported-tab fallback, panel-toggle and pause/resume recovery, lower-screen inertness, and upper-screen touch/controller operation.
+
 For each approved slice:
 
 1. Record source revision and pre-existing changes.
@@ -300,4 +349,4 @@ For releases, first approve a cleanup-only scope, reconcile documentation/histor
 
 ## Next action
 
-Slices 1 and 2 are committed, pushed, and hardware-validated. Before proposing Slice 3, start from the hand-off checklist in `docs/AYN_THOR_BUILD_PLAYBOOK.md`, choose one bounded read-only context, and obtain fresh approval. Do not add native commands, coordinate injection, or mutable gameplay state without a separately approved design.
+Slices 1, 2, and 3 are hardware-validated. Before proposing Slice 4, start from the hand-off checklist, choose one bounded read-only context, and obtain fresh approval. Do not add native commands, coordinate injection, or mutable gameplay state without a separately approved design.

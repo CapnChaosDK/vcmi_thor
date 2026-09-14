@@ -6,11 +6,18 @@
 #include <mutex>
 #include <string>
 
+namespace ThorContextIds
+{
+	inline constexpr char UNKNOWN[] = "UNKNOWN";
+	inline constexpr char MAIN_MENU[] = "MAIN_MENU";
+	inline constexpr char MAIN_MENU_NEW_GAME[] = "MAIN_MENU_NEW_GAME";
+}
+
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
 {
 	std::uint64_t revision = 0;
-	std::string contextId = "UNKNOWN";
+	std::string contextId = ThorContextIds::UNKNOWN;
 	std::string title;
 	std::string status;
 };
@@ -27,3 +34,4 @@ public:
 };
 
 DLL_LINKAGE ThorContextStore & thorContextStore();
+DLL_LINKAGE std::string thorContextIdForMainMenuTab(const std::string & tabName);

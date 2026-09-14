@@ -67,6 +67,21 @@
 #include "../../lib/GameLibrary.h"
 #include "../../lib/json/JsonUtils.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+namespace
+{
+	std::atomic<std::uint64_t> thorContextRevision{0};
+
+	void publishThorMainMenuContext(const std::vector<std::string> & menuNames, size_t index)
+	{
+		ThorContextRecord context;
+		context.revision = ++thorContextRevision;
+		context.contextId = thorContextIdForMainMenuTab(index < menuNames.size() ? menuNames[index] : "");
+		if(thorContextStore().publish(context))
+			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
 
 ISelectionScreenInfo * SEL = nullptr;
 
@@ -131,18 +146,16 @@ void CMenuScreen::activate()
 	CIntObject::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	static std::atomic<std::uint64_t> revision{0};
-	ThorContextRecord context;
-	context.revision = ++revision;
-	context.contextId = "MAIN_MENU";
-	if(thorContextStore().publish(context))
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	publishThorMainMenuContext(menuNameToEntry, getActiveTab());
 #endif
 }
 
 void CMenuScreen::switchToTab(size_t index)
 {
 	tabs->setActive(index);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorMainMenuContext(menuNameToEntry, index);
+#endif
 }
 
 void CMenuScreen::switchToTab(std::string name)

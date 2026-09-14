@@ -79,10 +79,15 @@ final class ThorSecondScreenPresentation extends Presentation
 
         void updateContext(final String contextId, final String publishedTitle, final String publishedStatus)
         {
-            if ("MAIN_MENU".equals(contextId))
+            if (ThorContextIds.MAIN_MENU.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_main_menu);
                 status = getContext().getString(R.string.thor_context_main_menu_status);
+            }
+            else if (ThorContextIds.MAIN_MENU_NEW_GAME.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_new_game);
+                status = getContext().getString(R.string.thor_context_new_game_status);
             }
             else
             {

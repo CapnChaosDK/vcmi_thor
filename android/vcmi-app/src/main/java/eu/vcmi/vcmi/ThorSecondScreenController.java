@@ -17,7 +17,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
 
     private ThorSecondScreenPresentation presentation;
     private long contextRevision;
-    private String contextId = "UNKNOWN";
+    private String contextId = ThorContextIds.UNKNOWN;
     private String contextTitle = "";
     private String contextStatus = "";
     private boolean started;
@@ -77,7 +77,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             return;
 
         contextRevision = revision;
-        contextId = id == null || id.isEmpty() ? "UNKNOWN" : id;
+        contextId = id == null || id.isEmpty() ? ThorContextIds.UNKNOWN : id;
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
         Log.i(LOG_TAG, "Context " + contextId + " revision " + contextRevision);
