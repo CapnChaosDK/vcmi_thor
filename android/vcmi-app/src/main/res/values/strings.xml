@@ -8,6 +8,8 @@
     <string name="thor_context_new_game_status">Choose single-player, multiplayer, campaign, or tutorial</string>
     <string name="thor_context_load_game">Load game</string>
     <string name="thor_context_load_game_status">Choose single-player, multiplayer, campaign, or tutorial</string>
+    <string name="thor_context_campaign">Campaign</string>
+    <string name="thor_context_campaign_status">Choose a campaign</string>
     <string name="server_name">VCMI Server</string>
     <string name="notification_channel_running">Running in background</string>
     <string name="notification_channel_game">Game events</string>
