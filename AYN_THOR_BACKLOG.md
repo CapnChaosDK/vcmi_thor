@@ -398,6 +398,7 @@ Approved by the user on 2026-09-15. This slice adds the `MAIN_MENU_CAMPAIGN` rea
 - An imprecise tab-name match could recognize malformed or mod-added entries instead of failing closed.
 - Rapid transitions or lifecycle recreation could retain stale Campaign text or duplicate the presentation.
 - Rendering or resource changes could affect lower-panel inertness, focus, or standard builds.
+
 ## Approved Slice 4: read-only Load Game submenu context
 
 Status: `hardware validated`
