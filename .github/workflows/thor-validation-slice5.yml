@@ -1,0 +1,138 @@
+name: AYN Thor Slice 5 validation build
+
+on:
+  push:
+    branches:
+      - ci/thor-slice5-validation
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ayn-thor-slice5-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-arm64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Restore official VCMI Android dependencies
+        shell: bash
+        run: |
+          pipx install conan
+          source CI/install_conan_dependencies.sh dependencies-android-arm64-v8a
+          conan profile detect
+          conan install . \
+            --output-folder=conan-generated \
+            --build=never \
+            --profile=dependencies/conan_profiles/android-64-ndk \
+            --profile=dependencies/conan_profiles/base/android-system \
+            --conf="tools.cmake.cmaketoolchain:generator=Ninja"
+
+      - name: Run focused native context tests
+        shell: bash
+        run: |
+          boost_version="$(find "$HOME/.conan2/p" -path '*/p/include/boost/version.hpp' -print -quit)"
+          test -n "$boost_version"
+          boost_include="$(dirname "$(dirname "$boost_version")")"
+          g++ -std=c++20 -pthread \
+            -I. \
+            -Iinclude \
+            -Itest \
+            -Itest/googletest/googletest \
+            -Itest/googletest/googletest/include \
+            -Itest/googletest/googlemock/include \
+            -I"$boost_include" \
+            lib/thor/ThorContext.cpp \
+            test/thor/ThorContextTest.cpp \
+            test/googletest/googletest/src/gtest-all.cc \
+            test/googletest/googletest/src/gtest_main.cc \
+            -o "$RUNNER_TEMP/thor-context-tests"
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*'
+
+      - name: Configure Android packaging
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.gradle"
+          echo "android.bundle.enableUncompressedNativeLibs=true" > "$HOME/.gradle/gradle.properties"
+          cmake --preset android-thor-release \
+            '-DANDROID_GRADLE_PROPERTIES=signingConfig=dailySigning;applicationVariant=thor-ci'
+
+      - name: Build signed Thor APK
+        shell: bash
+        run: cmake --build --preset android-thor-release
+
+      - name: Verify package identity and checksum
+        shell: bash
+        run: |
+          apk="out/build/android-thor-release/android-build/vcmi-app/build/outputs/apk/release/vcmi-release.apk"
+          test -f "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep "package: name='is.xyz.vcmi.thor'"
+          sha256sum "$apk" | tee "$RUNNER_TEMP/vcmi-thor-slice5-sha256.txt"
+          cp "$apk" "$RUNNER_TEMP/vcmi-thor-slice5-arm64.apk"
+
+      - name: Run Thor Android unit tests
+        shell: bash
+        working-directory: out/build/android-thor-release/android-build
+        run: |
+          sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
+          test -n "$sdl_java_src_dir"
+          ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
+            ./gradlew --no-daemon :vcmi-app:testReleaseUnitTest
+
+      - name: Upload validation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcmi-thor-slice5-arm64
+          path: |
+            ${{ runner.temp }}/vcmi-thor-slice5-arm64.apk
+            ${{ runner.temp }}/vcmi-thor-slice5-sha256.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Check Slice 5 Android lint delta
+        shell: bash
+        working-directory: out/build/android-thor-release/android-build
+        run: |
+          sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
+          test -n "$sdl_java_src_dir"
+          set +e
+          ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
+            ./gradlew --no-daemon :vcmi-app:lintRelease
+          lint_status=$?
+          set -e
+          report="vcmi-app/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt"
+          test -f "$report"
+          if grep -E '(ThorContextIds.java|ThorSecondScreenPresentation.java|src/main/res/values/strings.xml):[0-9]+: Error:' "$report" \
+            | grep -v '\[MissingTranslation\]'; then
+            exit 1
+          fi
+          if [ "$lint_status" -ne 0 ]; then
+            echo "Ignoring existing full-project lint findings outside Slice 5."
+          fi
+
+  markdown:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v24.2.0
+        with:
+          config: CI/example.markdownlint-cli2.jsonc
+          globs: '**/*.md'
