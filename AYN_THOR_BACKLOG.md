@@ -6,7 +6,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1, 2, and 3 are implemented, CI-built, and hardware-validated.
+- Phase: Slices 1 through 4 are implemented, CI-built, and hardware-validated.
 - Status: `hardware validated`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
@@ -16,9 +16,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
 - Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
-- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation.
-- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks.
-- Approval to implement feature slices: yes; Slices 1, 2, and 3 were approved by the user on 2026-09-13.
+- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`.
+- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card, restores the root card on Back, and fails closed on Campaign, Credits, malformed, and mod-added tabs.
+- Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13 and Slice 4 on 2026-09-14.
 
 ## Working rules
 
@@ -326,6 +326,15 @@ Populate repository-specific commands and paths only after discovery.
 - The verified APK was installed over `is.xyz.vcmi.thor` with data preserved and launched on an AYN Thor. Automated checks confirmed both displays were on, the presentation-capable 1080 x 1240 lower display was available, the process was running, `MAIN_MENU` revisions were monotonic, and no fatal exception was present.
 - The user confirmed the entire focused manual checklist passed: root/New Game/Back context changes, unsupported-tab fallback, panel-toggle and pause/resume recovery, lower-screen inertness, and upper-screen touch/controller operation.
 
+### Slice 4 automated and hardware validation — 2026-09-14/15
+
+- Source checkpoint: `1777ae44150ec9097ad41f032b6f6812b271b966`; temporary CI candidate: `e6a0f682d`; promoted implementation: `17fbdfbb9`.
+- Linux/JDK 17 CI run `34885114429` passed focused native context tests, complete ARM64 packaging, package identity and checksum verification, Android unit tests, artifact upload, Markdown validation, and the Slice 4 Android lint delta.
+- Full-project Android lint still reports the established project-wide baseline (including English-only `MissingTranslation` diagnostics and an untouched `NewApi` finding). The candidate retained the full report but failed only on a new non-translation error in a Slice 4 Android file; this keeps the gate meaningful without treating the baseline as a Slice 4 regression.
+- The GitHub artifact ZIP SHA-256 was `ecda46f91b5cdc93e67eed229cc74dda8b80b09a09b7dd2ec52bfaae3748e103`; the embedded and locally verified APK SHA-256 was `23fdc4b88421a623a5ebabb27c483d5babdb1a13a473f3d303e92b97e7cbe03c`. The independently inspected package ID was `is.xyz.vcmi.thor`.
+- The artifact was installed with data preserved and launched on an AYN Thor at a current wireless-debugging endpoint. ADB confirmed the `is.xyz.vcmi.thor` package path and a running process.
+- The user confirmed the full focused manual checklist passed: Main Menu, New Game, and Load Game cards; Back/root restoration; Campaign/Credits fallback; lower-panel toggle; pause/resume; lower-deck inertness; and unaffected upper touch and physical controls.
+
 For each approved slice:
 
 1. Record source revision and pre-existing changes.
@@ -349,7 +358,7 @@ For releases, first approve a cleanup-only scope, reconcile documentation/histor
 
 ## Next action
 
-Slices 1, 2, and 3 are hardware-validated. Before proposing Slice 4, start from the hand-off checklist, choose one bounded read-only context, and obtain fresh approval. Do not add native commands, coordinate injection, or mutable gameplay state without a separately approved design.
+Slices 1 through 4 are hardware-validated. Before proposing Slice 5, start from the hand-off checklist, choose one bounded read-only context, and obtain fresh approval. Do not add native commands, coordinate injection, or mutable gameplay state without a separately approved design.
 ## Approved Slice 4: read-only Load Game submenu context
 
 Status: `hardware validated`
@@ -388,3 +397,7 @@ Approved by the user on 2026-09-14. This slice adds the `MAIN_MENU_LOAD_GAME` re
 - An imprecise tab-name match could recognize malformed or mod-added menu entries instead of failing closed.
 - Rapid tab changes could expose a stale card if revision filtering or presentation restoration changes.
 - A context-rendering addition could inadvertently affect focus, lower-panel inertness, lifecycle behavior, or standard builds.
+
+### Hardware validation
+
+The user confirmed every focused hardware check passed on 2026-09-15. Slice 4 was promoted as commit `17fbdfbb9` on `ayn-thor-dual-screen`.

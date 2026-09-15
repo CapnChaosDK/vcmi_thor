@@ -10,9 +10,11 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Thor package: `is.xyz.vcmi.thor`
 - Slice 1: `ed8e57130` — inert lower-screen command-deck foundation.
 - Slice 2: `9300bcc59` — read-only `MAIN_MENU` context publication.
-- Both slices were built by Linux/JDK 17 CI, installed on an AYN Thor, and manually hardware-validated on 2026-09-13.
+- Slice 3: promoted read-only `MAIN_MENU_NEW_GAME` context.
+- Slice 4: `17fbdfbb9` — read-only `MAIN_MENU_LOAD_GAME` context.
+- Slices 1 through 4 were built by Linux/JDK 17 CI, installed on an AYN Thor, and manually hardware-validated. Slice 4 was validated on 2026-09-15.
 
-The normal fork remote is `origin`. Never push to upstream; its push URL is intentionally disabled. Temporary CI validation branches have been deleted after use and must not be recreated without a focused, approved validation need.
+The normal fork remote is `origin`. Never push to upstream; its push URL is intentionally disabled. A temporary CI validation branch is permitted only for a focused, approved candidate and its workflow must never be merged into `ayn-thor-dual-screen`.
 
 ## Build facts that matter
 
@@ -32,21 +34,25 @@ On this Windows workstation, use local checks for fast feedback only:
 1. Confirm a clean working tree and record the current commit before a new slice.
 2. Obtain explicit approval for the proposed slice and its hardware checklist before modifying native/gameplay code.
 3. Use a temporary, branch-scoped Linux/JDK 17 workflow to produce an ARM64 candidate. It should configure the Thor CMake preset, run focused tests, package the APK, write an APK SHA-256 file, and upload the APK plus checksum as a short-retention artifact.
-4. Do not merge the validation workflow into `ayn-thor-dual-screen`. After validation, commit only the approved product/documentation changes and delete the temporary local and remote CI branch.
-5. Download the artifact manually from the GitHub Actions run when browser download permissions prevent automation.
+4. Do not merge the validation workflow into `ayn-thor-dual-screen`. After validation, commit only the approved product/documentation changes; retain or delete the temporary candidate branch according to the needed audit history.
+5. Download the artifact manually from the GitHub Actions run when browser download permissions prevent automation or anonymous GitHub API rate limits prevent retrieval.
+6. Upload the validation artifact before any known-baseline lint step. Keep the complete lint report, then enforce a focused delta that rejects new non-baseline diagnostics in the changed Slice files.
 
-Artifacts have two useful digests: GitHub's ZIP artifact digest and the APK SHA-256 written inside the ZIP. Verify both before installation. The Slice 2 reference values are ZIP `bf26453182d82cf5ef6d9f7ad7a4c454e98f28f0ace9182dd311caa661d25f83` and APK `683c8213256d0e18277569dfa1f2972827654b9cdbd6b15b2681ccf27d3d672c`.
+Artifacts have two useful digests: GitHub's ZIP artifact digest and the APK SHA-256 written inside the ZIP. Verify both before installation. Slice 4 reference values are ZIP `ecda46f91b5cdc93e67eed229cc74dda8b80b09a09b7dd2ec52bfaae3748e103` and APK `23fdc4b88421a623a5ebabb27c483d5babdb1a13a473f3d303e92b97e7cbe03c`.
 
 ## AYN Thor installation and smoke check
 
-Use the Android SDK platform tools at `C:\Users\steen\AppData\Local\Android\Sdk\platform-tools\adb.exe`. The Thor was previously reachable at `192.168.68.76:43311`; reconnect when needed, then confirm its model before installing.
+Use the Android SDK platform tools at `C:\Users\steen\AppData\Local\Android\Sdk\platform-tools\adb.exe`. Wireless-debugging addresses and ports are transient: obtain the current value from the Thor before every session. The most recently validated endpoint was `192.168.68.61:40141`; always confirm the model before installing.
 
 ```powershell
-adb connect 192.168.68.76:43311
-adb -s 192.168.68.76:43311 devices
-adb -s 192.168.68.76:43311 shell getprop ro.product.model
-adb -s 192.168.68.76:43311 install -r -d <verified-apk-path>
-adb -s 192.168.68.76:43311 shell monkey -p is.xyz.vcmi.thor 1
+$device = '192.168.68.61:40141' # Replace with the current Wireless debugging address.
+adb connect $device
+adb -s $device get-state
+adb -s $device shell getprop ro.product.model
+adb -s $device install -r -d <verified-apk-path>
+adb -s $device shell monkey -p is.xyz.vcmi.thor 1
+adb -s $device shell pm path is.xyz.vcmi.thor
+adb -s $device shell pidof is.xyz.vcmi.thor
 ```
 
 `-r -d` updates the compatible package while preserving the user's installed game data. Launch through the launcher or `monkey`: `VcmiSDLActivity` is not exported, so direct shell launching is not supported.
@@ -58,7 +64,8 @@ For the validated lower deck, check that:
 - the game remains on the upper display and one deck appears on the lower display;
 - the lower deck is non-focus-stealing and inert;
 - lower-panel toggle and app pause/resume do not duplicate or strand the presentation;
-- Slice 2 shows `Main menu / Choose a game mode` at the main menu and logs monotonic `MAIN_MENU` revisions.
+- Main Menu shows `Main menu / Choose a game mode`; New Game and Load Game each show their approved local card.
+- Campaign, Credits, malformed, and mod-added menu names must fail closed rather than retaining a prior card.
 
 ## Game data notes
 

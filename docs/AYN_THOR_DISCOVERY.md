@@ -42,6 +42,7 @@ VCMI combines Qt and SDL in one Android package:
 - `ServerService` also runs in its own process (`eu.vcmi.vcmi.srv`) and communicates with the game activity via Android `Messenger` while the native client/server layer handles game requests.
 - `lib/CAndroidVMHelper.*` already supports native-to-Java static calls and caches the Android VM/class loader. It is suitable infrastructure for later bounded state notification, but no generic Java-to-native Thor action entry point exists yet.
 - `NativeMethods.java` is the current Java helper surface for paths, services, progress display, and haptics. Thor methods should live in a separate narrowly named bridge class or a clearly isolated section, guarded from standard builds.
+- The validated main-menu slices show that `CMenuScreen` already publishes configured tab names. Map only exact approved names (`main`, `new`, and `load`) to stable context IDs; every other name, including malformed and mod-added names, must publish `UNKNOWN`. Android must render known IDs from bounded local resources rather than from arbitrary native title/status text.
 
 ### Rendering lifecycle
 
@@ -121,4 +122,4 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - `GameEngine::updateFrame()` is the preferred one-shot request consumer on `MainGUI`.
 - `CCallback` and existing controllers are the preferred semantic action executors; the server remains authoritative.
 - The Qt launcher and separate Qt map editor require their own future designs. They must not be forced through the SDL bridge.
-- Slice 1 and Slice 2 have been implemented and hardware-validated. Their acceptance history, remaining roadmap, and approval boundary are maintained in `AYN_THOR_BACKLOG.md`; the build/device hand-off is in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
+- Slices 1 through 4 have been implemented and hardware-validated. Their acceptance history, remaining roadmap, and approval boundary are maintained in `AYN_THOR_BACKLOG.md`; the build/device hand-off is in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
