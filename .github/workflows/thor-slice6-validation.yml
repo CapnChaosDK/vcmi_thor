@@ -1,6 +1,9 @@
 name: Thor Slice 6 validation
 
 on:
+  push:
+    branches:
+      - ci/thor-slice6-validation
   workflow_dispatch:
 
 jobs:
