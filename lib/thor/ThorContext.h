@@ -13,6 +13,7 @@ namespace ThorContextIds
 	inline constexpr char MAIN_MENU_NEW_GAME[] = "MAIN_MENU_NEW_GAME";
 	inline constexpr char MAIN_MENU_LOAD_GAME[] = "MAIN_MENU_LOAD_GAME";
 	inline constexpr char MAIN_MENU_CAMPAIGN[] = "MAIN_MENU_CAMPAIGN";
+	inline constexpr char MAIN_MENU_CREDITS[] = "MAIN_MENU_CREDITS";
 }
 
 /// Immutable, read-only context payload reserved for the Thor command deck.

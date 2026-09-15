@@ -94,8 +94,8 @@ For the validated lower deck, check that:
 - the game remains on the upper display and one deck appears on the lower display;
 - the lower deck is non-focus-stealing and inert;
 - lower-panel toggle and app pause/resume do not duplicate or strand the presentation;
-- Main Menu shows `Main menu / Choose a game mode`; New Game, Campaign, and Load Game each show their approved local card.
-- Back from Campaign restores New Game; Credits, malformed, and mod-added menu names must fail closed rather than retaining a prior card.
+- Main Menu shows `Main menu / Choose a game mode`; New Game, Campaign, Load Game, and Credits each show their approved local card.
+- Back from Campaign restores New Game; Back from Credits restores Main Menu; malformed and mod-added menu names must fail closed rather than retaining a prior card.
 
 ## Game data notes
 
