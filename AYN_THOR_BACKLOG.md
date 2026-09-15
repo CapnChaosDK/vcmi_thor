@@ -6,7 +6,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 4 are implemented, CI-built, and hardware-validated.
+- Phase: Slices 1 through 5 are implemented, CI-built, and hardware-validated.
 - Status: `hardware validated`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
@@ -17,8 +17,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
 - Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
 - Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`.
-- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card, restores the root card on Back, and fails closed on Campaign, Credits, malformed, and mod-added tabs.
-- Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13 and Slice 4 on 2026-09-14.
+- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card, restores the root card on Back, and fails closed on Campaign, Credits, malformed, and mod-added tabs. Slice 5 adds the localized Campaign card, restores New Game on Back, preserves existing contexts, and passes the rapid-transition, fallback, lifecycle, inertness, and upper-input checks.
+- Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, and Slice 5 on 2026-09-15.
 
 ## Working rules
 
@@ -358,7 +358,51 @@ For releases, first approve a cleanup-only scope, reconcile documentation/histor
 
 ## Next action
 
-Slices 1 through 4 are hardware-validated. Before proposing Slice 5, start from the hand-off checklist, choose one bounded read-only context, and obtain fresh approval. Do not add native commands, coordinate injection, or mutable gameplay state without a separately approved design.
+Slices 1 through 5 are hardware-validated. Propose and obtain approval for any future read-only context before implementation; native commands, coordinate injection, and mutable gameplay state remain separately scoped.
+
+## Approved Slice 5: read-only Campaign submenu context
+
+Status: `hardware validated`
+
+Approved by the user on 2026-09-15. This slice adds the `MAIN_MENU_CAMPAIGN` read-only context for the exact existing `campaign` main-menu tab.
+
+### 1. Approved user-visible behavior
+
+- Opening Campaign shows the localized `Campaign / Choose a campaign` card on the lower deck.
+- Back from Campaign returns to the existing `New game / Choose single-player, multiplayer, campaign, or tutorial` card.
+- Main Menu, New Game, and Load Game remain unchanged.
+- Credits, empty, case-variant, malformed, unknown, and mod-added tab names fail closed to `UNKNOWN`; the lower deck remains inert.
+
+### 2. Implementation boundary and responsibilities
+
+- Use the existing `CMenuScreen` publication path and map only the exact, case-sensitive tab name `campaign` to `MAIN_MENU_CAMPAIGN`.
+- Native code owns the stable identifier and exact mapping; Android owns parity and localized title/status rendering.
+- No buttons, touch regions, commands, coordinate input, gameplay or campaign data, mutable behavior, artwork, networking, or broad context architecture changes.
+
+### 3. Focused acceptance tests
+
+- Native mapping covers `main`, `new`, `load`, `campaign`, credits, empty, case-variant, and malformed names; context-store tests remain intact.
+- Java/native identifier parity includes `MAIN_MENU_CAMPAIGN`; Android sources/resources and unit tests pass; stale-revision handling is unchanged.
+- Source validity, focused Thor checks, Markdown validation, relevant lint/static checks, Thor-only/standard-build isolation, and the established Linux/JDK 17 build route are checked where available.
+
+### 4. Focused Thor hardware checklist
+
+1. Main Menu, New Game, Campaign, and Load Game show their expected localized cards.
+2. Back from Campaign restores New Game.
+3. Rapid `main → new → campaign → new → load → main` transitions do not leave stale text; Credits shows the safe fallback.
+4. Toggling the lower panel and pausing/resuming on Campaign restores exactly one deck with the latest context.
+5. Lower touch remains inert; upper touchscreen and physical controls remain unaffected.
+
+### 5. Important regression risks
+
+- An imprecise tab-name match could recognize malformed or mod-added entries instead of failing closed.
+- Rapid transitions or lifecycle recreation could retain stale Campaign text or duplicate the presentation.
+- Rendering or resource changes could affect lower-panel inertness, focus, or standard builds.
+
+### Hardware validation
+
+The Linux/JDK 17 candidate build passed CI run `35003735325`. The verified APK SHA-256 was `fc9a520ad032e03ac545328e4e7f6855a753ef9545f2c151116080a1e9626696`, package ID `is.xyz.vcmi.thor`, and it was installed and launched successfully on an AYN Thor. The user confirmed all focused hardware checks passed: Campaign card, Back-to-New restoration, rapid transitions, Credits fallback, panel toggle, pause/resume, lower-touch inertness, and upper touchscreen/controller behavior.
+
 ## Approved Slice 4: read-only Load Game submenu context
 
 Status: `hardware validated`

@@ -12,7 +12,8 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 2: `9300bcc59` — read-only `MAIN_MENU` context publication.
 - Slice 3: promoted read-only `MAIN_MENU_NEW_GAME` context.
 - Slice 4: `17fbdfbb9` — read-only `MAIN_MENU_LOAD_GAME` context.
-- Slices 1 through 4 were built by Linux/JDK 17 CI, installed on an AYN Thor, and manually hardware-validated. Slice 4 was validated on 2026-09-15.
+- Slice 5: read-only `MAIN_MENU_CAMPAIGN` context; candidate CI run `35003735325`.
+- Slices 1 through 5 were built by Linux/JDK 17 CI, installed on an AYN Thor, and manually hardware-validated. Slice 5 was validated on 2026-09-15.
 
 The normal fork remote is `origin`. Never push to upstream; its push URL is intentionally disabled. A temporary CI validation branch is permitted only for a focused, approved candidate and its workflow must never be merged into `ayn-thor-dual-screen`.
 
@@ -38,7 +39,7 @@ On this Windows workstation, use local checks for fast feedback only:
 5. Download the artifact manually from the GitHub Actions run when browser download permissions prevent automation or anonymous GitHub API rate limits prevent retrieval.
 6. Upload the validation artifact before any known-baseline lint step. Keep the complete lint report, then enforce a focused delta that rejects new non-baseline diagnostics in the changed Slice files.
 
-Artifacts have two useful digests: GitHub's ZIP artifact digest and the APK SHA-256 written inside the ZIP. Verify both before installation. Slice 4 reference values are ZIP `ecda46f91b5cdc93e67eed229cc74dda8b80b09a09b7dd2ec52bfaae3748e103` and APK `23fdc4b88421a623a5ebabb27c483d5babdb1a13a473f3d303e92b97e7cbe03c`.
+Artifacts have two useful digests: GitHub's ZIP artifact digest and the APK SHA-256 written inside the ZIP. Verify both before installation. Slice 4 reference values are ZIP `ecda46f91b5cdc93e67eed229cc74dda8b80b09a09b7dd2ec52bfaae3748e103` and APK `23fdc4b88421a623a5ebabb27c483d5babdb1a13a473f3d303e92b97e7cbe03c`. Slice 5 APK SHA-256 is `fc9a520ad032e03ac545328e4e7f6855a753ef9545f2c151116080a1e9626696`.
 
 ## AYN Thor installation and smoke check
 
@@ -64,8 +65,8 @@ For the validated lower deck, check that:
 - the game remains on the upper display and one deck appears on the lower display;
 - the lower deck is non-focus-stealing and inert;
 - lower-panel toggle and app pause/resume do not duplicate or strand the presentation;
-- Main Menu shows `Main menu / Choose a game mode`; New Game and Load Game each show their approved local card.
-- Campaign, Credits, malformed, and mod-added menu names must fail closed rather than retaining a prior card.
+- Main Menu shows `Main menu / Choose a game mode`; New Game, Campaign, and Load Game each show their approved local card.
+- Back from Campaign restores New Game; Credits, malformed, and mod-added menu names must fail closed rather than retaining a prior card.
 
 ## Game data notes
 
