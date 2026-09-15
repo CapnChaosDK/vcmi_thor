@@ -350,3 +350,41 @@ For releases, first approve a cleanup-only scope, reconcile documentation/histor
 ## Next action
 
 Slices 1, 2, and 3 are hardware-validated. Before proposing Slice 4, start from the hand-off checklist, choose one bounded read-only context, and obtain fresh approval. Do not add native commands, coordinate injection, or mutable gameplay state without a separately approved design.
+## Approved Slice 4: read-only Load Game submenu context
+
+Status: `hardware validated`
+
+Approved by the user on 2026-09-14. This slice adds the `MAIN_MENU_LOAD_GAME` read-only context within the existing main-menu owner.
+
+### 1. Approved user-visible behavior
+
+- Entering Load Game shows `Load game / Choose single-player, multiplayer, campaign, or tutorial` on the lower deck.
+- Returning to the root menu restores `Main menu / Choose a game mode`.
+- New Game continues to show its existing context unchanged.
+- Campaign, Credits, malformed names, mod-added tabs, and all other unsupported tabs fail closed to `UNKNOWN`; the lower deck remains inert.
+
+### 2. Implementation boundary and responsibilities
+
+- Use the existing `CMenuScreen` publication path and map only the exact configured tab name `load` to `MAIN_MENU_LOAD_GAME`.
+- Native code owns the new stable identifier, exact mapping, and existing monotonic context publication.
+- Android owns the parity identifier and localized bounded title/status rendering; it does not render arbitrary native text for this known context.
+- No buttons, touch regions, action identifiers, Java-to-native commands, coordinate input, game or save data, mutable behavior, artwork, or server/network changes are permitted.
+
+### 3. Focused acceptance tests
+
+- Native mapping covers `main`, `new`, `load`, campaign, credits, empty, and malformed names; existing context-store tests continue to pass.
+- Java/native identifier parity includes `MAIN_MENU_LOAD_GAME`; Android sources and resources compile, and stale-revision handling is unchanged.
+- Thor-only and standard-build isolation, focused native tests, Android checks, Markdown validation, packaging verification, and Linux/JDK 17 ARM64 CI pass.
+
+### 4. Focused Thor hardware checklist
+
+1. Main Menu retains the existing Main Menu card, New Game retains its existing card, and Load Game shows the new Load Game card.
+2. Back from Load Game restores Main Menu; Campaign and Credits show the safe fallback rather than retaining Load Game.
+3. Toggling the lower panel and pausing/resuming while on Load Game restores exactly one deck with the latest context.
+4. Lower touch remains inert; upper touch and physical controls remain unaffected.
+
+### 5. Important regression risks
+
+- An imprecise tab-name match could recognize malformed or mod-added menu entries instead of failing closed.
+- Rapid tab changes could expose a stale card if revision filtering or presentation restoration changes.
+- A context-rendering addition could inadvertently affect focus, lower-panel inertness, lifecycle behavior, or standard builds.
