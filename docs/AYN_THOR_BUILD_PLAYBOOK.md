@@ -17,6 +17,35 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 
 The normal fork remote is `origin`. Never push to upstream; its push URL is intentionally disabled. A temporary CI validation branch is permitted only for a focused, approved candidate and its workflow must never be merged into `ayn-thor-dual-screen`.
 
+## Git setup and compile best practice
+
+Keep product work, CI-only packaging changes, and generated output separate. The implementation branch is `ayn-thor-dual-screen`; `origin` is the CapnChaosDK fork and `upstream` is read-only. Start every slice by recording the state and confirming that unrelated work is either absent or understood:
+
+```powershell
+git fetch origin
+git status --short
+git branch --show-current
+git log --oneline -5
+git remote -v
+```
+
+Make approved source, test, and documentation changes on `ayn-thor-dual-screen`. Before compiling, run `git diff --check` and review `git diff --stat`. Do not build from a dirty checkout containing unrelated changes, and do not use `git reset --hard` or `git checkout --` to clean it.
+
+For a complete Thor APK, create a temporary candidate branch from the exact implementation state, commit only the approved slice, and push it to `origin`:
+
+```powershell
+git switch -c ci/thor-sliceN-validation
+git add -- <approved slice files>
+git commit -m "Candidate Thor Slice N build"
+git push -u origin ci/thor-sliceN-validation
+```
+
+The candidate workflow must be branch-scoped, use Linux/JDK 17, configure the `android-thor-release` preset with `TARGET_AYN_THOR`, run focused native and Android tests, build the ARM64 APK, verify `is.xyz.vcmi.thor`, calculate the APK SHA-256, and upload the APK plus checksum. Keep that workflow only on the candidate branch; never merge it into `ayn-thor-dual-screen` or push it to `upstream`.
+
+After CI succeeds, download the artifact into an ignored or explicitly excluded output directory. Compare the local APK SHA-256 with the CI checksum, inspect the package ID, and record the source revision, CI run, APK path, checksum, and package ID before installing. Install with `adb install -r -d` to preserve the Thor package data. The user performs visual, focus, touch, controller, toggle, and pause/resume validation.
+
+After hardware PASS, switch back to `ayn-thor-dual-screen`, keep the approved product/test/documentation changes, remove any candidate-only workflow from the implementation checkout, review the complete diff, and create one focused local implementation commit. Confirm `git status --short` is clean and do not push the implementation branch unless explicitly requested. Candidate branches and artifacts may be retained for audit or removed separately after the validated commit; never mix them into the product commit.
+
 ## Build facts that matter
 
 VCMI's Android application is assembled in stages: CMake configures the Qt/Android project, Qt deployment creates the Gradle project, then Gradle packages the APK. Building `android/` alone is not a substitute because the native libraries and generated properties originate earlier.
