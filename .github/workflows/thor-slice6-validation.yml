@@ -9,8 +9,6 @@ on:
 jobs:
   arm64:
     runs-on: ubuntu-24.04
-    env:
-      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
     steps:
       - uses: actions/checkout@v7
         with:
@@ -19,6 +17,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Isolate Gradle home
+        run: echo "GRADLE_USER_HOME=$RUNNER_TEMP/gradle-home" >> "$GITHUB_ENV"
       - name: Install build dependencies
         run: |
           pipx install conan
