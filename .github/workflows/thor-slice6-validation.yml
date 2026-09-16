@@ -28,6 +28,13 @@ jobs:
             --profile=dependencies/conan_profiles/base/android-system \
             --profile=dependencies/conan_profiles/android-64-ndk \
             --conf='tools.cmake.cmaketoolchain:generator=Ninja'
+      - name: Make Qt template compatible with current Android Gradle plugin
+        run: |
+          qt_gradle_properties="$(find "$HOME/.conan2/p" \
+            -path '*/src/android/templates/gradle.properties' -print -quit)"
+          test -n "$qt_gradle_properties"
+          sed -i '/android.bundle.enableUncompressedNativeLibs/d' "$qt_gradle_properties"
+          ! grep -q android.bundle.enableUncompressedNativeLibs "$qt_gradle_properties"
       - name: Run focused native context tests
         run: |
           boost_version="$(find "$HOME/.conan2/p" -path '*/p/include/boost/version.hpp' -print -quit)"
@@ -51,22 +58,10 @@ jobs:
         run: |
           cmake --preset android-thor-release \
             -DANDROID_ABI=arm64-v8a \
-            -DANDROIDDEPLOYQT_OPTIONS=--no-build \
+            -DANDROIDDEPLOYQT_OPTIONS= \
             '-DANDROID_GRADLE_PROPERTIES=signingConfig=dailySigning;applicationVariant=thor-ci'
-      - name: Build Thor native libraries and generate Android project
-        run: cmake --build --preset android-thor-release
-      - name: Remove obsolete generated Gradle property
-        run: |
-          android_dir="$GITHUB_WORKSPACE/out/build/android-thor-release/android-build"
-          test -x "$android_dir/gradlew"
-          find "$android_dir" -name gradle.properties -type f \
-            -exec sed -i '/android.bundle.enableUncompressedNativeLibs/d' {} +
       - name: Build Thor ARM64 APK
-        working-directory: out/build/android-thor-release/android-build
-        run: |
-          sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
-          ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
-            ./gradlew --no-daemon :vcmi-app:assembleRelease
+        run: cmake --build --preset android-thor-release
         env:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
