@@ -28,13 +28,11 @@ jobs:
             --profile=dependencies/conan_profiles/base/android-system \
             --profile=dependencies/conan_profiles/android-64-ndk \
             --conf='tools.cmake.cmaketoolchain:generator=Ninja'
-      - name: Make Qt template compatible with current Android Gradle plugin
+      - name: Add Android Gradle compatibility hook
         run: |
-          qt_gradle_properties="$(find "$HOME/.conan2/p" \
-            -path '*/src/android/templates/gradle.properties' -print -quit)"
-          test -n "$qt_gradle_properties"
-          sed -i '/android.bundle.enableUncompressedNativeLibs/d' "$qt_gradle_properties"
-          ! grep -q android.bundle.enableUncompressedNativeLibs "$qt_gradle_properties"
+          sed -i '/^CLASSPATH=/i sed -i "/android\\.bundle\\.enableUncompressedNativeLibs/d" "$APP_HOME/gradle.properties"' \
+            android/gradlew
+          grep -F 'enableUncompressedNativeLibs/d' android/gradlew
       - name: Run focused native context tests
         run: |
           boost_version="$(find "$HOME/.conan2/p" -path '*/p/include/boost/version.hpp' -print -quit)"
