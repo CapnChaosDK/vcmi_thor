@@ -28,30 +28,66 @@ jobs:
             --profile=dependencies/conan_profiles/base/android-system \
             --profile=dependencies/conan_profiles/android-64-ndk \
             --conf='tools.cmake.cmaketoolchain:generator=Ninja'
-      - name: Configure Thor ARM64
-        run: cmake --preset android-thor-release -DANDROID_ABI=arm64-v8a -DENABLE_TEST=ON
-      - name: Remove obsolete Gradle property
+      - name: Run focused native context tests
         run: |
-          sed -i '/android.bundle.enableUncompressedNativeLibs/d' "$HOME/.gradle/gradle.properties" 2>/dev/null || true
-          find out/build/android-thor-release -name gradle.properties -type f -exec sed -i '/android.bundle.enableUncompressedNativeLibs/d' {} +
-      - name: Build Thor ARM64 APK
+          boost_version="$(find "$HOME/.conan2/p" -path '*/p/include/boost/version.hpp' -print -quit)"
+          test -n "$boost_version"
+          boost_include="$(dirname "$(dirname "$boost_version")")"
+          g++ -std=c++20 -pthread \
+            -I. \
+            -Iinclude \
+            -Itest \
+            -Itest/googletest/googletest \
+            -Itest/googletest/googletest/include \
+            -Itest/googletest/googlemock/include \
+            -I"$boost_include" \
+            lib/thor/ThorContext.cpp \
+            test/thor/ThorContextTest.cpp \
+            test/googletest/googletest/src/gtest-all.cc \
+            test/googletest/googletest/src/gtest_main.cc \
+            -o "$RUNNER_TEMP/thor-context-tests"
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*'
+      - name: Configure Thor ARM64
+        run: |
+          cmake --preset android-thor-release \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROIDDEPLOYQT_OPTIONS=--no-build \
+            '-DANDROID_GRADLE_PROPERTIES=signingConfig=dailySigning;applicationVariant=thor-ci'
+      - name: Build Thor native libraries and generate Android project
         run: cmake --build --preset android-thor-release
+      - name: Remove obsolete generated Gradle property
+        run: |
+          android_dir="$GITHUB_WORKSPACE/out/build/android-thor-release/android-build"
+          test -x "$android_dir/gradlew"
+          find "$android_dir" -name gradle.properties -type f \
+            -exec sed -i '/android.bundle.enableUncompressedNativeLibs/d' {} +
+      - name: Build Thor ARM64 APK
+        working-directory: out/build/android-thor-release/android-build
+        run: |
+          sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
+          ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
+            ./gradlew --no-daemon :vcmi-app:assembleRelease
         env:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      - name: Run focused native tests
-        run: ctest --test-dir out/build/android-thor-release -R ThorContext --output-on-failure
       - name: Run focused Android tests
-        working-directory: out/build/android-thor-release/android
-        run: ./gradlew :vcmi-app:testDebugUnitTest --tests eu.vcmi.vcmi.ThorContextIdsTest
+        working-directory: out/build/android-thor-release/android-build
+        run: |
+          sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
+          ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
+            ./gradlew --no-daemon :vcmi-app:testReleaseUnitTest \
+              --tests eu.vcmi.vcmi.ThorContextIdsTest
       - name: Verify and checksum APK
         run: |
-          apk=$(find out/build/android-thor-release -type f -name '*arm64-v8a*.apk' -o -name '*.apk' | head -n 1)
+          apk="$(find out/build/android-thor-release/android-build/vcmi-app/build/outputs/apk/release \
+            -type f -name '*.apk' -print -quit)"
           test -n "$apk"
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apkanalyzer" manifest application-id "$apk" | grep -Fx is.xyz.vcmi.thor
-          sha256sum "$apk" | tee "$apk.sha256"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d \
+            -printf '%f\n' | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$build_tools/aapt" dump badging "$apk" \
+            | grep "package: name='is.xyz.vcmi.thor'"
           cp "$apk" thor-slice6-arm64.apk
-          cp "$apk.sha256" thor-slice6-arm64.apk.sha256
+          sha256sum thor-slice6-arm64.apk | tee thor-slice6-arm64.apk.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: thor-slice6-arm64
