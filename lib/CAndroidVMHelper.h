@@ -43,7 +43,8 @@ public:
 
 	void publishThorContext(std::uint64_t revision, const std::string & contextId,
 							const std::string & title, const std::string & status);
-	void publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask);
+	void publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask,
+		std::uint32_t activeActionMask);
 
 	static void cacheVM(JNIEnv * env);
 

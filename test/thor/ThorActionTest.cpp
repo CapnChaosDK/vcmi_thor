@@ -11,18 +11,34 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(2), ThorAction::OPEN_QUEST_LOG);
 	EXPECT_EQ(thorActionFromId(3), ThorAction::OPEN_PUZZLE_MAP);
 	EXPECT_EQ(thorActionFromId(4), ThorAction::OPEN_SAVE_GAME);
-	EXPECT_EQ(thorActionFromId(5), std::nullopt);
+	EXPECT_EQ(thorActionFromId(5), ThorAction::NEXT_HERO);
+	EXPECT_EQ(thorActionFromId(6), ThorAction::MOVE_HERO);
+	EXPECT_EQ(thorActionFromId(7), ThorAction::TOGGLE_HERO_SLEEP);
+	EXPECT_EQ(thorActionFromId(8), ThorAction::END_TURN);
+	EXPECT_EQ(thorActionFromId(9), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
-TEST(ThorActionTest, AllowsOnlySliceElevenAdventureActions)
+TEST(ThorActionTest, AllowsOnlySliceTwelveAdventureActions)
 {
 	EXPECT_FALSE(isThorActionAllowedInAdventureMap(ThorAction::NONE));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::OPEN_KINGDOM_OVERVIEW));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::OPEN_QUEST_LOG));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::OPEN_PUZZLE_MAP));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::OPEN_SAVE_GAME));
+	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::NEXT_HERO));
+	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::MOVE_HERO));
+	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::TOGGLE_HERO_SLEEP));
+	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::END_TURN));
 	EXPECT_FALSE(isThorActionAllowedInAdventureMap(static_cast<ThorAction>(99)));
+}
+
+TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
+{
+	EXPECT_EQ(thorActionMask(ThorAction::NEXT_HERO), 16);
+	EXPECT_EQ(thorActionMask(ThorAction::MOVE_HERO), 32);
+	EXPECT_EQ(thorActionMask(ThorAction::TOGGLE_HERO_SLEEP), 64);
+	EXPECT_EQ(thorActionMask(ThorAction::END_TURN), 128);
 }
 
 TEST(ThorActionTest, ValidatesRevisionContextAndAvailability)
@@ -38,6 +54,51 @@ TEST(ThorActionTest, ValidatesRevisionContextAndAvailability)
 	context.contextId = ThorContextIds::HERO_WINDOW;
 	EXPECT_EQ(validateThorActionRequest({12, ThorAction::OPEN_SAVE_GAME}, context), ThorActionValidation::WRONG_CONTEXT);
 	EXPECT_EQ(validateThorActionRequest({12, static_cast<ThorAction>(99)}, context), ThorActionValidation::UNKNOWN_ACTION);
+}
+
+TEST(ThorActionTest, ActiveActionStateCreatesOneNewRevision)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = thorActionMask(ThorAction::TOGGLE_HERO_SLEEP);
+	const auto awake = store.publishNext(context);
+	EXPECT_EQ(awake.revision, 1);
+	EXPECT_EQ(store.publishNext(context).revision, awake.revision);
+
+	context.activeActionMask = thorActionMask(ThorAction::TOGGLE_HERO_SLEEP);
+	const auto asleep = store.publishNext(context);
+	EXPECT_EQ(asleep.revision, awake.revision + 1);
+	EXPECT_EQ(store.publishNext(context).revision, asleep.revision);
+}
+
+TEST(ThorActionTest, ChangedSelectedHeroRejectsStaleAction)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = thorActionMask(ThorAction::MOVE_HERO);
+	context.selectedHeroId = 4;
+	const auto firstHero = store.publishNext(context);
+
+	context.selectedHeroId = 9;
+	const auto secondHero = store.publishNext(context);
+	EXPECT_EQ(secondHero.revision, firstHero.revision + 1);
+	EXPECT_EQ(validateThorActionRequest({firstHero.revision, ThorAction::MOVE_HERO}, secondHero), ThorActionValidation::STALE_REVISION);
+}
+
+TEST(ThorActionTest, ConsumedActionInvalidatesItsRenderedRevision)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = thorActionMask(ThorAction::MOVE_HERO);
+	const auto rendered = store.publishNext(context);
+
+	++context.actionEpoch;
+	const auto consumed = store.publishNext(context);
+	EXPECT_EQ(consumed.revision, rendered.revision + 1);
+	EXPECT_EQ(validateThorActionRequest({rendered.revision, ThorAction::MOVE_HERO}, consumed), ThorActionValidation::STALE_REVISION);
 }
 
 TEST(ThorActionQueueTest, KeepsRequestsBoundedAndOrdered)

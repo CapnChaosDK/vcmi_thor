@@ -21,6 +21,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private String contextTitle = "";
     private String contextStatus = "";
     private int enabledActionMask;
+    private int activeActionMask;
     private boolean started;
     private boolean resumed;
 
@@ -83,19 +84,21 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
         enabledActionMask = 0;
+        activeActionMask = 0;
         Log.i(LOG_TAG, "Context " + contextId + " revision " + contextRevision);
         if (presentation != null)
-            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask);
+            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask, activeActionMask);
     }
 
-    void publishActionState(final long revision, final int actionMask)
+    void publishActionState(final long revision, final int actionMask, final int activeMask)
     {
         if (revision != contextRevision)
             return;
 
         enabledActionMask = actionMask;
+        activeActionMask = activeMask;
         if (presentation != null)
-            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask);
+            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask, activeActionMask);
     }
 
     @Override
@@ -148,7 +151,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         {
             newPresentation.show();
             presentation = newPresentation;
-            newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask);
+            newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask, activeActionMask);
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)

@@ -62,7 +62,8 @@ public class NativeMethods
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
-    public static void publishThorActionState(final long revision, final int enabledActionMask)
+    public static void publishThorActionState(final long revision, final int enabledActionMask,
+                                              final int activeActionMask)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -72,7 +73,7 @@ public class NativeMethods
             return;
 
         ((VcmiSDLActivity) ctx).runOnUiThread(() ->
-                ((VcmiSDLActivity) ctx).publishThorActionState(revision, enabledActionMask));
+                ((VcmiSDLActivity) ctx).publishThorActionState(revision, enabledActionMask, activeActionMask));
     }
 
     public static void setupMsg(final Messenger msg)

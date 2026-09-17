@@ -35,6 +35,13 @@
     <string name="thor_action_quest_log">Quest Log</string>
     <string name="thor_action_puzzle_map">Puzzle Map</string>
     <string name="thor_action_save_game">Save Game</string>
+    <string name="thor_action_section_gameplay">Gameplay</string>
+    <string name="thor_action_section_utilities">Utilities</string>
+    <string name="thor_action_next_hero">Next Hero</string>
+    <string name="thor_action_move_hero">Move Hero</string>
+    <string name="thor_action_sleep_hero">Sleep Hero</string>
+    <string name="thor_action_wake_hero">Wake Hero</string>
+    <string name="thor_action_end_turn">End Turn</string>
     <string name="thor_context_hero">Hero</string>
     <string name="thor_context_hero_status">Review hero details</string>
     <string name="thor_context_town">Town</string>

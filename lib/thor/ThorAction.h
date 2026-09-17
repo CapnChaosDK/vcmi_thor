@@ -17,7 +17,11 @@ enum class ThorAction : std::uint8_t
 	OPEN_KINGDOM_OVERVIEW = 1,
 	OPEN_QUEST_LOG = 2,
 	OPEN_PUZZLE_MAP = 3,
-	OPEN_SAVE_GAME = 4
+	OPEN_SAVE_GAME = 4,
+	NEXT_HERO = 5,
+	MOVE_HERO = 6,
+	TOGGLE_HERO_SLEEP = 7,
+	END_TURN = 8
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)

@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 11 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 11.
+- Phase: Slices 1 through 11 are implemented, CI-built, and hardware-validated; Slice 12 is awaiting candidate CI and hardware validation.
+- Status: `hardware validated` through Slice 11; Slice 12 is `awaiting hardware validation`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -710,3 +710,41 @@ Status: `hardware validated`
 2. Exercise Kingdom, Quest Log (including normal Scenario Journal fallback), Puzzle Map, and Save Game. For each, confirm its normal upper modal, matching existing lower context, normal close/cancel, and Adventure Map restoration.
 3. Test unavailable commands where practical, double taps, rapid mixed taps, taps during transitions, repeated open/close, Home/resume, lower-display detach/reattach, and normal Hero/Town/Battle/Main Menu regression paths.
 4. Confirm no duplicate modal, delayed replay, stale lower context, crash, or loss of upper touchscreen/controller behavior.
+
+## Approved Slice 12: Context-aware Adventure Map gameplay controls
+
+Status: `awaiting hardware validation`
+
+### Scope and command contract
+
+- The existing Slice 11 IDs remain unchanged: `OPEN_KINGDOM_OVERVIEW = 1`, `OPEN_QUEST_LOG = 2`, `OPEN_PUZZLE_MAP = 3`, and `OPEN_SAVE_GAME = 4`. Slice 12 appends `NEXT_HERO = 5`, `MOVE_HERO = 6`, `TOGGLE_HERO_SLEEP = 7`, and `END_TURN = 8`; `NONE = 0` remains non-executable.
+- The Adventure Map allow-list contains exactly these eight semantic commands. Android submits only a rendered revision and one ID through the existing fixed 16-entry queue; it does not send a hero, path, tile, pointer event, or confirmation response.
+- Native availability is sourced only from `AdventureMapShortcuts`: `optionHasNextHero()`, `optionHeroCanMove()`, `optionHeroSelected()`, and `optionCanEndTurn()`. The sleep toggle uses the native `ADVENTURE_TOGGLE_SLEEP` action and reports the existing `optionHeroSleeping()` state as a checked/action-state bit so the deck says `Sleep Hero` or `Wake Hero` correctly.
+
+### Implementation boundary and lifecycle safety
+
+- `GameEngine::updateFrame()` remains the sole consumer on `MainGUI`. Before dispatch, it validates a known ID, current revision, `ADVENTURE_MAP` context, current active owner, allow-list membership, native published enablement, then re-runs the normal shortcut predicate through `executeThorAction()`.
+- Each action maps to its normal VCMI shortcut: `ADVENTURE_NEXT_HERO`, `ADVENTURE_MOVE_HERO`, `ADVENTURE_TOGGLE_SLEEP`, or `ADVENTURE_END_TURN`. Thus selection, path movement, sleep state, end-turn warnings/confirmation, autosave, and server interaction retain their upstream behavior.
+- An accepted command immediately refreshes the bounded state, consumes its action epoch, and clears queued taps. The consumption revision invalidates a rapid second tap even when movement has not yet produced a visible state change; normal context deactivation and Android pause continue to invalidate queued actions. No native owner is retained by Android or the queue.
+- `ThorContextRecord` now includes an active-action mask alongside enablement, selected-hero identity, and a consumed-action epoch. Unchanged published state does not churn revisions; availability, sleep state, selected hero, and one-time accepted-command consumption each create one new revision and lower-panel update.
+
+### Lower-screen presentation
+
+- The existing Adventure Map deck is retained and expanded to eight touch targets in two sections: Gameplay (Next Hero, Move Hero, Sleep/Wake Hero, End Turn) and Utilities (Kingdom, Quest Log, Puzzle Map, Save Game). Buttons retain enabled/disabled treatment, local labels, and accessible deck text without taking focus from the upper display.
+
+### Automated validation
+
+- Focused native tests cover stable ID values, all eight allow-listed actions, gameplay action masks, revision/context/availability rejection, active sleep-state revision/no-churn behavior, selected-hero and consumed-action stale rejection, and the pre-existing bounded FIFO/overflow/concurrency queue behavior.
+- Focused Android tests verify the explicit native-parity IDs and masks for all eight actions. The permanent Thor workflow remains the candidate gate for the native and Android test runs.
+
+### Regression risks and focused hardware checklist
+
+1. Load or start an Adventure Map with multiple heroes and verify Next Hero matches the ordinary shortcut exactly once, including upper-map selection/camera and lower Move/Sleep state refresh.
+2. With and without a same-turn path, verify Move Hero enablement and ordinary movement behavior. Rapid/double taps, a changed selection, a modal, and a paused/detached lower display must not start delayed or duplicate movement.
+3. Verify Sleep Hero changes to Wake Hero; wake it again and verify ordinary hero selection behavior. Change heroes and confirm the label always reflects the selected hero.
+4. Verify End Turn both with and without the ordinary hero-reminder warning. The usual warning/confirmation must remain on the upper display and no lower queued action may run into the next turn.
+5. Recheck all four utility commands, normal modal restoration, rapid context changes, Home/resume, lower-panel detach/reattach, upper touchscreen, and physical controller input.
+
+### Candidate hand-off
+
+- CI candidate branch: `ci/thor-slice12-validation`, to be created directly from the complete Slice 12 product commit. CI and hardware validation are not yet claimed.

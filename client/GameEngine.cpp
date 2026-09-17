@@ -182,6 +182,8 @@ void GameEngine::updateFrame()
 		}
 
 		logGlobal->debug("Thor action executed: %d", static_cast<int>(request->action));
+		adventureInt->updateThorActionState(true);
+		thorActionQueue().clear();
 		break;
 	}
 #endif

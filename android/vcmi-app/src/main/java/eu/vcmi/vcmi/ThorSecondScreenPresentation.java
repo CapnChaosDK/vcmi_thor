@@ -48,10 +48,10 @@ final class ThorSecondScreenPresentation extends Presentation
     }
 
     void updateContext(final long revision, final String contextId, final String title, final String status,
-                       final int enabledActionMask)
+                       final int enabledActionMask, final int activeActionMask)
     {
         if (foundationView != null)
-            foundationView.updateContext(revision, contextId, title, status, enabledActionMask);
+            foundationView.updateContext(revision, contextId, title, status, enabledActionMask, activeActionMask);
     }
 
     private static final class ThorFoundationView extends View
@@ -70,6 +70,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private long revision;
         private String contextId = ThorContextIds.UNKNOWN;
         private int enabledActionMask;
+        private int activeActionMask;
 
         ThorFoundationView(final Context context)
         {
@@ -82,11 +83,12 @@ final class ThorSecondScreenPresentation extends Presentation
         }
 
         void updateContext(final long revision, final String contextId, final String publishedTitle,
-                           final String publishedStatus, final int enabledActionMask)
+                           final String publishedStatus, final int enabledActionMask, final int activeActionMask)
         {
             this.revision = revision;
             this.contextId = contextId;
             this.enabledActionMask = enabledActionMask;
+            this.activeActionMask = activeActionMask;
             if (ThorContextIds.MAIN_MENU.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_main_menu);
@@ -332,17 +334,41 @@ final class ThorSecondScreenPresentation extends Presentation
                                           final float bevel, final float density)
         {
             final int[] actions = {
+                    ThorActionIds.NEXT_HERO,
+                    ThorActionIds.MOVE_HERO,
+                    ThorActionIds.TOGGLE_HERO_SLEEP,
+                    ThorActionIds.END_TURN,
                     ThorActionIds.OPEN_KINGDOM_OVERVIEW,
                     ThorActionIds.OPEN_QUEST_LOG,
                     ThorActionIds.OPEN_PUZZLE_MAP,
                     ThorActionIds.OPEN_SAVE_GAME
             };
             final String[] labels = {
+                    getContext().getString(R.string.thor_action_next_hero),
+                    getContext().getString(R.string.thor_action_move_hero),
+                    isActionActive(ThorActionIds.TOGGLE_HERO_SLEEP)
+                            ? getContext().getString(R.string.thor_action_wake_hero)
+                            : getContext().getString(R.string.thor_action_sleep_hero),
+                    getContext().getString(R.string.thor_action_end_turn),
                     getContext().getString(R.string.thor_action_kingdom),
                     getContext().getString(R.string.thor_action_quest_log),
                     getContext().getString(R.string.thor_action_puzzle_map),
                     getContext().getString(R.string.thor_action_save_game)
             };
+
+            final float actionTop = actionTop(frame, dividerY, bevel);
+            final float sectionTextSize = Math.min(21f * density, (frame.bottom - dividerY) * 0.045f);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setFakeBoldText(true);
+            paint.setColor(PARCHMENT_DARK);
+            paint.setTextAlign(Paint.Align.LEFT);
+            drawFittedText(canvas, getContext().getString(R.string.thor_action_section_gameplay),
+                    frame.left + bevel * 3f, actionTop - sectionTextSize * 0.7f, frame.width() * 0.4f, sectionTextSize);
+            final RectF utilityFirstButton = actionBounds(4, frame, dividerY, bevel);
+            drawFittedText(canvas, getContext().getString(R.string.thor_action_section_utilities),
+                    frame.left + bevel * 3f, utilityFirstButton.top - sectionGap(frame, dividerY, bevel) * 0.5f,
+                    frame.width() * 0.4f, sectionTextSize);
+            paint.setTextAlign(Paint.Align.CENTER);
 
             for (int index = 0; index < actions.length; ++index)
             {
@@ -369,14 +395,26 @@ final class ThorSecondScreenPresentation extends Presentation
             final float gap = Math.max(bevel * 1.25f, 10f);
             final float left = frame.left + bevel * 3f;
             final float right = frame.right - bevel * 3f;
-            final float top = dividerY + (frame.bottom - dividerY) * 0.19f;
+            final float top = actionTop(frame, dividerY, bevel);
             final float bottom = frame.bottom - bevel * 3f;
             final float columnWidth = (right - left - gap) / 2f;
-            final float rowHeight = (bottom - top - gap) / 2f;
+            final float sectionGap = sectionGap(frame, dividerY, bevel);
+            final float rowHeight = (bottom - top - gap * 3f - sectionGap) / 4f;
             final int column = index % 2;
             final int row = index / 2;
-            return new RectF(left + column * (columnWidth + gap), top + row * (rowHeight + gap),
-                    left + column * (columnWidth + gap) + columnWidth, top + row * (rowHeight + gap) + rowHeight);
+            final float rowTop = top + row * (rowHeight + gap) + (row >= 2 ? sectionGap - gap : 0f);
+            return new RectF(left + column * (columnWidth + gap), rowTop,
+                    left + column * (columnWidth + gap) + columnWidth, rowTop + rowHeight);
+        }
+
+        private float actionTop(final RectF frame, final float dividerY, final float bevel)
+        {
+            return dividerY + (frame.bottom - dividerY) * 0.13f + bevel;
+        }
+
+        private float sectionGap(final RectF frame, final float dividerY, final float bevel)
+        {
+            return Math.max(bevel * 4f, (frame.bottom - dividerY) * 0.09f);
         }
 
         private int actionAt(final float x, final float y)
@@ -390,6 +428,10 @@ final class ThorSecondScreenPresentation extends Presentation
             final float bevel = Math.max(3f * density, margin * 0.16f);
             final float dividerY = frame.top + (getHeight() - margin * 2f) * 0.34f;
             final int[] actions = {
+                    ThorActionIds.NEXT_HERO,
+                    ThorActionIds.MOVE_HERO,
+                    ThorActionIds.TOGGLE_HERO_SLEEP,
+                    ThorActionIds.END_TURN,
                     ThorActionIds.OPEN_KINGDOM_OVERVIEW,
                     ThorActionIds.OPEN_QUEST_LOG,
                     ThorActionIds.OPEN_PUZZLE_MAP,
@@ -406,12 +448,23 @@ final class ThorSecondScreenPresentation extends Presentation
             return (enabledActionMask & ThorActionIds.maskFor(actionId)) != 0;
         }
 
+        private boolean isActionActive(final int actionId)
+        {
+            return (activeActionMask & ThorActionIds.maskFor(actionId)) != 0;
+        }
+
         private String commandDeckDescription()
         {
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
 
             return title + ". " + status + ". "
+                    + getContext().getString(R.string.thor_action_next_hero) + ", "
+                    + getContext().getString(R.string.thor_action_move_hero) + ", "
+                    + (isActionActive(ThorActionIds.TOGGLE_HERO_SLEEP)
+                            ? getContext().getString(R.string.thor_action_wake_hero)
+                            : getContext().getString(R.string.thor_action_sleep_hero)) + ", "
+                    + getContext().getString(R.string.thor_action_end_turn) + ", "
                     + getContext().getString(R.string.thor_action_kingdom) + ", "
                     + getContext().getString(R.string.thor_action_quest_log) + ", "
                     + getContext().getString(R.string.thor_action_puzzle_map) + ", "

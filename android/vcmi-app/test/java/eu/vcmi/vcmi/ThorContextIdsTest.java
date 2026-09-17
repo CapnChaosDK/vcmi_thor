@@ -66,10 +66,30 @@ public class ThorContextIdsTest
         assertEquals(2, ThorActionIds.OPEN_QUEST_LOG);
         assertEquals(3, ThorActionIds.OPEN_PUZZLE_MAP);
         assertEquals(4, ThorActionIds.OPEN_SAVE_GAME);
+        assertEquals(5, ThorActionIds.NEXT_HERO);
+        assertEquals(6, ThorActionIds.MOVE_HERO);
+        assertEquals(7, ThorActionIds.TOGGLE_HERO_SLEEP);
+        assertEquals(8, ThorActionIds.END_TURN);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
         assertEquals(4, ThorActionIds.maskFor(ThorActionIds.OPEN_PUZZLE_MAP));
         assertEquals(8, ThorActionIds.maskFor(ThorActionIds.OPEN_SAVE_GAME));
+        assertEquals(16, ThorActionIds.maskFor(ThorActionIds.NEXT_HERO));
+        assertEquals(32, ThorActionIds.maskFor(ThorActionIds.MOVE_HERO));
+        assertEquals(64, ThorActionIds.maskFor(ThorActionIds.TOGGLE_HERO_SLEEP));
+        assertEquals(128, ThorActionIds.maskFor(ThorActionIds.END_TURN));
         assertEquals(0, ThorActionIds.maskFor(99));
+    }
+
+    @Test
+    public void adventureGameplayDeckUsesBoundedStateAwareResources()
+    {
+        assertNotEquals(0, R.string.thor_action_section_gameplay);
+        assertNotEquals(0, R.string.thor_action_section_utilities);
+        assertNotEquals(0, R.string.thor_action_next_hero);
+        assertNotEquals(0, R.string.thor_action_move_hero);
+        assertNotEquals(0, R.string.thor_action_sleep_hero);
+        assertNotEquals(0, R.string.thor_action_wake_hero);
+        assertNotEquals(0, R.string.thor_action_end_turn);
     }
 }

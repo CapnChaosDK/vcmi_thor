@@ -9,7 +9,10 @@ namespace
 		return lhs.contextId == rhs.contextId
 			&& lhs.title == rhs.title
 			&& lhs.status == rhs.status
-			&& lhs.enabledActionMask == rhs.enabledActionMask;
+			&& lhs.enabledActionMask == rhs.enabledActionMask
+			&& lhs.activeActionMask == rhs.activeActionMask
+			&& lhs.selectedHeroId == rhs.selectedHeroId
+			&& lhs.actionEpoch == rhs.actionEpoch;
 	}
 }
 

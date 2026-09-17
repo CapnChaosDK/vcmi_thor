@@ -12,6 +12,14 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::OPEN_PUZZLE_MAP;
 	case static_cast<int>(ThorAction::OPEN_SAVE_GAME):
 		return ThorAction::OPEN_SAVE_GAME;
+	case static_cast<int>(ThorAction::NEXT_HERO):
+		return ThorAction::NEXT_HERO;
+	case static_cast<int>(ThorAction::MOVE_HERO):
+		return ThorAction::MOVE_HERO;
+	case static_cast<int>(ThorAction::TOGGLE_HERO_SLEEP):
+		return ThorAction::TOGGLE_HERO_SLEEP;
+	case static_cast<int>(ThorAction::END_TURN):
+		return ThorAction::END_TURN;
 	default:
 		return std::nullopt;
 	}
@@ -22,7 +30,11 @@ bool isThorActionAllowedInAdventureMap(ThorAction action)
 	return action == ThorAction::OPEN_KINGDOM_OVERVIEW
 		|| action == ThorAction::OPEN_QUEST_LOG
 		|| action == ThorAction::OPEN_PUZZLE_MAP
-		|| action == ThorAction::OPEN_SAVE_GAME;
+		|| action == ThorAction::OPEN_SAVE_GAME
+		|| action == ThorAction::NEXT_HERO
+		|| action == ThorAction::MOVE_HERO
+		|| action == ThorAction::TOGGLE_HERO_SLEEP
+		|| action == ThorAction::END_TURN;
 }
 
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)

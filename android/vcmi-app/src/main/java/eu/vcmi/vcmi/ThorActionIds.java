@@ -7,6 +7,10 @@ final class ThorActionIds
     static final int OPEN_QUEST_LOG = 2;
     static final int OPEN_PUZZLE_MAP = 3;
     static final int OPEN_SAVE_GAME = 4;
+    static final int NEXT_HERO = 5;
+    static final int MOVE_HERO = 6;
+    static final int TOGGLE_HERO_SLEEP = 7;
+    static final int END_TURN = 8;
 
     private ThorActionIds()
     {
@@ -14,7 +18,7 @@ final class ThorActionIds
 
     static int maskFor(final int actionId)
     {
-        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= OPEN_SAVE_GAME
+        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= END_TURN
                 ? 1 << (actionId - 1) : 0;
     }
 }

@@ -117,6 +117,8 @@ public:
 	bool optionDisembarking();
 
 	std::uint32_t getThorActionMask();
+	std::uint32_t getThorActiveActionMask();
+	int getThorSelectedHeroId();
 	bool executeThorAction(ThorAction action);
 
 	void setState(EAdventureState newState);

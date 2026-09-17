@@ -818,7 +818,26 @@ std::uint32_t AdventureMapShortcuts::getThorActionMask()
 		result |= thorActionMask(ThorAction::OPEN_QUEST_LOG);
 	if(optionSidePanelActive())
 		result |= thorActionMask(ThorAction::OPEN_PUZZLE_MAP);
+	if(optionHasNextHero())
+		result |= thorActionMask(ThorAction::NEXT_HERO);
+	if(optionHeroCanMove())
+		result |= thorActionMask(ThorAction::MOVE_HERO);
+	if(optionHeroSelected())
+		result |= thorActionMask(ThorAction::TOGGLE_HERO_SLEEP);
+	if(optionCanEndTurn())
+		result |= thorActionMask(ThorAction::END_TURN);
 	return result;
+}
+
+std::uint32_t AdventureMapShortcuts::getThorActiveActionMask()
+{
+	return optionHeroSleeping() ? thorActionMask(ThorAction::TOGGLE_HERO_SLEEP) : 0;
+}
+
+int AdventureMapShortcuts::getThorSelectedHeroId()
+{
+	const auto * hero = GAME->interface()->localState->getCurrentHero();
+	return hero ? hero->id.getNum() : -1;
 }
 
 bool AdventureMapShortcuts::executeThorAction(ThorAction action)
@@ -837,6 +856,18 @@ bool AdventureMapShortcuts::executeThorAction(ThorAction action)
 		break;
 	case ThorAction::OPEN_SAVE_GAME:
 		shortcut = EShortcut::ADVENTURE_SAVE_GAME;
+		break;
+	case ThorAction::NEXT_HERO:
+		shortcut = EShortcut::ADVENTURE_NEXT_HERO;
+		break;
+	case ThorAction::MOVE_HERO:
+		shortcut = EShortcut::ADVENTURE_MOVE_HERO;
+		break;
+	case ThorAction::TOGGLE_HERO_SLEEP:
+		shortcut = EShortcut::ADVENTURE_TOGGLE_SLEEP;
+		break;
+	case ThorAction::END_TURN:
+		shortcut = EShortcut::ADVENTURE_END_TURN;
 		break;
 	default:
 		return false;
