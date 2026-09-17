@@ -105,16 +105,19 @@ jobs:
       run:
         shell: bash
     env:
-      CONAN_DEPENDENCY_ARCHIVE_DIR: ${{ runner.temp }}/conan-dependency-archives
-      CCACHE_DIR: ${{ runner.temp }}/thor-ccache
-      CCACHE_BASEDIR: ${{ github.workspace }}
-      CCACHE_COMPILERCHECK: content
-      CCACHE_NOHASHDIR: 'true'
       THOR_ARTIFACT_NAME: thor-candidate-arm64-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
+
+      - name: Set candidate cache locations
+        run: |
+          echo "CONAN_DEPENDENCY_ARCHIVE_DIR=$RUNNER_TEMP/conan-dependency-archives" >> "$GITHUB_ENV"
+          echo "CCACHE_DIR=$RUNNER_TEMP/thor-ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo 'CCACHE_COMPILERCHECK=content' >> "$GITHUB_ENV"
+          echo 'CCACHE_NOHASHDIR=true' >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v6
         with:
