@@ -37,6 +37,8 @@ private:
 public:
 	void showAll(Canvas & to) override;
 	void show(Canvas & to) override;
+	void activate() override;
+	void deactivate() override;
 
 	CPuzzleWindow(const int3 & grailPos, double discoveredRatio);
 };

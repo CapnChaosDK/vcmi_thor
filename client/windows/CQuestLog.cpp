@@ -31,6 +31,22 @@
 #include "../../lib/mapObjects/Quest.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 struct QuestInfo;
 
 class CAdvmapInterface;
@@ -120,6 +136,30 @@ CQuestLog::CQuestLog (const std::vector<QuestInfo> & Quests)
 
 	minimap = std::make_shared<CQuestMinimap>(Rect(12, 12, 169, 169));
 	initializeItems();
+}
+
+void CQuestLog::activate()
+{
+	if(isActive())
+		return;
+
+	JournalWindow::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::QUEST_LOG);
+#endif
+}
+
+void CQuestLog::deactivate()
+{
+	if(!isActive())
+		return;
+
+	JournalWindow::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 size_t CQuestLog::getItemCount() const

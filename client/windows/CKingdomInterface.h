@@ -254,6 +254,8 @@ private:
 
 public:
 	CKingdomInterface();
+	void activate() override;
+	void deactivate() override;
 
 	void townChanged(const CGTownInstance *town);
 	void heroRemoved();

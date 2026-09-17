@@ -28,6 +28,22 @@
 #include "../../lib/mapping/CMapHeader.h"
 #include "../../lib/GameLibrary.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 CSavingScreen::CSavingScreen()
 	: CSelectionBase(ESelectionScreen::saveGame)
 {
@@ -47,6 +63,30 @@ CSavingScreen::CSavingScreen()
 	buttonStart = std::make_shared<CButton>(Point(411, 535), AnimationPath::builtin("SCNRSAV.DEF"), LIBRARY->generaltexth->zelp[103], std::bind(&CSavingScreen::saveGame, this), EShortcut::LOBBY_SAVE_GAME);
 	
 	GAME->interface()->gamePause(true);
+}
+
+void CSavingScreen::activate()
+{
+	if(isActive())
+		return;
+
+	CSelectionBase::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::SAVE_GAME);
+#endif
+}
+
+void CSavingScreen::deactivate()
+{
+	if(!isActive())
+		return;
+
+	CSelectionBase::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 const CMapInfo * CSavingScreen::getMapInfo()

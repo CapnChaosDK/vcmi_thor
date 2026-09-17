@@ -30,6 +30,22 @@
 #include "../../lib/StartInfo.h"
 #include "../../lib/GameLibrary.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 
 CPuzzleWindow::CPuzzleWindow(const int3 & GrailPos, double discoveredRatio)
 	: CWindowObject(PLAYER_COLORED | BORDERED, ImagePath::builtin("PUZZLE")),
@@ -76,6 +92,30 @@ CPuzzleWindow::CPuzzleWindow(const int3 & GrailPos, double discoveredRatio)
 	border = std::make_shared<GraphicalPrimitiveCanvas>(Rect(Point(6,6), Point(596, 548)));
 	for(int i = 0; i < 3; i++)
 		border->addRectangle(Point(i, i), Point(border->pos.w - i * 2, border->pos.h - i * 2), Colors::BLACK);
+}
+
+void CPuzzleWindow::activate()
+{
+	if(isActive())
+		return;
+
+	CWindowObject::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::PUZZLE_MAP);
+#endif
+}
+
+void CPuzzleWindow::deactivate()
+{
+	if(!isActive())
+		return;
+
+	CWindowObject::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 void CPuzzleWindow::showAll(Canvas & to)

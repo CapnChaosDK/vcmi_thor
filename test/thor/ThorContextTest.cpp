@@ -100,6 +100,11 @@ TEST(ThorContextMappingTest, MapsApprovedInGameContexts)
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE), ThorContextIds::BATTLE);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE_TACTICS), ThorContextIds::BATTLE_TACTICS);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE_RESULT), ThorContextIds::BATTLE_RESULT);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::KINGDOM_OVERVIEW), ThorContextIds::KINGDOM_OVERVIEW);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::QUEST_LOG), ThorContextIds::QUEST_LOG);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::SCENARIO_EVENT_JOURNAL), ThorContextIds::SCENARIO_EVENT_JOURNAL);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::PUZZLE_MAP), ThorContextIds::PUZZLE_MAP);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::SAVE_GAME), ThorContextIds::SAVE_GAME);
 }
 
 TEST(ThorContextMappingTest, RejectsUnsupportedInGameContexts)
@@ -116,4 +121,42 @@ TEST(ThorContextStoreTest, TacticsTransitionReceivesNewerRevision)
 
 	EXPECT_GT(battle.revision, tactics.revision);
 	EXPECT_EQ(battle.contextId, ThorContextIds::BATTLE);
+}
+
+TEST(ThorContextStoreTest, AdventureUtilityTransitionsReceiveNewerRevisions)
+{
+	ThorContextStore store;
+	const auto adventureMap = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "", ""});
+	const auto kingdomOverview = store.publishNext({0, ThorContextIds::KINGDOM_OVERVIEW, "", ""});
+	const auto unknown = store.publishNext({0, ThorContextIds::UNKNOWN, "", ""});
+	const auto restoredAdventureMap = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "", ""});
+
+	EXPECT_LT(adventureMap.revision, kingdomOverview.revision);
+	EXPECT_LT(kingdomOverview.revision, unknown.revision);
+	EXPECT_LT(unknown.revision, restoredAdventureMap.revision);
+	EXPECT_EQ(unknown.contextId, ThorContextIds::UNKNOWN);
+}
+
+TEST(ThorContextStoreTest, AdventureUtilityContextsReceiveNewerRevisions)
+{
+	ThorContextStore store;
+	const auto adventureMap = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "", ""});
+	const std::array contextIds = {
+		ThorContextIds::QUEST_LOG,
+		ThorContextIds::SCENARIO_EVENT_JOURNAL,
+		ThorContextIds::PUZZLE_MAP,
+		ThorContextIds::SAVE_GAME
+	};
+
+	for(const auto * contextId : contextIds)
+	{
+		const auto context = store.publishNext({0, contextId, "", ""});
+		const auto unknown = store.publishNext({0, ThorContextIds::UNKNOWN, "", ""});
+		const auto restoredAdventureMap = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "", ""});
+
+		EXPECT_GT(context.revision, adventureMap.revision);
+		EXPECT_GT(unknown.revision, context.revision);
+		EXPECT_GT(restoredAdventureMap.revision, unknown.revision);
+		EXPECT_EQ(unknown.contextId, ThorContextIds::UNKNOWN);
+	}
 }

@@ -25,6 +25,22 @@
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 ScenarioEventJournalMinimap::ScenarioEventJournalMinimap(const Rect & position)
 	: CMinimap(position)
 {
@@ -71,6 +87,30 @@ ScenarioEventJournal::ScenarioEventJournal(const std::vector<ScenarioEventJourna
 
 	minimap = std::make_shared<ScenarioEventJournalMinimap>(Rect(12, 12, 169, 169));
 	initializeItems();
+}
+
+void ScenarioEventJournal::activate()
+{
+	if(isActive())
+		return;
+
+	JournalWindow::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::SCENARIO_EVENT_JOURNAL);
+#endif
+}
+
+void ScenarioEventJournal::deactivate()
+{
+	if(!isActive())
+		return;
+
+	JournalWindow::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 size_t ScenarioEventJournal::getItemCount() const

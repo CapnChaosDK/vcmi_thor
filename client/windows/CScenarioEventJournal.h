@@ -45,4 +45,6 @@ class ScenarioEventJournal : public JournalWindow
 
 public:
 	explicit ScenarioEventJournal(const std::vector<ScenarioEventJournalEntry> & journalEntries);
+	void activate() override;
+	void deactivate() override;
 };

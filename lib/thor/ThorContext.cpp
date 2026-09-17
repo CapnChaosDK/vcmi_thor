@@ -115,6 +115,16 @@ std::string thorContextIdForInGameContext(ThorInGameContext context)
 		return ThorContextIds::BATTLE_TACTICS;
 	case ThorInGameContext::BATTLE_RESULT:
 		return ThorContextIds::BATTLE_RESULT;
+	case ThorInGameContext::KINGDOM_OVERVIEW:
+		return ThorContextIds::KINGDOM_OVERVIEW;
+	case ThorInGameContext::QUEST_LOG:
+		return ThorContextIds::QUEST_LOG;
+	case ThorInGameContext::SCENARIO_EVENT_JOURNAL:
+		return ThorContextIds::SCENARIO_EVENT_JOURNAL;
+	case ThorInGameContext::PUZZLE_MAP:
+		return ThorContextIds::PUZZLE_MAP;
+	case ThorInGameContext::SAVE_GAME:
+		return ThorContextIds::SAVE_GAME;
 	default:
 		return ThorContextIds::UNKNOWN;
 	}

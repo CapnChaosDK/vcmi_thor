@@ -43,6 +43,16 @@
     <string name="thor_context_battle_tactics_status">Arrange your forces</string>
     <string name="thor_context_battle_result">Battle result</string>
     <string name="thor_context_battle_result_status">Review the outcome</string>
+    <string name="thor_context_kingdom_overview">Kingdom overview</string>
+    <string name="thor_context_kingdom_overview_status">Review your kingdom</string>
+    <string name="thor_context_quest_log">Quest log</string>
+    <string name="thor_context_quest_log_status">Review active quests</string>
+    <string name="thor_context_scenario_event_journal">Scenario journal</string>
+    <string name="thor_context_scenario_event_journal_status">Review scenario events</string>
+    <string name="thor_context_puzzle_map">Puzzle map</string>
+    <string name="thor_context_puzzle_map_status">Review the Grail map</string>
+    <string name="thor_context_save_game">Save game</string>
+    <string name="thor_context_save_game_status">Choose a save slot</string>
     <string name="server_name">VCMI Server</string>
     <string name="notification_channel_running">Running in background</string>
     <string name="notification_channel_game">Game events</string>

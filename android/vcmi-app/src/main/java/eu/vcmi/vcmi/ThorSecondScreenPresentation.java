@@ -204,6 +204,31 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = getContext().getString(R.string.thor_context_battle_result);
                 status = getContext().getString(R.string.thor_context_battle_result_status);
             }
+            else if (ThorContextIds.KINGDOM_OVERVIEW.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_kingdom_overview);
+                status = getContext().getString(R.string.thor_context_kingdom_overview_status);
+            }
+            else if (ThorContextIds.QUEST_LOG.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_quest_log);
+                status = getContext().getString(R.string.thor_context_quest_log_status);
+            }
+            else if (ThorContextIds.SCENARIO_EVENT_JOURNAL.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_scenario_event_journal);
+                status = getContext().getString(R.string.thor_context_scenario_event_journal_status);
+            }
+            else if (ThorContextIds.PUZZLE_MAP.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_puzzle_map);
+                status = getContext().getString(R.string.thor_context_puzzle_map_status);
+            }
+            else if (ThorContextIds.SAVE_GAME.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_save_game);
+                status = getContext().getString(R.string.thor_context_save_game_status);
+            }
             else
             {
                 title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_deck_title) : publishedTitle;

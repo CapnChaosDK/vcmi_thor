@@ -628,3 +628,43 @@ Approved by the user on 2026-09-17. This slice extends the bounded Thor context 
 ### Hardware validation
 
 Linux/JDK 17 CI run `35193073049` passed the focused native tests (8 tests), complete ARM64 APK build, focused Android unit test, package verification, checksum generation, and artifact upload. The candidate commit was `9a5d3a8ed75c9b4aa3c9ec0c07502b3c1eefe5fa`; package ID is `is.xyz.vcmi.thor`, version `1.8.0` (`1800`), APK SHA-256 is `3f2d573b31f87a82342486ffd303e7a359ec8b25061a26d4eda65016c8c07f56`, and the uploaded artifact ZIP digest is `d7fd7c4e5fec2c9ec800e1e5a473703e0e887bcb94dfc4c2d99410e0a609e60f`. The APK was installed with data preserved and launched on an AYN Thor on 2026-09-17; ADB confirmed model `AYN Thor`, package installation, and a running process. On 2026-09-17, the user explicitly confirmed every Slice 7 hardware check passed, including all New Game, Load Game, Campaign, transition, lifecycle, inertness, and upper-input checks.
+
+## Approved Slice 10: read-only Adventure utility/modal context family
+
+Status: `awaiting CI and hardware validation`
+
+### Scope and behaviour
+
+- Add only the stable identifiers `KINGDOM_OVERVIEW`, `QUEST_LOG`, `SCENARIO_EVENT_JOURNAL`, `PUZZLE_MAP`, and `SAVE_GAME` to the shared native/Android contract.
+- The lower deck renders bounded Android-localized cards: `Kingdom overview / Review your kingdom`, `Quest log / Review active quests`, `Scenario journal / Review scenario events`, `Puzzle map / Review the Grail map`, and `Save game / Choose a save slot`.
+- Native publishes these IDs only from `CKingdomInterface`, `CQuestLog`, `ScenarioEventJournal`, `CPuzzleWindow`, and `CSavingScreen`. Each owner clears to `UNKNOWN` when genuinely deactivated; the normal immediate parent then republishes itself on its existing activation path.
+- `CPlayerInterface::showQuestLog()` retains its existing decision: a missing displayable quest opens `ScenarioEventJournal`, which has its own distinct Thor context.
+- Save Game remains the existing functional upper-screen window. Its selection, filename, overwrite, callback, pause, and close behavior are untouched.
+
+### Boundaries and tests
+
+- Thor publication is observational only. No WindowHandler stack shortcut, lifecycle optimization, lower-deck input, action request, gameplay data, journal/quest content, puzzle image, save-slot data, or state mutation is introduced.
+- Native tests cover all approved in-game mappings, unknown/invalid fallback, unchanged earlier mappings, and increasing revisions across Adventure Map utility transitions including fresh `UNKNOWN` publications.
+- Android parity tests include all five identifiers and verify their title/status resource IDs. The existing presentation remains non-focusable, non-clickable, and has no new listener/action path.
+
+### Risks
+
+- The main regression risk is bypassing an established parent restoration lifecycle. These observers deliberately call the appropriate base activation/deactivation before publishing and never manually substitute `ADVENTURE_MAP`.
+- Nested standard dialogs can temporarily clear a utility card; the owner or its immediate native parent remains responsible for restoration through the normal stack lifecycle.
+
+### CI candidate
+
+- Pending: create `ci/thor-slice10-validation` from the implementation commit, run the permanent Thor workflow, and record the exact candidate SHA, run ID, artifact, and checksum here.
+
+### Focused hardware checklist
+
+1. On Adventure Map, open and close Kingdom Overview; verify its card and a fully visible, interactive Adventure Map afterward.
+2. Open Quest Log where quests exist; verify its card and Adventure Map restoration. With no displayable quests, verify the distinct Scenario Journal card and correct parent restoration.
+3. Open and close Puzzle Map; verify its card, no residual puzzle graphics, and Adventure Map interaction.
+4. Open Save Game; verify its card, cancel, then perform a normal save if practical. Confirm existing save behavior and Adventure Map restoration.
+5. Rapidly open/close at least two new windows, toggle the lower panel during one, and background/resume during one. Exactly one latest correct deck card must return.
+6. Confirm lower touch remains inert while upper touchscreen and physical controller remain functional. Smoke-test Adventure Map, Hero, Town, a battle, and Battle Result restoration.
+
+### Final validation
+
+- Pending user-reported manual AYN Thor validation. CI success alone does not promote this slice.

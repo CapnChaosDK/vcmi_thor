@@ -28,6 +28,11 @@ final class ThorContextIds
     static final String BATTLE = "BATTLE";
     static final String BATTLE_TACTICS = "BATTLE_TACTICS";
     static final String BATTLE_RESULT = "BATTLE_RESULT";
+    static final String KINGDOM_OVERVIEW = "KINGDOM_OVERVIEW";
+    static final String QUEST_LOG = "QUEST_LOG";
+    static final String SCENARIO_EVENT_JOURNAL = "SCENARIO_EVENT_JOURNAL";
+    static final String PUZZLE_MAP = "PUZZLE_MAP";
+    static final String SAVE_GAME = "SAVE_GAME";
 
     private ThorContextIds()
     {

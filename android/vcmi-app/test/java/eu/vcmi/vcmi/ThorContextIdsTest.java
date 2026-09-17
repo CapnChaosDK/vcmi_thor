@@ -3,6 +3,7 @@ package eu.vcmi.vcmi;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class ThorContextIdsTest
 {
@@ -35,5 +36,25 @@ public class ThorContextIdsTest
         assertEquals("BATTLE", ThorContextIds.BATTLE);
         assertEquals("BATTLE_TACTICS", ThorContextIds.BATTLE_TACTICS);
         assertEquals("BATTLE_RESULT", ThorContextIds.BATTLE_RESULT);
+        assertEquals("KINGDOM_OVERVIEW", ThorContextIds.KINGDOM_OVERVIEW);
+        assertEquals("QUEST_LOG", ThorContextIds.QUEST_LOG);
+        assertEquals("SCENARIO_EVENT_JOURNAL", ThorContextIds.SCENARIO_EVENT_JOURNAL);
+        assertEquals("PUZZLE_MAP", ThorContextIds.PUZZLE_MAP);
+        assertEquals("SAVE_GAME", ThorContextIds.SAVE_GAME);
+    }
+
+    @Test
+    public void adventureUtilityContextsUseBoundedResources()
+    {
+        assertNotEquals(0, R.string.thor_context_kingdom_overview);
+        assertNotEquals(0, R.string.thor_context_kingdom_overview_status);
+        assertNotEquals(0, R.string.thor_context_quest_log);
+        assertNotEquals(0, R.string.thor_context_quest_log_status);
+        assertNotEquals(0, R.string.thor_context_scenario_event_journal);
+        assertNotEquals(0, R.string.thor_context_scenario_event_journal_status);
+        assertNotEquals(0, R.string.thor_context_puzzle_map);
+        assertNotEquals(0, R.string.thor_context_puzzle_map_status);
+        assertNotEquals(0, R.string.thor_context_save_game);
+        assertNotEquals(0, R.string.thor_context_save_game_status);
     }
 }

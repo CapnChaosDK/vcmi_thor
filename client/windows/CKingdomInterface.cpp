@@ -48,6 +48,22 @@
 #include "texts/CGeneralTextHandler.h"
 #include "../../lib/GameSettings.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 static const std::string OVERVIEW_BACKGROUND = "OvCast.pcx";
 static const size_t OVERVIEW_SIZE = 4;
 
@@ -501,6 +517,30 @@ CKingdomInterface::CKingdomInterface()
 	resdatabar = std::make_shared<CResDataBar>(ImagePath::builtin("KRESBAR"), 7, 111+footerPos, 29, 3, 76, 81);
 
 	activateTab(settings["general"]["lastKindomInterface"].Integer());
+}
+
+void CKingdomInterface::activate()
+{
+	if(isActive())
+		return;
+
+	CWindowWithArtifacts::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::KINGDOM_OVERVIEW);
+#endif
+}
+
+void CKingdomInterface::deactivate()
+{
+	if(!isActive())
+		return;
+
+	CWindowWithArtifacts::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 void CKingdomInterface::generateObjectsList(const std::vector<const CGObjectInstance * > &ownedObjects)

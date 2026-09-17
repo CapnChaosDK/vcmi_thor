@@ -25,6 +25,8 @@ public:
 
 	void changeSelection(std::shared_ptr<CMapInfo> to);
 	void saveGame();
+	void activate() override;
+	void deactivate() override;
 
 	const CMapInfo * getMapInfo() override;
 	const StartInfo * getStartInfo() override;

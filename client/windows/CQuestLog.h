@@ -74,4 +74,6 @@ class CQuestLog : public JournalWindow
 
 public:
 	CQuestLog(const std::vector<QuestInfo> & Quests);
+	void activate() override;
+	void deactivate() override;
 };

@@ -34,6 +34,11 @@ namespace ThorContextIds
 	inline constexpr char BATTLE[] = "BATTLE";
 	inline constexpr char BATTLE_TACTICS[] = "BATTLE_TACTICS";
 	inline constexpr char BATTLE_RESULT[] = "BATTLE_RESULT";
+	inline constexpr char KINGDOM_OVERVIEW[] = "KINGDOM_OVERVIEW";
+	inline constexpr char QUEST_LOG[] = "QUEST_LOG";
+	inline constexpr char SCENARIO_EVENT_JOURNAL[] = "SCENARIO_EVENT_JOURNAL";
+	inline constexpr char PUZZLE_MAP[] = "PUZZLE_MAP";
+	inline constexpr char SAVE_GAME[] = "SAVE_GAME";
 }
 
 enum class ThorLobbyMode
@@ -65,7 +70,12 @@ enum class ThorInGameContext
 	HERO_MEETING,
 	BATTLE,
 	BATTLE_TACTICS,
-	BATTLE_RESULT
+	BATTLE_RESULT,
+	KINGDOM_OVERVIEW,
+	QUEST_LOG,
+	SCENARIO_EVENT_JOURNAL,
+	PUZZLE_MAP,
+	SAVE_GAME
 };
 
 /// Immutable, read-only context payload reserved for the Thor command deck.
