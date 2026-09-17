@@ -288,10 +288,10 @@ void BattleResultWindow::buttonPressed(int button)
 
 	CPlayerInterface & intTmp = owner; //copy reference because "this" will be destructed soon
 
-	if(!ENGINE->windows().findWindows<BattleWindow>().empty())
-		ENGINE->windows().popWindows(2); // remove the result and battle windows without reactivating battle
-	else
-		close();
+	close();
+
+	if(ENGINE->windows().topWindow<BattleWindow>())
+		ENGINE->windows().popWindows(1); //pop battle interface if present
 
 	//Result window and battle interface are gone. We requested all dialogs to be closed before opening the battle,
 	//so we can be sure that there is no dialogs left on GUI stack.
