@@ -10,6 +10,8 @@
 #include "StdInc.h"
 #include "CLobbyScreen.h"
 
+#include <utility>
+
 #include "CBonusSelection.h"
 #include "TurnOptionsTab.h"
 #include "ExtraOptionsTab.h"
@@ -30,6 +32,10 @@
 #include "render/Colors.h"
 #include "../globalLobby/GlobalLobbyClient.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+#endif
 #include "../../lib/CConfigHandler.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/campaign/CampaignHandler.h"
@@ -37,6 +43,60 @@
 #include "../../lib/networkPacks/PacksForLobby.h"
 #include "../../lib/rmg/CMapGenOptions.h"
 #include "../../lib/GameLibrary.h"
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+namespace
+{
+	ThorLobbyMode thorLobbyModeFor(ESelectionScreen screenType)
+	{
+		switch(screenType)
+		{
+		case ESelectionScreen::newGame:
+			return ThorLobbyMode::NEW_GAME;
+		case ESelectionScreen::loadGame:
+			return ThorLobbyMode::LOAD_GAME;
+		case ESelectionScreen::campaignList:
+			return ThorLobbyMode::CAMPAIGN_LIST;
+		default:
+			return ThorLobbyMode::UNKNOWN;
+		}
+	}
+
+	ThorLobbyTab thorLobbyTabFor(const CLobbyScreen & lobby)
+	{
+		if(!lobby.curTab)
+			return ThorLobbyTab::NONE;
+		if(lobby.curTab == lobby.tabSel)
+			return ThorLobbyTab::SCENARIO;
+		if(lobby.curTab == lobby.tabOpt)
+			return ThorLobbyTab::OPTIONS;
+		if(lobby.curTab == lobby.tabRand)
+			return ThorLobbyTab::RANDOM_MAP;
+		if(lobby.curTab == lobby.tabTurnOptions)
+			return ThorLobbyTab::TURN_OPTIONS;
+		if(lobby.curTab == lobby.tabExtraOptions)
+			return ThorLobbyTab::EXTRA_OPTIONS;
+		if(lobby.curTab == lobby.tabBattleOnlyMode)
+			return ThorLobbyTab::BATTLE_MODE;
+		return ThorLobbyTab::UNKNOWN;
+	}
+
+	void publishThorLobbyContext(const CLobbyScreen & lobby)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForLobby(thorLobbyModeFor(lobby.screenType), thorLobbyTabFor(lobby));
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+
+	void clearThorLobbyContext()
+	{
+		ThorContextRecord context;
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
 
 CLobbyScreen::CLobbyScreen(ESelectionScreen screenType, bool hideScreen)
 	: CSelectionBase(screenType), bonusSel(nullptr)
@@ -161,9 +221,32 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType, bool hideScreen)
 
 CLobbyScreen::~CLobbyScreen()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		clearThorLobbyContext();
+#endif
+
 	// TODO: For now we always destroy whole lobby when leaving bonus selection screen
 	if(GAME->server().getState() == EClientState::LOBBY_CAMPAIGN)
 		GAME->server().sendClientDisconnecting();
+}
+
+void CLobbyScreen::activate()
+{
+	CSelectionBase::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorLobbyContext(*this);
+#endif
+}
+
+void CLobbyScreen::deactivate()
+{
+	CSelectionBase::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	clearThorLobbyContext();
+#endif
 }
 
 bool CLobbyScreen::isMultiplayerNetworkLobby() const
@@ -284,6 +367,10 @@ void CLobbyScreen::toggleTab(std::shared_ptr<CIntObject> tab)
 	}
 
 	CSelectionBase::toggleTab(tab);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorLobbyContext(*this);
+#endif
 }
 
 void CLobbyScreen::start(bool campaign)

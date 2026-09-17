@@ -14,7 +14,40 @@ namespace ThorContextIds
 	inline constexpr char MAIN_MENU_LOAD_GAME[] = "MAIN_MENU_LOAD_GAME";
 	inline constexpr char MAIN_MENU_CAMPAIGN[] = "MAIN_MENU_CAMPAIGN";
 	inline constexpr char MAIN_MENU_CREDITS[] = "MAIN_MENU_CREDITS";
+	inline constexpr char LOBBY_NEW_GAME[] = "LOBBY_NEW_GAME";
+	inline constexpr char LOBBY_NEW_GAME_SCENARIO[] = "LOBBY_NEW_GAME_SCENARIO";
+	inline constexpr char LOBBY_NEW_GAME_OPTIONS[] = "LOBBY_NEW_GAME_OPTIONS";
+	inline constexpr char LOBBY_NEW_GAME_RANDOM_MAP[] = "LOBBY_NEW_GAME_RANDOM_MAP";
+	inline constexpr char LOBBY_NEW_GAME_TURN_OPTIONS[] = "LOBBY_NEW_GAME_TURN_OPTIONS";
+	inline constexpr char LOBBY_NEW_GAME_EXTRA_OPTIONS[] = "LOBBY_NEW_GAME_EXTRA_OPTIONS";
+	inline constexpr char LOBBY_NEW_GAME_BATTLE_MODE[] = "LOBBY_NEW_GAME_BATTLE_MODE";
+	inline constexpr char LOBBY_LOAD_GAME[] = "LOBBY_LOAD_GAME";
+	inline constexpr char LOBBY_LOAD_GAME_SCENARIO[] = "LOBBY_LOAD_GAME_SCENARIO";
+	inline constexpr char LOBBY_LOAD_GAME_OPTIONS[] = "LOBBY_LOAD_GAME_OPTIONS";
+	inline constexpr char LOBBY_LOAD_GAME_TURN_OPTIONS[] = "LOBBY_LOAD_GAME_TURN_OPTIONS";
+	inline constexpr char LOBBY_LOAD_GAME_EXTRA_OPTIONS[] = "LOBBY_LOAD_GAME_EXTRA_OPTIONS";
+	inline constexpr char LOBBY_CAMPAIGN_LIST[] = "LOBBY_CAMPAIGN_LIST";
 }
+
+enum class ThorLobbyMode
+{
+	UNKNOWN,
+	NEW_GAME,
+	LOAD_GAME,
+	CAMPAIGN_LIST
+};
+
+enum class ThorLobbyTab
+{
+	UNKNOWN,
+	NONE,
+	SCENARIO,
+	OPTIONS,
+	RANDOM_MAP,
+	TURN_OPTIONS,
+	EXTRA_OPTIONS,
+	BATTLE_MODE
+};
 
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
@@ -34,7 +67,9 @@ class DLL_LINKAGE ThorContextStore final
 public:
 	ThorContextRecord snapshot() const;
 	bool publish(ThorContextRecord next);
+	ThorContextRecord publishNext(ThorContextRecord next);
 };
 
 DLL_LINKAGE ThorContextStore & thorContextStore();
 DLL_LINKAGE std::string thorContextIdForMainMenuTab(const std::string & tabName);
+DLL_LINKAGE std::string thorContextIdForLobby(ThorLobbyMode mode, ThorLobbyTab tab);

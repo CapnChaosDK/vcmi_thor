@@ -15,6 +15,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 5: read-only `MAIN_MENU_CAMPAIGN` context; candidate CI run `35003735325`.
 - Slice 6: read-only `MAIN_MENU_CREDITS` context; candidate CI run `35142531415`, APK SHA-256 `672db851f231f312614096169a8c9cfa00858fd6b3db63f06a49574777dd4388`.
 - Slices 1 through 6 were built by Linux/JDK 17 CI, installed on an AYN Thor, and manually hardware-validated. Slice 6 was validated on 2026-09-17.
+- Slice 7: read-only Lobby/Setup context family; candidate CI run `35193073049`, candidate commit `9a5d3a8ed75c9b4aa3c9ec0c07502b3c1eefe5fa`, APK SHA-256 `3f2d573b31f87a82342486ffd303e7a359ec8b25061a26d4eda65016c8c07f56`, package `is.xyz.vcmi.thor` version `1.8.0` (`1800`). Slice 7 was installed and hardware-validated on 2026-09-17; the temporary candidate workflow was not promoted.
 
 The normal fork remote is `origin`. Never push to upstream; its push URL is intentionally disabled. A temporary CI validation branch is permitted only for a focused, approved candidate and its workflow must never be merged into `ayn-thor-dual-screen`.
 

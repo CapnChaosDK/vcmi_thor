@@ -104,6 +104,71 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = getContext().getString(R.string.thor_context_credits);
                 status = getContext().getString(R.string.thor_context_credits_status);
             }
+            else if (ThorContextIds.LOBBY_NEW_GAME.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_new_game);
+                status = getContext().getString(R.string.thor_context_lobby_new_game_status);
+            }
+            else if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_new_game);
+                status = getContext().getString(R.string.thor_context_lobby_new_game_scenario_status);
+            }
+            else if (ThorContextIds.LOBBY_NEW_GAME_OPTIONS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_new_game);
+                status = getContext().getString(R.string.thor_context_lobby_new_game_options_status);
+            }
+            else if (ThorContextIds.LOBBY_NEW_GAME_RANDOM_MAP.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_random_map);
+                status = getContext().getString(R.string.thor_context_lobby_random_map_status);
+            }
+            else if (ThorContextIds.LOBBY_NEW_GAME_TURN_OPTIONS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_turn_options);
+                status = getContext().getString(R.string.thor_context_lobby_new_game_turn_options_status);
+            }
+            else if (ThorContextIds.LOBBY_NEW_GAME_EXTRA_OPTIONS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_extra_options);
+                status = getContext().getString(R.string.thor_context_lobby_new_game_extra_options_status);
+            }
+            else if (ThorContextIds.LOBBY_NEW_GAME_BATTLE_MODE.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_battle_mode);
+                status = getContext().getString(R.string.thor_context_lobby_battle_mode_status);
+            }
+            else if (ThorContextIds.LOBBY_LOAD_GAME.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_load_game);
+                status = getContext().getString(R.string.thor_context_lobby_load_game_status);
+            }
+            else if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_load_game);
+                status = getContext().getString(R.string.thor_context_lobby_load_game_scenario_status);
+            }
+            else if (ThorContextIds.LOBBY_LOAD_GAME_OPTIONS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_load_game);
+                status = getContext().getString(R.string.thor_context_lobby_load_game_options_status);
+            }
+            else if (ThorContextIds.LOBBY_LOAD_GAME_TURN_OPTIONS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_turn_options);
+                status = getContext().getString(R.string.thor_context_lobby_load_game_turn_options_status);
+            }
+            else if (ThorContextIds.LOBBY_LOAD_GAME_EXTRA_OPTIONS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_extra_options);
+                status = getContext().getString(R.string.thor_context_lobby_load_game_extra_options_status);
+            }
+            else if (ThorContextIds.LOBBY_CAMPAIGN_LIST.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_campaign);
+                status = getContext().getString(R.string.thor_context_lobby_campaign_list_status);
+            }
             else
             {
                 title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_deck_title) : publishedTitle;
