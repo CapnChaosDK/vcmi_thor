@@ -28,5 +28,8 @@ public class ThorContextIdsTest
         assertEquals("LOBBY_LOAD_GAME_TURN_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_TURN_OPTIONS);
         assertEquals("LOBBY_LOAD_GAME_EXTRA_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_EXTRA_OPTIONS);
         assertEquals("LOBBY_CAMPAIGN_LIST", ThorContextIds.LOBBY_CAMPAIGN_LIST);
+        assertEquals("ADVENTURE_MAP", ThorContextIds.ADVENTURE_MAP);
+        assertEquals("HERO_WINDOW", ThorContextIds.HERO_WINDOW);
+        assertEquals("TOWN_WINDOW", ThorContextIds.TOWN_WINDOW);
     }
 }

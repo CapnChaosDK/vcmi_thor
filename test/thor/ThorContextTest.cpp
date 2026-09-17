@@ -30,7 +30,17 @@ TEST(ThorContextStoreTest, GeneratesGloballyMonotonicRevisions)
 	ThorContextStore store;
 	EXPECT_EQ(store.publishNext({0, "MAIN_MENU", "", ""}).revision, 1);
 	EXPECT_EQ(store.publishNext({0, "LOBBY_NEW_GAME", "", ""}).revision, 2);
-	EXPECT_EQ(store.snapshot().contextId, "LOBBY_NEW_GAME");
+	EXPECT_EQ(store.publishNext({0, "ADVENTURE_MAP", "", ""}).revision, 3);
+}
+
+TEST(ThorContextStoreTest, AssignsNewRevisionWhenClearingToUnknown)
+{
+	ThorContextStore store;
+	const auto known = store.publishNext({0, ThorContextIds::HERO_WINDOW, "", ""});
+	const auto unknown = store.publishNext({0, ThorContextIds::UNKNOWN, "", ""});
+
+	EXPECT_GT(unknown.revision, known.revision);
+	EXPECT_EQ(unknown.contextId, ThorContextIds::UNKNOWN);
 }
 
 TEST(ThorContextMappingTest, MapsApprovedMainMenuTabs)
@@ -77,4 +87,17 @@ TEST(ThorContextMappingTest, RejectsUnsupportedLobbyContexts)
 	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::BATTLE_MODE), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::CAMPAIGN_LIST, ThorLobbyTab::OPTIONS), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::CAMPAIGN_LIST, ThorLobbyTab::NONE), ThorContextIds::UNKNOWN);
+}
+
+TEST(ThorContextMappingTest, MapsApprovedInGameContexts)
+{
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::ADVENTURE_MAP), ThorContextIds::ADVENTURE_MAP);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::HERO_WINDOW), ThorContextIds::HERO_WINDOW);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_WINDOW), ThorContextIds::TOWN_WINDOW);
+}
+
+TEST(ThorContextMappingTest, RejectsUnsupportedInGameContexts)
+{
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::UNKNOWN), ThorContextIds::UNKNOWN);
+	EXPECT_EQ(thorContextIdForInGameContext(static_cast<ThorInGameContext>(99)), ThorContextIds::UNKNOWN);
 }

@@ -96,3 +96,18 @@ std::string thorContextIdForLobby(ThorLobbyMode mode, ThorLobbyTab tab)
 		return ThorContextIds::UNKNOWN;
 	}
 }
+
+std::string thorContextIdForInGameContext(ThorInGameContext context)
+{
+	switch(context)
+	{
+	case ThorInGameContext::ADVENTURE_MAP:
+		return ThorContextIds::ADVENTURE_MAP;
+	case ThorInGameContext::HERO_WINDOW:
+		return ThorContextIds::HERO_WINDOW;
+	case ThorInGameContext::TOWN_WINDOW:
+		return ThorContextIds::TOWN_WINDOW;
+	default:
+		return ThorContextIds::UNKNOWN;
+	}
+}

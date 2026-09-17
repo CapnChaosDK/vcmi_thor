@@ -29,6 +29,12 @@
     <string name="thor_context_lobby_load_game_turn_options_status">Review turn settings</string>
     <string name="thor_context_lobby_load_game_extra_options_status">Review additional options</string>
     <string name="thor_context_lobby_campaign_list_status">Select a campaign</string>
+    <string name="thor_context_adventure_map">Adventure map</string>
+    <string name="thor_context_adventure_map_status">Explore the world</string>
+    <string name="thor_context_hero">Hero</string>
+    <string name="thor_context_hero_status">Review hero details</string>
+    <string name="thor_context_town">Town</string>
+    <string name="thor_context_town_status">Review town details</string>
     <string name="server_name">VCMI Server</string>
     <string name="notification_channel_running">Running in background</string>
     <string name="notification_channel_game">Game events</string>

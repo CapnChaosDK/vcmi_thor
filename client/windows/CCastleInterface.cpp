@@ -65,6 +65,22 @@
 #include "../../lib/spells/CSpell.h"
 #include "wiki/WikiWindow.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 static bool useCompactCreatureBox()
 {
 	return settings["gameTweaks"]["compactTownCreatureInfo"].Bool();
@@ -1573,6 +1589,30 @@ CCastleInterface::~CCastleInterface()
 		adventureInt->onAudioResumed();
 	if(GAME->interface()->castleInt == this)
 		GAME->interface()->castleInt = nullptr;
+}
+
+void CCastleInterface::activate()
+{
+	if(isActive())
+		return;
+
+	CStatusbarWindow::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::TOWN_WINDOW);
+#endif
+}
+
+void CCastleInterface::deactivate()
+{
+	if(!isActive())
+		return;
+
+	CStatusbarWindow::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 void CCastleInterface::updateArtifacts()
