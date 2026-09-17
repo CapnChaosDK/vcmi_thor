@@ -631,7 +631,7 @@ Linux/JDK 17 CI run `35193073049` passed the focused native tests (8 tests), com
 
 ## Approved Slice 10: read-only Adventure utility/modal context family
 
-Status: `awaiting CI and hardware validation`
+Status: `hardware validated`
 
 ### Scope and behaviour
 
@@ -672,4 +672,5 @@ Status: `awaiting CI and hardware validation`
 
 ### Final validation
 
-- Pending user-reported manual AYN Thor validation. CI success alone does not promote this slice.
+- On 2026-09-17, the user reported that every focused manual AYN Thor check passed after installing the CI-verified candidate APK. This includes the five new cards, normal parent restoration, rapid transitions, panel and app lifecycle behavior, lower-panel inertness, upper touchscreen/controller input, and the earlier Adventure Map, Hero, Town, Battle, and Battle Result smoke checks.
+- The exact hardware-tested product tree is commit `8bd603d6684d107e6f72e48fbb9e04eaa4b38293`. The separate validation-record commits contain documentation only.
