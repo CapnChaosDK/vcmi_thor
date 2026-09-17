@@ -1,0 +1,92 @@
+name: Thor Slice 7 validation
+
+on:
+  push:
+    branches:
+      - ci/thor-slice7-validation
+  workflow_dispatch:
+
+jobs:
+  arm64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Isolate Gradle home
+        run: echo "GRADLE_USER_HOME=$RUNNER_TEMP/gradle-home" >> "$GITHUB_ENV"
+      - name: Install build dependencies
+        run: |
+          pipx install conan
+          source CI/install_conan_dependencies.sh dependencies-android-arm64-v8a
+          conan profile detect
+          conan install . --output-folder=conan-generated --build=never \
+            --profile=dependencies/conan_profiles/base/android-system \
+            --profile=dependencies/conan_profiles/android-64-ndk \
+            --conf='tools.cmake.cmaketoolchain:generator=Ninja'
+      - name: Add Android Gradle compatibility hook
+        run: |
+          sed -i '/^CLASSPATH=/i sed -i "/android\\.bundle\\.enableUncompressedNativeLibs/d" "$APP_HOME/gradle.properties"' \
+            android/gradlew
+          grep -F 'enableUncompressedNativeLibs/d' android/gradlew
+      - name: Run focused native context tests
+        run: |
+          boost_version="$(find "$HOME/.conan2/p" -path '*/p/include/boost/version.hpp' -print -quit)"
+          test -n "$boost_version"
+          boost_include="$(dirname "$(dirname "$boost_version")")"
+          g++ -std=c++20 -pthread \
+            -I. \
+            -Iinclude \
+            -Itest \
+            -Itest/googletest/googletest \
+            -Itest/googletest/googletest/include \
+            -Itest/googletest/googlemock/include \
+            -I"$boost_include" \
+            lib/thor/ThorContext.cpp \
+            test/thor/ThorContextTest.cpp \
+            test/googletest/googletest/src/gtest-all.cc \
+            test/googletest/googletest/src/gtest_main.cc \
+            -o "$RUNNER_TEMP/thor-context-tests"
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*'
+      - name: Configure Thor ARM64
+        run: |
+          cmake --preset android-thor-release \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROIDDEPLOYQT_OPTIONS= \
+            '-DANDROID_GRADLE_PROPERTIES=signingConfig=dailySigning;applicationVariant=thor-ci'
+      - name: Build Thor ARM64 APK
+        run: cmake --build --preset android-thor-release
+        env:
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      - name: Run focused Android tests
+        working-directory: out/build/android-thor-release/android-build
+        run: |
+          sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
+          ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
+            ./gradlew --no-daemon :vcmi-app:testReleaseUnitTest \
+              --tests eu.vcmi.vcmi.ThorContextIdsTest
+      - name: Verify and checksum APK
+        run: |
+          apk="$(find out/build/android-thor-release/android-build/vcmi-app/build/outputs/apk/release \
+            -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d \
+            -printf '%f\n' | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$build_tools/aapt" dump badging "$apk" \
+            | grep "package: name='is.xyz.vcmi.thor'"
+          cp "$apk" thor-slice7-candidate-arm64.apk
+          sha256sum thor-slice7-candidate-arm64.apk | tee thor-slice7-candidate-arm64.apk.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thor-slice7-candidate-arm64
+          path: |
+            thor-slice7-candidate-arm64.apk
+            thor-slice7-candidate-arm64.apk.sha256
+          if-no-files-found: error
+          retention-days: 7

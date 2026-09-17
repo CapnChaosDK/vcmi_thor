@@ -10,11 +10,12 @@
 #include "StdInc.h"
 #include "CMainMenu.h"
 
+#include <utility>
+
 #include "../../lib/network/NetworkDiscovery.h"
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
-#include <atomic>
 #endif
 #include "CCampaignScreen.h"
 #include "CHighScoreScreen.h"
@@ -70,15 +71,12 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 namespace
 {
-	std::atomic<std::uint64_t> thorContextRevision{0};
-
 	void publishThorMainMenuContext(const std::vector<std::string> & menuNames, size_t index)
 	{
 		ThorContextRecord context;
-		context.revision = ++thorContextRevision;
 		context.contextId = thorContextIdForMainMenuTab(index < menuNames.size() ? menuNames[index] : "");
-		if(thorContextStore().publish(context))
-			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
 	}
 }
 #endif

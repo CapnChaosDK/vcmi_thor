@@ -498,3 +498,47 @@ Approved by the user on 2026-09-15. This slice adds the `MAIN_MENU_CREDITS` read
 ### Hardware validation
 
 Linux/JDK 17 CI run `35142531415` passed the focused native context tests, complete ARM64 APK build, focused Android tests, package-ID verification, checksum generation, and artifact upload. The downloaded APK SHA-256 was independently verified as `672db851f231f312614096169a8c9cfa00858fd6b3db63f06a49574777dd4388`, with package ID `is.xyz.vcmi.thor` and version `1.8.0` (`1800`). The verified APK was installed with data preserved and launched on an AYN Thor; ADB confirmed the installed package and running process. On 2026-09-17, the user explicitly reported that all focused hardware checks passed, including the Credits card, Main Menu restoration, regression route, panel toggle, pause/resume, lower-deck inertness, and unaffected upper touchscreen/controller input.
+
+## Approved Slice 7: read-only pre-game Lobby/Setup context family
+
+Status: `awaiting hardware validation`
+
+Approved by the user on 2026-09-17. This slice extends the bounded Thor context bridge to the existing `CLobbyScreen` pre-game setup owner.
+
+### 1. Approved user-visible behavior
+
+- New Game setup shows the following local lower-deck cards: scenario selection (`New game / Select a scenario`), options, random-map options, turn options, extra options, battle-only mode, and the no-active-tab fallback (`New game / Choose a setup panel`).
+- Load Game setup shows bounded cards for save selection (`Load game / Select a saved game`), options, turn options, extra options, and the no-active-tab fallback (`Load game / Choose a setup panel`). Unsupported Load Game random-map and battle-only combinations fail closed.
+- Campaign-list selection shows `Campaign / Select a campaign`, with no campaign name, description, map, player, save, or other game data exposed.
+- Leaving a lobby or temporarily opening an unsupported child clears the card safely; normal parent activation republishes its own existing card. The lower deck remains inert.
+
+### 2. Implementation boundary and responsibilities
+
+- A pure `lib/thor` mapping converts bounded lobby mode and tab enums into stable `LOBBY_*` identifiers. It rejects unknown modes/tabs and invalid combinations.
+- `CLobbyScreen` maps its authoritative `screenType` and exact existing tab pointer identity only after `CSelectionBase::toggleTab()` has changed `curTab`; activation republishes the current state and deactivation clears it.
+- The shared Thor context store now assigns revisions for all publishers, preventing a lobby update from being rejected after a main-menu revision.
+- Android adds exact identifier parity and renders every recognised lobby card from local default resources through the existing inert presentation.
+- No lower-screen buttons, Java-to-native API, coordinate/event injection, game/server state mutation, networking, map/player/save transfer, second SDL renderer, or proprietary assets are added.
+
+### 3. Automated acceptance tests
+
+- Native pure-mapping tests cover every approved New Game, Load Game, and campaign-list combination; no-tab fallbacks; unknown mode/tab; invalid campaign tabs; and unsupported Load Game Random Map/Battle-only combinations. Existing main-menu and context-store tests remain covered.
+- Java/native parity tests cover all `LOBBY_*` identifiers. The known Android contexts select local resources, while unknown records retain the existing safe fallback behavior.
+- Focused host-native tests, Android unit/resource checks, source validation, Markdown validation, and one Linux/JDK 17 ARM64 candidate build are required before hardware testing.
+
+### 4. Focused Thor hardware checklist
+
+1. From Main Menu, verify `Main menu / Choose a game mode`; then open New Game and confirm its existing card.
+2. Enter Single Player/New Game scenario selection and confirm `New game / Select a scenario`.
+3. Open Options, Random Map, Turn Options, Extra Options, and Battle-only Mode where available; each card must match its approved title/status. Return to scenario selection and confirm immediate restoration.
+4. Back to New Game and confirm its existing parent card is restored. Enter Load Game → Single Player and verify save selection, Options, Turn Options, and Extra Options each follow the upper UI and restore correctly.
+5. Enter the campaign-list setup path and verify `Campaign / Select a campaign`; back out through the hierarchy without a stale Lobby card.
+6. Rapidly exercise `Main → New → Single → Options → Scenario → Random → Scenario → Back → Load → Single → Options → Back → Main`; no deck card may lag or remain stale.
+7. While a Lobby card is visible, toggle the lower panel, background/resume once, and touch the lower display. Exactly one latest card must return; lower touch remains inert and upper touchscreen/controller input remains normal.
+8. Recheck previously validated Main Menu, New Game, Load Game, Campaign, and Credits cards.
+
+### 5. Important regression risks
+
+- A pointer comparison that accepts an absent or future tab could classify unsupported/mod-added UI instead of failing closed.
+- Activation/deactivation and rapid server-driven tab updates could leave stale text if the shared revision stream or parent restoration regresses.
+- Android resource/rendering additions must not affect lower-panel focus/inertness, package identity, standard builds, or established cards.

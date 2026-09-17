@@ -25,6 +25,14 @@ TEST(ThorContextStoreTest, EmptyIdentifierFallsBackToUnknown)
 	EXPECT_EQ(store.snapshot().contextId, ThorContextIds::UNKNOWN);
 }
 
+TEST(ThorContextStoreTest, GeneratesGloballyMonotonicRevisions)
+{
+	ThorContextStore store;
+	EXPECT_EQ(store.publishNext({0, "MAIN_MENU", "", ""}).revision, 1);
+	EXPECT_EQ(store.publishNext({0, "LOBBY_NEW_GAME", "", ""}).revision, 2);
+	EXPECT_EQ(store.snapshot().contextId, "LOBBY_NEW_GAME");
+}
+
 TEST(ThorContextMappingTest, MapsApprovedMainMenuTabs)
 {
 	EXPECT_EQ(thorContextIdForMainMenuTab("main"), ThorContextIds::MAIN_MENU);
@@ -42,4 +50,31 @@ TEST(ThorContextMappingTest, UnsupportedMainMenuTabsFallBackToUnknown)
 	EXPECT_EQ(thorContextIdForMainMenuTab("campaign/"), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForMainMenuTab("Credits"), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForMainMenuTab("credits/"), ThorContextIds::UNKNOWN);
+}
+
+TEST(ThorContextMappingTest, MapsApprovedLobbyContexts)
+{
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::NONE), ThorContextIds::LOBBY_NEW_GAME);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::SCENARIO), ThorContextIds::LOBBY_NEW_GAME_SCENARIO);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::OPTIONS), ThorContextIds::LOBBY_NEW_GAME_OPTIONS);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::RANDOM_MAP), ThorContextIds::LOBBY_NEW_GAME_RANDOM_MAP);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::TURN_OPTIONS), ThorContextIds::LOBBY_NEW_GAME_TURN_OPTIONS);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::EXTRA_OPTIONS), ThorContextIds::LOBBY_NEW_GAME_EXTRA_OPTIONS);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::BATTLE_MODE), ThorContextIds::LOBBY_NEW_GAME_BATTLE_MODE);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::NONE), ThorContextIds::LOBBY_LOAD_GAME);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::SCENARIO), ThorContextIds::LOBBY_LOAD_GAME_SCENARIO);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::OPTIONS), ThorContextIds::LOBBY_LOAD_GAME_OPTIONS);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::TURN_OPTIONS), ThorContextIds::LOBBY_LOAD_GAME_TURN_OPTIONS);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::EXTRA_OPTIONS), ThorContextIds::LOBBY_LOAD_GAME_EXTRA_OPTIONS);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::CAMPAIGN_LIST, ThorLobbyTab::SCENARIO), ThorContextIds::LOBBY_CAMPAIGN_LIST);
+}
+
+TEST(ThorContextMappingTest, RejectsUnsupportedLobbyContexts)
+{
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::UNKNOWN, ThorLobbyTab::SCENARIO), ThorContextIds::UNKNOWN);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::NEW_GAME, ThorLobbyTab::UNKNOWN), ThorContextIds::UNKNOWN);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::RANDOM_MAP), ThorContextIds::UNKNOWN);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::LOAD_GAME, ThorLobbyTab::BATTLE_MODE), ThorContextIds::UNKNOWN);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::CAMPAIGN_LIST, ThorLobbyTab::OPTIONS), ThorContextIds::UNKNOWN);
+	EXPECT_EQ(thorContextIdForLobby(ThorLobbyMode::CAMPAIGN_LIST, ThorLobbyTab::NONE), ThorContextIds::UNKNOWN);
 }

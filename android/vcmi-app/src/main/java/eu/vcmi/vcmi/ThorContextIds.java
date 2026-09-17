@@ -8,6 +8,19 @@ final class ThorContextIds
     static final String MAIN_MENU_LOAD_GAME = "MAIN_MENU_LOAD_GAME";
     static final String MAIN_MENU_CAMPAIGN = "MAIN_MENU_CAMPAIGN";
     static final String MAIN_MENU_CREDITS = "MAIN_MENU_CREDITS";
+    static final String LOBBY_NEW_GAME = "LOBBY_NEW_GAME";
+    static final String LOBBY_NEW_GAME_SCENARIO = "LOBBY_NEW_GAME_SCENARIO";
+    static final String LOBBY_NEW_GAME_OPTIONS = "LOBBY_NEW_GAME_OPTIONS";
+    static final String LOBBY_NEW_GAME_RANDOM_MAP = "LOBBY_NEW_GAME_RANDOM_MAP";
+    static final String LOBBY_NEW_GAME_TURN_OPTIONS = "LOBBY_NEW_GAME_TURN_OPTIONS";
+    static final String LOBBY_NEW_GAME_EXTRA_OPTIONS = "LOBBY_NEW_GAME_EXTRA_OPTIONS";
+    static final String LOBBY_NEW_GAME_BATTLE_MODE = "LOBBY_NEW_GAME_BATTLE_MODE";
+    static final String LOBBY_LOAD_GAME = "LOBBY_LOAD_GAME";
+    static final String LOBBY_LOAD_GAME_SCENARIO = "LOBBY_LOAD_GAME_SCENARIO";
+    static final String LOBBY_LOAD_GAME_OPTIONS = "LOBBY_LOAD_GAME_OPTIONS";
+    static final String LOBBY_LOAD_GAME_TURN_OPTIONS = "LOBBY_LOAD_GAME_TURN_OPTIONS";
+    static final String LOBBY_LOAD_GAME_EXTRA_OPTIONS = "LOBBY_LOAD_GAME_EXTRA_OPTIONS";
+    static final String LOBBY_CAMPAIGN_LIST = "LOBBY_CAMPAIGN_LIST";
 
     private ThorContextIds()
     {

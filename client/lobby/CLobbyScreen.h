@@ -19,6 +19,8 @@ class CLobbyScreen final : public CSelectionBase
 public:
 	CLobbyScreen(ESelectionScreen type, bool hideScreen = false);
 	~CLobbyScreen();
+	void activate() override;
+	void deactivate() override;
 	void toggleTab(std::shared_ptr<CIntObject> tab) final;
 	void start(bool campaign);
 	void startCampaign();
