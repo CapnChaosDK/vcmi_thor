@@ -8,8 +8,8 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Implementation branch: `ayn-thor-dual-screen`
 - Upstream baseline: `819259d97f1de9262b97811ccb081346c20ffef2`
 - Thor package: `is.xyz.vcmi.thor`
-- Slice 8 final commit: `ca3d7887d` — read-only Adventure Map, Hero, and Town contexts.
-- Slice 8 candidate CI run: `35197790453`; Slice 8 is hardware validated.
+- Slice 9 final product commit: `16d3c44ed432839369ce2d394b8c257b41a697a8` — read-only Hero Meeting and Battle lifecycle contexts.
+- Slice 9 candidate CI run: `35227471813`; Slice 9 is hardware validated.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
@@ -99,6 +99,12 @@ git diff --name-only "$candidate..ayn-thor-dual-screen" -- . `
 ```
 
 The command must produce no output before promoting. If it does, do not promote until the hardware-tested candidate and final product/build tree are reconciled. Then fast-forward or cherry-pick the exact validated product commit where possible; never recreate it manually. Documentation-only receipt updates are allowed after the candidate because they do not change the tested product/build tree. Confirm `git status --short` is clean and do not push `ayn-thor-dual-screen` unless explicitly asked.
+
+## Window-lifecycle regression rule
+
+Thor publication is observational; it must not change the native window-stack lifecycle. In particular, do not replace a normal sequence of pop, parent activation, parent deactivation, and underlying-owner restoration with a multi-window removal merely to avoid a transient lower-deck context. Battle Result hardware testing found that skipping BattleWindow's normal activation/deactivation left its final frame over Adventure Map.
+
+For every future context-owner change, verify the engine's existing push/pop/close ordering first. Preserve it exactly unless an equivalent cleanup path is explicitly demonstrated in focused tests and on hardware. The hardware checklist for any modal or battle-related slice must include closing the modal and confirming that the restored parent is visible, interactive, and free of the dismissed window's residual frame.
 
 ## Build facts that matter
 

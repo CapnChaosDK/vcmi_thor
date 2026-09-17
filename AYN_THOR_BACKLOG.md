@@ -30,6 +30,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Process game mutations on the existing game/SDL thread through native operations.
 - Treat all Android requests as untrusted: revision-lock them, consume once, and revalidate context, identity, bounds, ownership, destination, and enabled state natively.
 - Invalidate queued input, gestures, selection, information, and visuals on context or lifecycle changes.
+- Preserve VCMI's complete owner lifecycle when closing or replacing windows. A Thor context optimization must not batch-remove an inactive parent window if its normal reactivation/deactivation performs visual, input, audio, or restoration cleanup.
 - Never bundle proprietary Heroes III artwork. Decode only player-installed assets and always retain a generic/text fallback.
 - Keep automated device interaction brief: connection, installation, explicit activity launch, process/display/log/state checks. Manual hardware behavior is user-validated.
 - Do not commit or push a slice until the user reports its focused hardware checks passed.
@@ -420,7 +421,7 @@ Status: `hardware validated`
 
 - The inert lower deck shows `Hero meeting / Review hero exchange` while `CExchangeWindow` is active, and restores it when an approved nested Hero window closes.
 - It shows `Battle / Combat in progress` during normal battle, `Battle tactics / Arrange your forces` during the real tactics phase, and `Battle result / Review the outcome` only while `BattleResultWindow` is active.
-- Unsupported children clear to `UNKNOWN`; normal parent activation restores approved contexts. Closing a battle result removes the result and battle windows together, avoiding transient battle restoration during teardown.
+- Unsupported children clear to `UNKNOWN`; normal parent activation restores approved contexts. Battle Result dismissal preserves VCMI's normal result-close, BattleWindow reactivation/deactivation, and Adventure Map restoration lifecycle.
 
 ### Implementation boundary and responsibilities
 
@@ -444,6 +445,12 @@ Status: `hardware validated`
 - Candidate CI: GitHub Actions run `35227471813` at commit `16d3c44ed432839369ce2d394b8c257b41a697a8` passed focused native and Android Thor tests, the ARM64 APK build, package verification, checksum verification, validation receipt creation, and artifact upload.
 - Candidate artifact: `thor-candidate-arm64-35227471813`, package `is.xyz.vcmi.thor`, APK SHA-256 `9514f37cd807d961f50aafa07a38ac67862b306bfff147ad43d97ad804af6064`.
 - The user reported all Slice 9 AYN Thor hardware checks passed, including Hero Meeting and Battle lifecycle cards, Battle Result dismissal back to Adventure Map, lower-panel inertness, and upper-screen behavior.
+
+### Lifecycle regression lesson
+
+- An initial Battle Result optimization removed the result and inactive BattleWindow together. It skipped BattleWindow's normal activation/deactivation lifecycle and left the last battle frame above Adventure Map on physical hardware.
+- The correction restored the engine's normal close sequence. Future Thor work must treat existing window activation/deactivation as functional behavior, not merely context publication: preserve the exact stack transition unless a full equivalent cleanup path is proven and hardware-validated.
+- Battle-result regression coverage must explicitly dismiss the result and verify that Adventure Map is both visible and interactive, with no residual battle frame, before promotion.
 
 ## Approved Slice 5: read-only Campaign submenu context
 
