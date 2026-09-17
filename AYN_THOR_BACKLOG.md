@@ -654,7 +654,12 @@ Status: `awaiting CI and hardware validation`
 
 ### CI candidate
 
-- Pending: create `ci/thor-slice10-validation` from the implementation commit, run the permanent Thor workflow, and record the exact candidate SHA, run ID, artifact, and checksum here.
+- Candidate branch: `ci/thor-slice10-validation`.
+- Exact product commit: `8bd603d6684d107e6f72e48fbb9e04eaa4b38293` (`Add Thor adventure utility contexts`).
+- Permanent workflow: GitHub Actions run `35247079222` ([run details](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/35247079222)); preflight and ARM64 candidate both passed.
+- Receipt: package `is.xyz.vcmi.thor`, `android-thor-release`, `arm64-v8a`, focused native and Android Thor tests passed, and package verification passed.
+- Artifact: `thor-candidate-arm64-35247079222`, containing `thor-candidate-arm64.apk`, `thor-candidate-arm64.apk.sha256`, `thor-validation-receipt.json`, and `thor-ccache-stats.txt`.
+- APK SHA-256: `01f577694631b0c6739938c5a5c83382736ea7451915ecc86e4b7dfd5770b05d` (downloaded artifact independently verified locally).
 
 ### Focused hardware checklist
 
