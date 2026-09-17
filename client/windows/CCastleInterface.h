@@ -257,6 +257,8 @@ public:
 	void updateArtifacts() override;
 	void updateGarrisons() override;
 	bool holdsGarrison(const CArmedInstance * army) override;
+	void activate() override;
+	void deactivate() override;
 
 	void castleTeleport(int where);
 	void townChange();

@@ -101,6 +101,8 @@ public:
 
 	void updateArtifacts() override;
 	void keyPressed(EShortcut key) override;
+	void activate() override;
+	void deactivate() override;
 
 	void dismissCurrent(); //dismissed currently displayed hero (curHero)
 	void commanderWindow();

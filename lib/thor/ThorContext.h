@@ -27,6 +27,9 @@ namespace ThorContextIds
 	inline constexpr char LOBBY_LOAD_GAME_TURN_OPTIONS[] = "LOBBY_LOAD_GAME_TURN_OPTIONS";
 	inline constexpr char LOBBY_LOAD_GAME_EXTRA_OPTIONS[] = "LOBBY_LOAD_GAME_EXTRA_OPTIONS";
 	inline constexpr char LOBBY_CAMPAIGN_LIST[] = "LOBBY_CAMPAIGN_LIST";
+	inline constexpr char ADVENTURE_MAP[] = "ADVENTURE_MAP";
+	inline constexpr char HERO_WINDOW[] = "HERO_WINDOW";
+	inline constexpr char TOWN_WINDOW[] = "TOWN_WINDOW";
 }
 
 enum class ThorLobbyMode
@@ -47,6 +50,14 @@ enum class ThorLobbyTab
 	TURN_OPTIONS,
 	EXTRA_OPTIONS,
 	BATTLE_MODE
+};
+
+enum class ThorInGameContext
+{
+	UNKNOWN,
+	ADVENTURE_MAP,
+	HERO_WINDOW,
+	TOWN_WINDOW
 };
 
 /// Immutable, read-only context payload reserved for the Thor command deck.
@@ -73,3 +84,4 @@ public:
 DLL_LINKAGE ThorContextStore & thorContextStore();
 DLL_LINKAGE std::string thorContextIdForMainMenuTab(const std::string & tabName);
 DLL_LINKAGE std::string thorContextIdForLobby(ThorLobbyMode mode, ThorLobbyTab tab);
+DLL_LINKAGE std::string thorContextIdForInGameContext(ThorInGameContext context);

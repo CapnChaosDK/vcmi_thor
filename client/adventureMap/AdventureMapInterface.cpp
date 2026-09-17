@@ -54,6 +54,22 @@
 #include "../../lib/spells/Problem.h"
 #include "../../lib/spells/CSpell.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 
 std::shared_ptr<AdventureMapInterface> adventureInt;
 
@@ -134,6 +150,7 @@ void AdventureMapInterface::showInfoBoxMessage(const std::vector<Component> & co
 
 void AdventureMapInterface::activate()
 {
+	const bool wasActive = isActive();
 	CIntObject::activate();
 
 	adjustActiveness();
@@ -151,15 +168,26 @@ void AdventureMapInterface::activate()
 	// game will correctly invalidate paths but current route will not be updated since verifyPath() is not called for current hero
 	if (GAME->interface()->makingTurn && GAME->interface()->localState->getCurrentHero())
 		GAME->interface()->localState->verifyPath(GAME->interface()->localState->getCurrentHero());
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(!wasActive)
+		publishThorInGameContext(ThorInGameContext::ADVENTURE_MAP);
+#endif
 }
 
 void AdventureMapInterface::deactivate()
 {
+	const bool wasActive = isActive();
 	CIntObject::deactivate();
 	ENGINE->cursor().set(Cursor::Map::POINTER);
 
 	if(GAME->interface())
 		GAME->interface()->cingconsole->deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(wasActive)
+		publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 void AdventureMapInterface::showAll(Canvas & to)

@@ -123,4 +123,4 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - `GameEngine::updateFrame()` is the preferred one-shot request consumer on `MainGUI`.
 - `CCallback` and existing controllers are the preferred semantic action executors; the server remains authoritative.
 - The Qt launcher and separate Qt map editor require their own future designs. They must not be forced through the SDL bridge.
-- Slices 1 through 6 have been implemented and hardware-validated. Their acceptance history, remaining roadmap, and approval boundary are maintained in `AYN_THOR_BACKLOG.md`; the build/device hand-off and known-good GitHub candidate procedure are in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
+- Slices 1 through 7 have been implemented and hardware-validated. Their acceptance history, remaining roadmap, and approval boundary are maintained in `AYN_THOR_BACKLOG.md`; the build/device hand-off and known-good GitHub candidate procedure are in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.

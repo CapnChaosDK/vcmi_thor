@@ -21,6 +21,9 @@ final class ThorContextIds
     static final String LOBBY_LOAD_GAME_TURN_OPTIONS = "LOBBY_LOAD_GAME_TURN_OPTIONS";
     static final String LOBBY_LOAD_GAME_EXTRA_OPTIONS = "LOBBY_LOAD_GAME_EXTRA_OPTIONS";
     static final String LOBBY_CAMPAIGN_LIST = "LOBBY_CAMPAIGN_LIST";
+    static final String ADVENTURE_MAP = "ADVENTURE_MAP";
+    static final String HERO_WINDOW = "HERO_WINDOW";
+    static final String TOWN_WINDOW = "TOWN_WINDOW";
 
     private ThorContextIds()
     {
