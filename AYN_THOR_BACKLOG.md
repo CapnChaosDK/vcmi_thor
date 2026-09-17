@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 11 are implemented, CI-built, and hardware-validated; Slice 12 is awaiting candidate CI and hardware validation.
-- Status: `hardware validated` through Slice 11; Slice 12 is `awaiting hardware validation`.
+- Phase: Slices 1 through 12 are implemented, CI-built, and hardware-validated.
+- Status: `hardware validated` through Slice 12.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -713,7 +713,7 @@ Status: `hardware validated`
 
 ## Approved Slice 12: Context-aware Adventure Map gameplay controls
 
-Status: `awaiting hardware validation`
+Status: `hardware validated`
 
 ### Scope and command contract
 
@@ -749,4 +749,9 @@ Status: `awaiting hardware validation`
 
 - Candidate branch: `ci/thor-slice12-validation`, pointing directly at product commit `221a9f9eba3614665bcce8e84c86868f1d252d20`.
 - GitHub Actions run `35263114653` passed its focused native tests, ARM64 APK build, focused Android test, package verification, and artifact upload. Artifact: `thor-candidate-arm64-35263114653`; GitHub artifact ZIP SHA-256: `211d1dd9cf0443ab9f4d60d11188626d267ea30c39f9a9217a27a79c4ffb41da`; APK SHA-256: `f18621aaaf1fbded950112a52f5e1f41f44a5b9900d7ec988447f2940c2609cc`.
-- The downloaded receipt independently confirms the same product commit, candidate ref, `is.xyz.vcmi.thor` package, `arm64-v8a` ABI, and passed focused native/Android tests. Hardware validation is still required and has not yet been claimed.
+- The downloaded receipt independently confirms the same product commit, candidate ref, `is.xyz.vcmi.thor` package, `arm64-v8a` ABI, and passed focused native/Android tests. The completed hardware validation is recorded below.
+
+### Final hardware validation
+
+- On 2026-09-17, the user reported that every focused Slice 12 check passed on the AYN Thor after the checksum-verified candidate APK was installed in place. This includes Next Hero selection/camera refresh, valid and invalid Move Hero behavior, Sleep/Wake state changes, End Turn including its normal reminder/confirmation flow, rapid/double-tap safety, all four Slice 11 utility commands, lifecycle/display changes, and upper touchscreen/controller regression checks.
+- The hardware-tested product tree is exactly `221a9f9eba3614665bcce8e84c86868f1d252d20`. The later CI and hardware validation commits contain documentation only.
