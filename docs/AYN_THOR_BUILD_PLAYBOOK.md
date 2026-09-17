@@ -8,8 +8,9 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Implementation branch: `ayn-thor-dual-screen`
 - Upstream baseline: `819259d97f1de9262b97811ccb081346c20ffef2`
 - Thor package: `is.xyz.vcmi.thor`
-- Slice 9 final product commit: `16d3c44ed432839369ce2d394b8c257b41a697a8` — read-only Hero Meeting and Battle lifecycle contexts.
-- Slice 9 candidate CI run: `35227471813`; Slice 9 is hardware validated.
+- Slice 10 final product commit: `8bd603d6684d107e6f72e48fbb9e04eaa4b38293` — read-only Adventure utility/modal contexts.
+- Slice 10 candidate CI run: `35247079222`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35247079222`; APK SHA-256 `01f577694631b0c6739938c5a5c83382736ea7451915ecc86e4b7dfd5770b05d`.
+- Slice 10 is hardware validated. The candidate APK was checksum-verified, installed in place on an AYN Thor, and passed the focused context, restoration, lifecycle, and input checks.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
@@ -105,6 +106,8 @@ The command must produce no output before promoting. If it does, do not promote 
 Thor publication is observational; it must not change the native window-stack lifecycle. In particular, do not replace a normal sequence of pop, parent activation, parent deactivation, and underlying-owner restoration with a multi-window removal merely to avoid a transient lower-deck context. Battle Result hardware testing found that skipping BattleWindow's normal activation/deactivation left its final frame over Adventure Map.
 
 For every future context-owner change, verify the engine's existing push/pop/close ordering first. Preserve it exactly unless an equivalent cleanup path is explicitly demonstrated in focused tests and on hardware. The hardware checklist for any modal or battle-related slice must include closing the modal and confirming that the restored parent is visible, interactive, and free of the dismissed window's residual frame.
+
+Slice 10 adds a reusable rule for ordinary Adventure utility windows: publish only a bounded, known context identifier from each concrete owner after its base lifecycle call; publish a fresh `UNKNOWN` on genuine deactivation; and let the existing immediate-parent activation republish its own context. Do not manually publish `ADVENTURE_MAP` as a substitute for parent restoration. In particular, Quest Log and Scenario Journal are separate windows even though the normal quest route can choose one in place of the other when no displayable quests exist. Save Game remains entirely functional on the upper display; Thor observes it and must not alter its selection, naming, overwrite, callback, pause, or close behavior.
 
 ## Build facts that matter
 
