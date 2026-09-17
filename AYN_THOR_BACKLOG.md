@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 5 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated`.
+- Phase: Slices 1 through 6 are implemented, CI-built, and hardware-validated.
+- Status: `hardware validated` through Slice 6.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -16,9 +16,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
 - Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
-- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`; Slice 5 commit `9b8664177`.
-- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card, restores the root card on Back, and fails closed on Campaign, Credits, malformed, and mod-added tabs. Slice 5 adds the localized Campaign card, restores New Game on Back, preserves existing contexts, and passes the rapid-transition, fallback, lifecycle, inertness, and upper-input checks.
-- Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, and Slice 5 on 2026-09-15.
+- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`; Slice 5 commit `9b8664177`; Slice 6 promoted after hardware validation.
+- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card and restores the root card on Back. Slice 5 adds the localized Campaign card and restores New Game on Back. Slice 6 adds the localized Credits card and restores Main Menu on exit. All validated contexts pass transition, lifecycle, inertness, and upper-input checks; malformed and mod-added tabs continue to fail closed.
+- Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, and Slice 6 on 2026-09-15.
 
 ## Working rules
 
@@ -335,6 +335,16 @@ Populate repository-specific commands and paths only after discovery.
 - The artifact was installed with data preserved and launched on an AYN Thor at a current wireless-debugging endpoint. ADB confirmed the `is.xyz.vcmi.thor` package path and a running process.
 - The user confirmed the full focused manual checklist passed: Main Menu, New Game, and Load Game cards; Back/root restoration; Campaign/Credits fallback; lower-panel toggle; pause/resume; lower-deck inertness; and unaffected upper touch and physical controls.
 
+### Slice 6 automated and hardware validation — 2026-09-16/17
+
+- Source baseline: `b994b7d9a`; product candidate: `299e18223`; final implementation: the promoted Slice 6 commit on `ayn-thor-dual-screen`.
+- Temporary validation branch `ci/thor-slice6-validation` used Ubuntu 24.04, Temurin JDK 17, recursive submodules, an isolated Gradle home, VCMI's official Conan ARM64 dependency bundle, and the `android-thor-release` preset.
+- Qt 5.15.19 adds the removed `android.bundle.enableUncompressedNativeLibs` property immediately before invoking Gradle. The successful candidate injected a cleanup into the copied Gradle wrapper and cleared inherited `--aab` deployment options so CI produced an installable APK. Earlier attempts to clean global/generated properties before `androiddeployqt`, isolate Gradle alone, patch a nonexistent template, or use `--no-build` did not solve the generation timing problem.
+- Linux/JDK 17 CI run `35142531415` passed focused native context tests, the complete ARM64 APK build, focused Android tests, package-ID verification, checksum generation, and artifact upload.
+- The downloaded APK SHA-256 was independently verified as `672db851f231f312614096169a8c9cfa00858fd6b3db63f06a49574777dd4388`; package ID was `is.xyz.vcmi.thor`, version `1.8.0` (`1800`).
+- The verified APK was installed with data preserved and launched on an AYN Thor. The user explicitly confirmed all focused Credits, restoration, transition, lifecycle, inertness, touchscreen, and controller checks passed on 2026-09-17.
+- The exact reusable GitHub build recipe and failure-avoidance notes are maintained in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
+
 For each approved slice:
 
 1. Record source revision and pre-existing changes.
@@ -358,7 +368,7 @@ For releases, first approve a cleanup-only scope, reconcile documentation/histor
 
 ## Next action
 
-Slices 1 through 5 are hardware-validated. Propose and obtain approval for any future read-only context before implementation; native commands, coordinate injection, and mutable gameplay state remain separately scoped.
+Slices 1 through 6 are hardware-validated. Propose and obtain approval for any future read-only context before implementation; native commands, coordinate injection, and mutable gameplay state remain separately scoped.
 
 ## Approved Slice 5: read-only Campaign submenu context
 
@@ -445,3 +455,46 @@ Approved by the user on 2026-09-14. This slice adds the `MAIN_MENU_LOAD_GAME` re
 ### Hardware validation
 
 The user confirmed every focused hardware check passed on 2026-09-15. Slice 4 was promoted as commit `17fbdfbb9` on `ayn-thor-dual-screen`.
+
+## Approved Slice 6: read-only Credits main-menu context
+
+Status: `hardware validated`
+
+Approved by the user on 2026-09-15. This slice adds the `MAIN_MENU_CREDITS` read-only context for the exact existing `credits` main-menu tab.
+
+### 1. Approved user-visible behavior
+
+- Opening Credits keeps the normal Credits screen on the upper display and shows the localized `Credits / View contributors and acknowledgements` card on the lower deck.
+- Returning from Credits to the main menu restores the existing `Main menu / Choose a game mode` card through the revisioned publication path.
+- Main Menu, New Game, Load Game, and Campaign remain unchanged; the lower deck remains inert.
+
+### 2. Implementation boundary and responsibilities
+
+- Use the existing `CMenuScreen` publication path and map only the exact, case-sensitive tab name `credits` to `MAIN_MENU_CREDITS`.
+- Native code owns the stable identifier and exact mapping; Android owns parity and localized title/status rendering for the known context.
+- No buttons, touch regions, commands, JNI mutation entry points, coordinate input, gameplay or credits data, mutable behavior, artwork, networking, or context architecture changes.
+
+### 3. Focused acceptance tests
+
+- Native mapping covers `main`, `new`, `load`, `campaign`, exact `credits`, case variants, empty, and malformed names; context-store revision tests remain intact.
+- Java/native identifier parity includes `MAIN_MENU_CREDITS`; Android sources/resources and unit tests pass, and the known context uses local resources rather than arbitrary native text.
+- Source validity, focused Thor checks, Markdown validation, relevant lint/static checks, Thor-only/standard-build isolation, and the established Linux/JDK 17 ARM64 build route are checked where available.
+
+### 4. Focused Thor hardware checklist
+
+1. Start on Main Menu: lower deck shows `Main menu / Choose a game mode`.
+2. Open Credits: upper display shows normal Credits; lower deck shows `Credits / View contributors and acknowledgements`.
+3. Exit Credits: lower deck immediately restores `Main menu / Choose a game mode`.
+4. Run `Main → New → Campaign → New → Main → Load → Main → Credits → Main`; every card follows the upper context without stale text.
+5. Toggle the lower panel once and background/resume once while Credits is open; exactly one correct card returns each time.
+6. Touching the lower display produces no game action and does not steal upper focus; upper touchscreen and physical controller remain functional.
+
+### 5. Important regression risks
+
+- A loosened tab-name comparison could recognize malformed or mod-added entries instead of failing closed.
+- Rapid transitions or lifecycle recreation could retain stale Credits text or duplicate the presentation.
+- Resource or rendering changes could affect lower-panel inertness, focus, or standard builds.
+
+### Hardware validation
+
+Linux/JDK 17 CI run `35142531415` passed the focused native context tests, complete ARM64 APK build, focused Android tests, package-ID verification, checksum generation, and artifact upload. The downloaded APK SHA-256 was independently verified as `672db851f231f312614096169a8c9cfa00858fd6b3db63f06a49574777dd4388`, with package ID `is.xyz.vcmi.thor` and version `1.8.0` (`1800`). The verified APK was installed with data preserved and launched on an AYN Thor; ADB confirmed the installed package and running process. On 2026-09-17, the user explicitly reported that all focused hardware checks passed, including the Credits card, Main Menu restoration, regression route, panel toggle, pause/resume, lower-deck inertness, and unaffected upper touchscreen/controller input.

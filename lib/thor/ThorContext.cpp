@@ -35,5 +35,7 @@ std::string thorContextIdForMainMenuTab(const std::string & tabName)
 		return ThorContextIds::MAIN_MENU_LOAD_GAME;
 	if(tabName == "campaign")
 		return ThorContextIds::MAIN_MENU_CAMPAIGN;
+	if(tabName == "credits")
+		return ThorContextIds::MAIN_MENU_CREDITS;
 	return ThorContextIds::UNKNOWN;
 }

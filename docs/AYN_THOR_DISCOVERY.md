@@ -42,7 +42,7 @@ VCMI combines Qt and SDL in one Android package:
 - `ServerService` also runs in its own process (`eu.vcmi.vcmi.srv`) and communicates with the game activity via Android `Messenger` while the native client/server layer handles game requests.
 - `lib/CAndroidVMHelper.*` already supports native-to-Java static calls and caches the Android VM/class loader. It is suitable infrastructure for later bounded state notification, but no generic Java-to-native Thor action entry point exists yet.
 - `NativeMethods.java` is the current Java helper surface for paths, services, progress display, and haptics. Thor methods should live in a separate narrowly named bridge class or a clearly isolated section, guarded from standard builds.
-- The validated main-menu slices show that `CMenuScreen` already publishes configured tab names. Map only exact approved names (`main`, `new`, and `load`) to stable context IDs; every other name, including malformed and mod-added names, must publish `UNKNOWN`. Android must render known IDs from bounded local resources rather than from arbitrary native title/status text.
+- The validated main-menu slices show that `CMenuScreen` already publishes configured tab names. Map only exact approved names (`main`, `new`, `load`, `campaign`, and `credits`) to stable context IDs; every other name, including malformed and mod-added names, must publish `UNKNOWN`. Android must render known IDs from bounded local resources rather than from arbitrary native title/status text.
 
 ### Rendering lifecycle
 
@@ -106,6 +106,7 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - Official release flow builds from `master`, stages versioned platform artifacts, source archives including submodules, and creates a draft GitHub release. The Thor fork should add a branch-scoped ARM64 Android workflow that never publishes to VCMI infrastructure and later publishes prereleases only from hardware-validated checkpoints.
 - Repository submodules are GoogleTest, VCMI innoextract, VCMI dependencies, and Discord presence. They were not initialized during read-only discovery.
 - Current local readiness: Android SDK and ADB exist; an isolated Conan/CMake/Ninja toolchain and NDK r29 are available. Windows is suitable for focused source checks, but the official ARM64 dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation. Use Linux/JDK 17 CI for a complete candidate APK. The exact repeatable procedure is in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
+- The known-good full build is GitHub Actions run `35142531415`: Ubuntu 24.04, Temurin JDK 17, recursive submodules, isolated `GRADLE_USER_HOME`, the official Conan ARM64 dependency bundle/profiles, `android-thor-release`, and an installable release APK. Qt 5.15.19 writes the removed `android.bundle.enableUncompressedNativeLibs` property immediately before starting Gradle, so the branch-scoped validation workflow injects a one-line cleanup into `android/gradlew` before configuration. See the playbook for the exact commands and why earlier cleanup attempts failed.
 
 ## Licensing and original assets
 
@@ -122,4 +123,4 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - `GameEngine::updateFrame()` is the preferred one-shot request consumer on `MainGUI`.
 - `CCallback` and existing controllers are the preferred semantic action executors; the server remains authoritative.
 - The Qt launcher and separate Qt map editor require their own future designs. They must not be forced through the SDL bridge.
-- Slices 1 through 5 have been implemented and hardware-validated. Their acceptance history, remaining roadmap, and approval boundary are maintained in `AYN_THOR_BACKLOG.md`; the build/device hand-off and Git-based candidate procedure are in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
+- Slices 1 through 6 have been implemented and hardware-validated. Their acceptance history, remaining roadmap, and approval boundary are maintained in `AYN_THOR_BACKLOG.md`; the build/device hand-off and known-good GitHub candidate procedure are in `docs/AYN_THOR_BUILD_PLAYBOOK.md`.

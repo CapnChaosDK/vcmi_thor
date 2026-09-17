@@ -99,6 +99,11 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = getContext().getString(R.string.thor_context_campaign);
                 status = getContext().getString(R.string.thor_context_campaign_status);
             }
+            else if (ThorContextIds.MAIN_MENU_CREDITS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_credits);
+                status = getContext().getString(R.string.thor_context_credits_status);
+            }
             else
             {
                 title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_deck_title) : publishedTitle;
