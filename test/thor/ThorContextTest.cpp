@@ -123,6 +123,18 @@ TEST(ThorContextStoreTest, TacticsTransitionReceivesNewerRevision)
 	EXPECT_EQ(battle.contextId, ThorContextIds::BATTLE);
 }
 
+TEST(ThorContextStoreTest, ActionAvailabilityIsRevisionBoundWithoutChurn)
+{
+	ThorContextStore store;
+	const auto adventureMap = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "", "", 1});
+	const auto unchanged = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "", "", 1});
+	const auto changed = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "", "", 3});
+
+	EXPECT_EQ(unchanged.revision, adventureMap.revision);
+	EXPECT_GT(changed.revision, adventureMap.revision);
+	EXPECT_EQ(changed.enabledActionMask, 3);
+}
+
 TEST(ThorContextStoreTest, AdventureUtilityTransitionsReceiveNewerRevisions)
 {
 	ThorContextStore store;

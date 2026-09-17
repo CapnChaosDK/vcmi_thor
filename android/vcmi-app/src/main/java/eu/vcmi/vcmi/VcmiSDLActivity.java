@@ -83,6 +83,12 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishContext(revision, contextId, title, status);
     }
 
+    void publishThorActionState(final long revision, final int enabledActionMask)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.publishActionState(revision, enabledActionMask);
+    }
+
     @Override
     public void loadLibraries()
     {

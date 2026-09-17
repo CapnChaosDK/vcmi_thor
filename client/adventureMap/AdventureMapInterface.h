@@ -124,6 +124,7 @@ public:
 
 	/// Provides access to the shortcut/action registry (callbacks + enabled states)
 	AdventureMapShortcuts & getAdventureShortcuts() const { return *shortcuts; }
+	void updateThorActionState();
 
 	void hotkeyAbortCastingMode();
 	void hotkeyExitWorldView();

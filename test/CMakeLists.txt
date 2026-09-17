@@ -119,6 +119,7 @@ set(test_SRCS
 		texts/TextOperationsTest.cpp
 
 		thor/ThorContextTest.cpp
+		thor/ThorActionTest.cpp
 
 		mock/BattleFake.cpp
 		mock/GameHandlerTestServer.cpp

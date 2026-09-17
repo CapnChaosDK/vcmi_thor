@@ -85,6 +85,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::string contextId = ThorContextIds::UNKNOWN;
 	std::string title;
 	std::string status;
+	std::uint32_t enabledActionMask = 0;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

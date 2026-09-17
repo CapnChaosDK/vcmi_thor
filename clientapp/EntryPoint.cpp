@@ -68,10 +68,42 @@
 
 #ifdef VCMI_ANDROID
 #include "../lib/CAndroidVMHelper.h"
+#include "../lib/thor/ThorAction.h"
 #ifdef VCMI_SDL3
 #include <SDL3/SDL_system.h>
 #else
 #include <SDL_system.h>
+#endif
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorAction(JNIEnv *, jclass, jlong revision, jint actionId)
+{
+	if(revision <= 0)
+	{
+		logGlobal->debug("Thor action rejected: invalid revision");
+		return;
+	}
+
+	const auto action = thorActionFromId(actionId);
+	if(!action)
+	{
+		logGlobal->debug("Thor action rejected: unknown action %d", actionId);
+		return;
+	}
+
+	if(!thorActionQueue().submit({static_cast<std::uint64_t>(revision), *action}))
+	{
+		logGlobal->debug("Thor action rejected: queue full");
+		return;
+	}
+
+	logGlobal->debug("Thor action queued: revision %llu action %d", static_cast<unsigned long long>(revision), actionId);
+}
+
+extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_clearThorActions(JNIEnv *, jclass)
+{
+	thorActionQueue().clear();
+}
 #endif
 #endif
 

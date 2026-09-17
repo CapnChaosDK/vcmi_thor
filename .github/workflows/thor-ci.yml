@@ -86,12 +86,14 @@ jobs:
             -Itest/googletest/googletest/include \
             -Itest/googletest/googlemock/include \
             -I"$boost_include" \
+            lib/thor/ThorAction.cpp \
             lib/thor/ThorContext.cpp \
             test/thor/ThorContextTest.cpp \
+            test/thor/ThorActionTest.cpp \
             test/googletest/googletest/src/gtest-all.cc \
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
-          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*'
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*'
 
   arm64-candidate:
     name: Thor ARM64 candidate

@@ -674,3 +674,37 @@ Status: `hardware validated`
 
 - On 2026-09-17, the user reported that every focused manual AYN Thor check passed after installing the CI-verified candidate APK. This includes the five new cards, normal parent restoration, rapid transitions, panel and app lifecycle behavior, lower-panel inertness, upper touchscreen/controller input, and the earlier Adventure Map, Hero, Town, Battle, and Battle Result smoke checks.
 - The exact hardware-tested product tree is commit `8bd603d6684d107e6f72e48fbb9e04eaa4b38293`. The separate validation-record commits contain documentation only.
+
+## Approved Slice 11: Adventure Map semantic utility actions
+
+Status: `awaiting hardware validation`
+
+### Scope and command contract
+
+- The Adventure Map deck exposes four stable semantic commands only: `OPEN_KINGDOM_OVERVIEW = 1`, `OPEN_QUEST_LOG = 2`, `OPEN_PUZZLE_MAP = 3`, and `OPEN_SAVE_GAME = 4`; `NONE = 0` is never executable.
+- Android renders a stable 2x2 command deck with local labels, enabled/disabled treatment, a revision-bound action mask, and accessible deck text. It submits only a snapshot revision plus one semantic ID; it never sends screen coordinates or synthetic input.
+- The Java/JNI boundary accepts only a known ID and enqueues a small request. A fixed 16-entry, mutex-protected native queue drops the newest request on overflow and is cleared when the lower presentation pauses.
+- `GameEngine::updateFrame()` consumes the queue on `MainGUI`. It rechecks the stable ID, current revision, `ADVENTURE_MAP` context, active Adventure Map owner, allow-list, published enabled mask, and the existing shortcut predicate immediately before execution. Rejected input is a debug-logged no-op; at most one accepted command runs per frame.
+
+### Existing VCMI semantics reused
+
+- `AdventureMapShortcuts` remains the single source of truth for availability and invokes its existing Kingdom Overview, Quest Log/journal fallback, Puzzle Map, and Save Game callbacks. No modal is created by Thor-specific code.
+- Normal upper-screen window transitions remain authoritative. Slice 10's concrete utility owners publish their existing contexts after the normal action runs; returning through normal lifecycle restoration returns the deck to Adventure Map.
+- Availability is stored with each `ThorContextRecord`. Identical semantic state returns the existing record without a revision, while an availability change creates one new revision and bounded Android update.
+
+### Deliberately out of scope
+
+- Movement, end turn, hero/town selection, transfers, recruitment, construction, market, battle, Main Menu, Load, Quit, direct saving, coordinate injection, synthetic touch, or a second renderer/camera.
+
+### Automated validation and candidate hand-off
+
+- Native tests cover ID mapping, allow-list, fixed-capacity FIFO/overflow, concurrent submissions, and revision-bound action-state no-churn. Android tests cover the explicit Java IDs and masks. The permanent candidate preflight compiles and runs both native Thor test sets; the ARM64 candidate runs the Android Thor unit test.
+- Candidate branch: `ci/thor-slice11-validation`, to be pinned directly to the Slice 11 implementation commit with no validation-only product commit in between.
+- CI result, artifact, checksum, implementation SHA, and hardware observations are pending the candidate workflow. The candidate is not hardware validated until manually tested on a physical AYN Thor.
+
+### Hardware checklist
+
+1. Install the verified CI artifact; start or load an Adventure Map and confirm the four lower commands and normal upper input.
+2. Exercise Kingdom, Quest Log (including normal Scenario Journal fallback), Puzzle Map, and Save Game. For each, confirm its normal upper modal, matching existing lower context, normal close/cancel, and Adventure Map restoration.
+3. Test unavailable commands where practical, double taps, rapid mixed taps, taps during transitions, repeated open/close, Home/resume, lower-display detach/reattach, and normal Hero/Town/Battle/Main Menu regression paths.
+4. Confirm no duplicate modal, delayed replay, stale lower context, crash, or loss of upper touchscreen/controller behavior.

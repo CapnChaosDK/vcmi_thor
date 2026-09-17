@@ -47,10 +47,11 @@ final class ThorSecondScreenPresentation extends Presentation
         setContentView(foundationView);
     }
 
-    void updateContext(final String contextId, final String title, final String status)
+    void updateContext(final long revision, final String contextId, final String title, final String status,
+                       final int enabledActionMask)
     {
         if (foundationView != null)
-            foundationView.updateContext(contextId, title, status);
+            foundationView.updateContext(revision, contextId, title, status, enabledActionMask);
     }
 
     private static final class ThorFoundationView extends View
@@ -66,6 +67,9 @@ final class ThorSecondScreenPresentation extends Presentation
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private String title;
         private String status;
+        private long revision;
+        private String contextId = ThorContextIds.UNKNOWN;
+        private int enabledActionMask;
 
         ThorFoundationView(final Context context)
         {
@@ -73,12 +77,16 @@ final class ThorSecondScreenPresentation extends Presentation
             title = context.getString(R.string.thor_deck_title);
             status = context.getString(R.string.thor_deck_status);
             setBackgroundColor(BACKGROUND);
-            setClickable(false);
+            setClickable(true);
             setFocusable(false);
         }
 
-        void updateContext(final String contextId, final String publishedTitle, final String publishedStatus)
+        void updateContext(final long revision, final String contextId, final String publishedTitle,
+                           final String publishedStatus, final int enabledActionMask)
         {
+            this.revision = revision;
+            this.contextId = contextId;
+            this.enabledActionMask = enabledActionMask;
             if (ThorContextIds.MAIN_MENU.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_main_menu);
@@ -234,7 +242,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_deck_title) : publishedTitle;
                 status = publishedStatus.isEmpty() ? getContext().getString(R.string.thor_deck_status) : publishedStatus;
             }
-            setContentDescription(title + ". " + status);
+            setContentDescription(commandDeckDescription());
             invalidate();
         }
 
@@ -288,8 +296,126 @@ final class ThorSecondScreenPresentation extends Presentation
 
             paint.setFakeBoldText(false);
             paint.setColor(PARCHMENT_DARK);
-            drawFittedText(canvas, status, getWidth() * 0.5f, dividerY + (frame.bottom - dividerY) * 0.5f,
-                    contentWidth * 0.78f, Math.min(30f * density, contentHeight * 0.065f));
+            drawFittedText(canvas, status, getWidth() * 0.5f, dividerY + contentHeight * 0.075f,
+                    contentWidth * 0.78f, Math.min(30f * density, contentHeight * 0.055f));
+
+            if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
+                drawAdventureActions(canvas, frame, dividerY, bevel, density);
+        }
+
+        @Override
+        public boolean onTouchEvent(final android.view.MotionEvent event)
+        {
+            if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
+                return false;
+
+            if (event.getAction() == android.view.MotionEvent.ACTION_UP)
+            {
+                final int actionId = actionAt(event.getX(), event.getY());
+                if (actionId != ThorActionIds.NONE && isActionEnabled(actionId))
+                {
+                    performClick();
+                    NativeMethods.submitThorAction(revision, actionId);
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public boolean performClick()
+        {
+            super.performClick();
+            return true;
+        }
+
+        private void drawAdventureActions(final Canvas canvas, final RectF frame, final float dividerY,
+                                          final float bevel, final float density)
+        {
+            final int[] actions = {
+                    ThorActionIds.OPEN_KINGDOM_OVERVIEW,
+                    ThorActionIds.OPEN_QUEST_LOG,
+                    ThorActionIds.OPEN_PUZZLE_MAP,
+                    ThorActionIds.OPEN_SAVE_GAME
+            };
+            final String[] labels = {
+                    getContext().getString(R.string.thor_action_kingdom),
+                    getContext().getString(R.string.thor_action_quest_log),
+                    getContext().getString(R.string.thor_action_puzzle_map),
+                    getContext().getString(R.string.thor_action_save_game)
+            };
+
+            for (int index = 0; index < actions.length; ++index)
+            {
+                final RectF button = actionBounds(index, frame, dividerY, bevel);
+                final boolean enabled = isActionEnabled(actions[index]);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
+                canvas.drawRoundRect(button, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(2f, bevel * 0.4f));
+                paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
+                canvas.drawRoundRect(button, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setFakeBoldText(enabled);
+                paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+                drawFittedText(canvas, labels[index], button.centerX(), button.centerY(), button.width() * 0.84f,
+                        Math.min(28f * density, button.height() * 0.28f));
+            }
+            paint.setFakeBoldText(false);
+        }
+
+        private RectF actionBounds(final int index, final RectF frame, final float dividerY, final float bevel)
+        {
+            final float gap = Math.max(bevel * 1.25f, 10f);
+            final float left = frame.left + bevel * 3f;
+            final float right = frame.right - bevel * 3f;
+            final float top = dividerY + (frame.bottom - dividerY) * 0.19f;
+            final float bottom = frame.bottom - bevel * 3f;
+            final float columnWidth = (right - left - gap) / 2f;
+            final float rowHeight = (bottom - top - gap) / 2f;
+            final int column = index % 2;
+            final int row = index / 2;
+            return new RectF(left + column * (columnWidth + gap), top + row * (rowHeight + gap),
+                    left + column * (columnWidth + gap) + columnWidth, top + row * (rowHeight + gap) + rowHeight);
+        }
+
+        private int actionAt(final float x, final float y)
+        {
+            final float density = getResources().getDisplayMetrics().density;
+            final float referenceScale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
+            final float margin = Math.max(16f * density,
+                    Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
+                            Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
+            final RectF frame = new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
+            final float bevel = Math.max(3f * density, margin * 0.16f);
+            final float dividerY = frame.top + (getHeight() - margin * 2f) * 0.34f;
+            final int[] actions = {
+                    ThorActionIds.OPEN_KINGDOM_OVERVIEW,
+                    ThorActionIds.OPEN_QUEST_LOG,
+                    ThorActionIds.OPEN_PUZZLE_MAP,
+                    ThorActionIds.OPEN_SAVE_GAME
+            };
+            for (int index = 0; index < actions.length; ++index)
+                if (actionBounds(index, frame, dividerY, bevel).contains(x, y))
+                    return actions[index];
+            return ThorActionIds.NONE;
+        }
+
+        private boolean isActionEnabled(final int actionId)
+        {
+            return (enabledActionMask & ThorActionIds.maskFor(actionId)) != 0;
+        }
+
+        private String commandDeckDescription()
+        {
+            if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
+                return title + ". " + status;
+
+            return title + ". " + status + ". "
+                    + getContext().getString(R.string.thor_action_kingdom) + ", "
+                    + getContext().getString(R.string.thor_action_quest_log) + ", "
+                    + getContext().getString(R.string.thor_action_puzzle_map) + ", "
+                    + getContext().getString(R.string.thor_action_save_game);
         }
 
         private void drawFittedText(final Canvas canvas, final String text, final float centerX, final float baseline,

@@ -312,6 +312,7 @@ set(lib_MAIN_SRCS
 	BasicTypes.cpp
 	BattleFieldHandler.cpp
 	CAndroidVMHelper.cpp
+	thor/ThorAction.cpp
 	thor/ThorContext.cpp
 	CBonusTypeHandler.cpp
 	CCreatureHandler.cpp
@@ -802,6 +803,8 @@ set(lib_MAIN_HEADERS
 	AsyncRunner.h
 	BattleFieldHandler.h
 	CAndroidVMHelper.h
+	thor/ThorAction.h
+	thor/ThorContext.h
 	CBonusTypeHandler.h
 	CCreatureHandler.h
 	ConditionalWait.h

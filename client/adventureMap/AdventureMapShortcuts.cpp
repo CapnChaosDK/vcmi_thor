@@ -805,3 +805,51 @@ bool AdventureMapShortcuts::optionQuickSaveLoad()
 {
 	return optionIsLocal() && GAME->interface()->hasQuickSave;
 }
+
+std::uint32_t AdventureMapShortcuts::getThorActionMask()
+{
+	std::uint32_t result = 0;
+	if(optionInMapView())
+	{
+		result |= thorActionMask(ThorAction::OPEN_KINGDOM_OVERVIEW);
+		result |= thorActionMask(ThorAction::OPEN_SAVE_GAME);
+	}
+	if(optionCanViewJournal())
+		result |= thorActionMask(ThorAction::OPEN_QUEST_LOG);
+	if(optionSidePanelActive())
+		result |= thorActionMask(ThorAction::OPEN_PUZZLE_MAP);
+	return result;
+}
+
+bool AdventureMapShortcuts::executeThorAction(ThorAction action)
+{
+	EShortcut shortcut;
+	switch(action)
+	{
+	case ThorAction::OPEN_KINGDOM_OVERVIEW:
+		shortcut = EShortcut::ADVENTURE_KINGDOM_OVERVIEW;
+		break;
+	case ThorAction::OPEN_QUEST_LOG:
+		shortcut = EShortcut::ADVENTURE_QUEST_LOG;
+		break;
+	case ThorAction::OPEN_PUZZLE_MAP:
+		shortcut = EShortcut::ADVENTURE_VIEW_PUZZLE;
+		break;
+	case ThorAction::OPEN_SAVE_GAME:
+		shortcut = EShortcut::ADVENTURE_SAVE_GAME;
+		break;
+	default:
+		return false;
+	}
+
+	for(const auto & entry : getShortcuts())
+	{
+		if(entry.shortcut != shortcut)
+			continue;
+		if(!entry.isEnabled)
+			return false;
+		entry.callback();
+		return true;
+	}
+	return false;
+}

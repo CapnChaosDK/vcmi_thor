@@ -106,6 +106,15 @@ void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::str
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorActionState", "(JI)V",
+		[revision, enabledActionMask](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(enabledActionMask));
+		}, true);
+}
+
 jclass CAndroidVMHelper::findClass(const std::string & name, bool classloaded)
 {
 	if(alwaysUseLoadedClass || classloaded)

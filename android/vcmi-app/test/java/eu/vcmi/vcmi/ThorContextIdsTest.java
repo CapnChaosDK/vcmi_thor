@@ -57,4 +57,19 @@ public class ThorContextIdsTest
         assertNotEquals(0, R.string.thor_context_save_game);
         assertNotEquals(0, R.string.thor_context_save_game_status);
     }
+
+    @Test
+    public void adventureActionIdsUseStableExplicitMasks()
+    {
+        assertEquals(0, ThorActionIds.NONE);
+        assertEquals(1, ThorActionIds.OPEN_KINGDOM_OVERVIEW);
+        assertEquals(2, ThorActionIds.OPEN_QUEST_LOG);
+        assertEquals(3, ThorActionIds.OPEN_PUZZLE_MAP);
+        assertEquals(4, ThorActionIds.OPEN_SAVE_GAME);
+        assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
+        assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
+        assertEquals(4, ThorActionIds.maskFor(ThorActionIds.OPEN_PUZZLE_MAP));
+        assertEquals(8, ThorActionIds.maskFor(ThorActionIds.OPEN_SAVE_GAME));
+        assertEquals(0, ThorActionIds.maskFor(99));
+    }
 }

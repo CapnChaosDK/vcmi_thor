@@ -43,6 +43,9 @@ public class NativeMethods
     public static native void initClassloader();
     public static native void heroesDataUpdate();
 
+    public static native void submitThorAction(long revision, int actionId);
+    public static native void clearThorActions();
+
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorContext(final long revision, final String contextId,
                                           final String title, final String status)
@@ -56,6 +59,20 @@ public class NativeMethods
 
         ((VcmiSDLActivity) ctx).runOnUiThread(() ->
                 ((VcmiSDLActivity) ctx).publishThorContext(revision, contextId, title, status));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorActionState(final long revision, final int enabledActionMask)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorActionState(revision, enabledActionMask));
     }
 
     public static void setupMsg(final Messenger msg)

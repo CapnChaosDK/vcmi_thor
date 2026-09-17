@@ -35,6 +35,11 @@
 #include "GameEngineUser.h"
 #include "battle/BattleInterface.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../lib/thor/ThorAction.h"
+#include "../lib/thor/ThorContext.h"
+#endif
+
 #include "../lib/AsyncRunner.h"
 #include "../lib/CConfigHandler.h"
 #include "../lib/texts/TextOperations.h"
@@ -140,6 +145,46 @@ void GameEngine::updateFrame()
 	std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
 
 	engineUser->onUpdate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(adventureInt)
+		adventureInt->updateThorActionState();
+
+	while(const auto request = thorActionQueue().pop())
+	{
+		const auto context = thorContextStore().snapshot();
+		switch(validateThorActionRequest(*request, context))
+		{
+		case ThorActionValidation::UNKNOWN_ACTION:
+			logGlobal->debug("Thor action rejected: unknown action %d", static_cast<int>(request->action));
+			continue;
+		case ThorActionValidation::STALE_REVISION:
+			logGlobal->debug("Thor action rejected: stale revision %llu", static_cast<unsigned long long>(request->revision));
+			continue;
+		case ThorActionValidation::WRONG_CONTEXT:
+			logGlobal->debug("Thor action rejected: wrong context");
+			continue;
+		case ThorActionValidation::UNAVAILABLE:
+			logGlobal->debug("Thor action rejected: unavailable action %d", static_cast<int>(request->action));
+			continue;
+		case ThorActionValidation::VALID:
+			break;
+		}
+		if(!adventureInt || !adventureInt->isActive())
+		{
+			logGlobal->debug("Thor action rejected: inactive Adventure Map");
+			continue;
+		}
+		if(!adventureInt->getAdventureShortcuts().executeThorAction(request->action))
+		{
+			logGlobal->debug("Thor action rejected: availability changed");
+			continue;
+		}
+
+		logGlobal->debug("Thor action executed: %d", static_cast<int>(request->action));
+		break;
+	}
+#endif
 
 	handleEvents();
 

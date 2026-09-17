@@ -11,6 +11,7 @@
 #pragma once
 
 #include "../../lib/constants/EntityIdentifiers.h"
+#include "../../lib/thor/ThorAction.h"
 
 class Point;
 class Rect;
@@ -114,6 +115,9 @@ public:
 	bool optionQuickSaveLoad();
 	bool optionCanDisembark();
 	bool optionDisembarking();
+
+	std::uint32_t getThorActionMask();
+	bool executeThorAction(ThorAction action);
 
 	void setState(EAdventureState newState);
 	EAdventureState getState() const;

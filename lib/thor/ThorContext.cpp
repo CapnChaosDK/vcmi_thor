@@ -2,6 +2,17 @@
 
 #include <utility>
 
+namespace
+{
+	bool sameSemanticState(const ThorContextRecord & lhs, const ThorContextRecord & rhs)
+	{
+		return lhs.contextId == rhs.contextId
+			&& lhs.title == rhs.title
+			&& lhs.status == rhs.status
+			&& lhs.enabledActionMask == rhs.enabledActionMask;
+	}
+}
+
 ThorContextRecord ThorContextStore::snapshot() const
 {
 	std::lock_guard lock(mutex);
@@ -22,9 +33,11 @@ bool ThorContextStore::publish(ThorContextRecord next)
 ThorContextRecord ThorContextStore::publishNext(ThorContextRecord next)
 {
 	std::lock_guard lock(mutex);
-	next.revision = current.revision + 1;
 	if(next.contextId.empty())
 		next.contextId = ThorContextIds::UNKNOWN;
+	if(sameSemanticState(current, next))
+		return current;
+	next.revision = current.revision + 1;
 	current = std::move(next);
 	return current;
 }

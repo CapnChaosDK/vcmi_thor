@@ -31,6 +31,10 @@
     <string name="thor_context_lobby_campaign_list_status">Select a campaign</string>
     <string name="thor_context_adventure_map">Adventure map</string>
     <string name="thor_context_adventure_map_status">Explore the world</string>
+    <string name="thor_action_kingdom">Kingdom</string>
+    <string name="thor_action_quest_log">Quest Log</string>
+    <string name="thor_action_puzzle_map">Puzzle Map</string>
+    <string name="thor_action_save_game">Save Game</string>
     <string name="thor_context_hero">Hero</string>
     <string name="thor_context_hero_status">Review hero details</string>
     <string name="thor_context_town">Town</string>

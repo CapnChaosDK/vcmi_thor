@@ -60,12 +60,14 @@
 
 namespace
 {
-	void publishThorInGameContext(ThorInGameContext inGameContext)
+	void publishThorInGameContext(ThorInGameContext inGameContext, std::uint32_t enabledActionMask = 0)
 	{
 		ThorContextRecord context;
 		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context.enabledActionMask = enabledActionMask;
 		context = thorContextStore().publishNext(std::move(context));
 		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask);
 	}
 }
 #endif
@@ -171,7 +173,28 @@ void AdventureMapInterface::activate()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(!wasActive)
-		publishThorInGameContext(ThorInGameContext::ADVENTURE_MAP);
+		publishThorInGameContext(ThorInGameContext::ADVENTURE_MAP, shortcuts->getThorActionMask());
+#endif
+}
+
+void AdventureMapInterface::updateThorActionState()
+{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(!isActive())
+		return;
+
+	const auto previous = thorContextStore().snapshot();
+	if(previous.contextId != ThorContextIds::ADVENTURE_MAP)
+		return;
+
+	ThorContextRecord context = previous;
+	context.enabledActionMask = shortcuts->getThorActionMask();
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision == previous.revision)
+		return;
+
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask);
 #endif
 }
 
