@@ -128,6 +128,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-provider: basic
+          cache-read-only: false
 
       - name: Restore Conan dependency archive
         id: conan_archive
