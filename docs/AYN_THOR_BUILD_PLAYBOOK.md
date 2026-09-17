@@ -8,9 +8,9 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Implementation branch: `ayn-thor-dual-screen`
 - Upstream baseline: `819259d97f1de9262b97811ccb081346c20ffef2`
 - Thor package: `is.xyz.vcmi.thor`
-- Slice 10 final product commit: `8bd603d6684d107e6f72e48fbb9e04eaa4b38293` — read-only Adventure utility/modal contexts.
-- Slice 10 candidate CI run: `35247079222`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35247079222`; APK SHA-256 `01f577694631b0c6739938c5a5c83382736ea7451915ecc86e4b7dfd5770b05d`.
-- Slice 10 is hardware validated. The candidate APK was checksum-verified, installed in place on an AYN Thor, and passed the focused context, restoration, lifecycle, and input checks.
+- Slice 11 final product commit: `873faeaedc153f400d39c2677cfe495bf3d07bd9` — Adventure Map semantic utility actions.
+- Slice 11 candidate CI run: `35256657759`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35256657759`; artifact ZIP SHA-256 `354302b412dab6d99a0869dd67f02589007006283b2e8e0d73c8ca0d453a31c6`; APK SHA-256 `30adbcff7c4a8082e373abf6f7038378f00e40c012ab8829b8115189a060f4dc`.
+- Slice 11 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed the four Adventure Map command round trips, rapid/stale-input safety, lifecycle, and upper-input regression checks.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
