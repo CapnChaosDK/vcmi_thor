@@ -36,6 +36,22 @@
 #include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/texts/TextOperations.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 static const std::string QUICK_EXCHANGE_BG = "quick-exchange/TRADEQE";
 
 static bool isQuickExchangeLayoutAvailable()
@@ -271,6 +287,30 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 	}
 
 	CExchangeWindow::updateArtifacts();
+}
+
+void CExchangeWindow::activate()
+{
+	if(isActive())
+		return;
+
+	CStatusbarWindow::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::HERO_MEETING);
+#endif
+}
+
+void CExchangeWindow::deactivate()
+{
+	if(!isActive())
+		return;
+
+	CStatusbarWindow::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 void CExchangeWindow::creatureArrowButtonCallback(bool leftToRight, SlotID slotId)

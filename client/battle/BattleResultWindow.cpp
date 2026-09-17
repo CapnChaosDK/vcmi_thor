@@ -37,6 +37,22 @@
 #include "../../lib/networkPacks/PacksForClientBattle.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 BattleResultWindow::BattleResultWindow(const BattleResult & br, CPlayerInterface & _owner, bool allowReplay)
 	: owner(_owner)
 {
@@ -244,8 +260,25 @@ BattleResultResources BattleResultWindow::getResources(const BattleResult & br)
 
 void BattleResultWindow::activate()
 {
+	const bool wasActive = isActive();
 	owner.showingDialog->setBusy();
 	CIntObject::activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(!wasActive)
+		publishThorInGameContext(ThorInGameContext::BATTLE_RESULT);
+#endif
+}
+
+void BattleResultWindow::deactivate()
+{
+	const bool wasActive = isActive();
+	CIntObject::deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(wasActive)
+		publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 void BattleResultWindow::buttonPressed(int button)
@@ -255,10 +288,10 @@ void BattleResultWindow::buttonPressed(int button)
 
 	CPlayerInterface & intTmp = owner; //copy reference because "this" will be destructed soon
 
-	close();
-
-	if(ENGINE->windows().topWindow<BattleWindow>())
-		ENGINE->windows().popWindows(1); //pop battle interface if present
+	if(!ENGINE->windows().findWindows<BattleWindow>().empty())
+		ENGINE->windows().popWindows(2); // remove the result and battle windows without reactivating battle
+	else
+		close();
 
 	//Result window and battle interface are gone. We requested all dialogs to be closed before opening the battle,
 	//so we can be sure that there is no dialogs left on GUI stack.

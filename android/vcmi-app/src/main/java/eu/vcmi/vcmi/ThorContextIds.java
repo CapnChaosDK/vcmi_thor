@@ -24,6 +24,10 @@ final class ThorContextIds
     static final String ADVENTURE_MAP = "ADVENTURE_MAP";
     static final String HERO_WINDOW = "HERO_WINDOW";
     static final String TOWN_WINDOW = "TOWN_WINDOW";
+    static final String HERO_MEETING = "HERO_MEETING";
+    static final String BATTLE = "BATTLE";
+    static final String BATTLE_TACTICS = "BATTLE_TACTICS";
+    static final String BATTLE_RESULT = "BATTLE_RESULT";
 
     private ThorContextIds()
     {

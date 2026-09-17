@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 8 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 8.
+- Phase: Slices 1 through 8 are hardware-validated; Slice 9 is implemented and awaiting hardware validation.
+- Status: `awaiting hardware validation` for Slice 9.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -17,7 +17,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
 - Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
 - Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`; Slice 5 commit `9b8664177`; Slice 6 promoted after hardware validation; Slice 7 commit `981d2b65a`; Slice 8 promoted after hardware validation.
-- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card and restores the root card on Back. Slice 5 adds the localized Campaign card and restores New Game on Back. Slice 6 adds the localized Credits card and restores Main Menu on exit. Slice 7 adds localized lobby/setup cards and restores them after unsupported children close. Slice 8 adds localized Adventure Map, Hero, and Town cards, restores approved parents through normal activation, and clears unsupported child/battle contexts safely. All validated contexts pass transition, lifecycle, inertness, and upper-input checks; malformed and mod-added tabs continue to fail closed.
+- Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card and restores the root card on Back. Slice 5 adds the localized Campaign card and restores New Game on Back. Slice 6 adds the localized Credits card and restores Main Menu on exit. Slice 7 adds localized lobby/setup cards and restores them after unsupported children close. Slice 8 adds localized Adventure Map, Hero, and Town cards, restores approved parents through normal activation, and clears unsupported child/battle contexts safely. Slice 9 requires hardware validation before it can be added to this record. All validated contexts pass transition, lifecycle, inertness, and upper-input checks; malformed and mod-added tabs continue to fail closed.
 - Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, Slice 6 on 2026-09-15, and Slices 7 and 8 on 2026-09-17.
 
 ## Working rules
@@ -410,7 +410,34 @@ Approved by the user on 2026-09-17.
 
 ## Next action
 
-Slices 1 through 8 are hardware-validated. Propose and obtain approval for any future read-only context before implementation; native commands, coordinate injection, and mutable gameplay state remain separately scoped.
+Validate Slice 9 on AYN Thor before promotion. Native commands, coordinate injection, and mutable gameplay state remain separately scoped.
+
+## Approved Slice 9: read-only Hero Meeting and Battle lifecycle contexts
+
+Status: `awaiting hardware validation`
+
+### User-visible behavior
+
+- The inert lower deck shows `Hero meeting / Review hero exchange` while `CExchangeWindow` is active, and restores it when an approved nested Hero window closes.
+- It shows `Battle / Combat in progress` during normal battle, `Battle tactics / Arrange your forces` during the real tactics phase, and `Battle result / Review the outcome` only while `BattleResultWindow` is active.
+- Unsupported children clear to `UNKNOWN`; normal parent activation restores approved contexts. Closing a battle result removes the result and battle windows together, avoiding transient battle restoration during teardown.
+
+### Implementation boundary and responsibilities
+
+- Add only `HERO_MEETING`, `BATTLE`, `BATTLE_TACTICS`, and `BATTLE_RESULT` to the stable native/Android contract.
+- Publish from the normal CExchangeWindow, BattleWindow, and BattleResultWindow lifecycle owners using the existing monotonic store and Thor compile boundary.
+- Android renders only bounded local title/status resources. No native gameplay data, controls, input paths, or mutable requests are added.
+
+### Automated acceptance tests
+
+- Extend native mapping and revision tests for all four IDs, invalid-value fallback, and the tactics-to-battle revision transition.
+- Extend Android identifier parity coverage and local-resource rendering branches for all four IDs.
+
+### Hardware checklist
+
+- Verify Hero Meeting, nested Hero restoration, and Adventure Map restoration.
+- Verify normal battle, tactics-to-battle transition, result visibility, unsupported-child fallback, and result dismissal back to Adventure Map.
+- Recheck rapid lifecycle transitions, panel recreation, resume, lower-panel inertness, and unchanged upper touchscreen/controller behavior.
 
 ## Approved Slice 5: read-only Campaign submenu context
 

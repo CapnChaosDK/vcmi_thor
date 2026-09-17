@@ -31,5 +31,9 @@ public class ThorContextIdsTest
         assertEquals("ADVENTURE_MAP", ThorContextIds.ADVENTURE_MAP);
         assertEquals("HERO_WINDOW", ThorContextIds.HERO_WINDOW);
         assertEquals("TOWN_WINDOW", ThorContextIds.TOWN_WINDOW);
+        assertEquals("HERO_MEETING", ThorContextIds.HERO_MEETING);
+        assertEquals("BATTLE", ThorContextIds.BATTLE);
+        assertEquals("BATTLE_TACTICS", ThorContextIds.BATTLE_TACTICS);
+        assertEquals("BATTLE_RESULT", ThorContextIds.BATTLE_RESULT);
     }
 }

@@ -107,6 +107,14 @@ std::string thorContextIdForInGameContext(ThorInGameContext context)
 		return ThorContextIds::HERO_WINDOW;
 	case ThorInGameContext::TOWN_WINDOW:
 		return ThorContextIds::TOWN_WINDOW;
+	case ThorInGameContext::HERO_MEETING:
+		return ThorContextIds::HERO_MEETING;
+	case ThorInGameContext::BATTLE:
+		return ThorContextIds::BATTLE;
+	case ThorInGameContext::BATTLE_TACTICS:
+		return ThorContextIds::BATTLE_TACTICS;
+	case ThorInGameContext::BATTLE_RESULT:
+		return ThorContextIds::BATTLE_RESULT;
 	default:
 		return ThorContextIds::UNKNOWN;
 	}

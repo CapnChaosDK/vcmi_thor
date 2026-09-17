@@ -73,6 +73,8 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 public:
 	CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID queryID);
 
+	void activate() override;
+	void deactivate() override;
 	void keyPressed(EShortcut key) override;
 
 	void updateArtifacts() override;

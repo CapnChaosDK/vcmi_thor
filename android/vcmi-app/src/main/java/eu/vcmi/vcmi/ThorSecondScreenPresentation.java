@@ -184,6 +184,26 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = getContext().getString(R.string.thor_context_town);
                 status = getContext().getString(R.string.thor_context_town_status);
             }
+            else if (ThorContextIds.HERO_MEETING.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_hero_meeting);
+                status = getContext().getString(R.string.thor_context_hero_meeting_status);
+            }
+            else if (ThorContextIds.BATTLE.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_battle);
+                status = getContext().getString(R.string.thor_context_battle_status);
+            }
+            else if (ThorContextIds.BATTLE_TACTICS.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_battle_tactics);
+                status = getContext().getString(R.string.thor_context_battle_tactics_status);
+            }
+            else if (ThorContextIds.BATTLE_RESULT.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_battle_result);
+                status = getContext().getString(R.string.thor_context_battle_result_status);
+            }
             else
             {
                 title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_deck_title) : publishedTitle;

@@ -35,6 +35,14 @@
     <string name="thor_context_hero_status">Review hero details</string>
     <string name="thor_context_town">Town</string>
     <string name="thor_context_town_status">Review town details</string>
+    <string name="thor_context_hero_meeting">Hero meeting</string>
+    <string name="thor_context_hero_meeting_status">Review hero exchange</string>
+    <string name="thor_context_battle">Battle</string>
+    <string name="thor_context_battle_status">Combat in progress</string>
+    <string name="thor_context_battle_tactics">Battle tactics</string>
+    <string name="thor_context_battle_tactics_status">Arrange your forces</string>
+    <string name="thor_context_battle_result">Battle result</string>
+    <string name="thor_context_battle_result_status">Review the outcome</string>
     <string name="server_name">VCMI Server</string>
     <string name="notification_channel_running">Running in background</string>
     <string name="notification_channel_game">Game events</string>

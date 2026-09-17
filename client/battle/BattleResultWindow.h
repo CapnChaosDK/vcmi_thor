@@ -55,4 +55,5 @@ public:
 	std::function<void(int result)> resultCallback; //callback receiving which button was pressed
 
 	void activate() override;
+	void deactivate() override;
 };

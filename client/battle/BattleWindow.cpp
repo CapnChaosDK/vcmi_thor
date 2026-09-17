@@ -57,6 +57,22 @@
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+
+namespace
+{
+	void publishThorInGameContext(ThorInGameContext inGameContext)
+	{
+		ThorContextRecord context;
+		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	}
+}
+#endif
+
 BattleWindow::BattleWindow(BattleInterface & Owner)
 	: owner(Owner)
 {
@@ -510,16 +526,28 @@ void BattleWindow::heroManaPointsChanged(const CGHeroInstance * hero)
 
 void BattleWindow::activate()
 {
+	const bool wasActive = isActive();
 	ENGINE->setStatusbar(console);
 	CIntObject::activate();
 	GAME->interface()->cingconsole->activate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(!wasActive)
+		publishThorInGameContext(owner.isInTacticsMode() ? ThorInGameContext::BATTLE_TACTICS : ThorInGameContext::BATTLE);
+#endif
 }
 
 void BattleWindow::deactivate()
 {
+	const bool wasActive = isActive();
 	ENGINE->setStatusbar(nullptr);
 	CIntObject::deactivate();
 	GAME->interface()->cingconsole->deactivate();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(wasActive)
+		publishThorInGameContext(ThorInGameContext::UNKNOWN);
+#endif
 }
 
 bool BattleWindow::captureThisKey(EShortcut key)
@@ -563,6 +591,11 @@ void BattleWindow::tacticPhaseStarted()
 	tacticEnd->enable();
 
 	redraw();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		publishThorInGameContext(ThorInGameContext::BATTLE_TACTICS);
+#endif
 }
 
 void BattleWindow::tacticPhaseEnded()
@@ -581,6 +614,11 @@ void BattleWindow::tacticPhaseEnded()
 	tacticEnd->disable();
 
 	redraw();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		publishThorInGameContext(ThorInGameContext::BATTLE);
+#endif
 }
 
 void BattleWindow::bOptionsf()

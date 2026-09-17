@@ -31,6 +31,8 @@ TEST(ThorContextStoreTest, GeneratesGloballyMonotonicRevisions)
 	EXPECT_EQ(store.publishNext({0, "MAIN_MENU", "", ""}).revision, 1);
 	EXPECT_EQ(store.publishNext({0, "LOBBY_NEW_GAME", "", ""}).revision, 2);
 	EXPECT_EQ(store.publishNext({0, "ADVENTURE_MAP", "", ""}).revision, 3);
+	EXPECT_EQ(store.publishNext({0, "BATTLE_TACTICS", "", ""}).revision, 4);
+	EXPECT_EQ(store.publishNext({0, "BATTLE", "", ""}).revision, 5);
 }
 
 TEST(ThorContextStoreTest, AssignsNewRevisionWhenClearingToUnknown)
@@ -94,10 +96,24 @@ TEST(ThorContextMappingTest, MapsApprovedInGameContexts)
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::ADVENTURE_MAP), ThorContextIds::ADVENTURE_MAP);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::HERO_WINDOW), ThorContextIds::HERO_WINDOW);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_WINDOW), ThorContextIds::TOWN_WINDOW);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::HERO_MEETING), ThorContextIds::HERO_MEETING);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE), ThorContextIds::BATTLE);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE_TACTICS), ThorContextIds::BATTLE_TACTICS);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE_RESULT), ThorContextIds::BATTLE_RESULT);
 }
 
 TEST(ThorContextMappingTest, RejectsUnsupportedInGameContexts)
 {
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::UNKNOWN), ThorContextIds::UNKNOWN);
 	EXPECT_EQ(thorContextIdForInGameContext(static_cast<ThorInGameContext>(99)), ThorContextIds::UNKNOWN);
+}
+
+TEST(ThorContextStoreTest, TacticsTransitionReceivesNewerRevision)
+{
+	ThorContextStore store;
+	const auto tactics = store.publishNext({0, ThorContextIds::BATTLE_TACTICS, "", ""});
+	const auto battle = store.publishNext({0, ThorContextIds::BATTLE, "", ""});
+
+	EXPECT_GT(battle.revision, tactics.revision);
+	EXPECT_EQ(battle.contextId, ThorContextIds::BATTLE);
 }
