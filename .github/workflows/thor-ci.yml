@@ -1,0 +1,292 @@
+name: Thor CI
+
+on:
+  push:
+    branches:
+      - ayn-thor-dual-screen
+      - ci/thor-*-validation
+    paths-ignore:
+      - AYN_THOR_BACKLOG.md
+      - docs/**
+      - '**/*.md'
+  pull_request:
+    branches:
+      - ayn-thor-dual-screen
+    paths-ignore:
+      - AYN_THOR_BACKLOG.md
+      - docs/**
+      - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      full_arm64:
+        description: Run the trusted full ARM64 candidate build (default branch only)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    name: Thor preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Restore Conan dependency archive
+        id: conan_archive
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/conan-dependency-archives
+          key: thor-conan-android-arm64-v8a-${{ runner.os }}-${{ hashFiles('CI/install_conan_dependencies.sh') }}
+
+      - name: Install Conan dependencies
+        env:
+          CONAN_DEPENDENCY_ARCHIVE_DIR: ${{ runner.temp }}/conan-dependency-archives
+        run: |
+          pipx install conan
+          source CI/install_conan_dependencies.sh dependencies-android-arm64-v8a
+          conan profile detect
+          conan install . --output-folder=conan-generated --build=never \
+            --profile=dependencies/conan_profiles/base/android-system \
+            --profile=dependencies/conan_profiles/android-64-ndk \
+            --conf='tools.cmake.cmaketoolchain:generator=Ninja'
+
+      - name: Save Conan dependency archive
+        if: steps.conan_archive.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/conan-dependency-archives
+          key: ${{ steps.conan_archive.outputs.cache-primary-key }}
+
+      - name: Validate Conan archive installer
+        run: bash -n CI/install_conan_dependencies.sh
+
+      - name: Run focused native Thor tests
+        run: |
+          boost_version="$(find "$HOME/.conan2/p" -path '*/p/include/boost/version.hpp' -print -quit)"
+          test -n "$boost_version"
+          boost_include="$(dirname "$(dirname "$boost_version")")"
+          g++ -std=c++20 -pthread \
+            -I. \
+            -Iinclude \
+            -Itest \
+            -Itest/googletest/googletest \
+            -Itest/googletest/googletest/include \
+            -Itest/googletest/googlemock/include \
+            -I"$boost_include" \
+            lib/thor/ThorContext.cpp \
+            test/thor/ThorContextTest.cpp \
+            test/googletest/googletest/src/gtest-all.cc \
+            test/googletest/googletest/src/gtest_main.cc \
+            -o "$RUNNER_TEMP/thor-context-tests"
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*'
+
+  arm64-candidate:
+    name: Thor ARM64 candidate
+    needs: preflight
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/ci/thor-') && endsWith(github.ref, '-validation')) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/ayn-thor-dual-screen' && inputs.full_arm64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      THOR_ARTIFACT_NAME: thor-candidate-arm64-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set candidate cache locations
+        run: |
+          echo "CONAN_DEPENDENCY_ARCHIVE_DIR=$RUNNER_TEMP/conan-dependency-archives" >> "$GITHUB_ENV"
+          echo "CCACHE_DIR=$RUNNER_TEMP/thor-ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo 'CCACHE_COMPILERCHECK=content' >> "$GITHUB_ENV"
+          echo 'CCACHE_NOHASHDIR=true' >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: false
+
+      - name: Restore Conan dependency archive
+        id: conan_archive
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/conan-dependency-archives
+          key: thor-conan-android-arm64-v8a-${{ runner.os }}-${{ hashFiles('CI/install_conan_dependencies.sh') }}
+
+      - name: Restore compiler cache
+        id: ccache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/thor-ccache
+          key: thor-ccache-v1-${{ runner.os }}-android-ndk-r29-arm64-v8a-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            thor-ccache-v1-${{ runner.os }}-android-ndk-r29-arm64-v8a-${{ github.ref_name }}-
+            thor-ccache-v1-${{ runner.os }}-android-ndk-r29-arm64-v8a-
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ccache
+          pipx install conan
+          source CI/install_conan_dependencies.sh dependencies-android-arm64-v8a
+          conan profile detect
+          conan install . --output-folder=conan-generated --build=never \
+            --profile=dependencies/conan_profiles/base/android-system \
+            --profile=dependencies/conan_profiles/android-64-ndk \
+            --conf='tools.cmake.cmaketoolchain:generator=Ninja'
+
+      - name: Configure compiler cache
+        run: |
+          mkdir -p "$CCACHE_DIR"
+          ccache --set-config=max_size=3G
+          ccache --set-config=compiler_check=content
+          ccache --set-config=base_dir="$GITHUB_WORKSPACE"
+          ccache --set-config=hash_dir=false
+          ccache --zero-stats
+          ccache --show-config
+
+      - name: Save Conan dependency archive
+        if: steps.conan_archive.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/conan-dependency-archives
+          key: ${{ steps.conan_archive.outputs.cache-primary-key }}
+
+      - name: Add Android Gradle compatibility hook
+        run: |
+          sed -i '/^CLASSPATH=/i sed -i "/android\\.bundle\\.enableUncompressedNativeLibs/d" "$APP_HOME/gradle.properties"' \
+            android/gradlew
+          grep -F 'enableUncompressedNativeLibs/d' android/gradlew
+
+      - name: Configure Thor ARM64
+        run: |
+          cmake --preset android-thor-release \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROIDDEPLOYQT_OPTIONS= \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            '-DANDROID_GRADLE_PROPERTIES=signingConfig=dailySigning;applicationVariant=thor-ci'
+          grep -E '^CMAKE_(C|CXX)_COMPILER_LAUNCHER:.*=ccache$' \
+            out/build/android-thor-release/CMakeCache.txt
+
+      - name: Build Thor ARM64 APK
+        run: cmake --build --preset android-thor-release
+        env:
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Verify compiler cache use
+        run: |
+          ccache --show-stats | tee thor-ccache-stats.txt
+          cacheable_calls="$(awk '/Cacheable calls:/ { print $3 }' thor-ccache-stats.txt)"
+          test "${cacheable_calls:-0}" -gt 0
+
+      - name: Run focused Android Thor tests
+        working-directory: out/build/android-thor-release/android-build
+        run: |
+          sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
+          ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
+            ./gradlew --no-daemon :vcmi-app:testReleaseUnitTest \
+              --tests eu.vcmi.vcmi.ThorContextIdsTest
+
+      - name: Verify and checksum APK
+        run: |
+          apk="$(find out/build/android-thor-release/android-build/vcmi-app/build/outputs/apk/release \
+            -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d \
+            -printf '%f\n' | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$build_tools/aapt" dump badging "$apk" \
+            | grep "package: name='is.xyz.vcmi.thor'"
+          cp "$apk" thor-candidate-arm64.apk
+          apk_sha256="$(sha256sum thor-candidate-arm64.apk | tee thor-candidate-arm64.apk.sha256 | awk '{ print $1 }')"
+          test -n "$apk_sha256"
+          echo "APK_SHA256=$apk_sha256" >> "$GITHUB_ENV"
+
+      - name: Create validation receipt and summary
+        run: |
+          test -n "$APK_SHA256"
+          export APK_SHA256
+          python3 - <<'PY'
+          import json
+          import os
+
+          receipt = {
+              "candidate_commit": os.environ["GITHUB_SHA"],
+              "github_run_id": os.environ["GITHUB_RUN_ID"],
+              "github_run_number": os.environ["GITHUB_RUN_NUMBER"],
+              "package_id": "is.xyz.vcmi.thor",
+              "apk_sha256": os.environ["APK_SHA256"],
+              "artifact_name": os.environ["THOR_ARTIFACT_NAME"],
+              "git_ref": os.environ["GITHUB_REF"],
+              "build_preset": "android-thor-release",
+              "android_abi": "arm64-v8a",
+              "tests": {
+                  "focused_native_thor": "passed",
+                  "focused_android_thor": "passed"
+              },
+              "package_verification": "passed"
+          }
+          with open("thor-validation-receipt.json", "w", encoding="utf-8") as receipt_file:
+              json.dump(receipt, receipt_file, indent=2)
+              receipt_file.write("\n")
+          PY
+          {
+            echo '## Thor ARM64 candidate validation'
+            echo
+            echo "- Candidate SHA: \`$GITHUB_SHA\`"
+            echo "- Run ID: \`$GITHUB_RUN_ID\`"
+            echo '- Package: `is.xyz.vcmi.thor`'
+            echo "- APK SHA-256: \`$APK_SHA256\`"
+            echo "- Artifact: \`$THOR_ARTIFACT_NAME\`"
+            echo '- Focused native Thor tests: passed'
+            echo '- Focused Android Thor tests: passed'
+            echo
+            echo '### ccache statistics'
+            echo '```text'
+            ccache --show-stats
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Thor candidate artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.THOR_ARTIFACT_NAME }}
+          path: |
+            thor-candidate-arm64.apk
+            thor-candidate-arm64.apk.sha256
+            thor-validation-receipt.json
+            thor-ccache-stats.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Save compiler cache
+        if: success()
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/thor-ccache
+          key: ${{ steps.ccache.outputs.cache-primary-key }}
