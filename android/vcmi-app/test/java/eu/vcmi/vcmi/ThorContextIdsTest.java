@@ -46,6 +46,7 @@ public class ThorContextIdsTest
     @Test
     public void adventureUtilityContextsUseBoundedResources()
     {
+        assertNotEquals(0, R.string.thor_context_adventure_map_hero_status);
         assertNotEquals(0, R.string.thor_context_kingdom_overview);
         assertNotEquals(0, R.string.thor_context_kingdom_overview_status);
         assertNotEquals(0, R.string.thor_context_quest_log);

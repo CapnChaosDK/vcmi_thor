@@ -145,3 +145,21 @@ std::string thorContextIdForInGameContext(ThorInGameContext context)
 		return ThorContextIds::UNKNOWN;
 	}
 }
+
+std::string thorBoundedText(std::string text, std::size_t maximumBytes)
+{
+	if(text.size() <= maximumBytes)
+		return text;
+
+	std::size_t validBytes = 0;
+	while(validBytes < maximumBytes)
+	{
+		const auto firstByte = static_cast<unsigned char>(text[validBytes]);
+		const std::size_t codePointBytes = firstByte < 0x80 ? 1 : firstByte < 0xe0 ? 2 : firstByte < 0xf0 ? 3 : 4;
+		if(validBytes + codePointBytes > maximumBytes)
+			break;
+		validBytes += codePointBytes;
+	}
+	text.resize(validBytes);
+	return text;
+}
