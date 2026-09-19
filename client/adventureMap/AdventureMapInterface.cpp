@@ -61,10 +61,12 @@
 namespace
 {
 	void publishThorInGameContext(ThorInGameContext inGameContext, std::uint32_t enabledActionMask = 0,
-		std::uint32_t activeActionMask = 0, int selectedHeroId = -1)
+		std::uint32_t activeActionMask = 0, int selectedHeroId = -1, std::string title = {}, std::string status = {})
 	{
 		ThorContextRecord context;
 		context.contextId = thorContextIdForInGameContext(inGameContext);
+		context.title = thorBoundedText(std::move(title));
+		context.status = thorBoundedText(std::move(status));
 		context.enabledActionMask = enabledActionMask;
 		context.activeActionMask = activeActionMask;
 		context.selectedHeroId = selectedHeroId;
@@ -176,8 +178,13 @@ void AdventureMapInterface::activate()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(!wasActive)
+	{
+		const auto * hero = GAME->interface()->localState->getCurrentHero();
 		publishThorInGameContext(ThorInGameContext::ADVENTURE_MAP,
-			shortcuts->getThorActionMask(), shortcuts->getThorActiveActionMask(), shortcuts->getThorSelectedHeroId());
+			shortcuts->getThorActionMask(), shortcuts->getThorActiveActionMask(), shortcuts->getThorSelectedHeroId(),
+			hero ? hero->getObjectName().toString(&GAME->translator()) : std::string{},
+			hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{});
+	}
 #endif
 }
 
@@ -195,6 +202,9 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	context.enabledActionMask = shortcuts->getThorActionMask();
 	context.activeActionMask = shortcuts->getThorActiveActionMask();
 	context.selectedHeroId = shortcuts->getThorSelectedHeroId();
+	const auto * hero = GAME->interface()->localState->getCurrentHero();
+	context.title = thorBoundedText(hero ? hero->getObjectName().toString(&GAME->translator()) : std::string{});
+	context.status = hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{};
 	if(invalidateActions)
 		++context.actionEpoch;
 	context = thorContextStore().publishNext(std::move(context));

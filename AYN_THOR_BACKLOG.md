@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 12 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 12.
+- Phase: Slices 1 through 12 are implemented, CI-built, and hardware-validated. Slice 13 is implemented and awaiting CI and hardware validation.
+- Status: `awaiting hardware validation` for Slice 13.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -755,3 +755,21 @@ Status: `hardware validated`
 
 - On 2026-09-17, the user reported that every focused Slice 12 check passed on the AYN Thor after the checksum-verified candidate APK was installed in place. This includes Next Hero selection/camera refresh, valid and invalid Move Hero behavior, Sleep/Wake state changes, End Turn including its normal reminder/confirmation flow, rapid/double-tap safety, all four Slice 11 utility commands, lifecycle/display changes, and upper touchscreen/controller regression checks.
 - The hardware-tested product tree is exactly `221a9f9eba3614665bcce8e84c86868f1d252d20`. The later CI and hardware validation commits contain documentation only.
+
+## Slice 13: selected-hero Adventure information card
+
+Status: `awaiting hardware validation`
+
+### Scope and behavior
+
+- The Adventure Map header now shows the selected hero's translated display name and current/maximum movement points. With no selected hero it retains the existing generic `Explore the world` status.
+- The native Adventure Map owner produces the visibility-safe snapshot from the local player's existing selection. The payload contains no map position, path, army, enemy, fogged, or server-private data.
+- Hero information is refreshed through the existing per-frame Thor state publication, shares the action revision, and does not churn revisions while name, movement, selection, action availability, and action state are unchanged.
+- Dynamic text is limited to 128 UTF-8 bytes without splitting a code point. Android supplies the local `Movement` label, renders the snapshot in the existing header, and retains the existing eight semantic controls.
+
+### Boundaries, validation, and risks
+
+- This is the first bounded read-only information-card slice from Milestone 4. It deliberately excludes portraits, attributes, armies, resources, quick selection, map navigation, and new commands.
+- Native tests cover payload bounds, UTF-8 truncation, movement revision updates, and unchanged-state suppression. The Android resource test covers the new local format string.
+- Hardware validation must check long/localized hero names, selection and movement refresh, no-selection fallback, rapid commands, lifecycle/display recreation, all eight existing commands, and unchanged upper-screen input.
+- Remaining risks are header clipping on unusually long translated names, movement values changing during animation more often than expected, and device-only timing across presentation recreation. GitHub Actions Android CI is the authoritative compile gate.
