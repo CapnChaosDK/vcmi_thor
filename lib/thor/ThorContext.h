@@ -2,6 +2,7 @@
 
 #include "../../Global.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -107,3 +108,4 @@ DLL_LINKAGE ThorContextStore & thorContextStore();
 DLL_LINKAGE std::string thorContextIdForMainMenuTab(const std::string & tabName);
 DLL_LINKAGE std::string thorContextIdForLobby(ThorLobbyMode mode, ThorLobbyTab tab);
 DLL_LINKAGE std::string thorContextIdForInGameContext(ThorInGameContext context);
+DLL_LINKAGE std::string thorBoundedText(std::string text, std::size_t maximumBytes = 128);

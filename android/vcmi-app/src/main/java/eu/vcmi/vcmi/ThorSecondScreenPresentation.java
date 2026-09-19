@@ -182,7 +182,10 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_adventure_map);
-                status = getContext().getString(R.string.thor_context_adventure_map_status);
+                status = publishedTitle.isEmpty()
+                        ? getContext().getString(R.string.thor_context_adventure_map_status)
+                        : getContext().getString(R.string.thor_context_adventure_map_hero_status,
+                                publishedTitle, publishedStatus);
             }
             else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {

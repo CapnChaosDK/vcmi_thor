@@ -172,3 +172,21 @@ TEST(ThorContextStoreTest, AdventureUtilityContextsReceiveNewerRevisions)
 		EXPECT_EQ(unknown.contextId, ThorContextIds::UNKNOWN);
 	}
 }
+
+TEST(ThorContextPayloadTest, BoundsTextWithoutSplittingUtf8)
+{
+	EXPECT_EQ(thorBoundedText("Catherine", 5), "Cathe");
+	EXPECT_EQ(thorBoundedText("Crag Hack", 32), "Crag Hack");
+	EXPECT_EQ(thorBoundedText("Gelu \xc3\xa9lite", 6), "Gelu ");
+}
+
+TEST(ThorContextStoreTest, AdventureInformationChangesRevisionWithoutChurn)
+{
+	ThorContextStore store;
+	const auto initial = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "Catherine", "1200 / 1500"});
+	const auto unchanged = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "Catherine", "1200 / 1500"});
+	const auto moved = store.publishNext({0, ThorContextIds::ADVENTURE_MAP, "Catherine", "900 / 1500"});
+
+	EXPECT_EQ(unchanged.revision, initial.revision);
+	EXPECT_GT(moved.revision, initial.revision);
+}
