@@ -59,18 +59,8 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorAction.h"
 #include "../../lib/thor/ThorContext.h"
-
-namespace
-{
-	void publishThorInGameContext(ThorInGameContext inGameContext)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForInGameContext(inGameContext);
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
 #endif
 
 BattleWindow::BattleWindow(BattleInterface & Owner)
@@ -533,7 +523,7 @@ void BattleWindow::activate()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(!wasActive)
-		publishThorInGameContext(owner.isInTacticsMode() ? ThorInGameContext::BATTLE_TACTICS : ThorInGameContext::BATTLE);
+		updateThorActionState();
 #endif
 }
 
@@ -546,7 +536,13 @@ void BattleWindow::deactivate()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(wasActive)
-		publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	{
+		ThorContextRecord context;
+		context.contextId = ThorContextIds::UNKNOWN;
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	}
 #endif
 }
 
@@ -594,7 +590,7 @@ void BattleWindow::tacticPhaseStarted()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(isActive())
-		publishThorInGameContext(ThorInGameContext::BATTLE_TACTICS);
+		updateThorActionState();
 #endif
 }
 
@@ -617,7 +613,7 @@ void BattleWindow::tacticPhaseEnded()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(isActive())
-		publishThorInGameContext(ThorInGameContext::BATTLE);
+		updateThorActionState();
 #endif
 }
 
@@ -956,7 +952,107 @@ void BattleWindow::blockUI(bool on)
 
 	quickSpellWindow->setInputEnabled(!on);
 	unitActionWindow->setInputEnabled(!on);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorUiBlocked = on;
+	updateThorActionState();
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool BattleWindow::isThorCommandDeckOwner() const
+{
+	return isActive() && ENGINE->windows().isTopWindow(this);
+}
+
+bool BattleWindow::matchesThorContext(const std::string & contextId) const
+{
+	if(!isThorCommandDeckOwner())
+		return false;
+	if(contextId == ThorContextIds::BATTLE)
+		return !owner.isInTacticsMode();
+	if(contextId == ThorContextIds::BATTLE_TACTICS)
+		return owner.isInTacticsMode();
+	return false;
+}
+
+void BattleWindow::updateThorActionState(bool invalidateActions)
+{
+	if(!isThorCommandDeckOwner())
+		return;
+
+	const auto contextId = owner.isInTacticsMode() ? ThorContextIds::BATTLE_TACTICS : ThorContextIds::BATTLE;
+	const auto previous = thorContextStore().snapshot();
+	ThorContextRecord context = previous.contextId == contextId ? previous : ThorContextRecord{};
+	context.contextId = contextId;
+	context.enabledActionMask = 0;
+	context.activeActionMask = 0;
+	const auto * activeStack = owner.stacksController->getActiveStack();
+	context.actionSubjectId = activeStack ? static_cast<std::int64_t>(activeStack->unitId()) : -1;
+
+	const bool spellTargeting = owner.actionsController->heroSpellcastingModeActive()
+		|| owner.actionsController->creatureSpellcastingModeActive();
+	if(!thorUiBlocked && !owner.openingPlaying() && !spellTargeting)
+	{
+		if(owner.isInTacticsMode())
+		{
+			context.enabledActionMask = thorActionMask(ThorAction::BATTLE_TACTICS_NEXT)
+				| thorActionMask(ThorAction::BATTLE_TACTICS_END);
+		}
+		else if(activeStack)
+		{
+			if(!activeStack->waitedThisTurn)
+				context.enabledActionMask |= thorActionMask(ThorAction::BATTLE_WAIT);
+			context.enabledActionMask |= thorActionMask(ThorAction::BATTLE_DEFEND);
+		}
+	}
+
+	if(invalidateActions)
+	{
+		++context.actionEpoch;
+		context.enabledActionMask = 0;
+	}
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision == previous.revision)
+		return;
+
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool BattleWindow::executeThorAction(ThorAction action)
+{
+	const auto expectedContext = action == ThorAction::BATTLE_WAIT || action == ThorAction::BATTLE_DEFEND
+		? ThorContextIds::BATTLE : ThorContextIds::BATTLE_TACTICS;
+	if(!matchesThorContext(expectedContext))
+		return false;
+
+	updateThorActionState();
+	const auto context = thorContextStore().snapshot();
+	if(!isThorActionAllowedInContext(action, context.contextId)
+		|| (context.enabledActionMask & thorActionMask(action)) == 0)
+		return false;
+
+	updateThorActionState(true);
+	switch(action)
+	{
+	case ThorAction::BATTLE_WAIT:
+		bWaitf();
+		return true;
+	case ThorAction::BATTLE_DEFEND:
+		bDefencef();
+		return true;
+	case ThorAction::BATTLE_TACTICS_NEXT:
+		bTacticNextStack();
+		return true;
+	case ThorAction::BATTLE_TACTICS_END:
+		bTacticPhaseEnd();
+		return true;
+	default:
+		return false;
+	}
+}
+#endif
 
 void BattleWindow::bOpenActiveUnit()
 {

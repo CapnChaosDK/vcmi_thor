@@ -20,9 +20,28 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::TOGGLE_HERO_SLEEP;
 	case static_cast<int>(ThorAction::END_TURN):
 		return ThorAction::END_TURN;
+	case static_cast<int>(ThorAction::BATTLE_WAIT):
+		return ThorAction::BATTLE_WAIT;
+	case static_cast<int>(ThorAction::BATTLE_DEFEND):
+		return ThorAction::BATTLE_DEFEND;
+	case static_cast<int>(ThorAction::BATTLE_TACTICS_NEXT):
+		return ThorAction::BATTLE_TACTICS_NEXT;
+	case static_cast<int>(ThorAction::BATTLE_TACTICS_END):
+		return ThorAction::BATTLE_TACTICS_END;
 	default:
 		return std::nullopt;
 	}
+}
+
+bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId)
+{
+	if(contextId == ThorContextIds::ADVENTURE_MAP)
+		return isThorActionAllowedInAdventureMap(action);
+	if(contextId == ThorContextIds::BATTLE)
+		return action == ThorAction::BATTLE_WAIT || action == ThorAction::BATTLE_DEFEND;
+	if(contextId == ThorContextIds::BATTLE_TACTICS)
+		return action == ThorAction::BATTLE_TACTICS_NEXT || action == ThorAction::BATTLE_TACTICS_END;
+	return false;
 }
 
 bool isThorActionAllowedInAdventureMap(ThorAction action)
@@ -43,7 +62,7 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::UNKNOWN_ACTION;
 	if(request.revision != context.revision)
 		return ThorActionValidation::STALE_REVISION;
-	if(context.contextId != ThorContextIds::ADVENTURE_MAP || !isThorActionAllowedInAdventureMap(request.action))
+	if(!isThorActionAllowedInContext(request.action, context.contextId))
 		return ThorActionValidation::WRONG_CONTEXT;
 	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
 		return ThorActionValidation::UNAVAILABLE;

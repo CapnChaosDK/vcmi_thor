@@ -238,6 +238,10 @@ void BattleActionsController::endCastingSpell()
 
 	selectedStack = nullptr;
 	ENGINE->fakeMouseMove();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	owner.windowObject->updateThorActionState();
+#endif
 }
 
 bool BattleActionsController::isActiveStackSpellcaster() const
@@ -272,6 +276,9 @@ void BattleActionsController::enterCreatureCastingMode()
 
 		vstd::erase_if(possibleActions, actionFilterPredicate);
 		ENGINE->fakeMouseMove();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		owner.windowObject->updateThorActionState();
+#endif
 		return;
 	}
 
@@ -313,6 +320,9 @@ void BattleActionsController::enterCreatureCastingMode()
 
 	vstd::erase_if(possibleActions, actionFilterPredicate);
 	ENGINE->fakeMouseMove();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	owner.windowObject->updateThorActionState();
+#endif
 }
 
 std::vector<PossiblePlayerBattleAction> BattleActionsController::getPossibleActionsForStack(const CStack *stack) const

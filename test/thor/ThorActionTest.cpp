@@ -15,7 +15,11 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(6), ThorAction::MOVE_HERO);
 	EXPECT_EQ(thorActionFromId(7), ThorAction::TOGGLE_HERO_SLEEP);
 	EXPECT_EQ(thorActionFromId(8), ThorAction::END_TURN);
-	EXPECT_EQ(thorActionFromId(9), std::nullopt);
+	EXPECT_EQ(thorActionFromId(9), ThorAction::BATTLE_WAIT);
+	EXPECT_EQ(thorActionFromId(10), ThorAction::BATTLE_DEFEND);
+	EXPECT_EQ(thorActionFromId(11), ThorAction::BATTLE_TACTICS_NEXT);
+	EXPECT_EQ(thorActionFromId(12), ThorAction::BATTLE_TACTICS_END);
+	EXPECT_EQ(thorActionFromId(13), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -33,12 +37,29 @@ TEST(ThorActionTest, AllowsOnlySliceTwelveAdventureActions)
 	EXPECT_FALSE(isThorActionAllowedInAdventureMap(static_cast<ThorAction>(99)));
 }
 
+TEST(ThorActionTest, AllowsOnlyActionsForTheirExactContext)
+{
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::OPEN_SAVE_GAME, ThorContextIds::ADVENTURE_MAP));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::BATTLE_WAIT, ThorContextIds::ADVENTURE_MAP));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::BATTLE_WAIT, ThorContextIds::BATTLE));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::BATTLE_DEFEND, ThorContextIds::BATTLE));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::BATTLE_TACTICS_NEXT, ThorContextIds::BATTLE));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::BATTLE_TACTICS_NEXT, ThorContextIds::BATTLE_TACTICS));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::BATTLE_TACTICS_END, ThorContextIds::BATTLE_TACTICS));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::BATTLE_WAIT, ThorContextIds::BATTLE_RESULT));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::BATTLE_DEFEND, ThorContextIds::HERO_WINDOW));
+}
+
 TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 {
 	EXPECT_EQ(thorActionMask(ThorAction::NEXT_HERO), 16);
 	EXPECT_EQ(thorActionMask(ThorAction::MOVE_HERO), 32);
 	EXPECT_EQ(thorActionMask(ThorAction::TOGGLE_HERO_SLEEP), 64);
 	EXPECT_EQ(thorActionMask(ThorAction::END_TURN), 128);
+	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_WAIT), 256);
+	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_DEFEND), 512);
+	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_NEXT), 1024);
+	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_END), 2048);
 }
 
 TEST(ThorActionTest, ValidatesRevisionContextAndAvailability)
@@ -54,6 +75,27 @@ TEST(ThorActionTest, ValidatesRevisionContextAndAvailability)
 	context.contextId = ThorContextIds::HERO_WINDOW;
 	EXPECT_EQ(validateThorActionRequest({12, ThorAction::OPEN_SAVE_GAME}, context), ThorActionValidation::WRONG_CONTEXT);
 	EXPECT_EQ(validateThorActionRequest({12, static_cast<ThorAction>(99)}, context), ThorActionValidation::UNKNOWN_ACTION);
+}
+
+TEST(ThorActionTest, ValidatesBattleContextsSeparately)
+{
+	ThorContextRecord context;
+	context.revision = 42;
+	context.contextId = ThorContextIds::BATTLE;
+	context.enabledActionMask = thorActionMask(ThorAction::BATTLE_WAIT);
+
+	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_WAIT}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_DEFEND}, context), ThorActionValidation::UNAVAILABLE);
+	EXPECT_EQ(validateThorActionRequest({42, ThorAction::OPEN_SAVE_GAME}, context), ThorActionValidation::WRONG_CONTEXT);
+
+	context.contextId = ThorContextIds::BATTLE_TACTICS;
+	context.enabledActionMask = thorActionMask(ThorAction::BATTLE_TACTICS_END);
+	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_TACTICS_END}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_WAIT}, context), ThorActionValidation::WRONG_CONTEXT);
+
+	context.contextId = ThorContextIds::BATTLE_RESULT;
+	context.enabledActionMask = thorActionMask(ThorAction::BATTLE_WAIT);
+	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_WAIT}, context), ThorActionValidation::WRONG_CONTEXT);
 }
 
 TEST(ThorActionTest, ActiveActionStateCreatesOneNewRevision)
@@ -99,6 +141,39 @@ TEST(ThorActionTest, ConsumedActionInvalidatesItsRenderedRevision)
 	const auto consumed = store.publishNext(context);
 	EXPECT_EQ(consumed.revision, rendered.revision + 1);
 	EXPECT_EQ(validateThorActionRequest({rendered.revision, ThorAction::MOVE_HERO}, consumed), ThorActionValidation::STALE_REVISION);
+}
+
+TEST(ThorActionTest, BattleActionSubjectChangesRevisionWithoutMaskChurn)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BATTLE;
+	context.enabledActionMask = thorActionMask(ThorAction::BATTLE_WAIT) | thorActionMask(ThorAction::BATTLE_DEFEND);
+	context.actionSubjectId = 101;
+	const auto firstStack = store.publishNext(context);
+	EXPECT_EQ(store.publishNext(context).revision, firstStack.revision);
+
+	context.actionSubjectId = 202;
+	const auto secondStack = store.publishNext(context);
+	EXPECT_EQ(secondStack.revision, firstStack.revision + 1);
+	EXPECT_EQ(validateThorActionRequest({firstStack.revision, ThorAction::BATTLE_WAIT}, secondStack), ThorActionValidation::STALE_REVISION);
+}
+
+TEST(ThorActionTest, ConsumingBattleActionClearsRenderedAvailability)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BATTLE;
+	context.enabledActionMask = thorActionMask(ThorAction::BATTLE_DEFEND);
+	context.actionSubjectId = 7;
+	const auto rendered = store.publishNext(context);
+
+	++context.actionEpoch;
+	context.enabledActionMask = 0;
+	const auto consumed = store.publishNext(context);
+	EXPECT_GT(consumed.revision, rendered.revision);
+	EXPECT_EQ(consumed.enabledActionMask, 0);
+	EXPECT_EQ(validateThorActionRequest({rendered.revision, ThorAction::BATTLE_DEFEND}, consumed), ThorActionValidation::STALE_REVISION);
 }
 
 TEST(ThorActionQueueTest, KeepsRequestsBoundedAndOrdered)

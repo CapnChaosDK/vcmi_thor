@@ -14,6 +14,9 @@
 #include "../../lib/battle/CBattleInfoCallback.h"
 #include "../../lib/battle/PossiblePlayerBattleAction.h"
 
+#include <cstdint>
+#include <string>
+
 class CStack;
 class CGTownInstance;
 
@@ -27,6 +30,10 @@ class HeroInfoBasicPanel;
 class StackInfoBasicPanel;
 class QuickSpellPanel;
 class UnitActionPanel;
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+enum class ThorAction : std::uint8_t;
+#endif
 
 /// GUI object that handles functionality of panel at the bottom of combat screen
 class BattleWindow : public InterfaceObjectConfigurable
@@ -93,6 +100,11 @@ class BattleWindow : public InterfaceObjectConfigurable
 
 	bool onlyOnePlayerHuman;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool thorUiBlocked = true;
+	bool isThorCommandDeckOwner() const;
+#endif
+
 	bool hasSpaceForQuickActions() const;
 	bool quickActionsPanelActive() const;
 	bool placeInfoWindowsOutside() const;
@@ -156,5 +168,11 @@ public:
 
 	/// ends battle with autocombat
 	void endWithAutocombat();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void updateThorActionState(bool invalidateActions = false);
+	bool matchesThorContext(const std::string & contextId) const;
+	bool executeThorAction(ThorAction action);
+#endif
 };
 

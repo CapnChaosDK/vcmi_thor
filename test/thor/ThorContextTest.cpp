@@ -303,6 +303,27 @@ TEST(ThorContextStoreTest, ReplacingTownSnapshotAndClearingCannotRetainDetails)
 	EXPECT_EQ(cleared.details, ThorContextDetails{});
 }
 
+TEST(ThorContextStoreTest, NonBattleContextsAndUnknownClearActionSubject)
+{
+	ThorContextStore store;
+	ThorContextRecord battle;
+	battle.contextId = ThorContextIds::BATTLE;
+	battle.actionSubjectId = 123;
+	const auto publishedBattle = store.publishNext(battle);
+	EXPECT_EQ(publishedBattle.actionSubjectId, 123);
+
+	ThorContextRecord adventure;
+	adventure.contextId = ThorContextIds::ADVENTURE_MAP;
+	adventure.actionSubjectId = 456;
+	const auto publishedAdventure = store.publishNext(adventure);
+	EXPECT_EQ(publishedAdventure.actionSubjectId, -1);
+
+	ThorContextRecord unknown;
+	unknown.contextId = ThorContextIds::UNKNOWN;
+	unknown.actionSubjectId = 789;
+	EXPECT_EQ(store.publishNext(unknown).actionSubjectId, -1);
+}
+
 TEST(ThorContextPayloadTest, BoundsTownNamesWithoutSplittingUtf8)
 {
 	ThorContextStore store;

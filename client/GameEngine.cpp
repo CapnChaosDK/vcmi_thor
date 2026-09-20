@@ -34,6 +34,8 @@
 #include "render/RenderHandler.h"
 #include "GameEngineUser.h"
 #include "battle/BattleInterface.h"
+#include "battle/BattleWindow.h"
+#include "CPlayerInterface.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../lib/thor/ThorAction.h"
@@ -170,19 +172,43 @@ void GameEngine::updateFrame()
 		case ThorActionValidation::VALID:
 			break;
 		}
-		if(!adventureInt || !adventureInt->isActive())
+		bool executed = false;
+		if(context.contextId == ThorContextIds::ADVENTURE_MAP)
 		{
-			logGlobal->debug("Thor action rejected: inactive Adventure Map");
-			continue;
+			if(!adventureInt || !adventureInt->isActive())
+			{
+				logGlobal->debug("Thor action rejected: inactive Adventure Map");
+				continue;
+			}
+			executed = adventureInt->getAdventureShortcuts().executeThorAction(request->action);
+			if(executed)
+				adventureInt->updateThorActionState(true);
 		}
-		if(!adventureInt->getAdventureShortcuts().executeThorAction(request->action))
+		else
+		{
+			auto battleInterface = CPlayerInterface::battleInt;
+			auto battleWindow = battleInterface ? battleInterface->windowObject : nullptr;
+			if(!battleWindow || !battleWindow->matchesThorContext(context.contextId))
+			{
+				logGlobal->debug("Thor action rejected: inactive Battle Window");
+				continue;
+			}
+			battleWindow->updateThorActionState();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: Battle state changed");
+				continue;
+			}
+			executed = battleWindow->executeThorAction(request->action);
+		}
+
+		if(!executed)
 		{
 			logGlobal->debug("Thor action rejected: availability changed");
 			continue;
 		}
 
 		logGlobal->debug("Thor action executed: %d", static_cast<int>(request->action));
-		adventureInt->updateThorActionState(true);
 		thorActionQueue().clear();
 		break;
 	}

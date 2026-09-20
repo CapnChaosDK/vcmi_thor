@@ -93,6 +93,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::uint32_t enabledActionMask = 0;
 	std::uint32_t activeActionMask = 0;
 	int selectedHeroId = -1;
+	std::int64_t actionSubjectId = -1;
 	std::uint64_t actionEpoch = 0;
 	ThorContextDetails details;
 };

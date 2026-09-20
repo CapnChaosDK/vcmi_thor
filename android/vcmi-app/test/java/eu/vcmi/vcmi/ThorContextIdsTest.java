@@ -93,6 +93,10 @@ public class ThorContextIdsTest
         assertEquals(6, ThorActionIds.MOVE_HERO);
         assertEquals(7, ThorActionIds.TOGGLE_HERO_SLEEP);
         assertEquals(8, ThorActionIds.END_TURN);
+		assertEquals(9, ThorActionIds.BATTLE_WAIT);
+		assertEquals(10, ThorActionIds.BATTLE_DEFEND);
+		assertEquals(11, ThorActionIds.BATTLE_TACTICS_NEXT);
+		assertEquals(12, ThorActionIds.BATTLE_TACTICS_END);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
         assertEquals(4, ThorActionIds.maskFor(ThorActionIds.OPEN_PUZZLE_MAP));
@@ -101,7 +105,24 @@ public class ThorContextIdsTest
         assertEquals(32, ThorActionIds.maskFor(ThorActionIds.MOVE_HERO));
         assertEquals(64, ThorActionIds.maskFor(ThorActionIds.TOGGLE_HERO_SLEEP));
         assertEquals(128, ThorActionIds.maskFor(ThorActionIds.END_TURN));
+		assertEquals(256, ThorActionIds.maskFor(ThorActionIds.BATTLE_WAIT));
+		assertEquals(512, ThorActionIds.maskFor(ThorActionIds.BATTLE_DEFEND));
+		assertEquals(1024, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_NEXT));
+		assertEquals(2048, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_END));
         assertEquals(0, ThorActionIds.maskFor(99));
+    }
+
+    @Test
+    public void battleActionsUseSeparateStableMasksAndResources()
+    {
+        assertNotEquals(ThorActionIds.maskFor(ThorActionIds.BATTLE_WAIT),
+                ThorActionIds.maskFor(ThorActionIds.NEXT_HERO));
+        assertNotEquals(ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_END),
+                ThorActionIds.maskFor(ThorActionIds.END_TURN));
+        assertNotEquals(0, R.string.thor_action_wait);
+        assertNotEquals(0, R.string.thor_action_defend);
+        assertNotEquals(0, R.string.thor_action_next_unit);
+        assertNotEquals(0, R.string.thor_action_start_battle);
     }
 
     @Test

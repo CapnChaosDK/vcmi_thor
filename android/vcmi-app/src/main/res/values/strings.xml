@@ -61,6 +61,10 @@
     <string name="thor_context_battle_tactics_status">Arrange your forces</string>
     <string name="thor_context_battle_result">Battle result</string>
     <string name="thor_context_battle_result_status">Review the outcome</string>
+    <string name="thor_action_wait">Wait</string>
+    <string name="thor_action_defend">Defend</string>
+    <string name="thor_action_next_unit">Next Unit</string>
+    <string name="thor_action_start_battle">Start Battle</string>
     <string name="thor_context_kingdom_overview">Kingdom overview</string>
     <string name="thor_context_kingdom_overview_status">Review your kingdom</string>
     <string name="thor_context_quest_log">Quest log</string>

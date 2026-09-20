@@ -13,7 +13,14 @@ namespace
 			&& lhs.enabledActionMask == rhs.enabledActionMask
 			&& lhs.activeActionMask == rhs.activeActionMask
 			&& lhs.selectedHeroId == rhs.selectedHeroId
+			&& lhs.actionSubjectId == rhs.actionSubjectId
 			&& lhs.actionEpoch == rhs.actionEpoch;
+	}
+
+	void normalizeActionSubject(ThorContextRecord & context)
+	{
+		if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS)
+			context.actionSubjectId = -1;
 	}
 
 	void boundTextFields(ThorContextRecord & context)
@@ -40,6 +47,7 @@ bool ThorContextStore::publish(ThorContextRecord next)
 		next.contextId = ThorContextIds::UNKNOWN;
 	if(next.contextId == ThorContextIds::UNKNOWN)
 		next.details = {};
+	normalizeActionSubject(next);
 	boundTextFields(next);
 	current = std::move(next);
 	return true;
@@ -52,6 +60,7 @@ ThorContextRecord ThorContextStore::publishNext(ThorContextRecord next)
 		next.contextId = ThorContextIds::UNKNOWN;
 	if(next.contextId == ThorContextIds::UNKNOWN)
 		next.details = {};
+	normalizeActionSubject(next);
 	boundTextFields(next);
 	if(sameSemanticState(current, next))
 		return current;

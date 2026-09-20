@@ -21,7 +21,11 @@ enum class ThorAction : std::uint8_t
 	NEXT_HERO = 5,
 	MOVE_HERO = 6,
 	TOGGLE_HERO_SLEEP = 7,
-	END_TURN = 8
+	END_TURN = 8,
+	BATTLE_WAIT = 9,
+	BATTLE_DEFEND = 10,
+	BATTLE_TACTICS_NEXT = 11,
+	BATTLE_TACTICS_END = 12
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
@@ -31,6 +35,7 @@ constexpr std::uint32_t thorActionMask(ThorAction action)
 
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
+DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
 
 struct DLL_LINKAGE ThorActionRequest
 {

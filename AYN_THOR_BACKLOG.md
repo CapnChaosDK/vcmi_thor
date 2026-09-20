@@ -896,3 +896,55 @@ Status: `hardware validated`
 - The artifact checksum and embedded validation receipt were verified before installation. The APK was installed in place on the AYN Thor, preserving Thor package data, and launched successfully.
 - On 2026-09-20, the user reported that all fourteen Slice 15 hardware checks passed. Slice 15 is therefore hardware validated; the exact tested product tree is `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` (`Candidate Thor Slice 15 build`).
 - Future slices must retain the generic bounded detail-line contract, no-churn revisions, exact Town Window ownership and visibility boundary, inert `TOWN_WINDOW` lower display, Slice 13 Adventure snapshot and commands, and Slice 14 Hero dashboard behavior. Start a new slice only with separately approved scope and validation record.
+
+## Slice 16: Context-aware Battle command deck
+
+Status: `awaiting hardware validation`
+
+### User-visible behavior and action contract
+
+- The lower display offers exactly **Wait** and **Defend** when the exact active upper owner is the ordinary `BattleWindow`. The controls use the native enabled mask and are disabled whenever the corresponding battle operation is not currently valid.
+- During an active tactics phase owned by the same `BattleWindow`, the deck instead offers exactly **Next Unit** and **Start Battle**. Start Battle invokes VCMI's existing end-tactics operation.
+- `BATTLE_RESULT`, battle children/modals, menus, dashboards, and unknown contexts remain inert. Existing Adventure Map presentation retains the unchanged eight-control layout and permanent IDs 1 through 8.
+- New stable action IDs are `BATTLE_WAIT = 9`, `BATTLE_DEFEND = 10`, `BATTLE_TACTICS_NEXT = 11`, and `BATTLE_TACTICS_END = 12`; `NONE = 0` remains non-executable. The 32-bit action mask remains sufficient.
+
+### Implementation boundary and native responsibility
+
+- The existing single revision-bound native queue now allow-lists actions by exact context: Adventure Map permits 1–8, Battle permits 9–10, Battle Tactics permits 11–12, and all other contexts permit nothing.
+- `BattleWindow` remains the sole battle command authority. It publishes Battle/Tactics state only while it is the exact active top window, derives masks from the same current stack, tactics, UI-block, opening, waited, and spell-targeting semantics used by the upper battle UI, and invokes its existing Wait, Defend, Tactics Next, and Tactics End paths. No synthetic input, coordinate path, separate battle rules engine, or direct state/network mutation is added.
+- Publication is refreshed at battle activation/deactivation, tactics transitions, active-stack changes through `blockUI`, UI block/unblock, spell-target entry/cancel, and accepted-command consumption. Normal deactivation still publishes `UNKNOWN`; Battle Result retains its complete native lifecycle and never receives action availability.
+- `ThorContextRecord` carries a native-only signed 64-bit `actionSubjectId`, populated from the stable VCMI stack `unitId()` only in Battle/Tactics contexts. It is part of semantic equality, so an active-stack change always creates a revision even when the mask is identical. Unknown/non-battle contexts clear it; Adventure's `selectedHeroId` remains unchanged.
+- Before execution, the GUI thread rechecks the request revision/context/mask, resolves the live `CPlayerInterface::battleInt`/`BattleWindow`, requires it to still be the exact active top owner, republishes current state, and rechecks the native predicate immediately before calling the existing semantic operation. Accepted commands increment the existing action epoch, publish an immediate zero-mask stale boundary, clear queued input, and execute at most one command per frame.
+
+### Android responsibility
+
+- Android retains the existing Adventure layout unchanged. It renders two large context-specific controls for Battle or Battle Tactics only, uses native enabled bits for appearance and submission, and performs explicit matching hit tests. Disabled controls do not submit.
+- Local resources provide Wait, Defend, Next Unit, and Start Battle labels. The command-deck content description includes the relevant Battle controls. The presentation remains not focusable and does not take upper-display input.
+
+### Automated acceptance coverage
+
+- Focused native tests preserve IDs 1–8, verify IDs 9–12 and their masks, reject unknown IDs, test exact allow-lists for Adventure/Battle/Tactics and inert Battle Result, reject disabled/stale/wrong-context requests, verify action-subject revision changes without churn, verify non-battle subject clearing, and verify accepted-command epoch invalidation. Existing bounded FIFO/concurrency queue tests remain in the suite.
+- Focused Android tests verify IDs/masks 0–12, distinct Battle masks, and Battle command resources while retaining the Adventure, Hero, and Town contract tests. The permanent Thor CI runs the focused native suite and Android `ThorContextIdsTest` before the ARM64 candidate package.
+
+### Required AYN Thor hardware checklist
+
+1. Start an ordinary battle and verify the lower deck shows exactly Wait and Defend.
+2. On a valid active stack, tap Wait once. Confirm ordinary VCMI Wait behavior and that no rapid second tap acts on the next stack.
+3. On another active stack, tap Defend once and confirm ordinary Defend behavior.
+4. Exercise a stack that has already waited and verify Wait is disabled/unavailable as appropriate.
+5. During enemy movement/animations or another blocked state, verify lower actions cannot create a delayed command.
+6. With a hero that has a tactics phase, verify the deck switches to Next Unit and Start Battle.
+7. Use Next Unit repeatedly and confirm normal tactics selection/cycling with no duplicate movement/action.
+8. Use Start Battle and confirm normal transition from tactics into battle and the deck changes to Wait/Defend.
+9. Exercise rapid/double taps while the active stack changes; no command may leak to the next stack.
+10. Open/close any reachable battle child/modal and verify safe fallback/restoration.
+11. Finish a battle, reach Battle Result, confirm it is inert, dismiss it, and verify Adventure Map is visible and interactive with no residual battle frame.
+12. Toggle the lower panel off/on and background/resume during battle; restore exactly one correct deck.
+13. Verify upper touchscreen and physical controller battle input still works.
+14. After returning to Adventure Map, recheck representative Slice 12 commands and verify Hero/Town dashboards still work.
+15. Confirm no crash, duplicate presentation, stale command, revision churn symptom, delayed action, or lifecycle regression.
+
+### Regression risks and candidate procedure
+
+- Main risks are a stale active-stack command, release of a battle child/modal that skips the normal owner lifecycle, Battle Result restoration, blocked/spell-targeted action availability, and any regression to upper touchscreen/controller or the existing Adventure/Hero/Town deck behavior. No hardware or CI success is claimed by this entry.
+- Before validation, inspect status and final diff/stat, preserve unrelated changes, run `git diff --check`, focused native Thor tests, and inexpensive affected Android/source checks. Create `ci/thor-slice16-validation` from the complete implementation, commit `Candidate Thor Slice 16 build`, and push only that branch to `origin`. The checked-in `Thor CI` will run preflight and the ARM64 candidate job. Do not wait for CI, install an APK, perform hardware checks, promote to `ayn-thor-dual-screen`, or mark this slice hardware validated until the candidate and checklist have passed.
