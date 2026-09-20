@@ -20,6 +20,9 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 14 final product commit: `e60e7e1051d08c5fae07be207182c3f175047429` — read-only Hero Window information dashboard.
 - Slice 14 candidate CI run: `35519819523`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35519819523`; artifact ZIP SHA-256 `52888aa096054de6f4d57df3ce9d0533ab3459e60a06136038070452531f812f`; APK SHA-256 `4e8158af4543e74922458608460738be331d3b726fed0ac880f202c9243a8cac`.
 - Slice 14 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed the complete Hero-card accuracy, hero-switching, long/localized text, child/modal restoration, display recreation, inert-touch, Adventure-command, and upper-input regression checklist.
+- Slice 15 final product commit: `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` — read-only Town Window information dashboard.
+- Slice 15 candidate CI run: `35528064000`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35528064000`; artifact ZIP SHA-256 `29dc8ad80cb7fa95386eef30baa4e5c3ca9b8c3c625b30e0639474885d95d0e3`; APK SHA-256 `c3491ee34b11f962fd4700031d450195120003c11d0cc3123042785b1419be12`.
+- Slice 15 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed the complete Town-card accuracy, construction/hero refresh, town switching, child/modal restoration, display recreation, inert-touch, Adventure-command, and upper-input regression checklist.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
