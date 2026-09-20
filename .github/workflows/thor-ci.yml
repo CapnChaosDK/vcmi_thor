@@ -1,4 +1,5 @@
 name: Thor CI
+# This validation-only branch changes no product code; this comment retriggers the Slice 13 ARM64 candidate pipeline.
 
 on:
   push:
