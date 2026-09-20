@@ -1129,6 +1129,8 @@ void ApplyClientNetPackVisitor::visitChangeTownName(ChangeTownName & pack)
 	if(town)
 	{
 		adventureInt->onTownChanged(town);
+		if(GAME->interface()->castleInt && GAME->interface()->castleInt->town == town)
+			GAME->interface()->castleInt->updateTownName();
 		ENGINE->windows().totalRedraw();
 	}
 }

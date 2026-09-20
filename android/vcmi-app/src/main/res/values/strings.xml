@@ -47,6 +47,12 @@
     <string name="thor_context_hero_status">Review hero details</string>
     <string name="thor_context_town">Town</string>
     <string name="thor_context_town_status">Review town details</string>
+    <string name="thor_town_income">Income</string>
+    <string name="thor_town_income_value">%1$s/day</string>
+    <string name="thor_town_buildings">Buildings this turn</string>
+    <string name="thor_town_visiting_hero">Visiting hero</string>
+    <string name="thor_town_garrison_hero">Garrison hero</string>
+    <string name="thor_town_none">None</string>
     <string name="thor_context_hero_meeting">Hero meeting</string>
     <string name="thor_context_hero_meeting_status">Review hero exchange</string>
     <string name="thor_context_battle">Battle</string>

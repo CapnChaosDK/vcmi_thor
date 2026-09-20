@@ -78,6 +78,32 @@ namespace
 		context = thorContextStore().publishNext(std::move(context));
 		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
 	}
+
+	std::string thorHeroName(const CGHeroInstance * hero)
+	{
+		return hero ? GAME->translator().translate(hero->getNameTextID()) : "";
+	}
+
+	void publishThorTownContext(const CGTownInstance * town)
+	{
+		assert(town);
+
+		ThorContextRecord context;
+		context.contextId = ThorContextIds::TOWN_WINDOW;
+		context.title = GAME->translator().translate(town->getNameTextID());
+		context.status = town->getFaction()->getNameTranslated();
+		context.details[0] = std::to_string(town->dailyIncome()[EGameResID::GOLD]);
+		context.details[1] = std::to_string(town->built) + " / " + std::to_string(
+			GAME->interface()->cb->getSettings().getInteger(EGameSettings::TOWNS_BUILDINGS_PER_TURN_CAP));
+		context.details[2] = thorHeroName(town->getVisitingHero());
+		context.details[3] = thorHeroName(town->getGarrisonHero());
+
+		const auto previous = thorContextStore().snapshot();
+		context = thorContextStore().publishNext(std::move(context));
+		if(context.revision != previous.revision)
+			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
+				context.details);
+	}
 }
 #endif
 
@@ -1599,7 +1625,7 @@ void CCastleInterface::activate()
 	CStatusbarWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::TOWN_WINDOW);
+	publishThorTownContext(town);
 #endif
 }
 
@@ -1629,7 +1655,22 @@ void CCastleInterface::updateGarrisons()
 	garr->recreateSlots();
 	heroes->update();
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		publishThorTownContext(town);
+#endif
+
 	redraw();
+}
+
+void CCastleInterface::updateTownName()
+{
+	title->setText(GAME->translator().translate(town->getNameTextID()));
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		publishThorTownContext(town);
+#endif
 }
 
 bool CCastleInterface::holdsGarrison(const CArmedInstance * army)

@@ -68,6 +68,20 @@ public class ThorContextIdsTest
     }
 
     @Test
+    public void townDashboardUsesFixedDetailContractAndResources()
+    {
+        assertEquals(4, ThorContextDetails.COUNT);
+        assertNotEquals(0, R.string.thor_context_town);
+        assertNotEquals(0, R.string.thor_context_town_status);
+        assertNotEquals(0, R.string.thor_town_income);
+        assertNotEquals(0, R.string.thor_town_income_value);
+        assertNotEquals(0, R.string.thor_town_buildings);
+        assertNotEquals(0, R.string.thor_town_visiting_hero);
+        assertNotEquals(0, R.string.thor_town_garrison_hero);
+        assertNotEquals(0, R.string.thor_town_none);
+    }
+
+    @Test
     public void adventureActionIdsUseStableExplicitMasks()
     {
         assertEquals(0, ThorActionIds.NONE);

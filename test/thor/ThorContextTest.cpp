@@ -248,6 +248,76 @@ TEST(ThorContextStoreTest, ReplacingHeroSnapshotAndClearingCannotRetainDetails)
 	EXPECT_EQ(cleared.details, ThorContextDetails{});
 }
 
+TEST(ThorContextStoreTest, TownDetailsChangeRevisionExactlyOnceWithoutChurn)
+{
+	ThorContextStore store;
+	ThorContextRecord town;
+	town.contextId = ThorContextIds::TOWN_WINDOW;
+	town.title = "Castle Stronghold";
+	town.status = "Castle";
+	town.details = {"2000", "0 / 1", "Catherine", ""};
+
+	const auto initial = store.publishNext(town);
+	const auto unchanged = store.publishNext(town);
+	town.details[0] = "3000";
+	const auto changedIncome = store.publishNext(town);
+	town.details[1] = "1 / 1";
+	const auto changedBuildProgress = store.publishNext(town);
+	town.details[2] = "Crag Hack";
+	const auto changedVisitingHero = store.publishNext(town);
+	town.details[3] = "Gelu";
+	const auto changedGarrisonHero = store.publishNext(town);
+
+	EXPECT_EQ(unchanged.revision, initial.revision);
+	EXPECT_EQ(changedIncome.revision, initial.revision + 1);
+	EXPECT_EQ(changedBuildProgress.revision, changedIncome.revision + 1);
+	EXPECT_EQ(changedVisitingHero.revision, changedBuildProgress.revision + 1);
+	EXPECT_EQ(changedGarrisonHero.revision, changedVisitingHero.revision + 1);
+}
+
+TEST(ThorContextStoreTest, ReplacingTownSnapshotAndClearingCannotRetainDetails)
+{
+	ThorContextStore store;
+	ThorContextRecord castle;
+	castle.contextId = ThorContextIds::TOWN_WINDOW;
+	castle.title = "Castle Stronghold";
+	castle.status = "Castle";
+	castle.details = {"2000", "0 / 1", "Catherine", ""};
+	const auto firstTown = store.publishNext(castle);
+
+	ThorContextRecord dungeon;
+	dungeon.contextId = ThorContextIds::TOWN_WINDOW;
+	dungeon.title = "Dungeons Deep";
+	dungeon.status = "Dungeon";
+	dungeon.details = {"1000", "1 / 2", "", "Gunnar"};
+	const auto replacementTown = store.publishNext(dungeon);
+
+	ThorContextRecord unknown;
+	unknown.contextId = ThorContextIds::UNKNOWN;
+	unknown.details = castle.details;
+	const auto cleared = store.publishNext(unknown);
+
+	EXPECT_EQ(replacementTown.revision, firstTown.revision + 1);
+	EXPECT_EQ(replacementTown.details, dungeon.details);
+	EXPECT_EQ(cleared.revision, replacementTown.revision + 1);
+	EXPECT_EQ(cleared.details, ThorContextDetails{});
+}
+
+TEST(ThorContextPayloadTest, BoundsTownNamesWithoutSplittingUtf8)
+{
+	ThorContextStore store;
+	ThorContextRecord town;
+	town.contextId = ThorContextIds::TOWN_WINDOW;
+	town.title = std::string(128, 'a') + "\xc3\xa9";
+	town.status = std::string(129, 'b');
+	town.details[2] = std::string(128, 'c') + "\xc3\xa9";
+
+	const auto published = store.publishNext(std::move(town));
+	EXPECT_EQ(published.title, std::string(128, 'a'));
+	EXPECT_EQ(published.status, std::string(128, 'b'));
+	EXPECT_EQ(published.details[2], std::string(128, 'c'));
+}
+
 TEST(ThorContextStoreTest, AdventureInformationChangesRevisionWithoutChurn)
 {
 	ThorContextStore store;

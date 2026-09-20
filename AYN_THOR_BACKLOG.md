@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 14 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 14.
+- Phase: Slices 1 through 14 are implemented, CI-built, and hardware-validated; Slice 15 is awaiting hardware validation.
+- Status: `hardware validated` through Slice 14; Slice 15 is `awaiting hardware validation`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -838,3 +838,52 @@ Status: `hardware validated`
 - The artifact checksum and embedded validation receipt were verified before installation. The APK was installed in place on the AYN Thor, preserving Thor package data, and launched successfully.
 - On 2026-09-20, the user reported that all twelve Slice 14 hardware checks passed. Slice 14 is therefore hardware validated; the exact tested product tree is `e60e7e1051d08c5fae07be207182c3f175047429` (`thor: add hero window information dashboard`).
 - Future slices must retain the generic bounded detail-line contract, no-churn revisions, authoritative Hero Window lifecycle, inert `HERO_WINDOW` lower display, Slice 13 Adventure snapshot, and all eight Adventure commands. Start a new slice only with a separately approved scope and validation record.
+
+## Slice 15: Town Window live information dashboard
+
+Status: `awaiting hardware validation`
+
+### Behavior, scope, and information boundary
+
+- When `CCastleInterface` is the active upper-screen owner, the lower deck displays the exact visible `CGTownInstance`: translated town name and faction, daily gold income, buildings constructed this turn versus the configured cap, visiting hero, and garrison hero.
+- The sole native source is `CCastleInterface::town`. The snapshot uses only the Town interface's existing translated name/faction, `dailyIncome()[EGameResID::GOLD]`, `built`, the configured `TOWNS_BUILDINGS_PER_TURN_CAP`, and visiting/garrison hero display names. It performs no global town lookup and exposes no army, resources, buildings list, spells, market, map, or fogged/enemy information.
+- The lower Town card remains completely read-only and inert. It adds no action IDs, buttons, gestures, hitboxes, coordinate injection, focus changes, building/recruitment actions, hero switching, or army manipulation. Only `ADVENTURE_MAP` accepts lower-display action touches; its existing eight actions and masks are unchanged.
+
+### Native responsibility and lifecycle
+
+- `CCastleInterface::activate()` keeps its early return and base activation, then publishes a complete `TOWN_WINDOW` record. The record reuses the four generic bounded details: income; `built / cap`; visiting hero name or empty; and garrison hero name or empty. It sends the JNI snapshot only when the semantic revision changes.
+- `updateGarrisons()` republishes after the normal Town UI update only while the Town window is active, so visiting/garrison changes refresh without artificial traffic. Building construction/removal retains its deactivate, update/recreate, activate lifecycle; the final activation naturally supplies the fresh dashboard. Town switching remains normal close-and-create ownership behavior, so the old context invalidates and the replacement publishes a full independent snapshot.
+- The confirmed `ChangeTownName` client callback refreshes the active matching Town interface after game state has applied the new name; it updates the normal name widget and, when active, republishes the snapshot. No polling and no editable widget text is used as a data source.
+- `deactivate()` retains `UNKNOWN` invalidation and does not guess or manually publish a parent. `UNKNOWN` clears all details through the existing context store.
+
+### Android responsibility
+
+- `TOWN_WINDOW` consumes the native title and status when present, retaining existing Town resources only as fail-safe fallbacks. A dedicated parchment/stone Town renderer presents the Town label, fitted name/faction header, and all four fields simultaneously in a fitted two-by-two layout.
+- Android resources provide the static labels Income, Buildings this turn, Visiting hero, Garrison hero, and None. The command-deck content description now includes the complete Town snapshot with localized labels and empty-hero fallback. Presentation-cache restoration continues to use the existing complete context snapshot.
+
+### Automated validation
+
+- Focused native Thor tests cover all four Town details, unchanged-snapshot no-churn, exactly one revision for individual income/build/visiting/garrison changes, replacement without stale details, `UNKNOWN` detail clearing, and UTF-8-safe bounds for long Town fields.
+- Focused Android tests confirm the existing fixed four-line contract, required Town resources, and the unchanged Adventure action identifier/mask contract. The permanent Thor CI remains the authoritative Android/native integration and ARM64 package gate.
+
+### Required AYN Thor hardware checklist
+
+1. Start/load an Adventure Map and confirm the Slice 13 hero header and all eight Adventure commands still work.
+2. Open a Town and verify the lower display shows the exact upper-screen town name and faction.
+3. Verify displayed daily gold income against the Town interface.
+4. Verify `Buildings this turn` against the current Town state/configured limit.
+5. Construct a building where practical and verify the Town dashboard returns with updated income and/or build-count information without stale data.
+6. Test visiting/garrison hero state. Where the save permits, verify empty, visiting-hero, and garrison-hero states and confirm the correct translated hero names/fallbacks.
+7. Switch between at least two substantially different towns using the normal upper-screen town navigation and verify name, faction, income, build progress, and hero occupancy never leak from the previous town.
+8. From Town, open a Hero Window. Confirm the Slice 14 Hero dashboard appears. Close it and verify the exact Town dashboard is restored.
+9. Open at least one Town child/modal, such as Town Hall, Fort/recruitment, Marketplace, Tavern, or another available child. Unsupported children must fail closed rather than leaving stale Town data. Closing the child must restore the exact current Town dashboard.
+10. Toggle/recreate the lower display and pause/resume while Town is active. The complete latest Town snapshot must return from the Android controller cache.
+11. Touch multiple areas of the lower Town dashboard and confirm absolutely no gameplay action occurs and upper-screen focus remains unaffected.
+12. Exercise upper touchscreen and physical controller Town interaction and confirm behavior is unchanged.
+13. Return to Adventure Map and exercise all eight existing lower-screen commands, including rapid/double-tap stale-input checks.
+14. Confirm there is no crash, stale Town card, duplicate presentation, revision-churn symptom, delayed command, residual modal frame, or lifecycle regression.
+
+### Regression risks and CI procedure
+
+- Hardware validation must watch for long/localized field fitting, stale values after Town/hero changes, lifecycle restoration after child/modal windows, display recreation cache restoration, lower-screen inertness, and unchanged upper touchscreen/controller behavior. Preserve Slice 13 Adventure information and commands plus Slice 14 Hero behavior.
+- Before hardware validation, inspect the final diff and run `git diff --check`, focused native Thor tests, and inexpensive Android/resource checks. Create and push `ci/thor-slice15-validation` from the approved implementation to trigger only `.github/workflows/thor-ci.yml`: preflight, focused native tests, full ARM64 configuration/package, focused Android tests, `is.xyz.vcmi.thor` verification, checksum/receipt generation, and candidate artifact upload. Do not merge, promote, or mark this slice hardware validated until the CI-built candidate passes every checklist item.

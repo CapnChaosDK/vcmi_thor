@@ -256,6 +256,7 @@ public:
 
 	void updateArtifacts() override;
 	void updateGarrisons() override;
+	void updateTownName();
 	bool holdsGarrison(const CArmedInstance * army) override;
 	void activate() override;
 	void deactivate() override;

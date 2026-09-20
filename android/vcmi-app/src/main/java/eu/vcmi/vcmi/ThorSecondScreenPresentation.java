@@ -200,8 +200,8 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (ThorContextIds.TOWN_WINDOW.equals(contextId))
             {
-                title = getContext().getString(R.string.thor_context_town);
-                status = getContext().getString(R.string.thor_context_town_status);
+                title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_context_town) : publishedTitle;
+                status = publishedStatus.isEmpty() ? getContext().getString(R.string.thor_context_town_status) : publishedStatus;
             }
             else if (ThorContextIds.HERO_MEETING.equals(contextId))
             {
@@ -302,6 +302,10 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 drawHeroDashboard(canvas, frame, dividerY, bevel, density);
             }
+            else if (ThorContextIds.TOWN_WINDOW.equals(contextId))
+            {
+                drawTownDashboard(canvas, frame, dividerY, bevel, density);
+            }
             else
             {
                 paint.setStyle(Paint.Style.FILL);
@@ -374,6 +378,64 @@ final class ThorSecondScreenPresentation extends Presentation
                         detailsTop + detailsHeight * (index + 0.5f) / 3f, frame.width() * 0.84f,
                         Math.min(29f * density, detailsHeight * 0.16f));
             }
+        }
+
+        private void drawTownDashboard(final Canvas canvas, final RectF frame, final float dividerY,
+                                       final float bevel, final float density)
+        {
+            final float contentHeight = frame.height();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, getContext().getString(R.string.thor_context_town), frame.centerX(),
+                    frame.top + contentHeight * 0.09f, frame.width() * 0.8f,
+                    Math.min(24f * density, contentHeight * 0.045f));
+            drawFittedText(canvas, title, frame.centerX(), frame.top + contentHeight * 0.20f,
+                    frame.width() * 0.82f, Math.min(42f * density, contentHeight * 0.075f));
+
+            paint.setFakeBoldText(false);
+            drawFittedText(canvas, status, frame.centerX(), frame.top + contentHeight * 0.29f,
+                    frame.width() * 0.8f, Math.min(28f * density, contentHeight * 0.052f));
+
+            final String[] labels = {
+                    getContext().getString(R.string.thor_town_income),
+                    getContext().getString(R.string.thor_town_buildings),
+                    getContext().getString(R.string.thor_town_visiting_hero),
+                    getContext().getString(R.string.thor_town_garrison_hero)
+            };
+            final String[] values = {
+                    getContext().getString(R.string.thor_town_income_value, detailLines[0]),
+                    detailLines[1],
+                    townHeroName(detailLines[2]),
+                    townHeroName(detailLines[3])
+            };
+            final float gap = Math.max(bevel * 1.25f, 10f);
+            final float left = frame.left + bevel * 3f;
+            final float top = dividerY + bevel * 3f;
+            final float availableWidth = frame.width() - bevel * 6f;
+            final float availableHeight = frame.bottom - bevel * 3f - top;
+            final float cellWidth = (availableWidth - gap) / 2f;
+            final float cellHeight = (availableHeight - gap) / 2f;
+
+            for (int index = 0; index < labels.length; ++index)
+            {
+                final float cellLeft = left + (index % 2) * (cellWidth + gap);
+                final float cellTop = top + (index / 2) * (cellHeight + gap);
+                final RectF cell = new RectF(cellLeft, cellTop, cellLeft + cellWidth, cellTop + cellHeight);
+                paint.setColor(PARCHMENT_DARK);
+                paint.setFakeBoldText(true);
+                drawFittedText(canvas, labels[index], cell.centerX(), cell.top + cell.height() * 0.30f,
+                        cell.width() * 0.9f, Math.min(23f * density, cell.height() * 0.20f));
+                paint.setFakeBoldText(false);
+                drawFittedText(canvas, values[index], cell.centerX(), cell.top + cell.height() * 0.68f,
+                        cell.width() * 0.9f, Math.min(30f * density, cell.height() * 0.27f));
+            }
+        }
+
+        private String townHeroName(final String heroName)
+        {
+            return heroName.isEmpty() ? getContext().getString(R.string.thor_town_none) : heroName;
         }
 
         private void drawAdventureActions(final Canvas canvas, final RectF frame, final float dividerY,
@@ -503,6 +565,13 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (ThorContextIds.HERO_WINDOW.equals(contextId))
                 return title + ". " + status + ". " + detailLines[0] + ". " + detailLines[1] + ". " + detailLines[2];
+
+            if (ThorContextIds.TOWN_WINDOW.equals(contextId))
+                return title + ". " + status + ". "
+                        + getContext().getString(R.string.thor_town_income) + " " + detailLines[0] + ". "
+                        + getContext().getString(R.string.thor_town_buildings) + " " + detailLines[1] + ". "
+                        + getContext().getString(R.string.thor_town_visiting_hero) + " " + townHeroName(detailLines[2]) + ". "
+                        + getContext().getString(R.string.thor_town_garrison_hero) + " " + townHeroName(detailLines[3]);
 
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
