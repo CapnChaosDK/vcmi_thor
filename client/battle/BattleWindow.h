@@ -102,7 +102,7 @@ class BattleWindow : public InterfaceObjectConfigurable
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	bool thorUiBlocked = true;
-	bool isThorCommandDeckOwner() const;
+	bool isThorCommandDeckOwner();
 #endif
 
 	bool hasSpaceForQuickActions() const;
@@ -171,7 +171,7 @@ public:
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	void updateThorActionState(bool invalidateActions = false);
-	bool matchesThorContext(const std::string & contextId) const;
+	bool matchesThorContext(const std::string & contextId);
 	bool executeThorAction(ThorAction action);
 #endif
 };

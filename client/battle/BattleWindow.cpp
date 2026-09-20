@@ -960,12 +960,12 @@ void BattleWindow::blockUI(bool on)
 }
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-bool BattleWindow::isThorCommandDeckOwner() const
+bool BattleWindow::isThorCommandDeckOwner()
 {
 	return isActive() && ENGINE->windows().isTopWindow(this);
 }
 
-bool BattleWindow::matchesThorContext(const std::string & contextId) const
+bool BattleWindow::matchesThorContext(const std::string & contextId)
 {
 	if(!isThorCommandDeckOwner())
 		return false;
