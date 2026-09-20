@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 13 are hardware-validated; Slice 14 is awaiting hardware validation.
-- Status: `hardware validated` through Slice 13; Slice 14 is `awaiting hardware validation`.
+- Phase: Slices 1 through 14 are implemented, CI-built, and hardware-validated.
+- Status: `hardware validated` through Slice 14.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -16,9 +16,10 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
 - Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
-- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`; Slice 5 commit `9b8664177`; Slice 6 promoted after hardware validation; Slice 7 commit `981d2b65a`; Slice 8 promoted after hardware validation; Slice 10 product commit `8bd603d6684d107e6f72e48fbb9e04eaa4b38293`; Slice 11 product commit `873faeaedc153f400d39c2677cfe495bf3d07bd9`; Slice 12 product commit `221a9f9eba3614665bcce8e84c86868f1d252d20`.
+- Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`; Slice 5 commit `9b8664177`; Slice 6 promoted after hardware validation; Slice 7 commit `981d2b65a`; Slice 8 promoted after hardware validation; Slice 10 product commit `8bd603d6684d107e6f72e48fbb9e04eaa4b38293`; Slice 11 product commit `873faeaedc153f400d39c2677cfe495bf3d07bd9`; Slice 12 product commit `221a9f9eba3614665bcce8e84c86868f1d252d20`; Slice 13 product commit `f12865c7fd4dd9208d14c928402702fffcc719bc`; Slice 14 product commit `e60e7e1051d08c5fae07be207182c3f175047429`.
 - Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card and restores the root card on Back. Slice 5 adds the localized Campaign card and restores New Game on Back. Slice 6 adds the localized Credits card and restores Main Menu on exit. Slice 7 adds localized lobby/setup cards and restores them after unsupported children close. Slice 8 adds localized Adventure Map, Hero, and Town cards, restores approved parents through normal activation, and clears unsupported child/battle contexts safely. Slice 9 adds Hero Meeting and Battle lifecycle cards, including the corrected Battle Result restoration path. Slice 10 adds Kingdom Overview, Quest Log, Scenario Journal, Puzzle Map, and Save Game cards through their concrete native owners; every focused manual check passed after the CI-built APK was installed on an AYN Thor. Slice 12 adds the native Next Hero, Move Hero, Sleep/Wake, and End Turn routes; its focused checks passed on the CI-verified APK, including ordinary End Turn confirmation, rapid/stale input safety, and upper-input regressions. All validated contexts pass transition, lifecycle, inertness, and upper-input checks; malformed and mod-added tabs continue to fail closed.
 - Slice 13 promotion: product commit `f12865c7fd4dd9208d14c928402702fffcc719bc` adds the selected hero's localized name and movement snapshot to the Adventure Map header. The CI-built artifact passed all focused hardware checks, including no-selection fallback, movement/selection refresh, all eight existing commands, lifecycle/display recreation, and upper-input regressions.
+- Slice 14 promotion: product commit `e60e7e1051d08c5fae07be207182c3f175047429` adds the read-only Hero Window dashboard. The CI-built artifact passed the complete Hero accuracy, hero-switching, long-text, child/modal restoration, lower-display recreation, inert-touch, Adventure command, and upper-input regression checklist on an AYN Thor.
 - Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, Slice 6 on 2026-09-15, Slices 7 and 8 on 2026-09-17, and Slice 10 through the approved implementation brief on 2026-09-17.
 
 ## Working rules
@@ -785,7 +786,7 @@ Status: `hardware validated`
 
 ## Slice 14: Hero Window information dashboard
 
-Status: `awaiting hardware validation`
+Status: `hardware validated`
 
 ### Scope and information boundary
 
@@ -829,3 +830,11 @@ Status: `awaiting hardware validation`
 
 - Check Hero detail text in long/localized languages, lifecycle restore after child/modal windows, Hero switcher replacement, display recreation cache restore, and lower-display inertness. The principal regressions to guard are stale details, duplicate revisions, clipped text, JNI signature drift, and any change to established upper-window or Adventure input behavior.
 - Before hardware validation, inspect the final diff and run `git diff --check`, the focused native Thor suite, and any inexpensive affected Android unit checks. Create `ci/thor-slice14-validation` from the exact product commit and push it to trigger the permanent `Thor CI`: preflight, focused native tests, complete ARM64 configuration/package, focused Android tests, package/`is.xyz.vcmi.thor` verification, checksum, receipt, and candidate artifact. Do not promote this slice or mark it hardware validated until the CI-built candidate passes the checklist above.
+
+### Final validation and next handover
+
+- GitHub Actions run `35519819523` passed `Thor preflight` and `Thor ARM64 candidate` for `e60e7e1051d08c5fae07be207182c3f175047429`. The focused native and Android Thor tests passed; the candidate package was verified as `is.xyz.vcmi.thor`.
+- Candidate artifact: `thor-candidate-arm64-35519819523`; artifact ZIP SHA-256 `52888aa096054de6f4d57df3ce9d0533ab3459e60a06136038070452531f812f`; APK SHA-256 `4e8158af4543e74922458608460738be331d3b726fed0ac880f202c9243a8cac`.
+- The artifact checksum and embedded validation receipt were verified before installation. The APK was installed in place on the AYN Thor, preserving Thor package data, and launched successfully.
+- On 2026-09-20, the user reported that all twelve Slice 14 hardware checks passed. Slice 14 is therefore hardware validated; the exact tested product tree is `e60e7e1051d08c5fae07be207182c3f175047429` (`thor: add hero window information dashboard`).
+- Future slices must retain the generic bounded detail-line contract, no-churn revisions, authoritative Hero Window lifecycle, inert `HERO_WINDOW` lower display, Slice 13 Adventure snapshot, and all eight Adventure commands. Start a new slice only with a separately approved scope and validation record.
