@@ -48,7 +48,9 @@ public class NativeMethods
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorContext(final long revision, final String contextId,
-                                          final String title, final String status)
+                                          final String title, final String status,
+                                          final String detailLine1, final String detailLine2,
+                                          final String detailLine3, final String detailLine4)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -58,7 +60,8 @@ public class NativeMethods
             return;
 
         ((VcmiSDLActivity) ctx).runOnUiThread(() ->
-                ((VcmiSDLActivity) ctx).publishThorContext(revision, contextId, title, status));
+                ((VcmiSDLActivity) ctx).publishThorContext(revision, contextId, title, status,
+                        detailLine1, detailLine2, detailLine3, detailLine4));
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

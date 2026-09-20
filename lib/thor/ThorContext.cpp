@@ -9,10 +9,19 @@ namespace
 		return lhs.contextId == rhs.contextId
 			&& lhs.title == rhs.title
 			&& lhs.status == rhs.status
+			&& lhs.details == rhs.details
 			&& lhs.enabledActionMask == rhs.enabledActionMask
 			&& lhs.activeActionMask == rhs.activeActionMask
 			&& lhs.selectedHeroId == rhs.selectedHeroId
 			&& lhs.actionEpoch == rhs.actionEpoch;
+	}
+
+	void boundTextFields(ThorContextRecord & context)
+	{
+		context.title = thorBoundedText(std::move(context.title));
+		context.status = thorBoundedText(std::move(context.status));
+		for(auto & detail : context.details)
+			detail = thorBoundedText(std::move(detail));
 	}
 }
 
@@ -29,6 +38,9 @@ bool ThorContextStore::publish(ThorContextRecord next)
 		return false;
 	if(next.contextId.empty())
 		next.contextId = ThorContextIds::UNKNOWN;
+	if(next.contextId == ThorContextIds::UNKNOWN)
+		next.details = {};
+	boundTextFields(next);
 	current = std::move(next);
 	return true;
 }
@@ -38,6 +50,9 @@ ThorContextRecord ThorContextStore::publishNext(ThorContextRecord next)
 	std::lock_guard lock(mutex);
 	if(next.contextId.empty())
 		next.contextId = ThorContextIds::UNKNOWN;
+	if(next.contextId == ThorContextIds::UNKNOWN)
+		next.details = {};
+	boundTextFields(next);
 	if(sameSemanticState(current, next))
 		return current;
 	next.revision = current.revision + 1;

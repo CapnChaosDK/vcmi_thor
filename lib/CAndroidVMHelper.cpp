@@ -90,19 +90,27 @@ void CAndroidVMHelper::callCustomMethod(const std::string & cls, const std::stri
 }
 
 void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::string & contextId,
-										 const std::string & title, const std::string & status)
+										 const std::string & title, const std::string & status,
+										 const ThorContextDetails & details)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorContext",
-		"(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
-		[revision, &contextId, &title, &status](JNIEnv * env, jclass cls, jmethodID methodId)
+		"(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
+		"Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+		[revision, &contextId, &title, &status, &details](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
 			jstring javaContextId = env->NewStringUTF(contextId.c_str());
 			jstring javaTitle = env->NewStringUTF(title.c_str());
 			jstring javaStatus = env->NewStringUTF(status.c_str());
-			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), javaContextId, javaTitle, javaStatus);
+			std::array<jstring, THOR_CONTEXT_DETAIL_LINE_COUNT> javaDetails;
+			for(std::size_t index = 0; index < details.size(); ++index)
+				javaDetails[index] = env->NewStringUTF(details[index].c_str());
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), javaContextId, javaTitle, javaStatus,
+				javaDetails[0], javaDetails[1], javaDetails[2], javaDetails[3]);
 			env->DeleteLocalRef(javaContextId);
 			env->DeleteLocalRef(javaTitle);
 			env->DeleteLocalRef(javaStatus);
+			for(const auto javaDetail : javaDetails)
+				env->DeleteLocalRef(javaDetail);
 		}, true);
 }
 

@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 13 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 13.
+- Phase: Slices 1 through 13 are hardware-validated; Slice 14 is awaiting hardware validation.
+- Status: `hardware validated` through Slice 13; Slice 14 is `awaiting hardware validation`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -783,7 +783,49 @@ Status: `hardware validated`
 - On 2026-09-20, the user reported every focused Slice 13 hardware check passed on an AYN Thor after the verified artifact was installed in place, preserving app data.
 - The promoted hardware-tested product tree is `f12865c7fd4dd9208d14c928402702fffcc719bc` (`thor: add selected hero information card`).
 
-## Next slice preparation
+## Slice 14: Hero Window information dashboard
 
-- Slice 14 begins only after its behavior, implementation boundary, native and Android responsibilities, focused automated checks, hardware checklist, and regression risks are recorded and explicitly approved.
-- Preserve Slice 13's bounded local-player snapshot, unchanged eight-command contract, revision no-churn behavior, generic no-selection fallback, and the complete prior-slice lifecycle/input regression suite.
+Status: `awaiting hardware validation`
+
+### Scope and information boundary
+
+- When a normal `CHeroWindow` is the active upper-screen owner, the lower deck renders a read-only dashboard for that exact window's `curHero`: translated name; level and translated class; Attack and Defense; Spell Power and Knowledge; current/max mana; and current/next-level experience.
+- The native source of truth is only the `CGHeroInstance * curHero` already displayed by `CHeroWindow`. It reuses the same translated name/class, primary-skill accessors, mana limit, experience, and `CHeroHandler::reqExp()` next-level calculation shown by the upper Hero Window. It performs no global hero lookup and broadens no visibility.
+- This slice excludes commands and all lower-display controls, army contents, artifacts, secondary skills, specialty/biography text, morale/luck, map position, resources, enemy/fogged information, quick hero switching, Town/Battle/Hero Meeting cards, and proprietary Heroes III imagery.
+
+### Native payload and lifecycle
+
+- `ThorContextRecord` now carries four generic bounded detail lines for this and later information cards. Context title, status, and every detail line are UTF-8-safe bounded to 128 bytes through `thorBoundedText()`; `UNKNOWN` explicitly clears detail lines.
+- Semantic comparison includes detail lines. An unchanged Hero snapshot does not advance the revision; one rendered Hero-information change advances it once. Replacing one Hero snapshot with another and clearing to `UNKNOWN` both receive new revisions, without retaining stale Hero values.
+- `CHeroWindow::activate()` publishes its complete snapshot after the normal base activation. `updateArtifacts()` refreshes only when the window is already active, so constructor-time setup cannot expose `HERO_WINDOW`. `deactivate()` retains the established `UNKNOWN` invalidation. Normal `WindowHandler` ownership and hero-switcher close/recreate behavior are unchanged.
+
+### Android responsibility
+
+- The existing atomic context publication path now carries all four detail lines through JNI, `NativeMethods`, `VcmiSDLActivity`, `ThorSecondScreenController`, and `ThorSecondScreenPresentation`.
+- The controller caches the complete latest snapshot, including detail lines, so a recreated lower `Presentation` restores the Hero card without another native publication.
+- `HERO_WINDOW` has a dedicated parchment/stone drawing treatment that fitted-renders the Hero label, name, level/class, primary-skill rows, and mana/experience row on the 1080 x 1240 reference layout. It adds no hitboxes and does not submit Thor actions. Adventure Map rendering, all eight existing commands, state, and touch behavior remain unchanged.
+
+### Automated validation
+
+- Focused native Thor tests cover detail-line no-churn, single-line revision changes, replacement snapshots, `UNKNOWN` clearing, every-line bounds, and UTF-8 truncation. Existing context and action tests remain in the same focused suite.
+- Focused Android tests cover the fixed four-line model/resource contract; the permanent Thor CI compiles the extended Java/JNI publication path and runs the focused Android test target.
+
+### Required AYN Thor hardware checklist
+
+1. Start/load an Adventure Map and confirm Slice 13 still shows selected hero name/movement and all eight Adventure commands still work.
+2. Open a Hero Window and verify the lower dashboard matches the upper Hero Window for hero name, level/class, four primary skills, mana, and experience.
+3. Test at least two substantially different heroes and verify no stale values survive hero switching.
+4. Rapidly switch between several heroes using the normal upper-screen hero list.
+5. Verify a long/localized hero name and class fit without overlap or unreadable clipping where a suitable save/language is available.
+6. Open a supported child such as Quest Log and verify its existing Thor context appears; closing it must restore the exact Hero dashboard.
+7. Open an unsupported Hero child/modal where applicable and verify the deck fails closed rather than leaving stale Hero information; closing it must restore the Hero dashboard.
+8. Toggle/recreate the lower display or pause/resume while a Hero Window is active and verify the latest complete Hero card returns.
+9. Verify lower-screen touches in Hero Window perform no gameplay action and do not focus/control the upper display.
+10. Verify upper touchscreen and physical controller behavior remain unchanged.
+11. Return to Adventure Map and exercise all eight existing lower-screen Adventure commands, including rapid/double-tap stale-input checks.
+12. Confirm no crash, stale card, revision churn symptom, duplicate window, delayed action, or lifecycle regression.
+
+### Regression risks and CI procedure
+
+- Check Hero detail text in long/localized languages, lifecycle restore after child/modal windows, Hero switcher replacement, display recreation cache restore, and lower-display inertness. The principal regressions to guard are stale details, duplicate revisions, clipped text, JNI signature drift, and any change to established upper-window or Adventure input behavior.
+- Before hardware validation, inspect the final diff and run `git diff --check`, the focused native Thor suite, and any inexpensive affected Android unit checks. Create `ci/thor-slice14-validation` from the exact product commit and push it to trigger the permanent `Thor CI`: preflight, focused native tests, complete ARM64 configuration/package, focused Android tests, package/`is.xyz.vcmi.thor` verification, checksum, receipt, and candidate artifact. Do not promote this slice or mark it hardware validated until the CI-built candidate passes the checklist above.

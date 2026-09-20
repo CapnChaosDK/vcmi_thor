@@ -2,6 +2,7 @@
 
 #include "../../Global.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
@@ -79,6 +80,9 @@ enum class ThorInGameContext
 	SAVE_GAME
 };
 
+inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
+using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
+
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
 {
@@ -90,6 +94,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::uint32_t activeActionMask = 0;
 	int selectedHeroId = -1;
 	std::uint64_t actionEpoch = 0;
+	ThorContextDetails details;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

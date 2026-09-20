@@ -48,10 +48,11 @@ final class ThorSecondScreenPresentation extends Presentation
     }
 
     void updateContext(final long revision, final String contextId, final String title, final String status,
-                       final int enabledActionMask, final int activeActionMask)
+                       final String[] detailLines, final int enabledActionMask, final int activeActionMask)
     {
         if (foundationView != null)
-            foundationView.updateContext(revision, contextId, title, status, enabledActionMask, activeActionMask);
+            foundationView.updateContext(revision, contextId, title, status, detailLines,
+                    enabledActionMask, activeActionMask);
     }
 
     private static final class ThorFoundationView extends View
@@ -69,6 +70,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private String status;
         private long revision;
         private String contextId = ThorContextIds.UNKNOWN;
+        private final String[] detailLines = new String[ThorContextDetails.COUNT];
         private int enabledActionMask;
         private int activeActionMask;
 
@@ -83,12 +85,16 @@ final class ThorSecondScreenPresentation extends Presentation
         }
 
         void updateContext(final long revision, final String contextId, final String publishedTitle,
-                           final String publishedStatus, final int enabledActionMask, final int activeActionMask)
+                           final String publishedStatus, final String[] publishedDetails,
+                           final int enabledActionMask, final int activeActionMask)
         {
             this.revision = revision;
             this.contextId = contextId;
             this.enabledActionMask = enabledActionMask;
             this.activeActionMask = activeActionMask;
+            for (int index = 0; index < detailLines.length; ++index)
+                detailLines[index] = publishedDetails != null && index < publishedDetails.length
+                        ? ThorContextDetails.orEmpty(publishedDetails[index]) : "";
             if (ThorContextIds.MAIN_MENU.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_main_menu);
@@ -189,8 +195,8 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {
-                title = getContext().getString(R.string.thor_context_hero);
-                status = getContext().getString(R.string.thor_context_hero_status);
+                title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_context_hero) : publishedTitle;
+                status = publishedStatus.isEmpty() ? getContext().getString(R.string.thor_context_hero_status) : publishedStatus;
             }
             else if (ThorContextIds.TOWN_WINDOW.equals(contextId))
             {
@@ -292,17 +298,24 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawLine(frame.left + bevel * 2f, dividerY, frame.right - bevel * 2f, dividerY, paint);
 
-            paint.setStyle(Paint.Style.FILL);
-            paint.setTextAlign(Paint.Align.CENTER);
-            paint.setFakeBoldText(true);
-            paint.setColor(TEXT);
-            drawFittedText(canvas, title, getWidth() * 0.5f, frame.top + contentHeight * 0.18f, contentWidth * 0.82f,
-                    Math.min(42f * density, contentHeight * 0.09f));
+            if (ThorContextIds.HERO_WINDOW.equals(contextId))
+            {
+                drawHeroDashboard(canvas, frame, dividerY, bevel, density);
+            }
+            else
+            {
+                paint.setStyle(Paint.Style.FILL);
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setFakeBoldText(true);
+                paint.setColor(TEXT);
+                drawFittedText(canvas, title, getWidth() * 0.5f, frame.top + contentHeight * 0.18f, contentWidth * 0.82f,
+                        Math.min(42f * density, contentHeight * 0.09f));
 
-            paint.setFakeBoldText(false);
-            paint.setColor(PARCHMENT_DARK);
-            drawFittedText(canvas, status, getWidth() * 0.5f, dividerY + contentHeight * 0.075f,
-                    contentWidth * 0.78f, Math.min(30f * density, contentHeight * 0.055f));
+                paint.setFakeBoldText(false);
+                paint.setColor(PARCHMENT_DARK);
+                drawFittedText(canvas, status, getWidth() * 0.5f, dividerY + contentHeight * 0.075f,
+                        contentWidth * 0.78f, Math.min(30f * density, contentHeight * 0.055f));
+            }
 
             if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 drawAdventureActions(canvas, frame, dividerY, bevel, density);
@@ -331,6 +344,36 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             super.performClick();
             return true;
+        }
+
+        private void drawHeroDashboard(final Canvas canvas, final RectF frame, final float dividerY,
+                                       final float bevel, final float density)
+        {
+            final float contentHeight = frame.height();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, getContext().getString(R.string.thor_context_hero), frame.centerX(),
+                    frame.top + contentHeight * 0.09f, frame.width() * 0.8f,
+                    Math.min(24f * density, contentHeight * 0.045f));
+            drawFittedText(canvas, title, frame.centerX(), frame.top + contentHeight * 0.20f,
+                    frame.width() * 0.82f, Math.min(42f * density, contentHeight * 0.075f));
+
+            paint.setFakeBoldText(false);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, status, frame.centerX(), frame.top + contentHeight * 0.29f,
+                    frame.width() * 0.8f, Math.min(28f * density, contentHeight * 0.052f));
+
+            paint.setColor(PARCHMENT_DARK);
+            final float detailsTop = dividerY + bevel * 3f;
+            final float detailsHeight = frame.bottom - bevel * 3f - detailsTop;
+            for (int index = 0; index < 3; ++index)
+            {
+                drawFittedText(canvas, detailLines[index], frame.centerX(),
+                        detailsTop + detailsHeight * (index + 0.5f) / 3f, frame.width() * 0.84f,
+                        Math.min(29f * density, detailsHeight * 0.16f));
+            }
         }
 
         private void drawAdventureActions(final Canvas canvas, final RectF frame, final float dividerY,
@@ -458,6 +501,9 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private String commandDeckDescription()
         {
+            if (ThorContextIds.HERO_WINDOW.equals(contextId))
+                return title + ". " + status + ". " + detailLines[0] + ". " + detailLines[1] + ". " + detailLines[2];
+
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
 

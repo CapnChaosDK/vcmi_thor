@@ -180,6 +180,74 @@ TEST(ThorContextPayloadTest, BoundsTextWithoutSplittingUtf8)
 	EXPECT_EQ(thorBoundedText("Gelu \xc3\xa9lite", 6), "Gelu ");
 }
 
+TEST(ThorContextPayloadTest, BoundsEveryDetailLineWithoutSplittingUtf8)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	context.details = {
+		std::string(129, 'a'),
+		std::string(128, 'b') + "\xc3\xa9",
+		std::string(129, 'c'),
+		std::string(129, 'd')
+	};
+
+	const auto published = store.publishNext(std::move(context));
+	for(const auto & detail : published.details)
+		EXPECT_LE(detail.size(), 128);
+	EXPECT_EQ(published.details[1], std::string(128, 'b'));
+}
+
+TEST(ThorContextStoreTest, HeroDetailsChangeRevisionExactlyOnceWithoutChurn)
+{
+	ThorContextStore store;
+	ThorContextRecord hero;
+	hero.contextId = ThorContextIds::HERO_WINDOW;
+	hero.title = "Catherine";
+	hero.status = "Level 8 Knight";
+	hero.details = {
+		"Attack 4 · Defense 6",
+		"Spell Power 2 · Knowledge 3",
+		"Mana 24 / 30 · Experience 11200 / 14700",
+		""
+	};
+
+	const auto initial = store.publishNext(hero);
+	const auto unchanged = store.publishNext(hero);
+	hero.details[1] = "Spell Power 3 · Knowledge 3";
+	const auto changed = store.publishNext(hero);
+
+	EXPECT_EQ(unchanged.revision, initial.revision);
+	EXPECT_EQ(changed.revision, initial.revision + 1);
+}
+
+TEST(ThorContextStoreTest, ReplacingHeroSnapshotAndClearingCannotRetainDetails)
+{
+	ThorContextStore store;
+	ThorContextRecord catherine;
+	catherine.contextId = ThorContextIds::HERO_WINDOW;
+	catherine.title = "Catherine";
+	catherine.details[0] = "Attack 4 · Defense 6";
+	const auto firstHero = store.publishNext(catherine);
+
+	ThorContextRecord cragHack;
+	cragHack.contextId = ThorContextIds::HERO_WINDOW;
+	cragHack.title = "Crag Hack";
+	cragHack.details[0] = "Attack 8 · Defense 3";
+	const auto replacementHero = store.publishNext(cragHack);
+
+	ThorContextRecord unknown;
+	unknown.contextId = ThorContextIds::UNKNOWN;
+	unknown.details = catherine.details;
+	const auto cleared = store.publishNext(unknown);
+
+	EXPECT_EQ(replacementHero.revision, firstHero.revision + 1);
+	EXPECT_EQ(replacementHero.title, "Crag Hack");
+	EXPECT_EQ(cleared.revision, replacementHero.revision + 1);
+	EXPECT_EQ(cleared.contextId, ThorContextIds::UNKNOWN);
+	EXPECT_EQ(cleared.details, ThorContextDetails{});
+}
+
 TEST(ThorContextStoreTest, AdventureInformationChangesRevisionWithoutChurn)
 {
 	ThorContextStore store;

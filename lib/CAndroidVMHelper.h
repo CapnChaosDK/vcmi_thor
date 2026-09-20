@@ -17,6 +17,8 @@
 #include <cstdint>
 #include <string>
 
+#include "thor/ThorContext.h"
+
 /// helper class that allows access to java vm to communicate with java code from native
 class DLL_LINKAGE CAndroidVMHelper
 {
@@ -42,7 +44,8 @@ public:
 						  std::function<void(JNIEnv *, jclass, jmethodID)> fun, bool classloaded = false);
 
 	void publishThorContext(std::uint64_t revision, const std::string & contextId,
-							const std::string & title, const std::string & status);
+							const std::string & title, const std::string & status,
+							const ThorContextDetails & details = {});
 	void publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask,
 		std::uint32_t activeActionMask);
 

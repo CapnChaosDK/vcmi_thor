@@ -77,10 +77,13 @@ public class VcmiSDLActivity extends SDLActivity
         }
     }
 
-    void publishThorContext(final long revision, final String contextId, final String title, final String status)
+    void publishThorContext(final long revision, final String contextId, final String title, final String status,
+                            final String detailLine1, final String detailLine2,
+                            final String detailLine3, final String detailLine4)
     {
         if (mThorSecondScreenController != null)
-            mThorSecondScreenController.publishContext(revision, contextId, title, status);
+            mThorSecondScreenController.publishContext(revision, contextId, title, status,
+                    detailLine1, detailLine2, detailLine3, detailLine4);
     }
 
     void publishThorActionState(final long revision, final int enabledActionMask, final int activeActionMask)

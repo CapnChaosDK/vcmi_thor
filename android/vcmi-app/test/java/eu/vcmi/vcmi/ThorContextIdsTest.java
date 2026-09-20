@@ -60,6 +60,14 @@ public class ThorContextIdsTest
     }
 
     @Test
+    public void heroDashboardUsesFixedDetailContract()
+    {
+        assertEquals(4, ThorContextDetails.COUNT);
+        assertNotEquals(0, R.string.thor_context_hero);
+        assertNotEquals(0, R.string.thor_context_hero_status);
+    }
+
+    @Test
     public void adventureActionIdsUseStableExplicitMasks()
     {
         assertEquals(0, ThorActionIds.NONE);

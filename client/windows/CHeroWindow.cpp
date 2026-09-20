@@ -55,6 +55,42 @@ namespace
 		context = thorContextStore().publishNext(std::move(context));
 		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
 	}
+
+	std::string thorHeroSkillLine(const CGHeroInstance * hero, PrimarySkill first, PrimarySkill second)
+	{
+		const auto skillName = [](PrimarySkill skill)
+		{
+			return GAME->translator().translate("core.arraytxt", 2 + skill.getNum());
+		};
+		return skillName(first) + " " + std::to_string(hero->getPrimSkillLevel(first)) + " · "
+			+ skillName(second) + " " + std::to_string(hero->getPrimSkillLevel(second));
+	}
+
+	void publishThorHeroContext(const CGHeroInstance * hero)
+	{
+		assert(hero);
+
+		MetaString levelAndClass;
+		levelAndClass.appendTextID("core.genrltxt.342");
+		levelAndClass.replaceNumber(hero->level);
+		levelAndClass.replaceTextID(hero->getClassNameTextID());
+
+		ThorContextRecord context;
+		context.contextId = ThorContextIds::HERO_WINDOW;
+		context.title = GAME->translator().translate(hero->getNameTextID());
+		context.status = levelAndClass.toString(&GAME->translator());
+		context.details[0] = thorHeroSkillLine(hero, PrimarySkill::ATTACK, PrimarySkill::DEFENSE);
+		context.details[1] = thorHeroSkillLine(hero, PrimarySkill::SPELL_POWER, PrimarySkill::KNOWLEDGE);
+		context.details[2] = "Mana " + std::to_string(hero->mana) + " / " + std::to_string(hero->manaLimit())
+			+ " · Experience " + std::to_string(hero->exp) + " / "
+			+ std::to_string(LIBRARY->heroh->reqExp(hero->level + 1));
+
+		const auto previous = thorContextStore().snapshot();
+		context = thorContextStore().publishNext(std::move(context));
+		if(context.revision != previous.revision)
+			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
+				context.details);
+	}
 }
 #endif
 
@@ -221,7 +257,7 @@ void CHeroWindow::activate()
 	CStatusbarWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::HERO_WINDOW);
+	publishThorHeroContext(curHero);
 #endif
 }
 
@@ -393,6 +429,11 @@ void CHeroWindow::updateArtifacts()
 
 	morale->set(curHero);
 	luck->set(curHero);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		publishThorHeroContext(curHero);
+#endif
 
 	redraw();
 }

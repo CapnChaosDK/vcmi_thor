@@ -20,6 +20,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private String contextId = ThorContextIds.UNKNOWN;
     private String contextTitle = "";
     private String contextStatus = "";
+    private final String[] contextDetails = new String[ThorContextDetails.COUNT];
     private int enabledActionMask;
     private int activeActionMask;
     private boolean started;
@@ -74,7 +75,9 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         mainHandler.removeCallbacksAndMessages(null);
     }
 
-    void publishContext(final long revision, final String id, final String title, final String status)
+    void publishContext(final long revision, final String id, final String title, final String status,
+                        final String detailLine1, final String detailLine2,
+                        final String detailLine3, final String detailLine4)
     {
         if (revision <= contextRevision)
             return;
@@ -83,11 +86,16 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextId = id == null || id.isEmpty() ? ThorContextIds.UNKNOWN : id;
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
+        contextDetails[0] = ThorContextDetails.orEmpty(detailLine1);
+        contextDetails[1] = ThorContextDetails.orEmpty(detailLine2);
+        contextDetails[2] = ThorContextDetails.orEmpty(detailLine3);
+        contextDetails[3] = ThorContextDetails.orEmpty(detailLine4);
         enabledActionMask = 0;
         activeActionMask = 0;
         Log.i(LOG_TAG, "Context " + contextId + " revision " + contextRevision);
         if (presentation != null)
-            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask, activeActionMask);
+            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, contextDetails,
+                    enabledActionMask, activeActionMask);
     }
 
     void publishActionState(final long revision, final int actionMask, final int activeMask)
@@ -98,7 +106,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         enabledActionMask = actionMask;
         activeActionMask = activeMask;
         if (presentation != null)
-            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask, activeActionMask);
+            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, contextDetails,
+                    enabledActionMask, activeActionMask);
     }
 
     @Override
@@ -151,7 +160,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         {
             newPresentation.show();
             presentation = newPresentation;
-            newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, enabledActionMask, activeActionMask);
+            newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, contextDetails,
+                    enabledActionMask, activeActionMask);
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)
