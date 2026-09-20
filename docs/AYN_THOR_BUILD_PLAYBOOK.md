@@ -14,6 +14,9 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 12 final product commit: `221a9f9eba3614665bcce8e84c86868f1d252d20` — context-aware Adventure Map gameplay controls.
 - Slice 12 candidate CI run: `35263114653`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35263114653`; artifact ZIP SHA-256 `211d1dd9cf0443ab9f4d60d11188626d267ea30c39f9a9217a27a79c4ffb41da`; APK SHA-256 `f18621aaaf1fbded950112a52f5e1f41f44a5b9900d7ec988447f2940c2609cc`.
 - Slice 12 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed Next Hero, Move Hero, Sleep/Wake, End Turn including the ordinary reminder flow, rapid/stale-input safety, the Slice 11 utility regressions, lifecycle, and upper-input checks.
+- Slice 13 final product commit: `f12865c7fd4dd9208d14c928402702fffcc719bc` — selected-hero Adventure information card.
+- Slice 13 candidate CI run: `35504023315`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35504023315`; APK SHA-256 `f2af72c9024ce6fb4c8e70c7775d0fde60cd463a97306b31f85b6f9b60675f24`.
+- Slice 13 is hardware validated. The verified candidate APK was installed in place on an AYN Thor and passed selected-hero name/movement refresh, no-selection fallback, all eight existing commands, rapid/stale-input safety, lifecycle/display recreation, and upper-input regression checks.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
