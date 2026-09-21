@@ -23,6 +23,8 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 15 final product commit: `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` — read-only Town Window information dashboard.
 - Slice 15 candidate CI run: `35528064000`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35528064000`; artifact ZIP SHA-256 `29dc8ad80cb7fa95386eef30baa4e5c3ca9b8c3c625b30e0639474885d95d0e3`; APK SHA-256 `c3491ee34b11f962fd4700031d450195120003c11d0cc3123042785b1419be12`.
 - Slice 15 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed the complete Town-card accuracy, construction/hero refresh, town switching, child/modal restoration, display recreation, inert-touch, Adventure-command, and upper-input regression checklist.
+- Slice 16 final product commit: `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` — context-aware Battle command deck. Its candidate CI run `35577409407` passed and the hardware checklist was completed; its verified APK SHA-256 was `d1ca061bd346e9022801d78fd0ef69cb70da3b1c902662868670b4a20acc65f3`.
+- Slice 17 final product commit: `d4c9193be2d99233c00e2b4054d0484e0c67bf99` — live Battle information dashboard with the exact current opponent unit retained as read-only information during opponent turns. Candidate CI run `35586360399` passed; artifact `thor-candidate-arm64-35586360399`, package `is.xyz.vcmi.thor`, APK SHA-256 `29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`. The checksum-verified APK was installed in place and all focused hardware checks passed.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
