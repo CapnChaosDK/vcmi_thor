@@ -19,7 +19,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(10), ThorAction::BATTLE_DEFEND);
 	EXPECT_EQ(thorActionFromId(11), ThorAction::BATTLE_TACTICS_NEXT);
 	EXPECT_EQ(thorActionFromId(12), ThorAction::BATTLE_TACTICS_END);
-	EXPECT_EQ(thorActionFromId(13), std::nullopt);
+	EXPECT_EQ(thorActionFromId(13), ThorAction::SELECT_HERO);
+	EXPECT_EQ(thorActionFromId(14), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -34,6 +35,7 @@ TEST(ThorActionTest, AllowsOnlySliceTwelveAdventureActions)
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::MOVE_HERO));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::TOGGLE_HERO_SLEEP));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::END_TURN));
+	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::SELECT_HERO));
 	EXPECT_FALSE(isThorActionAllowedInAdventureMap(static_cast<ThorAction>(99)));
 }
 
@@ -60,6 +62,26 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_DEFEND), 512);
 	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_NEXT), 1024);
 	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_END), 2048);
+	EXPECT_EQ(thorActionMask(ThorAction::SELECT_HERO), 4096);
+}
+
+TEST(ThorActionTest, TargetMustMatchPublishedHeroAndRevision)
+{
+	ThorContextRecord context;
+	context.revision = 7;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = thorActionMask(ThorAction::SELECT_HERO);
+	context.heroes.push_back({42, "Hero", 100, 200, false, false});
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::SELECT_HERO, 42}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::SELECT_HERO}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::SELECT_HERO, 43}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({6, ThorAction::SELECT_HERO, 42}, context), ThorActionValidation::STALE_REVISION);
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::SELECT_HERO, 42}, context), ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::OPEN_SAVE_GAME, 42}, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.heroes.clear(); // ownership/removal refresh invalidates the published target
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::SELECT_HERO, 42}, context), ThorActionValidation::INVALID_TARGET);
 }
 
 TEST(ThorActionTest, ValidatesRevisionContextAndAvailability)
@@ -70,6 +92,7 @@ TEST(ThorActionTest, ValidatesRevisionContextAndAvailability)
 	context.enabledActionMask = thorActionMask(ThorAction::OPEN_SAVE_GAME);
 
 	EXPECT_EQ(validateThorActionRequest({12, ThorAction::OPEN_SAVE_GAME}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({12, ThorAction::OPEN_SAVE_GAME, 999}, context), ThorActionValidation::VALID);
 	EXPECT_EQ(validateThorActionRequest({11, ThorAction::OPEN_SAVE_GAME}, context), ThorActionValidation::STALE_REVISION);
 	EXPECT_EQ(validateThorActionRequest({12, ThorAction::OPEN_PUZZLE_MAP}, context), ThorActionValidation::UNAVAILABLE);
 	context.contextId = ThorContextIds::HERO_WINDOW;

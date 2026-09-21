@@ -169,6 +169,9 @@ void GameEngine::updateFrame()
 		case ThorActionValidation::UNAVAILABLE:
 			logGlobal->debug("Thor action rejected: unavailable action %d", static_cast<int>(request->action));
 			continue;
+		case ThorActionValidation::INVALID_TARGET:
+			logGlobal->debug("Thor action rejected: invalid hero target %d", request->targetId);
+			continue;
 		case ThorActionValidation::VALID:
 			break;
 		}
@@ -180,7 +183,15 @@ void GameEngine::updateFrame()
 				logGlobal->debug("Thor action rejected: inactive Adventure Map");
 				continue;
 			}
-			executed = adventureInt->getAdventureShortcuts().executeThorAction(request->action);
+			adventureInt->updateThorActionState();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: Adventure state changed");
+				continue;
+			}
+			executed = request->action == ThorAction::SELECT_HERO
+				? adventureInt->getAdventureShortcuts().selectThorHero(request->targetId)
+				: adventureInt->getAdventureShortcuts().executeThorAction(request->action);
 			if(executed)
 				adventureInt->updateThorActionState(true);
 		}

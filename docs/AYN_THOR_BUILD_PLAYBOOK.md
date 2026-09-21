@@ -117,6 +117,8 @@ The command must produce no output before promoting. If it does, do not promote 
 
 ## Window-lifecycle regression rule
 
+Targeted lower-display actions carry both the rendered semantic revision and a stable native object identity. Immediately before executing the native operation, revalidate that identity against current ownership and state, as well as its membership in the revision-bound published snapshot. Never infer a target from a row coordinate or resolve a stale identity by name/type.
+
 Thor publication is observational; it must not change the native window-stack lifecycle. In particular, do not replace a normal sequence of pop, parent activation, parent deactivation, and underlying-owner restoration with a multi-window removal merely to avoid a transient lower-deck context. Battle Result hardware testing found that skipping BattleWindow's normal activation/deactivation left its final frame over Adventure Map.
 
 For every future context-owner change, verify the engine's existing push/pop/close ordering first. Preserve it exactly unless an equivalent cleanup path is explicitly demonstrated in focused tests and on hardware. The hardware checklist for any modal or battle-related slice must include closing the modal and confirming that the restored parent is visible, interactive, and free of the dismissed window's residual frame.

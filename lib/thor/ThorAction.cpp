@@ -1,5 +1,7 @@
 #include "ThorAction.h"
 
+#include <algorithm>
+
 std::optional<ThorAction> thorActionFromId(int actionId)
 {
 	switch(actionId)
@@ -28,6 +30,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::BATTLE_TACTICS_NEXT;
 	case static_cast<int>(ThorAction::BATTLE_TACTICS_END):
 		return ThorAction::BATTLE_TACTICS_END;
+	case static_cast<int>(ThorAction::SELECT_HERO):
+		return ThorAction::SELECT_HERO;
 	default:
 		return std::nullopt;
 	}
@@ -53,7 +57,8 @@ bool isThorActionAllowedInAdventureMap(ThorAction action)
 		|| action == ThorAction::NEXT_HERO
 		|| action == ThorAction::MOVE_HERO
 		|| action == ThorAction::TOGGLE_HERO_SLEEP
-		|| action == ThorAction::END_TURN;
+		|| action == ThorAction::END_TURN
+		|| action == ThorAction::SELECT_HERO;
 }
 
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)
@@ -66,6 +71,13 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::WRONG_CONTEXT;
 	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
 		return ThorActionValidation::UNAVAILABLE;
+	if(request.action == ThorAction::SELECT_HERO)
+	{
+		if(request.targetId < 0)
+			return ThorActionValidation::INVALID_TARGET;
+		if(std::none_of(context.heroes.begin(), context.heroes.end(), [&](const auto & hero) { return hero.id == request.targetId; }))
+			return ThorActionValidation::INVALID_TARGET;
+	}
 	return ThorActionValidation::VALID;
 }
 

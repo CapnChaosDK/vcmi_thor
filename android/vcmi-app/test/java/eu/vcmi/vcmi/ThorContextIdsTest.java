@@ -97,6 +97,9 @@ public class ThorContextIdsTest
 		assertEquals(10, ThorActionIds.BATTLE_DEFEND);
 		assertEquals(11, ThorActionIds.BATTLE_TACTICS_NEXT);
 		assertEquals(12, ThorActionIds.BATTLE_TACTICS_END);
+		assertEquals(13, ThorActionIds.SELECT_HERO);
+		assertEquals(4096, ThorActionIds.maskFor(ThorActionIds.SELECT_HERO));
+		assertEquals(-1, ThorActionIds.NO_TARGET);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
         assertEquals(4, ThorActionIds.maskFor(ThorActionIds.OPEN_PUZZLE_MAP));
@@ -154,5 +157,15 @@ public class ThorContextIdsTest
         assertNotEquals(0, R.string.thor_action_sleep_hero);
         assertNotEquals(0, R.string.thor_action_wake_hero);
         assertNotEquals(0, R.string.thor_action_end_turn);
+        assertNotEquals(0, R.string.thor_tab_actions);
+        assertNotEquals(0, R.string.thor_tab_heroes);
+        assertNotEquals(0, R.string.thor_no_heroes);
+        assertNotEquals(0, R.string.thor_hero_sleeping);
+        assertEquals(8, ThorHeroRoster.MAX_HEROES);
+        assertEquals(0, ThorHeroRoster.copyOf(new int[9], new String[9], new int[9], new int[9], new int[9]).ids.length);
+        final ThorHeroRoster roster = ThorHeroRoster.copyOf(new int[]{42}, new String[]{"Hero"},
+                new int[]{100}, new int[]{200}, new int[]{1});
+        assertEquals(42, roster.ids[0]);
+        assertEquals("Hero", roster.names[0]);
     }
 }

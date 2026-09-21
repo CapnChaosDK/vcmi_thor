@@ -37,6 +37,10 @@
     <string name="thor_action_puzzle_map">Puzzle Map</string>
     <string name="thor_action_save_game">Save Game</string>
     <string name="thor_action_section_gameplay">Gameplay</string>
+    <string name="thor_tab_actions">Actions</string>
+    <string name="thor_tab_heroes">Heroes</string>
+    <string name="thor_no_heroes">No heroes</string>
+    <string name="thor_hero_sleeping">Sleeping</string>
     <string name="thor_action_section_utilities">Utilities</string>
     <string name="thor_action_next_hero">Next Hero</string>
     <string name="thor_action_move_hero">Move Hero</string>

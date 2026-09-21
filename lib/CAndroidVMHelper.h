@@ -48,6 +48,7 @@ public:
 							const ThorContextDetails & details = {});
 	void publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask,
 		std::uint32_t activeActionMask);
+	void publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes);
 
 	static void cacheVM(JNIEnv * env);
 

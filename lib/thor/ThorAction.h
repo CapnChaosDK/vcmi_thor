@@ -25,7 +25,8 @@ enum class ThorAction : std::uint8_t
 	BATTLE_WAIT = 9,
 	BATTLE_DEFEND = 10,
 	BATTLE_TACTICS_NEXT = 11,
-	BATTLE_TACTICS_END = 12
+	BATTLE_TACTICS_END = 12,
+	SELECT_HERO = 13
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
@@ -41,6 +42,7 @@ struct DLL_LINKAGE ThorActionRequest
 {
 	std::uint64_t revision = 0;
 	ThorAction action = ThorAction::NONE;
+	int targetId = -1;
 };
 
 enum class ThorActionValidation
@@ -49,7 +51,8 @@ enum class ThorActionValidation
 	UNKNOWN_ACTION,
 	STALE_REVISION,
 	WRONG_CONTEXT,
-	UNAVAILABLE
+	UNAVAILABLE,
+	INVALID_TARGET
 };
 
 DLL_LINKAGE ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context);

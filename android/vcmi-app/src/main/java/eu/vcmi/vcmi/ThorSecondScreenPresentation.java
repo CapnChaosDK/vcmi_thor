@@ -55,6 +55,23 @@ final class ThorSecondScreenPresentation extends Presentation
                     enabledActionMask, activeActionMask);
     }
 
+    void updateHeroes(final ThorHeroRoster roster)
+    {
+        if (foundationView != null)
+            foundationView.updateHeroes(roster);
+    }
+
+    boolean isHeroesMode()
+    {
+        return foundationView != null && foundationView.heroesMode;
+    }
+
+    void setHeroesMode(final boolean value)
+    {
+        if (foundationView != null)
+            foundationView.heroesMode = value;
+    }
+
     private static final class ThorFoundationView extends View
     {
         private static final int BACKGROUND = Color.rgb(30, 31, 28);
@@ -73,6 +90,8 @@ final class ThorSecondScreenPresentation extends Presentation
         private final String[] detailLines = new String[ThorContextDetails.COUNT];
         private int enabledActionMask;
         private int activeActionMask;
+        private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
+        private boolean heroesMode;
 
         ThorFoundationView(final Context context)
         {
@@ -88,8 +107,15 @@ final class ThorSecondScreenPresentation extends Presentation
                            final String publishedStatus, final String[] publishedDetails,
                            final int enabledActionMask, final int activeActionMask)
         {
+            if (revision != this.revision)
+                heroes = ThorHeroRoster.EMPTY;
             this.revision = revision;
             this.contextId = contextId;
+            if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
+            {
+                heroesMode = false;
+                heroes = ThorHeroRoster.EMPTY;
+            }
             this.enabledActionMask = enabledActionMask;
             this.activeActionMask = activeActionMask;
             for (int index = 0; index < detailLines.length; ++index)
@@ -259,6 +285,13 @@ final class ThorSecondScreenPresentation extends Presentation
             invalidate();
         }
 
+        void updateHeroes(final ThorHeroRoster roster)
+        {
+            heroes = ThorContextIds.ADVENTURE_MAP.equals(contextId) ? roster : ThorHeroRoster.EMPTY;
+            setContentDescription(commandDeckDescription());
+            invalidate();
+        }
+
         @Override
         protected void onDraw(final Canvas canvas)
         {
@@ -330,7 +363,13 @@ final class ThorSecondScreenPresentation extends Presentation
             }
 
             if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
-                drawAdventureActions(canvas, frame, dividerY, bevel, density);
+            {
+                drawAdventureTabs(canvas, frame, dividerY, bevel, density);
+                if (heroesMode)
+                    drawHeroes(canvas, frame, dividerY, bevel, density);
+                else
+                    drawAdventureActions(canvas, frame, dividerY, bevel, density);
+            }
             else if (ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.BATTLE_TACTICS.equals(contextId))
                 drawBattleActions(canvas, frame, dividerY, bevel, density);
         }
@@ -345,11 +384,33 @@ final class ThorSecondScreenPresentation extends Presentation
 
             if (event.getAction() == android.view.MotionEvent.ACTION_UP)
             {
+                if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
+                {
+                    final int tab = tabAt(event.getX(), event.getY());
+                    if (tab >= 0)
+                    {
+                        heroesMode = tab == 1;
+                        setContentDescription(commandDeckDescription());
+                        invalidate();
+                        performClick();
+                        return true;
+                    }
+                    if (heroesMode)
+                    {
+                        final int row = heroAt(event.getX(), event.getY());
+                        if (row >= 0 && isActionEnabled(ThorActionIds.SELECT_HERO))
+                        {
+                            performClick();
+                            NativeMethods.submitThorAction(revision, ThorActionIds.SELECT_HERO, heroes.ids[row]);
+                        }
+                        return true;
+                    }
+                }
                 final int actionId = actionAt(event.getX(), event.getY());
                 if (actionId != ThorActionIds.NONE && isActionEnabled(actionId))
                 {
                     performClick();
-                    NativeMethods.submitThorAction(revision, actionId);
+                    NativeMethods.submitThorAction(revision, actionId, ThorActionIds.NO_TARGET);
                 }
             }
             return true;
@@ -506,6 +567,115 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             return detailLines[index].isEmpty() ? getContext().getString(R.string.thor_battle_not_available)
                     : detailLines[index];
+        }
+
+        private RectF tabBounds(final int index, final RectF frame, final float dividerY, final float bevel)
+        {
+            final float left = frame.left + bevel * 3f;
+            final float gap = Math.max(bevel, 8f);
+            final float width = (frame.width() - bevel * 6f - gap) / 2f;
+            final float top = dividerY + bevel * 2f;
+            return new RectF(left + index * (width + gap), top,
+                    left + index * (width + gap) + width, actionTop(frame, dividerY, bevel) - bevel);
+        }
+
+        private int tabAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            final float bevel = adventureBevel();
+            final float dividerY = frame.top + frame.height() * 0.34f;
+            for (int index = 0; index < 2; ++index)
+                if (tabBounds(index, frame, dividerY, bevel).contains(x, y))
+                    return index;
+            return -1;
+        }
+
+        private RectF adventureFrame()
+        {
+            final float density = getResources().getDisplayMetrics().density;
+            final float scale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
+            final float margin = Math.max(16f * density, Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
+                    Math.min(getWidth(), getHeight()) * 0.045f * scale));
+            return new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
+        }
+
+        private float adventureBevel()
+        {
+            return Math.max(3f * getResources().getDisplayMetrics().density, adventureFrame().left * 0.16f);
+        }
+
+        private void drawAdventureTabs(final Canvas canvas, final RectF frame, final float dividerY,
+                                       final float bevel, final float density)
+        {
+            for (int index = 0; index < 2; ++index)
+            {
+                final RectF tab = tabBounds(index, frame, dividerY, bevel);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(index == (heroesMode ? 1 : 0) ? STONE_DARK : PARCHMENT_DARK);
+                canvas.drawRoundRect(tab, bevel, bevel, paint);
+                paint.setColor(TEXT);
+                paint.setFakeBoldText(index == (heroesMode ? 1 : 0));
+                paint.setTextAlign(Paint.Align.CENTER);
+                drawFittedText(canvas, getContext().getString(index == 0 ? R.string.thor_tab_actions : R.string.thor_tab_heroes),
+                        tab.centerX(), tab.centerY(), tab.width() * 0.85f, Math.min(26f * density, tab.height() * 0.55f));
+            }
+            paint.setFakeBoldText(false);
+        }
+
+        private RectF heroBounds(final int index, final RectF frame, final float dividerY, final float bevel)
+        {
+            final float gap = Math.max(bevel, 8f);
+            final float top = actionTop(frame, dividerY, bevel);
+            final float height = (frame.bottom - bevel * 3f - top - gap * (ThorHeroRoster.MAX_HEROES - 1))
+                    / ThorHeroRoster.MAX_HEROES;
+            return new RectF(frame.left + bevel * 3f, top + index * (height + gap),
+                    frame.right - bevel * 3f, top + index * (height + gap) + height);
+        }
+
+        private int heroAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            final float bevel = adventureBevel();
+            final float dividerY = frame.top + frame.height() * 0.34f;
+            for (int index = 0; index < heroes.ids.length; ++index)
+                if (heroBounds(index, frame, dividerY, bevel).contains(x, y))
+                    return index;
+            return -1;
+        }
+
+        private void drawHeroes(final Canvas canvas, final RectF frame, final float dividerY,
+                                final float bevel, final float density)
+        {
+            paint.setTextAlign(Paint.Align.CENTER);
+            if (heroes.ids.length == 0)
+            {
+                paint.setColor(PARCHMENT_DARK);
+                drawFittedText(canvas, getContext().getString(R.string.thor_no_heroes), frame.centerX(),
+                        (dividerY + frame.bottom) * 0.55f, frame.width() * 0.8f, 30f * density);
+            }
+            for (int index = 0; index < heroes.ids.length; ++index)
+            {
+                final RectF row = heroBounds(index, frame, dividerY, bevel);
+                final boolean selected = (heroes.flags[index] & 1) != 0;
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(STONE_DARK);
+                canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(selected ? bevel * 0.8f : bevel * 0.3f);
+                paint.setColor(selected ? GOLD : STONE_LIGHT);
+                canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(TEXT);
+                paint.setFakeBoldText(selected);
+                final String name = (selected ? "● " : "") + heroes.names[index]
+                        + ((heroes.flags[index] & 2) != 0 ? " · " + getContext().getString(R.string.thor_hero_sleeping) : "");
+                drawFittedText(canvas, name, row.centerX(), row.top + row.height() * 0.30f,
+                        row.width() * 0.87f, Math.min(27f * density, row.height() * 0.31f));
+                paint.setFakeBoldText(false);
+                drawFittedText(canvas, heroes.movement[index] + " / " + heroes.maximum[index], row.centerX(),
+                        row.top + row.height() * 0.72f, row.width() * 0.8f,
+                        Math.min(23f * density, row.height() * 0.27f));
+            }
         }
 
         private void drawAdventureActions(final Canvas canvas, final RectF frame, final float dividerY,
@@ -722,6 +892,19 @@ final class ThorSecondScreenPresentation extends Presentation
 
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
+
+            if (heroesMode)
+            {
+                final StringBuilder description = new StringBuilder(getContext().getString(R.string.thor_tab_heroes));
+                if (heroes.ids.length == 0)
+                    return description.append(". ").append(getContext().getString(R.string.thor_no_heroes)).toString();
+                for (int index = 0; index < heroes.ids.length; ++index)
+                    description.append(". ").append(heroes.names[index]).append(" ")
+                            .append(heroes.movement[index]).append(" / ").append(heroes.maximum[index])
+                            .append((heroes.flags[index] & 1) != 0 ? " ●" : "")
+                            .append((heroes.flags[index] & 2) != 0 ? " " + getContext().getString(R.string.thor_hero_sleeping) : "");
+                return description.toString();
+            }
 
             return title + ". " + status + ". "
                     + getContext().getString(R.string.thor_action_next_hero) + ", "

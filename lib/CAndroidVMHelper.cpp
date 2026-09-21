@@ -125,6 +125,41 @@ void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint3
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroes", "(J[I[Ljava/lang/String;[I[I[I)V",
+		[revision, &heroes](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto size = static_cast<jsize>(heroes.size());
+			jintArray ids = env->NewIntArray(size);
+			jintArray movement = env->NewIntArray(size);
+			jintArray maximum = env->NewIntArray(size);
+			jintArray flags = env->NewIntArray(size);
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray names = env->NewObjectArray(size, stringClass, nullptr);
+			for(jsize index = 0; index < size; ++index)
+			{
+				const auto & hero = heroes[index];
+				const jint id = hero.id, move = hero.movement, max = hero.maximumMovement;
+				const jint state = (hero.selected ? 1 : 0) | (hero.sleeping ? 2 : 0);
+				env->SetIntArrayRegion(ids, index, 1, &id);
+				env->SetIntArrayRegion(movement, index, 1, &move);
+				env->SetIntArrayRegion(maximum, index, 1, &max);
+				env->SetIntArrayRegion(flags, index, 1, &state);
+				jstring name = env->NewStringUTF(hero.name.c_str());
+				env->SetObjectArrayElement(names, index, name);
+				env->DeleteLocalRef(name);
+			}
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), ids, names, movement, maximum, flags);
+			env->DeleteLocalRef(ids);
+			env->DeleteLocalRef(names);
+			env->DeleteLocalRef(movement);
+			env->DeleteLocalRef(maximum);
+			env->DeleteLocalRef(flags);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 jclass CAndroidVMHelper::findClass(const std::string & name, bool classloaded)
 {
 	if(alwaysUseLoadedClass || classloaded)

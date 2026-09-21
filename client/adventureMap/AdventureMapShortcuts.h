@@ -119,6 +119,8 @@ public:
 	std::uint32_t getThorActionMask();
 	std::uint32_t getThorActiveActionMask();
 	int getThorSelectedHeroId();
+	std::vector<ThorHeroEntry> getThorHeroes();
+	bool selectThorHero(int id);
 	bool executeThorAction(ThorAction action);
 
 	void setState(EAdventureState newState);

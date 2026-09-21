@@ -15,6 +15,8 @@ final class ThorActionIds
     static final int BATTLE_DEFEND = 10;
     static final int BATTLE_TACTICS_NEXT = 11;
     static final int BATTLE_TACTICS_END = 12;
+    static final int SELECT_HERO = 13;
+    static final int NO_TARGET = -1;
 
     private ThorActionIds()
     {
@@ -22,7 +24,7 @@ final class ThorActionIds
 
     static int maskFor(final int actionId)
     {
-        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= BATTLE_TACTICS_END
+        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= SELECT_HERO
                 ? 1 << (actionId - 1) : 0;
     }
 }

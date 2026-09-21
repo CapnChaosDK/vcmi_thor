@@ -11,6 +11,47 @@ TEST(ThorContextStoreTest, StartsUnknown)
 	EXPECT_EQ(context.contextId, "UNKNOWN");
 }
 
+TEST(ThorContextStoreTest, HeroRosterChangesOnceAndClearsOutsideAdventure)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.heroes = {{4, "Hero", 100, 200, true, false}};
+	const auto first = store.publishNext(context);
+	EXPECT_EQ(store.publishNext(context).revision, first.revision);
+	context.heroes[0].selected = false;
+	const auto selected = store.publishNext(context);
+	EXPECT_EQ(selected.revision, first.revision + 1);
+	context.heroes[0].movement = 80;
+	const auto moved = store.publishNext(context);
+	EXPECT_EQ(moved.revision, selected.revision + 1);
+	context.heroes[0].sleeping = true;
+	const auto asleep = store.publishNext(context);
+	EXPECT_EQ(asleep.revision, moved.revision + 1);
+	context.heroes.push_back({5, "Other", 200, 300, false, false});
+	const auto added = store.publishNext(context);
+	EXPECT_EQ(added.revision, asleep.revision + 1);
+	context.heroes.pop_back();
+	EXPECT_EQ(store.publishNext(context).revision, added.revision + 1);
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	EXPECT_TRUE(store.publishNext(context).heroes.empty());
+}
+
+TEST(ThorContextStoreTest, HeroNamesAreBoundedAtUtf8BoundariesAndOverflowFailsClosed)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.heroes = {{4, std::string(127, 'A') + "\xc3\xa9", 0, 0, false, false}};
+	const auto bounded = store.publishNext(context);
+	ASSERT_EQ(bounded.heroes.size(), 1);
+	EXPECT_EQ(bounded.heroes[0].name, std::string(127, 'A'));
+	context.heroes[0].name = "broken\xc3";
+	EXPECT_EQ(store.publishNext(context).heroes[0].name, "broken");
+	context.heroes.resize(THOR_MAX_HEROES + 1);
+	EXPECT_TRUE(store.publishNext(context).heroes.empty());
+}
+
 TEST(ThorContextStoreTest, AcceptsOnlyNewerRevision)
 {
 	ThorContextStore store;

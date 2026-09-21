@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
+#include <vector>
+
+#include "../constants/NumericConstants.h"
 
 namespace ThorContextIds
 {
@@ -82,6 +85,17 @@ enum class ThorInGameContext
 
 inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
+inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;
+struct DLL_LINKAGE ThorHeroEntry
+{
+	int id = -1;
+	std::string name;
+	int movement = 0;
+	int maximumMovement = 0;
+	bool selected = false;
+	bool sleeping = false;
+	bool operator==(const ThorHeroEntry &) const = default;
+};
 
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
@@ -96,6 +110,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::int64_t actionSubjectId = -1;
 	std::uint64_t actionEpoch = 0;
 	ThorContextDetails details;
+	std::vector<ThorHeroEntry> heroes;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

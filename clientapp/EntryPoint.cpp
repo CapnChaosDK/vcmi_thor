@@ -76,7 +76,7 @@
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorAction(JNIEnv *, jclass, jlong revision, jint actionId)
+extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorAction(JNIEnv *, jclass, jlong revision, jint actionId, jint targetId)
 {
 	if(revision <= 0)
 	{
@@ -91,7 +91,7 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActi
 		return;
 	}
 
-	if(!thorActionQueue().submit({static_cast<std::uint64_t>(revision), *action}))
+	if(!thorActionQueue().submit({static_cast<std::uint64_t>(revision), *action, targetId}))
 	{
 		logGlobal->debug("Thor action rejected: queue full");
 		return;

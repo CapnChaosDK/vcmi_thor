@@ -14,7 +14,8 @@ namespace
 			&& lhs.activeActionMask == rhs.activeActionMask
 			&& lhs.selectedHeroId == rhs.selectedHeroId
 			&& lhs.actionSubjectId == rhs.actionSubjectId
-			&& lhs.actionEpoch == rhs.actionEpoch;
+			&& lhs.actionEpoch == rhs.actionEpoch
+			&& lhs.heroes == rhs.heroes;
 	}
 
 	void normalizeActionSubject(ThorContextRecord & context)
@@ -29,6 +30,10 @@ namespace
 		context.status = thorBoundedText(std::move(context.status));
 		for(auto & detail : context.details)
 			detail = thorBoundedText(std::move(detail));
+		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.heroes.size() > THOR_MAX_HEROES)
+			context.heroes.clear();
+		for(auto & hero : context.heroes)
+			hero.name = thorBoundedText(std::move(hero.name));
 	}
 }
 
@@ -172,15 +177,24 @@ std::string thorContextIdForInGameContext(ThorInGameContext context)
 
 std::string thorBoundedText(std::string text, std::size_t maximumBytes)
 {
-	if(text.size() <= maximumBytes)
-		return text;
-
 	std::size_t validBytes = 0;
-	while(validBytes < maximumBytes)
+	while(validBytes < text.size() && validBytes < maximumBytes)
 	{
 		const auto firstByte = static_cast<unsigned char>(text[validBytes]);
-		const std::size_t codePointBytes = firstByte < 0x80 ? 1 : firstByte < 0xe0 ? 2 : firstByte < 0xf0 ? 3 : 4;
-		if(validBytes + codePointBytes > maximumBytes)
+		const std::size_t codePointBytes = firstByte < 0x80 ? 1 : firstByte >= 0xc2 && firstByte <= 0xdf ? 2
+			: firstByte >= 0xe0 && firstByte <= 0xef ? 3 : firstByte >= 0xf0 && firstByte <= 0xf4 ? 4 : 0;
+		if(codePointBytes == 0 || validBytes + codePointBytes > maximumBytes || validBytes + codePointBytes > text.size())
+			break;
+		bool valid = true;
+		for(std::size_t index = 1; index < codePointBytes; ++index)
+			valid &= (static_cast<unsigned char>(text[validBytes + index]) & 0xc0) == 0x80;
+		if(codePointBytes > 1)
+		{
+			const auto second = static_cast<unsigned char>(text[validBytes + 1]);
+			valid &= !(firstByte == 0xe0 && second < 0xa0) && !(firstByte == 0xed && second >= 0xa0)
+				&& !(firstByte == 0xf0 && second < 0x90) && !(firstByte == 0xf4 && second >= 0x90);
+		}
+		if(!valid || firstByte == 0)
 			break;
 		validBytes += codePointBytes;
 	}

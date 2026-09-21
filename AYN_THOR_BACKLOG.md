@@ -1,5 +1,38 @@
 # AYN Thor dual-screen Heroes III backlog
 
+## Slice 18 — Adventure hero quick selector
+
+- Status: `in progress` (candidate implementation; CI and hardware validation pending).
+- Behavior: the lower Adventure deck offers local Actions and Heroes tabs. Actions retains all eight existing commands. Heroes lists at most the base-game eight locally owned heroes in native sidebar order, with bounded translated names, movement, selection and sleep state. An empty roster displays “No heroes”. No army, map position, path, portrait, or other player's data is published.
+- Boundary: the native Adventure publication owns a typed roster, using the same object-instance ID as `selectedHeroId`. An over-limit roster fails closed. Roster and action-state changes are semantic revisions; identical frames do not publish. Leaving Adventure clears the roster and disables hit regions.
+- Request: immutable IDs 1–12 remain intact; `SELECT_HERO = 13` uses mask bit 4096. Android submits rendered revision, action 13 and stable hero ID; legacy actions carry -1. Tabs are Android-only and never submit gameplay input.
+- Native responsibility: MainGUI consumes one queued request, verifies exact Adventure context and active owner, revision, mask, published roster membership, current local ownership and selectable map state, then calls the same `PlayerLocalState::setSelection` route as the upper hero list. Accepted commands invalidate the action epoch and clear queued taps. No synthetic input or direct camera coordinates.
+- Android responsibility: copy and bound the typed roster, render fitted text and selected-border/marker rows, retain local tab through panel recreation, reset it outside Adventure, and submit only rendered row IDs. Pause/detach clears queued native input.
+- Refresh: activation, every semantic Adventure state refresh, hero movement, selection, sleep, turn, addition, removal and reordered local list replace the roster by revision. Stale rows and modal contexts fail closed.
+- Automated acceptance: native stable IDs/masks, targeted request validation, roster equality/bounds, stale epoch and queue checks; Android ID/resource/bounded-roster contracts. Permanent Thor CI remains the full ARM64 package gate.
+- Regression risks: ownership changes between publication and tap, a removed hero retaining a row, double taps crossing revisions, modal transitions, long UTF-8 names, and Actions/Battle dashboard interference.
+- Candidate procedure: run focused local checks, commit the candidate, push `ci/thor-slice18-validation` to origin for the permanent workflow, then stop for CI and later manual hardware validation. Do not promote or label hardware validated yet.
+
+Hardware checklist for later resume (not executed):
+
+1. Start/load Adventure with two owned heroes; verify Slice 13 information and all eight Actions commands.
+2. Switch to Heroes; verify only local owned heroes and the same order as the upper hero list.
+3. Compare names, movement, selected and sleeping state for two heroes.
+4. Tap a non-selected hero once; verify exact selection and normal upper-map centering.
+5. Verify selected marker, selected-hero information and Move/Sleep availability refresh.
+6. Tap the selected hero once; verify ordinary single-selection behavior, no Hero Window or duplicate action.
+7. Rapidly tap two rows; verify at most one request from the stale revision executes.
+8. Use Next Hero and verify both displays' selection stays synchronized.
+9. Sleep/wake a hero; verify state refresh without stale text or churn.
+10. Move a hero; verify movement refresh.
+11. Add/recruit a hero; if practical remove/lose one; verify current roster and inert old row.
+12. Open Hero Window, Town, utility modal and Battle; verify Heroes hit regions disappear and Adventure restores.
+13. Toggle lower panel off/on; verify one current presentation and no stale row.
+14. Background/resume; verify roster and upper focus.
+15. Check upper touch, keyboard and controller remain unaffected.
+16. Recheck Battle Wait/Defend, opponent-turn information, tactics, Battle Result, Hero and Town dashboards.
+17. Check for crashes, duplicate presentation, delayed/wrong-player selection, stale regions, focus loss and update loops.
+
 This is the maintained planning and validation record for the AYN Thor fork. Do not remove deferred work when implementing an earlier slice. Before each implementation slice, record the proposed behavior, implementation boundary, native and Android responsibilities, focused acceptance tests, and regression risks, then wait for user approval.
 
 Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardware validation`, `hardware validated`, `blocked`, `deferred`.

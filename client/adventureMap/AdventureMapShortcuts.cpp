@@ -826,6 +826,9 @@ std::uint32_t AdventureMapShortcuts::getThorActionMask()
 		result |= thorActionMask(ThorAction::TOGGLE_HERO_SLEEP);
 	if(optionCanEndTurn())
 		result |= thorActionMask(ThorAction::END_TURN);
+	if(optionInMapView() && !GAME->interface()->localState->getWanderingHeroes().empty()
+		&& GAME->interface()->localState->getWanderingHeroes().size() <= THOR_MAX_HEROES)
+		result |= thorActionMask(ThorAction::SELECT_HERO);
 	return result;
 }
 
@@ -838,6 +841,39 @@ int AdventureMapShortcuts::getThorSelectedHeroId()
 {
 	const auto * hero = GAME->interface()->localState->getCurrentHero();
 	return hero ? hero->id.getNum() : -1;
+}
+
+std::vector<ThorHeroEntry> AdventureMapShortcuts::getThorHeroes()
+{
+	std::vector<ThorHeroEntry> result;
+	const auto & heroes = GAME->interface()->localState->getWanderingHeroes();
+	if(heroes.size() > THOR_MAX_HEROES)
+		return result;
+	for(const auto * hero : heroes)
+	{
+		if(!hero || hero->tempOwner != GAME->interface()->playerID)
+			continue;
+		result.push_back({hero->id.getNum(), hero->getObjectName().toString(&GAME->translator()),
+			hero->movementPointsRemaining(), hero->movementPointsLimit(),
+			hero == GAME->interface()->localState->getCurrentHero(),
+			GAME->interface()->localState->isHeroSleeping(hero)});
+	}
+	return result;
+}
+
+bool AdventureMapShortcuts::selectThorHero(int id)
+{
+	if(!optionInMapView() || id < 0)
+		return false;
+	for(const auto * hero : GAME->interface()->localState->getWanderingHeroes())
+	{
+		if(hero && hero->id.getNum() == id && hero->tempOwner == GAME->interface()->playerID)
+		{
+			GAME->interface()->localState->setSelection(hero);
+			return true;
+		}
+	}
+	return false;
 }
 
 bool AdventureMapShortcuts::executeThorAction(ThorAction action)
