@@ -2,7 +2,7 @@
 
 ## Slice 18 — Adventure hero quick selector
 
-- Status: `in progress` (candidate implementation; CI and hardware validation pending).
+- Status: `awaiting hardware validation`. Candidate `d8cc679d1013ed2f8822626a73fcee6a3ee5c0b3` passed Thor CI run `35603630947` (native tests, ARM64 build, Android tests, package verification, receipt, and artifact upload). The artifact ZIP SHA-256 is `05e7eedaf314bb3b8dd70cfb2162d1902666ebf8b69b471087d51ea3e6c63161`; the APK SHA-256 is `de5a6598b538f921159d5f4c3e7a55c84131fed57f024a0f7c5b6e2102f7d634`. The verified APK was installed and launched on an AYN Thor; the behavioral checklist below remains for the user to perform.
 - Behavior: the lower Adventure deck offers local Actions and Heroes tabs. Actions retains all eight existing commands. Heroes lists at most the base-game eight locally owned heroes in native sidebar order, with bounded translated names, movement, selection and sleep state. An empty roster displays “No heroes”. No army, map position, path, portrait, or other player's data is published.
 - Boundary: the native Adventure publication owns a typed roster, using the same object-instance ID as `selectedHeroId`. An over-limit roster fails closed. Roster and action-state changes are semantic revisions; identical frames do not publish. Leaving Adventure clears the roster and disables hit regions.
 - Request: immutable IDs 1–12 remain intact; `SELECT_HERO = 13` uses mask bit 4096. Android submits rendered revision, action 13 and stable hero ID; legacy actions carry -1. Tabs are Android-only and never submit gameplay input.
