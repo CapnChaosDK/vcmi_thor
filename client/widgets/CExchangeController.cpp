@@ -125,7 +125,7 @@ bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool
 {
 	const auto source = sourceLeft ? left : right;
 	const auto destination = destinationLeft ? left : right;
-	if(!source || !destination || sourceSlot == destinationSlot && source == destination)
+	if(!source || !destination || (sourceSlot == destinationSlot && source == destination))
 		return false;
 	const auto * sourceStack = source->getStackPtr(sourceSlot);
 	if(!sourceStack)

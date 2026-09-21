@@ -441,7 +441,7 @@ namespace
 				if(!stack)
 					continue;
 				slot.occupied = true;
-				slot.creatureId = stack->getCreature()->id.getNum();
+				slot.creatureId = stack->getCreatureID().getNum();
 				slot.creatureName = stack->getCreature()->getNamePluralTranslated();
 				slot.count = stack->getCount();
 			}
