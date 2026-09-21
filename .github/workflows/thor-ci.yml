@@ -223,7 +223,7 @@ jobs:
           cache_hits="$(awk '/^[[:space:]]*Hits:/ { print $2; exit }' thor-ccache-stats.txt)"
           cache_misses="$(awk '/^[[:space:]]*Misses:/ { print $2; exit }' thor-ccache-stats.txt)"
           cache_hit_percent="$(awk -v hits="${cache_hits:-0}" -v calls="$cacheable_calls" 'BEGIN { printf "%.2f", calls ? (100 * hits / calls) : 0 }')"
-          cache_size="$(awk '/^Cache size \(GB\):/ { print $4 " GB / " $6 " GB" }' thor-ccache-stats.txt)"
+          cache_size="$(awk '/^[[:space:]]*Cache size \(GB\):/ { print $4 " GB / " $6 " GB"; exit }' thor-ccache-stats.txt)"
           cache_reuse='cold/low reuse'
           if awk -v hit_percent="$cache_hit_percent" 'BEGIN { exit !(hit_percent >= 90) }'; then
             cache_reuse='warm'
