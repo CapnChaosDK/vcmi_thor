@@ -11,7 +11,7 @@
 - Refresh: activation, every semantic Adventure state refresh, hero movement, selection, sleep, turn, addition, removal and reordered local list replace the roster by revision. Stale rows and modal contexts fail closed.
 - Automated acceptance: native stable IDs/masks, targeted request validation, roster equality/bounds, stale epoch and queue checks; Android ID/resource/bounded-roster contracts. Permanent Thor CI remains the full ARM64 package gate.
 - Regression risks: ownership changes between publication and tap, a removed hero retaining a row, double taps crossing revisions, modal transitions, long UTF-8 names, and Actions/Battle dashboard interference.
-- Candidate procedure: Slice 18 remains hardware validated but is not promoted automatically. Future candidates use the reusable `ci/thor-candidate-validation` transport branch and its guarded exact-tip update described in `docs/AYN_THOR_BUILD_PLAYBOOK.md`; no full build tree is cached.
+- Candidate procedure: Slice 18 was promoted as part of the Slice 19 consolidation. Future candidates use the reusable `ci/thor-candidate-validation` transport branch and its guarded exact-tip update described in `docs/AYN_THOR_BUILD_PLAYBOOK.md`; no full build tree is cached.
 
 Hardware checklist for this candidate (user confirmed all passed):
 
@@ -35,7 +35,7 @@ Hardware checklist for this candidate (user confirmed all passed):
 
 ## Slice 19 — Adventure town quick selector
 
-- Status: `awaiting hardware validation`; candidate commit will be recorded after CI publication.
+- Status: `hardware validated`. Exact candidate `35538e408d1ef50b78a740c0458c5aa0eb559662` passed the complete Thor CI run `35631226686` (preflight and ARM64 candidate). Artifact `thor-candidate-arm64-35631226686` has ZIP SHA-256 `43dabb3191abf22ff8d161f8ffb1efbe4e74f8521209319f354d88a9cab44da6`; the verified APK SHA-256 is `800aee4e25f63b511e9e73bc88a899499741bc176b1748123a9d179da0cc2e91`. The receipt confirms package `is.xyz.vcmi.thor`, version `1.8.0`, and version code `1800`. On 2026-09-21 the user confirmed the complete AYN Thor hardware checklist passed.
 - User-visible behavior: the lower Adventure deck has Android-local `Actions`, `Heroes`, and `Towns` tabs. Towns lists only the local player's towns in the same native order as the upper town list, shows a selected marker, and one tap selects a town without opening Town Window. Slice 18 Actions/Heroes behavior, layout, and hero-summary contrast remain unchanged.
 - Boundary and native responsibility: `ThorTownEntry` publishes only stable town object IDs, bounded translated names, and selected state in `ADVENTURE_MAP`. The hard transport bound is `THOR_MAX_TOWNS = 64`; an over-limit or invalid collection fails closed with no partial roster and `SELECT_TOWN` disabled. MainGUI rechecks rendered revision, exact Adventure context/owner, mask, published membership, ownership, and selectable state, then uses `PlayerLocalState::setSelection(town)`. An accepted tap consumes its epoch and clears duplicates. No coordinates, direct game-state changes, town-window opening, or additional town data are used.
 - Android responsibility: copy the revision-bound roster; render five touch-sized rows per page; provide local-only Previous/Next and indicator controls; clamp and selected-page-sync on revisions; and discard stale tab/page/context regions. Empty rosters show localized `No towns`.
@@ -51,7 +51,7 @@ Hardware checklist for this candidate (user confirmed all passed):
   5. Rapidly tap two rows; at most one request from the old revision may execute.
   6. With more than five towns, verify Previous/Next, indicator, selected-page synchronization, and no native action from page controls.
   7. Rapidly switch tabs; open Hero/Town/modal/Battle contexts; toggle the display and background/resume; verify no stale row, residual panel, or focus loss.
-  8. Recheck existing Adventure, Battle, Hero, Town, touchscreen, and controller behavior; confirm no crash, duplicate presentation, revision churn, delayed/wrong-player selection, or stale row.
+  8. Recheck existing Adventure, Battle, Hero, Town, touchscreen, and controller behavior; confirm no crash, duplicate presentation, revision churn, delayed/wrong-player selection, or stale row. **Completed: all required checks passed on 2026-09-21.**
 
 This is the maintained planning and validation record for the AYN Thor fork. Do not remove deferred work when implementing an earlier slice. Before each implementation slice, record the proposed behavior, implementation boundary, native and Android responsibilities, focused acceptance tests, and regression risks, then wait for user approval.
 
@@ -59,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 18 are implemented, CI-built, and hardware-validated; Slice 19 is awaiting hardware validation.
-- Status: `hardware validated` through Slice 18.
+- Phase: Slices 1 through 19 are implemented, CI-built, and hardware-validated.
+- Status: `hardware validated` through Slice 19.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -75,8 +75,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Slice 13 promotion: product commit `f12865c7fd4dd9208d14c928402702fffcc719bc` adds the selected hero's localized name and movement snapshot to the Adventure Map header. The CI-built artifact passed all focused hardware checks, including no-selection fallback, movement/selection refresh, all eight existing commands, lifecycle/display recreation, and upper-input regressions.
 - Slice 14 promotion: product commit `e60e7e1051d08c5fae07be207182c3f175047429` adds the read-only Hero Window dashboard. The CI-built artifact passed the complete Hero accuracy, hero-switching, long-text, child/modal restoration, lower-display recreation, inert-touch, Adventure command, and upper-input regression checklist on an AYN Thor.
 - Slice 15 promotion: product commit `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` adds the read-only Town Window dashboard. The CI-built artifact passed the complete Town accuracy, construction/hero refresh, town switching, child/modal restoration, lower-display recreation, inert-touch, Adventure command, and upper-input regression checklist on an AYN Thor.
-- Slice 16 validation: candidate commit `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` adds the context-aware Battle command deck. The CI-built artifact passed focused native and Android tests, and the final AYN Thor hardware checklist passed after the post-opening publication refresh. The candidate remains on `ci/thor-slice16-validation`; promotion is a separate explicit operation.
-- Slice 17 validation: candidate commit `d4c9193be2d99233c00e2b4054d0484e0c67bf99` adds the live Battle information dashboard and the opponent-turn active-unit correction. CI run `35586360399` passed focused native and Android Thor checks, ARM64 packaging, and package verification. The checksum-verified APK (`29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`) was installed and launched on an AYN Thor; the user reported all focused checks passed. The candidate remains on `ci/thor-slice17-validation`; promotion is a separate explicit operation.
+- Slice 16 validation: candidate commit `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` adds the context-aware Battle command deck. The CI-built artifact passed focused native and Android tests, and the final AYN Thor hardware checklist passed after the post-opening publication refresh. Its former per-slice validation history is collected into the authoritative branch.
+- Slice 17 validation: candidate commit `d4c9193be2d99233c00e2b4054d0484e0c67bf99` adds the live Battle information dashboard and the opponent-turn active-unit correction. CI run `35586360399` passed focused native and Android Thor checks, ARM64 packaging, and package verification. The checksum-verified APK (`29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`) was installed and launched on an AYN Thor; the user reported all focused checks passed. Its former per-slice validation history is collected into the authoritative branch.
 - Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, Slice 6 on 2026-09-15, Slices 7 and 8 on 2026-09-17, and Slice 10 through the approved implementation brief on 2026-09-17.
 
 ## Working rules
@@ -895,7 +895,7 @@ Status: `hardware validated`
 ### Regression risks and CI procedure
 
 - Check Hero detail text in long/localized languages, lifecycle restore after child/modal windows, Hero switcher replacement, display recreation cache restore, and lower-display inertness. The principal regressions to guard are stale details, duplicate revisions, clipped text, JNI signature drift, and any change to established upper-window or Adventure input behavior.
-- Before hardware validation, inspect the final diff and run `git diff --check`, the focused native Thor suite, and any inexpensive affected Android unit checks. Create `ci/thor-slice14-validation` from the exact product commit and push it to trigger the permanent `Thor CI`: preflight, focused native tests, complete ARM64 configuration/package, focused Android tests, package/`is.xyz.vcmi.thor` verification, checksum, receipt, and candidate artifact. Do not promote this slice or mark it hardware validated until the CI-built candidate passes the checklist above.
+- Historical candidate procedure (superseded): the original Slice 14 record used `ci/thor-slice14-validation` for its CI receipt. Future candidates must follow the permanent `ci/thor-candidate-validation` procedure in `docs/AYN_THOR_BUILD_PLAYBOOK.md` instead.
 
 ### Final validation and next handover
 
@@ -952,7 +952,7 @@ Status: `hardware validated`
 ### Regression risks and CI procedure
 
 - Hardware validation must watch for long/localized field fitting, stale values after Town/hero changes, lifecycle restoration after child/modal windows, display recreation cache restoration, lower-screen inertness, and unchanged upper touchscreen/controller behavior. Preserve Slice 13 Adventure information and commands plus Slice 14 Hero behavior.
-- Before hardware validation, inspect the final diff and run `git diff --check`, focused native Thor tests, and inexpensive Android/resource checks. Create and push `ci/thor-slice15-validation` from the approved implementation to trigger only `.github/workflows/thor-ci.yml`: preflight, focused native tests, full ARM64 configuration/package, focused Android tests, `is.xyz.vcmi.thor` verification, checksum/receipt generation, and candidate artifact upload. Do not merge, promote, or mark this slice hardware validated until the CI-built candidate passes every checklist item.
+- Historical candidate procedure (superseded): the original Slice 15 record used `ci/thor-slice15-validation` for its CI receipt. Future candidates must follow the permanent `ci/thor-candidate-validation` procedure in `docs/AYN_THOR_BUILD_PLAYBOOK.md` instead.
 
 ### Final validation and next handover
 
@@ -1019,7 +1019,7 @@ Status: `hardware validated`
 - The CI-built candidate was checksum-verified, installed over the existing Thor package, and launched on an AYN Thor.
 - The user reported the complete Slice 16 checklist passed: ordinary Wait/Defend, disabled/blocking states, tactics Next Unit/Start Battle after the opening refresh, rapid stack-change protection, child/modal fallback, Battle Result dismissal/restoration, panel and resume behavior, upper touchscreen/controller input, and Adventure/Hero/Town regressions.
 - Slice 16 is hardware validated. Retain its exact context allow-list, action IDs 0–12, action-subject revision boundary, native owner/top-window checks, one-shot action epoch, Battle Result lifecycle, and Adventure/Hero/Town behavior in the next approved slice.
-- The tested candidate has not been promoted to `ayn-thor-dual-screen`. Promotion remains a separate explicit user-authorized step; start the next slice only after its scope and candidate/promotion strategy are agreed.
+- Historical promotion note (superseded): this Slice 16 candidate has now been collected into `ayn-thor-dual-screen` through the Slice 19 consolidation.
 
 ## Slice 17: Live Battle information dashboard
 
@@ -1066,7 +1066,7 @@ Status: `hardware validated`
 ### Regression risks and candidate procedure
 
 - Primary risks are stale snapshots during an active-stack handoff, effects changing current values, animation/spell blocking, Battle Result lifecycle restoration, long localized names, and regression to the validated Slice 16 command safety or Adventure/Hero/Town cards.
-- Before candidate creation, review the complete diff, run `git diff --check`, focused native Thor tests, and the inexpensive Android source/resource test. Create `ci/thor-slice17-validation` from the complete candidate, commit it, and push only that branch to trigger the existing `.github/workflows/thor-ci.yml` preflight and dependent ARM64 candidate job. Do not install an APK, promote, merge, or mark Slice 17 hardware validated until CI artifact verification and every checklist item above are completed.
+- Historical candidate procedure (superseded): the original Slice 17 record used `ci/thor-slice17-validation` for its CI receipt. Future candidates must follow the permanent `ci/thor-candidate-validation` procedure in `docs/AYN_THOR_BUILD_PLAYBOOK.md` instead.
 
 ### Opponent-turn correction
 
@@ -1079,4 +1079,4 @@ Status: `hardware validated`
 - CI run `35586360399` passed for product candidate `d4c9193be2d99233c00e2b4054d0484e0c67bf99`. Its validated receipt records `is.xyz.vcmi.thor`, ARM64 artifact `thor-candidate-arm64-35586360399`, and APK SHA-256 `29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`.
 - The exact APK was checksum-verified, installed in place, and launched on an AYN Thor. The user reported the complete Slice 17 hardware checklist passed, including friendly and enemy active-unit data, opponent-turn read-only updates with disabled controls, Count/HP/round refresh, Wait/Defend safety, tactics, child/modal restoration, Battle Result cleanup, lifecycle, and upper-input regressions.
 - Slice 17 is hardware validated. Future slices must preserve the distinction between the local controller stack, which alone determines lower-screen command availability, and `battleActiveUnit()`, which may supply only the exact current read-only opponent dashboard during normal Battle. Preserve the bounded four-detail payload, no-global-lookup boundary, action IDs 0–12, revision/epoch safety, exact top-owner checks, and native Battle lifecycle.
-- The tested candidate has not been promoted to `ayn-thor-dual-screen`. Promotion remains a separate explicit user-authorized step; the next slice requires a new approved scope and candidate strategy.
+- Historical promotion note (superseded): this Slice 17 candidate has now been collected into `ayn-thor-dual-screen` through the Slice 19 consolidation.
