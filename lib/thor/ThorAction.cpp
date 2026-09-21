@@ -32,6 +32,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::BATTLE_TACTICS_END;
 	case static_cast<int>(ThorAction::SELECT_HERO):
 		return ThorAction::SELECT_HERO;
+	case static_cast<int>(ThorAction::SELECT_TOWN):
+		return ThorAction::SELECT_TOWN;
 	default:
 		return std::nullopt;
 	}
@@ -58,7 +60,8 @@ bool isThorActionAllowedInAdventureMap(ThorAction action)
 		|| action == ThorAction::MOVE_HERO
 		|| action == ThorAction::TOGGLE_HERO_SLEEP
 		|| action == ThorAction::END_TURN
-		|| action == ThorAction::SELECT_HERO;
+		|| action == ThorAction::SELECT_HERO
+		|| action == ThorAction::SELECT_TOWN;
 }
 
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)
@@ -71,11 +74,14 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::WRONG_CONTEXT;
 	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
 		return ThorActionValidation::UNAVAILABLE;
-	if(request.action == ThorAction::SELECT_HERO)
+	if(request.action == ThorAction::SELECT_HERO || request.action == ThorAction::SELECT_TOWN)
 	{
 		if(request.targetId < 0)
 			return ThorActionValidation::INVALID_TARGET;
-		if(std::none_of(context.heroes.begin(), context.heroes.end(), [&](const auto & hero) { return hero.id == request.targetId; }))
+		const auto hasTarget = request.action == ThorAction::SELECT_HERO
+			? std::any_of(context.heroes.begin(), context.heroes.end(), [&](const auto & hero) { return hero.id == request.targetId; })
+			: std::any_of(context.towns.begin(), context.towns.end(), [&](const auto & town) { return town.id == request.targetId; });
+		if(!hasTarget)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	return ThorActionValidation::VALID;

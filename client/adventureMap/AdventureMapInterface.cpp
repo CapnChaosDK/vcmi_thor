@@ -62,7 +62,7 @@ namespace
 {
 	void publishThorInGameContext(ThorInGameContext inGameContext, std::uint32_t enabledActionMask = 0,
 		std::uint32_t activeActionMask = 0, int selectedHeroId = -1, std::string title = {}, std::string status = {},
-		std::vector<ThorHeroEntry> heroes = {})
+		std::vector<ThorHeroEntry> heroes = {}, std::vector<ThorTownEntry> towns = {})
 	{
 		ThorContextRecord context;
 		context.contextId = thorContextIdForInGameContext(inGameContext);
@@ -72,9 +72,11 @@ namespace
 		context.activeActionMask = activeActionMask;
 		context.selectedHeroId = selectedHeroId;
 		context.heroes = std::move(heroes);
+		context.towns = std::move(towns);
 		context = thorContextStore().publishNext(std::move(context));
 		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
 		CAndroidVMHelper().publishThorHeroes(context.revision, context.heroes);
+		CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 		CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 	}
 }
@@ -187,7 +189,7 @@ void AdventureMapInterface::activate()
 			shortcuts->getThorActionMask(), shortcuts->getThorActiveActionMask(), shortcuts->getThorSelectedHeroId(),
 			hero ? hero->getObjectName().toString(&GAME->translator()) : std::string{},
 			hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{},
-			shortcuts->getThorHeroes());
+			shortcuts->getThorHeroes(), shortcuts->getThorTowns());
 	}
 #endif
 }
@@ -207,6 +209,7 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	context.activeActionMask = shortcuts->getThorActiveActionMask();
 	context.selectedHeroId = shortcuts->getThorSelectedHeroId();
 	context.heroes = shortcuts->getThorHeroes();
+	context.towns = shortcuts->getThorTowns();
 	const auto * hero = GAME->interface()->localState->getCurrentHero();
 	context.title = thorBoundedText(hero ? hero->getObjectName().toString(&GAME->translator()) : std::string{});
 	context.status = hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{};
@@ -218,6 +221,7 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
 	CAndroidVMHelper().publishThorHeroes(context.revision, context.heroes);
+	CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 #else
 	(void)invalidateActions;

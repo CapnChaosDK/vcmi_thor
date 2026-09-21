@@ -160,6 +160,35 @@ void CAndroidVMHelper::publishThorHeroes(std::uint64_t revision, const std::vect
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorTowns", "(J[I[Ljava/lang/String;[I)V",
+		[revision, &towns](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto size = static_cast<jsize>(towns.size());
+			jintArray ids = env->NewIntArray(size);
+			jintArray flags = env->NewIntArray(size);
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray names = env->NewObjectArray(size, stringClass, nullptr);
+			for(jsize index = 0; index < size; ++index)
+			{
+				const auto & town = towns[index];
+				const jint id = town.id;
+				const jint selected = town.selected ? 1 : 0;
+				env->SetIntArrayRegion(ids, index, 1, &id);
+				env->SetIntArrayRegion(flags, index, 1, &selected);
+				jstring name = env->NewStringUTF(town.name.c_str());
+				env->SetObjectArrayElement(names, index, name);
+				env->DeleteLocalRef(name);
+			}
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), ids, names, flags);
+			env->DeleteLocalRef(ids);
+			env->DeleteLocalRef(names);
+			env->DeleteLocalRef(flags);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 jclass CAndroidVMHelper::findClass(const std::string & name, bool classloaded)
 {
 	if(alwaysUseLoadedClass || classloaded)

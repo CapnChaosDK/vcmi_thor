@@ -86,6 +86,7 @@ enum class ThorInGameContext
 inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
 inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;
+inline constexpr std::size_t THOR_MAX_TOWNS = 64;
 struct DLL_LINKAGE ThorHeroEntry
 {
 	int id = -1;
@@ -95,6 +96,14 @@ struct DLL_LINKAGE ThorHeroEntry
 	bool selected = false;
 	bool sleeping = false;
 	bool operator==(const ThorHeroEntry &) const = default;
+};
+
+struct DLL_LINKAGE ThorTownEntry
+{
+	int id = -1;
+	std::string name;
+	bool selected = false;
+	bool operator==(const ThorTownEntry &) const = default;
 };
 
 /// Immutable, read-only context payload reserved for the Thor command deck.
@@ -111,6 +120,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::uint64_t actionEpoch = 0;
 	ThorContextDetails details;
 	std::vector<ThorHeroEntry> heroes;
+	std::vector<ThorTownEntry> towns;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

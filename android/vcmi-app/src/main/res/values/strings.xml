@@ -39,7 +39,12 @@
     <string name="thor_action_section_gameplay">Gameplay</string>
     <string name="thor_tab_actions">Actions</string>
     <string name="thor_tab_heroes">Heroes</string>
+    <string name="thor_tab_towns">Towns</string>
     <string name="thor_no_heroes">No heroes</string>
+    <string name="thor_no_towns">No towns</string>
+    <string name="thor_town_previous">Previous</string>
+    <string name="thor_town_next">Next</string>
+    <string name="thor_town_page">Page %1$d of %2$d</string>
     <string name="thor_hero_sleeping">Sleeping</string>
     <string name="thor_action_section_utilities">Utilities</string>
     <string name="thor_action_next_hero">Next Hero</string>

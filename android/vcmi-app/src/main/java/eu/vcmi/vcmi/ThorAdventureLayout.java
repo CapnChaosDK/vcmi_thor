@@ -10,6 +10,7 @@ final class ThorAdventureLayout
     static final float CONTENT_START = 0.20f;
     static final int HERO_COLUMNS = 2;
     static final int HERO_ROWS = (ThorHeroRoster.MAX_HEROES + HERO_COLUMNS - 1) / HERO_COLUMNS;
+    static final int TOWN_ROWS_PER_PAGE = 5;
 
     private ThorAdventureLayout()
     {

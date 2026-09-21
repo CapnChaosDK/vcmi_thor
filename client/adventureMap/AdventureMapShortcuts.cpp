@@ -829,6 +829,10 @@ std::uint32_t AdventureMapShortcuts::getThorActionMask()
 	if(optionInMapView() && !GAME->interface()->localState->getWanderingHeroes().empty()
 		&& GAME->interface()->localState->getWanderingHeroes().size() <= THOR_MAX_HEROES)
 		result |= thorActionMask(ThorAction::SELECT_HERO);
+	const auto & towns = GAME->interface()->localState->getOwnedTowns();
+	if(optionInMapView() && !towns.empty() && towns.size() <= THOR_MAX_TOWNS
+		&& std::ranges::all_of(towns, [](const auto * town) { return town && town->tempOwner == GAME->interface()->playerID; }))
+		result |= thorActionMask(ThorAction::SELECT_TOWN);
 	return result;
 }
 
@@ -861,6 +865,22 @@ std::vector<ThorHeroEntry> AdventureMapShortcuts::getThorHeroes()
 	return result;
 }
 
+std::vector<ThorTownEntry> AdventureMapShortcuts::getThorTowns()
+{
+	std::vector<ThorTownEntry> result;
+	const auto & towns = GAME->interface()->localState->getOwnedTowns();
+	if(towns.size() > THOR_MAX_TOWNS)
+		return result;
+	const auto * selectedTown = GAME->interface()->localState->getCurrentTown();
+	for(const auto * town : towns)
+	{
+		if(!town || town->tempOwner != GAME->interface()->playerID)
+			return {};
+		result.push_back({town->id.getNum(), town->getObjectName().toString(&GAME->translator()), town == selectedTown});
+	}
+	return result;
+}
+
 bool AdventureMapShortcuts::selectThorHero(int id)
 {
 	if(!optionInMapView() || id < 0)
@@ -870,6 +890,21 @@ bool AdventureMapShortcuts::selectThorHero(int id)
 		if(hero && hero->id.getNum() == id && hero->tempOwner == GAME->interface()->playerID)
 		{
 			GAME->interface()->localState->setSelection(hero);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool AdventureMapShortcuts::selectThorTown(int id)
+{
+	if(!optionInMapView() || id < 0)
+		return false;
+	for(const auto * town : GAME->interface()->localState->getOwnedTowns())
+	{
+		if(town && town->id.getNum() == id && town->tempOwner == GAME->interface()->playerID)
+		{
+			GAME->interface()->localState->setSelection(town);
 			return true;
 		}
 	}

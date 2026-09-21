@@ -100,6 +100,8 @@ public class ThorContextIdsTest
 		assertEquals(12, ThorActionIds.BATTLE_TACTICS_END);
 		assertEquals(13, ThorActionIds.SELECT_HERO);
 		assertEquals(4096, ThorActionIds.maskFor(ThorActionIds.SELECT_HERO));
+		assertEquals(14, ThorActionIds.SELECT_TOWN);
+		assertEquals(8192, ThorActionIds.maskFor(ThorActionIds.SELECT_TOWN));
 		assertEquals(-1, ThorActionIds.NO_TARGET);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
@@ -113,7 +115,8 @@ public class ThorContextIdsTest
 		assertEquals(512, ThorActionIds.maskFor(ThorActionIds.BATTLE_DEFEND));
 		assertEquals(1024, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_NEXT));
 		assertEquals(2048, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_END));
-        assertEquals(0, ThorActionIds.maskFor(99));
+		assertEquals(0, ThorActionIds.maskFor(15));
+		assertEquals(0, ThorActionIds.maskFor(99));
     }
 
     @Test
@@ -160,7 +163,12 @@ public class ThorContextIdsTest
         assertNotEquals(0, R.string.thor_action_end_turn);
         assertNotEquals(0, R.string.thor_tab_actions);
         assertNotEquals(0, R.string.thor_tab_heroes);
+        assertNotEquals(0, R.string.thor_tab_towns);
         assertNotEquals(0, R.string.thor_no_heroes);
+        assertNotEquals(0, R.string.thor_no_towns);
+        assertNotEquals(0, R.string.thor_town_previous);
+        assertNotEquals(0, R.string.thor_town_next);
+        assertNotEquals(0, R.string.thor_town_page);
         assertNotEquals(0, R.string.thor_hero_sleeping);
         assertEquals(8, ThorHeroRoster.MAX_HEROES);
         assertEquals(0, ThorHeroRoster.copyOf(new int[9], new String[9], new int[9], new int[9], new int[9]).ids.length);
@@ -168,6 +176,11 @@ public class ThorContextIdsTest
                 new int[]{100}, new int[]{200}, new int[]{1});
         assertEquals(42, roster.ids[0]);
         assertEquals("Hero", roster.names[0]);
+        assertEquals(64, ThorTownRoster.MAX_TOWNS);
+        assertEquals(0, ThorTownRoster.copyOf(new int[65], new String[65], new int[65]).ids.length);
+        final ThorTownRoster towns = ThorTownRoster.copyOf(new int[]{21}, new String[]{"Castle Stronghold"}, new int[]{1});
+        assertEquals(21, towns.ids[0]);
+        assertEquals("Castle Stronghold", towns.names[0]);
     }
 
     @Test
@@ -175,6 +188,7 @@ public class ThorContextIdsTest
     {
         assertEquals(2, ThorAdventureLayout.HERO_COLUMNS);
         assertEquals(4, ThorAdventureLayout.HERO_ROWS);
+        assertEquals(5, ThorAdventureLayout.TOWN_ROWS_PER_PAGE);
         assertTrue(ThorAdventureLayout.TITLE < ThorAdventureLayout.STATUS);
         assertTrue(ThorAdventureLayout.STATUS < ThorAdventureLayout.DIVIDER);
         assertTrue(ThorAdventureLayout.TAB_END < ThorAdventureLayout.CONTENT_START);

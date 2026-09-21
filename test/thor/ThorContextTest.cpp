@@ -468,3 +468,43 @@ TEST(ThorContextStoreTest, AdventureInformationChangesRevisionWithoutChurn)
 	EXPECT_EQ(unchanged.revision, initial.revision);
 	EXPECT_GT(moved.revision, initial.revision);
 }
+
+TEST(ThorContextStoreTest, AdventureTownRosterIsBoundedAndChangesSemantically)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.towns = {{1, "Castle Stronghold", true}, {2, "Dungeon Deep", false}};
+	const auto initial = store.publishNext(context);
+	EXPECT_EQ(store.publishNext(context).revision, initial.revision);
+
+	context.towns[0].selected = false;
+	context.towns[1].selected = true;
+	const auto selected = store.publishNext(context);
+	std::swap(context.towns[0], context.towns[1]);
+	const auto reordered = store.publishNext(context);
+	context.towns.pop_back();
+	const auto removed = store.publishNext(context);
+	EXPECT_EQ(selected.revision, initial.revision + 1);
+	EXPECT_EQ(reordered.revision, selected.revision + 1);
+	EXPECT_EQ(removed.revision, reordered.revision + 1);
+
+	context.towns.resize(THOR_MAX_TOWNS + 1, {99, "Too many", false});
+	const auto bounded = store.publishNext(context);
+	EXPECT_TRUE(bounded.towns.empty());
+	EXPECT_EQ(thorBoundedText(std::string(128, 'a') + "\xc3\xa9"), std::string(128, 'a'));
+}
+
+TEST(ThorContextStoreTest, TownRosterClearsOutsideAdventure)
+{
+	ThorContextStore store;
+	ThorContextRecord adventure;
+	adventure.contextId = ThorContextIds::ADVENTURE_MAP;
+	adventure.towns.push_back({1, "Castle Stronghold", true});
+	EXPECT_EQ(store.publishNext(adventure).towns.size(), 1);
+
+	ThorContextRecord townWindow;
+	townWindow.contextId = ThorContextIds::TOWN_WINDOW;
+	townWindow.towns = adventure.towns;
+	EXPECT_TRUE(store.publishNext(townWindow).towns.empty());
+}

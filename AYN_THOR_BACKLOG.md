@@ -2,7 +2,7 @@
 
 ## Slice 18 — Adventure hero quick selector
 
-- Status: `in progress` for an Adventure summary contrast correction. Candidate `27808ba975555879ee72d6435ad5c3891137275a` passed Thor CI run `35610995986`; its artifact ZIP SHA-256 is `890dc871fd65ce731b7cc387dfe787100bc4a3b26e833f3fc9f22a3dccf0ca6f` and APK SHA-256 is `179984305e8d625a0d3fb82fa513c520c8e2bbb90d216cda466b5148e2c9ab46`. The verified APK was installed and launched on an AYN Thor. The user confirmed the overlap is gone, but a lower-display capture showed the selected-hero summary was invisible because it used the dark header background color as text. Earlier candidate `d8cc679d1013ed2f8822626a73fcee6a3ee5c0b3` passed run `35603630947` and passed all functional hardware checklist items except its cramped overlapping layout. The contrast fix needs CI and a focused visual/regression recheck before Slice 18 can be marked hardware validated.
+- Status: `hardware validated`. The exact tested product tree is `217866f94d26894a8d03dcf7a1b2001b995adf11`, which retains the final non-overlapping layout and selected-hero summary contrast correction. Thor CI run `35617394300` passed; its artifact ZIP SHA-256 is `7a7976ca6eb009d25b61fd4197329ff6c48440e033e00995559896b38b7f34b2`, and the verified APK SHA-256 is `b73d433e2e2422b5aab22b1c7e7c453d1a822dd013e0c116f87043aa6b17fa01`. The user confirmed all focused hardware checks passed on an AYN Thor.
 - Behavior: the lower Adventure deck offers local Actions and Heroes tabs. Actions retains all eight existing commands. Heroes lists at most the base-game eight locally owned heroes in native sidebar order, with bounded translated names, movement, selection and sleep state. An empty roster displays “No heroes”. No army, map position, path, portrait, or other player's data is published.
 - Boundary: the native Adventure publication owns a typed roster, using the same object-instance ID as `selectedHeroId`. An over-limit roster fails closed. Roster and action-state changes are semantic revisions; identical frames do not publish. Leaving Adventure clears the roster and disables hit regions.
 - Request: immutable IDs 1–12 remain intact; `SELECT_HERO = 13` uses mask bit 4096. Android submits rendered revision, action 13 and stable hero ID; legacy actions carry -1. Tabs are Android-only and never submit gameplay input.
@@ -11,9 +11,9 @@
 - Refresh: activation, every semantic Adventure state refresh, hero movement, selection, sleep, turn, addition, removal and reordered local list replace the roster by revision. Stale rows and modal contexts fail closed.
 - Automated acceptance: native stable IDs/masks, targeted request validation, roster equality/bounds, stale epoch and queue checks; Android ID/resource/bounded-roster contracts. Permanent Thor CI remains the full ARM64 package gate.
 - Regression risks: ownership changes between publication and tap, a removed hero retaining a row, double taps crossing revisions, modal transitions, long UTF-8 names, and Actions/Battle dashboard interference.
-- Candidate procedure: run focused local checks, commit the candidate, push `ci/thor-slice18-validation` to origin for the permanent workflow, then stop for CI and later manual hardware validation. Do not promote or label hardware validated yet.
+- Candidate procedure: Slice 18 remains hardware validated but is not promoted automatically. Future candidates use the reusable `ci/thor-candidate-validation` transport branch and its guarded exact-tip update described in `docs/AYN_THOR_BUILD_PLAYBOOK.md`; no full build tree is cached.
 
-Hardware checklist for later resume (not executed):
+Hardware checklist for this candidate (user confirmed all passed):
 
 1. Start/load Adventure with two owned heroes; verify Slice 13 information and all eight Actions commands.
 2. Switch to Heroes; verify only local owned heroes and the same order as the upper hero list.
@@ -33,14 +33,34 @@ Hardware checklist for later resume (not executed):
 16. Recheck Battle Wait/Defend, opponent-turn information, tactics, Battle Result, Hero and Town dashboards.
 17. Check for crashes, duplicate presentation, delayed/wrong-player selection, stale regions, focus loss and update loops.
 
+## Slice 19 — Adventure town quick selector
+
+- Status: `awaiting hardware validation`; candidate commit will be recorded after CI publication.
+- User-visible behavior: the lower Adventure deck has Android-local `Actions`, `Heroes`, and `Towns` tabs. Towns lists only the local player's towns in the same native order as the upper town list, shows a selected marker, and one tap selects a town without opening Town Window. Slice 18 Actions/Heroes behavior, layout, and hero-summary contrast remain unchanged.
+- Boundary and native responsibility: `ThorTownEntry` publishes only stable town object IDs, bounded translated names, and selected state in `ADVENTURE_MAP`. The hard transport bound is `THOR_MAX_TOWNS = 64`; an over-limit or invalid collection fails closed with no partial roster and `SELECT_TOWN` disabled. MainGUI rechecks rendered revision, exact Adventure context/owner, mask, published membership, ownership, and selectable state, then uses `PlayerLocalState::setSelection(town)`. An accepted tap consumes its epoch and clears duplicates. No coordinates, direct game-state changes, town-window opening, or additional town data are used.
+- Android responsibility: copy the revision-bound roster; render five touch-sized rows per page; provide local-only Previous/Next and indicator controls; clamp and selected-page-sync on revisions; and discard stale tab/page/context regions. Empty rosters show localized `No towns`.
+- Stable contract: actions 0–13 are unchanged. `SELECT_TOWN = 14`, with mask `8192`, carries the rendered revision and stable town ID.
+- Automated acceptance: native ID/mask, revision/context/mask/target validation, stale epoch, semantic roster equality, UTF-8 bounding, context clearing, and overflow fail-closed tests; Android ID/resource/roster and five-row page contract tests.
+- Regression risks: ownership/removal/reorder between publish and tap, stale page hit regions, page controls accidentally dispatching gameplay, long translated names, and Slice 18 deck regressions.
+- Required hardware checklist after checksum-verified CI APK:
+
+  1. Confirm Slice 18 Actions/Heroes still render without overlap or contrast regressions.
+  2. Confirm Towns shows only locally owned towns, in upper-list order, with translated names and a selected marker.
+  3. Tap unselected and selected towns; verify ordinary upper selection only, never Town Window or duplicate action.
+  4. Use upper selection, reorder, acquire/capture, and lose/remove operations where practical; verify immediate synchronized/inert lower rows.
+  5. Rapidly tap two rows; at most one request from the old revision may execute.
+  6. With more than five towns, verify Previous/Next, indicator, selected-page synchronization, and no native action from page controls.
+  7. Rapidly switch tabs; open Hero/Town/modal/Battle contexts; toggle the display and background/resume; verify no stale row, residual panel, or focus loss.
+  8. Recheck existing Adventure, Battle, Hero, Town, touchscreen, and controller behavior; confirm no crash, duplicate presentation, revision churn, delayed/wrong-player selection, or stale row.
+
 This is the maintained planning and validation record for the AYN Thor fork. Do not remove deferred work when implementing an earlier slice. Before each implementation slice, record the proposed behavior, implementation boundary, native and Android responsibilities, focused acceptance tests, and regression risks, then wait for user approval.
 
 Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardware validation`, `hardware validated`, `blocked`, `deferred`.
 
 ## Current state
 
-- Phase: Slices 1 through 17 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 17.
+- Phase: Slices 1 through 18 are implemented, CI-built, and hardware-validated; Slice 19 is awaiting hardware validation.
+- Status: `hardware validated` through Slice 18.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.

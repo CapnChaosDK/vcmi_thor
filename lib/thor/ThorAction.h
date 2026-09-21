@@ -26,7 +26,8 @@ enum class ThorAction : std::uint8_t
 	BATTLE_DEFEND = 10,
 	BATTLE_TACTICS_NEXT = 11,
 	BATTLE_TACTICS_END = 12,
-	SELECT_HERO = 13
+	SELECT_HERO = 13,
+	SELECT_TOWN = 14
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
