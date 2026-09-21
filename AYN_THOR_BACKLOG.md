@@ -2,7 +2,7 @@
 
 ## Slice 18 — Adventure hero quick selector
 
-- Status: `in progress` for an Adventure summary contrast correction. Candidate `27808ba975555879ee72d6435ad5c3891137275a` passed Thor CI run `35610995986`; its artifact ZIP SHA-256 is `890dc871fd65ce731b7cc387dfe787100bc4a3b26e833f3fc9f22a3dccf0ca6f` and APK SHA-256 is `179984305e8d625a0d3fb82fa513c520c8e2bbb90d216cda466b5148e2c9ab46`. The verified APK was installed and launched on an AYN Thor. The user confirmed the overlap is gone, but a lower-display capture showed the selected-hero summary was invisible because it used the dark header background color as text. Earlier candidate `d8cc679d1013ed2f8822626a73fcee6a3ee5c0b3` passed run `35603630947` and passed all functional hardware checklist items except its cramped overlapping layout. The contrast fix needs CI and a focused visual/regression recheck before Slice 18 can be marked hardware validated.
+- Status: `awaiting hardware validation`. The Adventure summary contrast correction candidate `217866f94d26894a8d03dcf7a1b2001b995adf11` passed Thor CI run `35617394300` (preflight and ARM64 package). Its artifact ZIP SHA-256 is `7a7976ca6eb009d25b61fd4197329ff6c48440e033e00995559896b38b7f34b2`, and the receipt and local APK checksum agree on SHA-256 `b73d433e2e2422b5aab22b1c7e7c453d1a822dd013e0c116f87043aa6b17fa01`. The verified APK was installed and launched on an AYN Thor; a capture immediately after launch was black, so it did not establish whether the selected-hero information is now visible. The prior candidate `27808ba975555879ee72d6435ad5c3891137275a` passed run `35610995986`, and the user confirmed its overlap was gone, but its selected-hero summary used the dark header color as text. The focused Adventure visual/regression recheck remains before Slice 18 can be marked hardware validated.
 - Behavior: the lower Adventure deck offers local Actions and Heroes tabs. Actions retains all eight existing commands. Heroes lists at most the base-game eight locally owned heroes in native sidebar order, with bounded translated names, movement, selection and sleep state. An empty roster displays “No heroes”. No army, map position, path, portrait, or other player's data is published.
 - Boundary: the native Adventure publication owns a typed roster, using the same object-instance ID as `selectedHeroId`. An over-limit roster fails closed. Roster and action-state changes are semantic revisions; identical frames do not publish. Leaving Adventure clears the roster and disables hit regions.
 - Request: immutable IDs 1–12 remain intact; `SELECT_HERO = 13` uses mask bit 4096. Android submits rendered revision, action 13 and stable hero ID; legacy actions carry -1. Tabs are Android-only and never submit gameplay input.
@@ -13,7 +13,7 @@
 - Regression risks: ownership changes between publication and tap, a removed hero retaining a row, double taps crossing revisions, modal transitions, long UTF-8 names, and Actions/Battle dashboard interference.
 - Candidate procedure: run focused local checks, commit the candidate, push `ci/thor-slice18-validation` to origin for the permanent workflow, then stop for CI and later manual hardware validation. Do not promote or label hardware validated yet.
 
-Hardware checklist for later resume (not executed):
+Hardware checklist for this candidate (not yet executed):
 
 1. Start/load Adventure with two owned heroes; verify Slice 13 information and all eight Actions commands.
 2. Switch to Heroes; verify only local owned heroes and the same order as the upper hero list.
