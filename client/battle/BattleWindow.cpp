@@ -985,10 +985,30 @@ void BattleWindow::updateThorActionState(bool invalidateActions)
 	const auto previous = thorContextStore().snapshot();
 	ThorContextRecord context = previous.contextId == contextId ? previous : ThorContextRecord{};
 	context.contextId = contextId;
+	// A Battle context is reused between refreshes. Clear its unit snapshot before
+	// rebuilding it so a departed active stack can never leave stale information
+	// on the companion display.
+	context.title.clear();
+	context.status.clear();
+	context.details = {};
 	context.enabledActionMask = 0;
 	context.activeActionMask = 0;
 	const auto * activeStack = owner.stacksController->getActiveStack();
 	context.actionSubjectId = activeStack ? static_cast<std::int64_t>(activeStack->unitId()) : -1;
+	if(activeStack)
+	{
+		context.title = activeStack->getName();
+		context.details[0] = std::to_string(activeStack->getCount());
+		context.details[1] = std::to_string(activeStack->getAttack(activeStack->isShooter()));
+		context.details[2] = std::to_string(activeStack->getDefense(activeStack->isShooter()));
+
+		const auto maximumHealth = activeStack->getMaxHealth();
+		const auto topCreatureHealth = std::max<int64_t>(activeStack->getAvailableHealth()
+			- static_cast<int64_t>(activeStack->getCount() - 1) * maximumHealth, 0);
+		context.details[3] = std::to_string(topCreatureHealth) + " / " + std::to_string(maximumHealth);
+	}
+	if(!owner.isInTacticsMode())
+		context.status = std::to_string(owner.round);
 
 	const bool spellTargeting = owner.actionsController->heroSpellcastingModeActive()
 		|| owner.actionsController->creatureSpellcastingModeActive();
@@ -1016,7 +1036,8 @@ void BattleWindow::updateThorActionState(bool invalidateActions)
 	if(context.revision == previous.revision)
 		return;
 
-	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
+		context.details);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 }
 

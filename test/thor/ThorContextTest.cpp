@@ -1,5 +1,6 @@
 #include "StdInc.h"
 
+#include "../../lib/thor/ThorAction.h"
 #include "../../lib/thor/ThorContext.h"
 
 TEST(ThorContextStoreTest, StartsUnknown)
@@ -196,6 +197,83 @@ TEST(ThorContextPayloadTest, BoundsEveryDetailLineWithoutSplittingUtf8)
 	for(const auto & detail : published.details)
 		EXPECT_LE(detail.size(), 128);
 	EXPECT_EQ(published.details[1], std::string(128, 'b'));
+}
+
+TEST(ThorContextStoreTest, BattleDashboardSnapshotIsAtomicAndDoesNotChurn)
+{
+	ThorContextStore store;
+	ThorContextRecord battle;
+	battle.contextId = ThorContextIds::BATTLE;
+	battle.title = std::string(128, 'R') + "\xc3\xa9";
+	battle.status = "3";
+	battle.details = {std::string(129, '2'), "14", "12", "18 / 30"};
+	battle.enabledActionMask = thorActionMask(ThorAction::BATTLE_WAIT)
+		| thorActionMask(ThorAction::BATTLE_DEFEND);
+	battle.actionSubjectId = 101;
+
+	const auto initial = store.publishNext(battle);
+	const auto unchanged = store.publishNext(battle);
+	EXPECT_EQ(initial.title, std::string(128, 'R'));
+	EXPECT_EQ(initial.details[0], std::string(128, '2'));
+	EXPECT_EQ(initial.details[1], "14");
+	EXPECT_EQ(initial.details[2], "12");
+	EXPECT_EQ(initial.details[3], "18 / 30");
+	EXPECT_EQ(unchanged.revision, initial.revision);
+
+	battle.details[0] = "23";
+	const auto changedCount = store.publishNext(battle);
+	battle.details[1] = "15";
+	const auto changedAttack = store.publishNext(battle);
+	battle.details[2] = "13";
+	const auto changedDefense = store.publishNext(battle);
+	battle.details[3] = "17 / 30";
+	const auto changedHealth = store.publishNext(battle);
+	battle.status = "4";
+	const auto changedRound = store.publishNext(battle);
+	battle.actionSubjectId = 202;
+	const auto changedStack = store.publishNext(battle);
+
+	EXPECT_EQ(changedCount.revision, initial.revision + 1);
+	EXPECT_EQ(changedAttack.revision, changedCount.revision + 1);
+	EXPECT_EQ(changedDefense.revision, changedAttack.revision + 1);
+	EXPECT_EQ(changedHealth.revision, changedDefense.revision + 1);
+	EXPECT_EQ(changedRound.revision, changedHealth.revision + 1);
+	EXPECT_EQ(changedStack.revision, changedRound.revision + 1);
+}
+
+TEST(ThorContextStoreTest, BattleSnapshotClearsOnMissingStackAndContextTransition)
+{
+	ThorContextStore store;
+	ThorContextRecord battle;
+	battle.contextId = ThorContextIds::BATTLE;
+	battle.title = "Royal Griffin";
+	battle.status = "3";
+	battle.details = {"24", "14", "12", "18 / 30"};
+	battle.actionSubjectId = 101;
+	const auto active = store.publishNext(battle);
+
+	battle.title.clear();
+	battle.details = {};
+	battle.actionSubjectId = -1;
+	const auto noActiveStack = store.publishNext(battle);
+	EXPECT_EQ(noActiveStack.revision, active.revision + 1);
+	EXPECT_TRUE(noActiveStack.title.empty());
+	EXPECT_EQ(noActiveStack.details, ThorContextDetails{});
+	EXPECT_EQ(noActiveStack.actionSubjectId, -1);
+
+	ThorContextRecord tactics;
+	tactics.contextId = ThorContextIds::BATTLE_TACTICS;
+	const auto tacticsWithoutStack = store.publishNext(tactics);
+	EXPECT_TRUE(tacticsWithoutStack.title.empty());
+	EXPECT_TRUE(tacticsWithoutStack.status.empty());
+	EXPECT_EQ(tacticsWithoutStack.details, ThorContextDetails{});
+	EXPECT_EQ(tacticsWithoutStack.actionSubjectId, -1);
+
+	ThorContextRecord unknown;
+	unknown.contextId = ThorContextIds::UNKNOWN;
+	unknown.details = {"24", "14", "12", "18 / 30"};
+	const auto cleared = store.publishNext(unknown);
+	EXPECT_EQ(cleared.details, ThorContextDetails{});
 }
 
 TEST(ThorContextStoreTest, HeroDetailsChangeRevisionExactlyOnceWithoutChurn)

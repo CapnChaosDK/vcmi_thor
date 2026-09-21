@@ -210,13 +210,15 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (ThorContextIds.BATTLE.equals(contextId))
             {
-                title = getContext().getString(R.string.thor_context_battle);
-                status = getContext().getString(R.string.thor_context_battle_status);
+                title = publishedTitle.isEmpty()
+                        ? getContext().getString(R.string.thor_battle_no_active_unit) : publishedTitle;
+                status = publishedStatus;
             }
             else if (ThorContextIds.BATTLE_TACTICS.equals(contextId))
             {
-                title = getContext().getString(R.string.thor_context_battle_tactics);
-                status = getContext().getString(R.string.thor_context_battle_tactics_status);
+                title = publishedTitle.isEmpty()
+                        ? getContext().getString(R.string.thor_battle_no_active_unit) : publishedTitle;
+                status = publishedStatus;
             }
             else if (ThorContextIds.BATTLE_RESULT.equals(contextId))
             {
@@ -286,7 +288,9 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawRect(new RectF(frame.left + bevel, frame.top + bevel, frame.right - bevel, frame.bottom - bevel), paint);
 
-            final float dividerY = frame.top + contentHeight * 0.34f;
+            final boolean battleDashboard = ThorContextIds.BATTLE.equals(contextId)
+                    || ThorContextIds.BATTLE_TACTICS.equals(contextId);
+            final float dividerY = frame.top + contentHeight * (battleDashboard ? 0.55f : 0.34f);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(PARCHMENT_DARK);
             canvas.drawRect(frame.left + bevel * 2f, frame.top + bevel * 2f, frame.right - bevel * 2f, dividerY - bevel, paint);
@@ -298,7 +302,11 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawLine(frame.left + bevel * 2f, dividerY, frame.right - bevel * 2f, dividerY, paint);
 
-            if (ThorContextIds.HERO_WINDOW.equals(contextId))
+            if (battleDashboard)
+            {
+                drawBattleDashboard(canvas, frame, dividerY, bevel, density);
+            }
+            else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {
                 drawHeroDashboard(canvas, frame, dividerY, bevel, density);
             }
@@ -442,6 +450,64 @@ final class ThorSecondScreenPresentation extends Presentation
             return heroName.isEmpty() ? getContext().getString(R.string.thor_town_none) : heroName;
         }
 
+        private void drawBattleDashboard(final Canvas canvas, final RectF frame, final float dividerY,
+                                         final float bevel, final float density)
+        {
+            final boolean tactics = ThorContextIds.BATTLE_TACTICS.equals(contextId);
+            final float contentHeight = frame.height();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, getContext().getString(tactics ? R.string.thor_context_battle_tactics
+                            : R.string.thor_context_battle), frame.centerX(), frame.top + contentHeight * 0.08f,
+                    frame.width() * 0.84f, Math.min(24f * density, contentHeight * 0.042f));
+
+            paint.setFakeBoldText(false);
+            final String state = tactics ? getContext().getString(R.string.thor_context_battle_tactics_status)
+                    : status.isEmpty() ? getContext().getString(R.string.thor_context_battle_status)
+                    : getContext().getString(R.string.thor_battle_round_value, status);
+            drawFittedText(canvas, state, frame.centerX(), frame.top + contentHeight * 0.15f,
+                    frame.width() * 0.84f, Math.min(27f * density, contentHeight * 0.048f));
+
+            paint.setFakeBoldText(true);
+            drawFittedText(canvas, title, frame.centerX(), frame.top + contentHeight * 0.27f,
+                    frame.width() * 0.84f, Math.min(42f * density, contentHeight * 0.07f));
+
+            final String[] labels = {
+                    getContext().getString(R.string.thor_battle_count),
+                    getContext().getString(R.string.thor_battle_attack),
+                    getContext().getString(R.string.thor_battle_defense),
+                    getContext().getString(R.string.thor_battle_hp)
+            };
+            final float gap = Math.max(bevel * 1.1f, 8f);
+            final float left = frame.left + bevel * 3f;
+            final float top = frame.top + contentHeight * 0.35f;
+            final float availableWidth = frame.width() - bevel * 6f;
+            final float availableHeight = dividerY - bevel * 2f - top;
+            final float cellWidth = (availableWidth - gap) / 2f;
+            final float cellHeight = (availableHeight - gap) / 2f;
+            paint.setColor(TEXT);
+            for (int index = 0; index < labels.length; ++index)
+            {
+                final float cellLeft = left + (index % 2) * (cellWidth + gap);
+                final float cellTop = top + (index / 2) * (cellHeight + gap);
+                final RectF cell = new RectF(cellLeft, cellTop, cellLeft + cellWidth, cellTop + cellHeight);
+                paint.setFakeBoldText(true);
+                drawFittedText(canvas, labels[index], cell.centerX(), cell.top + cell.height() * 0.31f,
+                        cell.width() * 0.9f, Math.min(22f * density, cell.height() * 0.22f));
+                paint.setFakeBoldText(false);
+                drawFittedText(canvas, battleValue(index), cell.centerX(), cell.top + cell.height() * 0.70f,
+                        cell.width() * 0.9f, Math.min(30f * density, cell.height() * 0.30f));
+            }
+        }
+
+        private String battleValue(final int index)
+        {
+            return detailLines[index].isEmpty() ? getContext().getString(R.string.thor_battle_not_available)
+                    : detailLines[index];
+        }
+
         private void drawAdventureActions(final Canvas canvas, final RectF frame, final float dividerY,
                                           final float bevel, final float density)
         {
@@ -571,7 +637,9 @@ final class ThorSecondScreenPresentation extends Presentation
                             Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
             final RectF frame = new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
             final float bevel = Math.max(3f * density, margin * 0.16f);
-            final float dividerY = frame.top + (getHeight() - margin * 2f) * 0.34f;
+            final boolean battleDashboard = ThorContextIds.BATTLE.equals(contextId)
+                    || ThorContextIds.BATTLE_TACTICS.equals(contextId);
+            final float dividerY = frame.top + (getHeight() - margin * 2f) * (battleDashboard ? 0.55f : 0.34f);
             if (ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.BATTLE_TACTICS.equals(contextId))
             {
                 final int[] actions = ThorContextIds.BATTLE_TACTICS.equals(contextId)
@@ -634,12 +702,21 @@ final class ThorSecondScreenPresentation extends Presentation
                         + getContext().getString(R.string.thor_town_garrison_hero) + " " + townHeroName(detailLines[3]);
 
             if (ThorContextIds.BATTLE.equals(contextId))
-                return title + ". " + status + ". "
+                return title + ". " + (status.isEmpty() ? getContext().getString(R.string.thor_context_battle_status)
+                        : getContext().getString(R.string.thor_battle_round_value, status)) + ". "
+                        + getContext().getString(R.string.thor_battle_count) + " " + battleValue(0) + ". "
+                        + getContext().getString(R.string.thor_battle_attack) + " " + battleValue(1) + ". "
+                        + getContext().getString(R.string.thor_battle_defense) + " " + battleValue(2) + ". "
+                        + getContext().getString(R.string.thor_battle_hp) + " " + battleValue(3) + ". "
                         + getContext().getString(R.string.thor_action_wait) + ", "
                         + getContext().getString(R.string.thor_action_defend);
 
             if (ThorContextIds.BATTLE_TACTICS.equals(contextId))
-                return title + ". " + status + ". "
+                return title + ". " + getContext().getString(R.string.thor_context_battle_tactics_status) + ". "
+                        + getContext().getString(R.string.thor_battle_count) + " " + battleValue(0) + ". "
+                        + getContext().getString(R.string.thor_battle_attack) + " " + battleValue(1) + ". "
+                        + getContext().getString(R.string.thor_battle_defense) + " " + battleValue(2) + ". "
+                        + getContext().getString(R.string.thor_battle_hp) + " " + battleValue(3) + ". "
                         + getContext().getString(R.string.thor_action_next_unit) + ", "
                         + getContext().getString(R.string.thor_action_start_battle);
 

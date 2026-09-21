@@ -219,11 +219,19 @@ void BattleInterface::redrawBattlefield()
 void BattleInterface::stackReset(const CStack * stack)
 {
 	stacksController->stackReset(stack);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 void BattleInterface::stackAdded(const CStack * stack)
 {
 	stacksController->stackAdded(stack, false);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 void BattleInterface::stackRemoved(uint32_t stackID)
@@ -231,11 +239,19 @@ void BattleInterface::stackRemoved(uint32_t stackID)
 	stacksController->stackRemoved(stackID);
 	fieldController->redrawBackgroundWithHexes();
 	windowObject->updateQueue();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 void BattleInterface::stackActivated(const CStack *stack)
 {
 	stacksController->stackActivated(stack);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 void BattleInterface::stackMoved(const CStack *stack, const BattleHexArray & destHex, int distance, bool teleport)
@@ -265,6 +281,10 @@ void BattleInterface::stacksAreAttacked(std::vector<StackAttackedInfo> attackedI
 		else if(killedBySide.at(side) < killedBySide.at(getBattle()->otherSide(side)))
 			setHeroAnimation(side, EHeroAnimType::VICTORY);
 	}
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 void BattleInterface::stackAttacking( const StackAttackInfo & attackInfo )
@@ -281,6 +301,10 @@ void BattleInterface::newRound()
 {
 	console->addText(LIBRARY->generaltexth->allTexts[412]);
 	round++;
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 void BattleInterface::giveCommand(EActionType action, const BattleHex & tile, SpellID spell)
@@ -331,6 +355,10 @@ void BattleInterface::sendCommand(BattleAction command, const CStack * actor)
 		stacksController->setActiveStack(nullptr);
 		//next stack will be activated when action ends
 	}
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 	ENGINE->cursor().set(Cursor::Combat::POINTER);
 }
 
@@ -373,6 +401,10 @@ void BattleInterface::battleFinished(const BattleResult& br, QueryID queryID)
 {
 	checkForAnimations();
 	stacksController->setActiveStack(nullptr);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 
 	ENGINE->cursor().set(Cursor::Map::POINTER);
 	curInt->waitWhileDialog();
@@ -576,6 +608,10 @@ void BattleInterface::battleStacksEffectsSet(const SetStackEffect & sse)
 {
 	if(stacksController->getActiveStack() != nullptr)
 		fieldController->redrawBackgroundWithHexes();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 void BattleInterface::setHeroAnimation(BattleSide side, EHeroAnimType phase)
@@ -682,6 +718,10 @@ void BattleInterface::activateStack()
 	fieldController->redrawBackgroundWithHexes();
 	actionsController->activateStack();
 	ENGINE->fakeMouseMove();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 }
 
 bool BattleInterface::makingTurn() const
@@ -751,6 +791,10 @@ void BattleInterface::startAction(const BattleAction & action)
 void BattleInterface::tacticPhaseEnd()
 {
 	stacksController->setActiveStack(nullptr);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
 
 	auto side = tacticianInterface->cb->getBattle(battleID)->playerToSide(tacticianInterface->playerID);
 	auto action = BattleAction::makeEndOFTacticPhase(side);
@@ -837,6 +881,10 @@ void BattleInterface::requestAutofightingAIToTakeAction()
 	if (tacticsDist > 0)
 	{
 		stacksController->setActiveStack(nullptr);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		windowObject->updateThorActionState();
+#endif
 		std::thread aiThread([localBattleID = battleID, localCurInt = curInt, tacticsDist]()
 		{
 			setThreadName("autofightingAI");
@@ -852,6 +900,10 @@ void BattleInterface::requestAutofightingAIToTakeAction()
 		if (activeStack)
 		{
 			stacksController->setActiveStack(nullptr);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+			windowObject->updateThorActionState();
+#endif
 
 			// FIXME: unsafe
 			// Run task in separate thread to avoid UI lock while AI is making turn (which might take some time)

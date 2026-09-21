@@ -956,3 +956,50 @@ Status: `hardware validated`
 - The user reported the complete Slice 16 checklist passed: ordinary Wait/Defend, disabled/blocking states, tactics Next Unit/Start Battle after the opening refresh, rapid stack-change protection, child/modal fallback, Battle Result dismissal/restoration, panel and resume behavior, upper touchscreen/controller input, and Adventure/Hero/Town regressions.
 - Slice 16 is hardware validated. Retain its exact context allow-list, action IDs 0–12, action-subject revision boundary, native owner/top-window checks, one-shot action epoch, Battle Result lifecycle, and Adventure/Hero/Town behavior in the next approved slice.
 - The tested candidate has not been promoted to `ayn-thor-dual-screen`. Promotion remains a separate explicit user-authorized step; start the next slice only after its scope and candidate/promotion strategy are agreed.
+
+## Slice 17: Live Battle information dashboard
+
+Status: `awaiting hardware validation`
+
+### User-visible behavior and information boundary
+
+- With the exact active top owner `BattleWindow`, the lower display now combines the Slice 16 controls with a read-only active-unit dashboard: Battle identity, round, translated active-creature name, count, effective Attack, effective Defense, and current top-creature HP / maximum HP.
+- In tactics, the same dashboard shows the selected tactics stack and retains exactly Next Unit and Start Battle. Normal Battle retains exactly Wait and Defend. Battle Result and every non-Battle owner remain inert and cannot retain an active-unit snapshot.
+- The sole source is the active stack already owned by `BattleInterface::stacksController`. This slice adds no army list, turn queue, target, hidden/fogged state, range, spell list/effects, hero data, prediction, quick selection, creature art, or battle action.
+
+### Native responsibilities and refresh/invalidation rules
+
+- `BattleWindow::updateThorActionState()` clears title, status, and all four detail slots before rebuilding its atomic Battle/Tactics record. It uses `CStack::getName()`, count, the same effective `getAttack()`/`getDefense()` values as `StackInfoBasicPanel`, and that panel's top-creature remaining-health formula. Normal Battle status is the numeric round; Tactics leaves it empty for Android's local identity.
+- The existing bounded UTF-8 `ThorContextRecord.details` transport is reused: Count, Attack, Defense, HP. `actionSubjectId` remains the active stack's stable unit ID or invalid. Equality therefore advances once for every display change or stack identity change, but does not churn for an identical snapshot.
+- Battle refresh follows state changes after the normal UI update: activation/opening completion, tactics start/end, UI block/unblock, spell-target entry/cancel, accepted-action invalidation, active-stack activation/reset/add/removal, attacks/effects, round changes, direct command handoff, autofight handoff, tactics end, and battle finish. Publication still fails closed unless this is the exact active top owner; it does not change WindowHandler lifecycle.
+- A missing active stack clears title/details and action subject immediately. `UNKNOWN` already clears details, and the existing Battle Result publication starts from a fresh inert record. Slice 16 action IDs 0–12, masks, ownership resolution, revision validation, one-shot epoch, zero-mask accepted-action boundary, and upper-input independence are unchanged.
+
+### Android responsibilities
+
+- `ThorSecondScreenPresentation` now has a dedicated Battle layout on the 1080 x 1240 reference panel: identity/status, fitted unit name, a compact two-by-two Count/Attack/Defense/HP grid, and two large context-specific controls. Hero, Town, and Adventure layouts are unchanged.
+- Android resources own the labels, round format, no-active-unit, and unavailable fallbacks. Empty native values never render as `null`, raw IDs, or stale text. Fitted text is used for long translated creature names.
+- Only the two rendered action rectangles are actionable. Unit information, headings, round, stats, and empty dashboard space resolve to no action; disabled buttons do not submit. The accessibility description now includes the unit information and the applicable Battle or tactics controls.
+
+### Automated validation
+
+- Focused native coverage now checks bounded Battle details, unchanged-state suppression, one revision each for Count/Attack/Defense/HP/round/subject changes, missing-stack clearing, `UNKNOWN` clearing, and clean Battle-to-Tactics transition. Existing action ID/mask, stale/wrong-context/disabled-action, and accepted-action invalidation tests remain in the same suite.
+- Focused Android coverage preserves all IDs and masks 0–12 and verifies the fixed four-detail contract, dashboard labels/fallbacks, and the distinct normal-Battle versus tactics command masks. Existing Adventure, Hero, and Town resource contracts remain covered.
+
+### Required AYN Thor hardware checklist
+
+1. Start a normal battle; verify heading, round, active creature, Count, Attack, Defense, and HP against the upper Battle UI.
+2. Move through friendly stacks and observe an enemy stack; each switch must be immediate and expose only the active stack.
+3. Damage an active stack where practical; confirm Count/HP refresh, then advance a round and confirm the displayed round changes.
+4. Tap Wait, then Defend, once each; verify normal behavior, the already-waited disabled state, immediate stale-action protection, and no rapid/double-tap command leak.
+5. Enter tactics; verify selected-stack information plus exactly Next Unit/Start Battle. Cycle Next Unit, then Start Battle, and confirm both upper selection and lower deck convert correctly.
+6. During opening, animations, blocked UI, spell targeting, enemy activity, and rapid stack changes, verify no delayed lower command executes.
+7. Open/close a reachable Battle child/modal; it must fail closed while covered and restore the exact current dashboard afterward.
+8. Finish a battle; Battle Result must be inert and have no stale unit frame. Dismiss it and verify Adventure Map is interactive with no residual battle frame.
+9. Toggle the lower panel, then background/resume during battle; exactly one complete current dashboard must restore.
+10. Verify upper touchscreen/controller input is unchanged, then recheck representative Adventure commands and Hero/Town dashboards.
+11. Confirm no crash, duplicate presentation, stale creature, stale command, revision churn, delayed action, focus change, or lifecycle regression.
+
+### Regression risks and candidate procedure
+
+- Primary risks are stale snapshots during an active-stack handoff, effects changing current values, animation/spell blocking, Battle Result lifecycle restoration, long localized names, and regression to the validated Slice 16 command safety or Adventure/Hero/Town cards.
+- Before candidate creation, review the complete diff, run `git diff --check`, focused native Thor tests, and the inexpensive Android source/resource test. Create `ci/thor-slice17-validation` from the complete candidate, commit it, and push only that branch to trigger the existing `.github/workflows/thor-ci.yml` preflight and dependent ARM64 candidate job. Do not install an APK, promote, merge, or mark Slice 17 hardware validated until CI artifact verification and every checklist item above are completed.

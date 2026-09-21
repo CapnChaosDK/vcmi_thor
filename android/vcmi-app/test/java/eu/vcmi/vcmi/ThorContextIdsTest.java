@@ -126,6 +126,25 @@ public class ThorContextIdsTest
     }
 
     @Test
+    public void battleDashboardUsesAllBoundedDetailSlotsAndLocalLabels()
+    {
+        assertEquals(4, ThorContextDetails.COUNT);
+        assertNotEquals(0, R.string.thor_battle_round_value);
+        assertNotEquals(0, R.string.thor_battle_count);
+        assertNotEquals(0, R.string.thor_battle_attack);
+        assertNotEquals(0, R.string.thor_battle_defense);
+        assertNotEquals(0, R.string.thor_battle_hp);
+        assertNotEquals(0, R.string.thor_battle_no_active_unit);
+        assertNotEquals(0, R.string.thor_battle_not_available);
+        assertEquals(ThorActionIds.maskFor(ThorActionIds.BATTLE_WAIT)
+                        | ThorActionIds.maskFor(ThorActionIds.BATTLE_DEFEND),
+                256 | 512);
+        assertEquals(ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_NEXT)
+                        | ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_END),
+                1024 | 2048);
+    }
+
+    @Test
     public void adventureGameplayDeckUsesBoundedStateAwareResources()
     {
         assertNotEquals(0, R.string.thor_action_section_gameplay);

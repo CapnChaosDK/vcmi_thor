@@ -61,6 +61,13 @@
     <string name="thor_context_battle_tactics_status">Arrange your forces</string>
     <string name="thor_context_battle_result">Battle result</string>
     <string name="thor_context_battle_result_status">Review the outcome</string>
+    <string name="thor_battle_round_value">Round %1$s</string>
+    <string name="thor_battle_count">Count</string>
+    <string name="thor_battle_attack">Attack</string>
+    <string name="thor_battle_defense">Defense</string>
+    <string name="thor_battle_hp">HP</string>
+    <string name="thor_battle_no_active_unit">No active unit</string>
+    <string name="thor_battle_not_available">—</string>
     <string name="thor_action_wait">Wait</string>
     <string name="thor_action_defend">Defend</string>
     <string name="thor_action_next_unit">Next Unit</string>
