@@ -360,7 +360,7 @@ final class ThorSecondScreenPresentation extends Presentation
                         Math.min(42f * density, contentHeight * 0.09f));
 
                 paint.setFakeBoldText(false);
-                paint.setColor(PARCHMENT_DARK);
+                paint.setColor(adventure ? TEXT : PARCHMENT_DARK);
                 drawFittedText(canvas, status, getWidth() * 0.5f,
                         adventure ? frame.top + contentHeight * ThorAdventureLayout.STATUS
                                 : dividerY + contentHeight * 0.075f,
