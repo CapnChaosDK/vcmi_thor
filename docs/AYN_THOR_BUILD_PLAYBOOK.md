@@ -25,6 +25,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 15 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed the complete Town-card accuracy, construction/hero refresh, town switching, child/modal restoration, display recreation, inert-touch, Adventure-command, and upper-input regression checklist.
 - Slice 16 final product commit: `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` — context-aware Battle command deck. Its candidate CI run `35577409407` passed and the hardware checklist was completed; its verified APK SHA-256 was `d1ca061bd346e9022801d78fd0ef69cb70da3b1c902662868670b4a20acc65f3`.
 - Slice 17 final product commit: `d4c9193be2d99233c00e2b4054d0484e0c67bf99` — live Battle information dashboard with the exact current opponent unit retained as read-only information during opponent turns. Candidate CI run `35586360399` passed; artifact `thor-candidate-arm64-35586360399`, package `is.xyz.vcmi.thor`, APK SHA-256 `29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`. The checksum-verified APK was installed in place and all focused hardware checks passed.
+- Slice 18 tested product commit: `217866f94d26894a8d03dcf7a1b2001b995adf11` — Adventure hero quick selector with the final spacing and selected-hero summary contrast corrections. Candidate CI run `35617394300` passed; artifact `thor-candidate-arm64-35617394300`, package `is.xyz.vcmi.thor`, artifact ZIP SHA-256 `7a7976ca6eb009d25b61fd4197329ff6c48440e033e00995559896b38b7f34b2`, APK SHA-256 `b73d433e2e2422b5aab22b1c7e7c453d1a822dd013e0c116f87043aa6b17fa01`. The checksum-verified APK was installed in place, and the user confirmed all focused hardware checks passed. This tested tree has not been promoted to `ayn-thor-dual-screen`.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
@@ -45,7 +46,7 @@ The workflow concurrency group includes both workflow and ref. A new push cancel
 
 The dependency archive is cached separately from the Conan installation. Its key includes the runner, Android ARM64 identity, and the hash of `CI/install_conan_dependencies.sh`; changing the release definition therefore cannot reuse the old archive. The installer only downloads a missing archive and uses robust retrying downloads. Caches never contain credentials, signing material, APKs, or build directories.
 
-The ARM64 compilation uses a 3 GB `ccache` directory cached by runner OS, Android NDK r29, ABI, schema version, and candidate ref. The broader restore prefixes let later commits on a candidate ref reuse safe compatible objects. `CCACHE_BASEDIR`, content-based compiler checking, and disabled directory hashing avoid ephemeral runner paths needlessly reducing reuse. The workflow passes the C and C++ launcher settings explicitly to CMake, proves the launchers are configured, verifies cacheable compiler calls, and includes the ccache statistics in the job summary and candidate artifact.
+The ARM64 compilation uses a 3 GB `ccache` directory cached by runner OS, Android NDK r29, ABI, schema version, and candidate ref. Reuse `ci/thor-candidate-validation` for full candidates across slices so the ref-specific restore prefix can reuse compatible compiler objects; broader restore prefixes remain a fallback. Each GitHub runner still creates fresh CMake, Qt, Gradle, and APK output trees. Never cache complete build/output trees. `CCACHE_BASEDIR`, content-based compiler checking, and disabled directory hashing avoid ephemeral runner paths needlessly reducing reuse. The workflow passes the C and C++ launcher settings explicitly to CMake, proves the launchers are configured, verifies cacheable compiler calls, and includes the ccache statistics in the job summary and candidate artifact. A cache hit is only a speedup, never proof of a successful build or test.
 
 Gradle uses the checked-in wrapper and `gradle/actions/setup-gradle@v6` with its open/basic GitHub Actions cache provider. Do not set `GRADLE_USER_HOME` to `RUNNER_TEMP`; that would defeat the supported cache. Generated signed APKs and signing material are not cached.
 
@@ -65,7 +66,7 @@ Implementation
     ↓
 local cheap checks
     ↓
-create ci/thor-sliceN-validation from ayn-thor-dual-screen
+update the reusable ci/thor-candidate-validation ref to the exact candidate
     ↓
 push candidate branch
     ↓
@@ -90,16 +91,20 @@ git log --oneline -5
 git remote -v
 ```
 
-Make approved product, test, and documentation changes on `ayn-thor-dual-screen`. Before candidate creation, run `git diff --check`, review the diff/stat, and do not discard unrelated work. Build an exact candidate from the implementation commit:
+Make approved product, test, and documentation changes on the agreed implementation base. Before candidate publication, run `git diff --check`, review the diff/stat, and do not discard unrelated work. Preserve the previously hardware-tested tree while preparing the next slice; do not silently treat an unpromoted candidate as the published implementation branch. Commit the complete product/test change locally, then point the one reusable candidate ref at that exact commit:
 
 ```powershell
-git switch -c ci/thor-sliceN-validation
 git add -- <approved slice files>
 git commit -m "Candidate Thor Slice N build"
-git push -u origin ci/thor-sliceN-validation
+git status --short
+git rev-parse HEAD
+git ls-remote origin refs/heads/ci/thor-candidate-validation
+git push --force-with-lease=refs/heads/ci/thor-candidate-validation:<observed-remote-sha> origin HEAD:refs/heads/ci/thor-candidate-validation
 ```
 
-After CI succeeds, download the artifact into an ignored or explicitly excluded directory. Verify the GitHub artifact digest and the APK SHA-256 inside it, inspect the package ID, and retain the receipt with the candidate commit and run ID before installation. Install with `adb install -r -d` to preserve Thor package data.
+Replace `<observed-remote-sha>` with the exact SHA just returned by `git ls-remote`; do not use an unqualified `--force` or a stale expected SHA. If the remote tip has changed, stop and inspect it before retrying. The narrowly scoped lease is necessary because the shared ref may still point to an earlier slice or a different history; it must never rewrite another ref. Do not update this ref merely to document a completed run. The new push triggers the permanent workflow, whose receipt pins the actual candidate commit even if the shared ref later advances. Keep the completed run ID, receipt, ZIP/APK checksums, and manual hardware result in `AYN_THOR_BACKLOG.md`; a branch name alone does not identify the tested build.
+
+After CI succeeds, download the artifact into an ignored or explicitly excluded directory. Verify the GitHub artifact digest and the APK SHA-256 inside it, inspect the package ID, and retain the receipt with the candidate commit and run ID before installation. Confirm the receipt commit is the exact intended product tree, not merely the current tip of the reusable branch. Install with `adb install -r -d` to preserve Thor package data.
 
 Manual AYN Thor hardware validation remains mandatory. CI is not a substitute for visual, focus, touch, controller, panel-toggle, or pause/resume checks.
 
@@ -163,3 +168,9 @@ Keep automated device work limited to connection, installation, launch, process/
 ## Game data notes
 
 The Thor package has its own app data, so standard VCMI assets/saves are not automatically shared. Import the user's legitimate Heroes III installation through VCMI's normal import flow. Do not add proprietary game files to this repository or an APK.
+
+## Slice 18 handover — Adventure hero quick selector
+
+- The final tested product tree is `217866f94d26894a8d03dcf7a1b2001b995adf11` on the historical `ci/thor-slice18-validation` ref. The later validation-record commits change documentation only. CI run `35617394300` passed and produced the checksum-verified APK identified above.
+- The user confirmed the complete 17-point Slice 18 hardware checklist in `AYN_THOR_BACKLOG.md`: readable selected-hero information, non-overlapping buttons, correct local hero list and selection, immediate state refresh, stale-tap rejection, modal/lifecycle restoration, existing Actions/Battle/Hero/Town behavior, and unchanged upper input. Slice 18 is hardware validated, not automatically promoted.
+- Before starting Slice 19, obtain its scope approval and decide whether to promote the exact validated Slice 18 tree. Future full candidates use `ci/thor-candidate-validation` and the exact-tip lease procedure above for compatible `ccache` continuity. Do not create another per-slice candidate ref or cache whole build trees. Each candidate still needs fresh CI, receipt/checksum verification, and manual AYN Thor hardware validation.
