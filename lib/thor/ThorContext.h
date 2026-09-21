@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -87,6 +88,7 @@ inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
 inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;
 inline constexpr std::size_t THOR_MAX_TOWNS = 64;
+inline constexpr std::size_t THOR_HERO_MEETING_ARMY_SIZE = GameConstants::ARMY_SIZE;
 struct DLL_LINKAGE ThorHeroEntry
 {
 	int id = -1;
@@ -106,6 +108,33 @@ struct DLL_LINKAGE ThorTownEntry
 	bool operator==(const ThorTownEntry &) const = default;
 };
 
+/// One fixed, addressable stack position in a Hero Meeting army.
+struct DLL_LINKAGE ThorHeroMeetingSlot
+{
+	int armyId = -1;
+	int slot = -1;
+	bool occupied = false;
+	int creatureId = -1;
+	std::string creatureName;
+	int count = 0;
+	bool operator==(const ThorHeroMeetingSlot &) const = default;
+};
+
+/// Read-only Hero Meeting army snapshot. Both arrays always contain exactly seven positions.
+struct DLL_LINKAGE ThorHeroMeetingArmies
+{
+	int leftHeroId = -1;
+	int rightHeroId = -1;
+	int leftArmyId = -1;
+	int rightArmyId = -1;
+	std::string leftHeroName;
+	std::string rightHeroName;
+	bool locallyControllable = false;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> leftSlots;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> rightSlots;
+	bool operator==(const ThorHeroMeetingArmies &) const = default;
+};
+
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
 {
@@ -121,6 +150,7 @@ struct DLL_LINKAGE ThorContextRecord
 	ThorContextDetails details;
 	std::vector<ThorHeroEntry> heroes;
 	std::vector<ThorTownEntry> towns;
+	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

@@ -189,6 +189,55 @@ void CAndroidVMHelper::publishThorTowns(std::uint64_t revision, const std::vecto
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArmies",
+		"(JII[Ljava/lang/String;[I[I[I[Ljava/lang/String;[II)V",
+		[revision, &armies](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			constexpr auto size = static_cast<jsize>(THOR_HERO_MEETING_ARMY_SIZE);
+			jintArray armyIds = env->NewIntArray(2);
+			jintArray creatureIds = env->NewIntArray(size * 2);
+			jintArray counts = env->NewIntArray(size * 2);
+			jintArray flags = env->NewIntArray(size * 2);
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray heroNames = env->NewObjectArray(2, stringClass, nullptr);
+			jobjectArray creatureNames = env->NewObjectArray(size * 2, stringClass, nullptr);
+			const std::array armyIdValues = {static_cast<jint>(armies.leftArmyId), static_cast<jint>(armies.rightArmyId)};
+			env->SetIntArrayRegion(armyIds, 0, 2, armyIdValues.data());
+			const std::array heroNameValues = {armies.leftHeroName, armies.rightHeroName};
+			for(jsize side = 0; side < 2; ++side)
+			{
+				jstring name = env->NewStringUTF(heroNameValues[side].c_str());
+				env->SetObjectArrayElement(heroNames, side, name);
+				env->DeleteLocalRef(name);
+				const auto & slots = side == 0 ? armies.leftSlots : armies.rightSlots;
+				for(jsize index = 0; index < size; ++index)
+				{
+					const auto & slot = slots[index];
+					const jsize output = side * size + index;
+					const jint creatureId = slot.creatureId, count = slot.count, occupied = slot.occupied ? 1 : 0;
+					env->SetIntArrayRegion(creatureIds, output, 1, &creatureId);
+					env->SetIntArrayRegion(counts, output, 1, &count);
+					env->SetIntArrayRegion(flags, output, 1, &occupied);
+					jstring creatureName = env->NewStringUTF(slot.creatureName.c_str());
+					env->SetObjectArrayElement(creatureNames, output, creatureName);
+					env->DeleteLocalRef(creatureName);
+				}
+			}
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(armies.leftHeroId),
+				static_cast<jint>(armies.rightHeroId), heroNames, armyIds, creatureIds, counts, creatureNames, flags,
+				static_cast<jint>(armies.locallyControllable ? 1 : 0));
+			env->DeleteLocalRef(armyIds);
+			env->DeleteLocalRef(creatureIds);
+			env->DeleteLocalRef(counts);
+			env->DeleteLocalRef(flags);
+			env->DeleteLocalRef(heroNames);
+			env->DeleteLocalRef(creatureNames);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 jclass CAndroidVMHelper::findClass(const std::string & name, bool classloaded)
 {
 	if(alwaysUseLoadedClass || classloaded)

@@ -16,7 +16,8 @@ namespace
 			&& lhs.actionSubjectId == rhs.actionSubjectId
 			&& lhs.actionEpoch == rhs.actionEpoch
 			&& lhs.heroes == rhs.heroes
-			&& lhs.towns == rhs.towns;
+			&& lhs.towns == rhs.towns
+			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies;
 	}
 
 	void normalizeActionSubject(ThorContextRecord & context)
@@ -35,10 +36,41 @@ namespace
 			context.heroes.clear();
 		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.towns.size() > THOR_MAX_TOWNS)
 			context.towns.clear();
+		if(context.contextId != ThorContextIds::HERO_MEETING)
+			context.heroMeetingArmies.reset();
 		for(auto & hero : context.heroes)
 			hero.name = thorBoundedText(std::move(hero.name));
 		for(auto & town : context.towns)
 			town.name = thorBoundedText(std::move(town.name));
+		if(!context.heroMeetingArmies)
+			return;
+		auto & armies = *context.heroMeetingArmies;
+		const bool validIds = armies.leftHeroId >= 0 && armies.rightHeroId >= 0 && armies.leftHeroId != armies.rightHeroId
+			&& armies.leftArmyId >= 0 && armies.rightArmyId >= 0 && armies.leftArmyId != armies.rightArmyId;
+		if(!validIds)
+		{
+			context.heroMeetingArmies.reset();
+			return;
+		}
+		armies.leftHeroName = thorBoundedText(std::move(armies.leftHeroName));
+		armies.rightHeroName = thorBoundedText(std::move(armies.rightHeroName));
+		auto normalizeSlots = [](auto & slots, int armyId)
+		{
+			for(std::size_t index = 0; index < slots.size(); ++index)
+			{
+				auto & slot = slots[index];
+				if(slot.armyId != armyId || slot.slot != static_cast<int>(index) || slot.count < 0
+					|| (slot.occupied && (slot.creatureId < 0 || slot.count <= 0))
+					|| (!slot.occupied && (slot.creatureId != -1 || slot.count != 0)))
+					return false;
+				slot.creatureName = thorBoundedText(std::move(slot.creatureName));
+				if(!slot.occupied)
+					slot.creatureName.clear();
+			}
+			return true;
+		};
+		if(!normalizeSlots(armies.leftSlots, armies.leftArmyId) || !normalizeSlots(armies.rightSlots, armies.rightArmyId))
+			context.heroMeetingArmies.reset();
 	}
 }
 

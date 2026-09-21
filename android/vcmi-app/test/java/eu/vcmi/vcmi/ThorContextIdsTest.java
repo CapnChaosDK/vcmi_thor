@@ -115,7 +115,14 @@ public class ThorContextIdsTest
 		assertEquals(512, ThorActionIds.maskFor(ThorActionIds.BATTLE_DEFEND));
 		assertEquals(1024, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_NEXT));
 		assertEquals(2048, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_END));
-		assertEquals(0, ThorActionIds.maskFor(15));
+		assertEquals(15, ThorActionIds.HERO_MEETING_TRANSFER_STACK);
+		assertEquals(16, ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT);
+		assertEquals(17, ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT);
+		assertEquals(18, ThorActionIds.HERO_MEETING_SWAP_ARMIES);
+		assertEquals(16384, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_TRANSFER_STACK));
+		assertEquals(32768, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT));
+		assertEquals(65536, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT));
+		assertEquals(131072, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SWAP_ARMIES));
 		assertEquals(0, ThorActionIds.maskFor(99));
     }
 
@@ -202,5 +209,31 @@ public class ThorContextIdsTest
         assertTrue(frameHeight * ThorAdventureLayout.STATUS + 35f < divider);
         assertTrue(tabBottom + 35f < contentTop);
         assertTrue((frameHeight - contentTop) / ThorAdventureLayout.HERO_ROWS > 140f);
+    }
+
+    @Test
+    public void heroMeetingSnapshotIsFixedAndCopySafe()
+    {
+        final int[] creatureIds = new int[ThorHeroMeetingArmies.SLOT_COUNT];
+        final int[] counts = new int[ThorHeroMeetingArmies.SLOT_COUNT];
+        final String[] creatureNames = new String[ThorHeroMeetingArmies.SLOT_COUNT];
+        final int[] flags = new int[ThorHeroMeetingArmies.SLOT_COUNT];
+        for (int index = 0; index < ThorHeroMeetingArmies.SLOT_COUNT; ++index)
+        {
+            creatureIds[index] = -1;
+            creatureNames[index] = "";
+        }
+        creatureIds[0] = 3;
+        counts[0] = 12;
+        creatureNames[0] = "Pikemen";
+        flags[0] = 1;
+        final ThorHeroMeetingArmies armies = ThorHeroMeetingArmies.copyOf(1, 2,
+                new String[]{"Left", "Right"}, new int[]{1, 2}, creatureIds, counts, creatureNames, flags, 1);
+        creatureIds[0] = 99;
+        assertTrue(armies.complete());
+        assertEquals(14, armies.creatureIds.length);
+        assertEquals(3, armies.creatureIds[0]);
+        assertEquals(0, ThorHeroMeetingArmies.copyOf(1, 2, new String[]{"Left", "Right"}, new int[]{1, 2},
+                new int[13], counts, creatureNames, flags, 1).creatureIds.length);
     }
 }

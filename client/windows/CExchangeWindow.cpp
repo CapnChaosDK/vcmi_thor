@@ -33,6 +33,7 @@
 #include "../../lib/entities/hero/CHeroHandler.h"
 #include "../../lib/filesystem/Filesystem.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
+#include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/texts/TextOperations.h"
 
@@ -40,16 +41,6 @@
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
 
-namespace
-{
-	void publishThorInGameContext(ThorInGameContext inGameContext)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForInGameContext(inGameContext);
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
 #endif
 
 static const std::string QUICK_EXCHANGE_BG = "quick-exchange/TRADEQE";
@@ -297,7 +288,7 @@ void CExchangeWindow::activate()
 	CStatusbarWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::HERO_MEETING);
+	updateThorActionState();
 #endif
 }
 
@@ -309,7 +300,10 @@ void CExchangeWindow::deactivate()
 	CStatusbarWindow::deactivate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	ThorContextRecord context;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 #endif
 }
 
@@ -411,7 +405,117 @@ void CExchangeWindow::updateGarrisons()
 	garr->recreateSlots();
 
 	updateArtifacts();
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		updateThorActionState();
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+namespace
+{
+	ThorHeroMeetingArmies thorHeroMeetingArmies(const std::array<const CGHeroInstance *, 2> & heroes)
+	{
+		ThorHeroMeetingArmies result;
+		result.leftHeroId = heroes[0] ? heroes[0]->id.getNum() : -1;
+		result.rightHeroId = heroes[1] ? heroes[1]->id.getNum() : -1;
+		result.leftArmyId = result.leftHeroId;
+		result.rightArmyId = result.rightHeroId;
+		if(!heroes[0] || !heroes[1])
+			return result;
+		result.leftHeroName = heroes[0]->getObjectName().toString(&GAME->translator());
+		result.rightHeroName = heroes[1]->getObjectName().toString(&GAME->translator());
+		result.locallyControllable = GAME->interface()->makingTurn
+			&& heroes[0]->tempOwner == GAME->interface()->playerID && heroes[1]->tempOwner == GAME->interface()->playerID;
+		for(std::size_t side = 0; side < heroes.size(); ++side)
+		{
+			auto & slots = side == 0 ? result.leftSlots : result.rightSlots;
+			const auto armyId = side == 0 ? result.leftArmyId : result.rightArmyId;
+			for(std::size_t index = 0; index < slots.size(); ++index)
+			{
+				auto & slot = slots[index];
+				slot.armyId = armyId;
+				slot.slot = static_cast<int>(index);
+				const auto * stack = heroes[side]->getStackPtr(SlotID(static_cast<int>(index)));
+				if(!stack)
+					continue;
+				slot.occupied = true;
+				slot.creatureId = stack->getCreature()->id.getNum();
+				slot.creatureName = stack->getCreature()->getNamePluralTranslated();
+				slot.count = stack->getCount();
+			}
+		}
+		return result;
+	}
+}
+
+void CExchangeWindow::updateThorActionState(bool invalidateActions)
+{
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.heroMeetingArmies = thorHeroMeetingArmies(heroInst);
+	if(context.heroMeetingArmies->locallyControllable && !invalidateActions)
+	{
+		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
+			| thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT)
+			| thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT)
+			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES);
+	}
+	const auto previous = thorContextStore().snapshot();
+	context.actionEpoch = previous.contextId == ThorContextIds::HERO_MEETING ? previous.actionEpoch + (invalidateActions ? 1 : 0) : 0;
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision == previous.revision)
+		return;
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorHeroMeetingArmies(context.revision, *context.heroMeetingArmies);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CExchangeWindow::matchesThorContext(const ThorContextRecord & context) const
+{
+	if(!isActive() || context.contextId != ThorContextIds::HERO_MEETING || !context.heroMeetingArmies)
+		return false;
+	const auto & armies = *context.heroMeetingArmies;
+	return heroInst[0] && heroInst[1] && armies.leftHeroId == heroInst[0]->id.getNum()
+		&& armies.rightHeroId == heroInst[1]->id.getNum() && armies.leftArmyId == heroInst[0]->id.getNum()
+		&& armies.rightArmyId == heroInst[1]->id.getNum();
+}
+
+bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
+{
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context) || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(!context.heroMeetingArmies->locallyControllable)
+		return false;
+	bool executed = false;
+	switch(request.action)
+	{
+	case ThorAction::HERO_MEETING_TRANSFER_STACK:
+		executed = controller.transferStack(request.sourceArmyId == heroInst[0]->id.getNum(), SlotID(request.sourceSlot),
+			request.destinationArmyId == heroInst[0]->id.getNum(), SlotID(request.destinationSlot));
+		break;
+	case ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT:
+		controller.moveArmy(true, std::nullopt);
+		executed = true;
+		break;
+	case ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT:
+		controller.moveArmy(false, std::nullopt);
+		executed = true;
+		break;
+	case ThorAction::HERO_MEETING_SWAP_ARMIES:
+		controller.swapArmy();
+		executed = true;
+		break;
+	default:
+		break;
+	}
+	if(executed)
+		updateThorActionState(true);
+	return executed;
+}
+#endif
 
 bool CExchangeWindow::holdsGarrison(const CArmedInstance * army)
 {

@@ -67,6 +67,12 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateTowns(roster);
     }
 
+    void updateHeroMeetingArmies(final ThorHeroMeetingArmies armies)
+    {
+        if (foundationView != null)
+            foundationView.updateHeroMeetingArmies(armies);
+    }
+
     int getAdventureTab()
     {
         return foundationView == null ? 0 : foundationView.adventureTab;
@@ -98,8 +104,11 @@ final class ThorSecondScreenPresentation extends Presentation
         private int activeActionMask;
         private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
         private ThorTownRoster towns = ThorTownRoster.EMPTY;
+        private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
         private int adventureTab;
         private int townPage;
+        private int selectedMeetingSlot = -1;
+        private boolean pendingMeetingAction;
 
         ThorFoundationView(final Context context)
         {
@@ -119,7 +128,10 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
+                heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
                 townPage = 0;
+                selectedMeetingSlot = -1;
+                pendingMeetingAction = false;
             }
             this.revision = revision;
             this.contextId = contextId;
@@ -128,7 +140,10 @@ final class ThorSecondScreenPresentation extends Presentation
                 adventureTab = 0;
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
+                heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
                 townPage = 0;
+                selectedMeetingSlot = -1;
+                pendingMeetingAction = false;
             }
             this.enabledActionMask = enabledActionMask;
             this.activeActionMask = activeActionMask;
@@ -314,6 +329,16 @@ final class ThorSecondScreenPresentation extends Presentation
             invalidate();
         }
 
+        void updateHeroMeetingArmies(final ThorHeroMeetingArmies armies)
+        {
+            heroMeetingArmies = ThorContextIds.HERO_MEETING.equals(contextId) && armies.complete()
+                    ? armies : ThorHeroMeetingArmies.EMPTY;
+            selectedMeetingSlot = -1;
+            pendingMeetingAction = false;
+            setContentDescription(commandDeckDescription());
+            invalidate();
+        }
+
         @Override
         protected void onDraw(final Canvas canvas)
         {
@@ -371,6 +396,10 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 drawTownDashboard(canvas, frame, dividerY, bevel, density);
             }
+            else if (ThorContextIds.HERO_MEETING.equals(contextId))
+            {
+                drawHeroMeeting(canvas, frame, bevel, density);
+            }
             else
             {
                 paint.setStyle(Paint.Style.FILL);
@@ -408,7 +437,8 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId)
                     && !ThorContextIds.BATTLE.equals(contextId)
-                    && !ThorContextIds.BATTLE_TACTICS.equals(contextId))
+                    && !ThorContextIds.BATTLE_TACTICS.equals(contextId)
+                    && !ThorContextIds.HERO_MEETING.equals(contextId))
                 return false;
 
             if (event.getAction() == android.view.MotionEvent.ACTION_UP)
@@ -459,6 +489,11 @@ final class ThorSecondScreenPresentation extends Presentation
                         return true;
                     }
                 }
+                if (ThorContextIds.HERO_MEETING.equals(contextId))
+                {
+                    handleHeroMeetingTap(event.getX(), event.getY());
+                    return true;
+                }
                 final int actionId = actionAt(event.getX(), event.getY());
                 if (actionId != ThorActionIds.NONE && isActionEnabled(actionId))
                 {
@@ -474,6 +509,151 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             super.performClick();
             return true;
+        }
+
+        private void drawHeroMeeting(final Canvas canvas, final RectF frame, final float bevel, final float density)
+        {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.08f, frame.width() * 0.8f,
+                    Math.min(38f * density, frame.height() * 0.05f));
+            paint.setFakeBoldText(false);
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, status, frame.centerX(), frame.top + frame.height() * 0.13f, frame.width() * 0.78f,
+                    Math.min(24f * density, frame.height() * 0.035f));
+            if (!heroMeetingArmies.complete())
+                return;
+
+            final String[] names = heroMeetingArmies.heroNames;
+            for (int side = 0; side < 2; ++side)
+            {
+                final RectF heading = heroMeetingHeadingBounds(side, frame, bevel);
+                paint.setColor(PARCHMENT_DARK);
+                paint.setFakeBoldText(true);
+                drawEllipsizedText(canvas, names[side], heading.centerX(), heading.centerY(), heading.width() * 0.9f,
+                        Math.min(26f * density, heading.height() * 0.6f));
+                paint.setFakeBoldText(false);
+                for (int slot = 0; slot < 7; ++slot)
+                {
+                    final int index = side * 7 + slot;
+                    final RectF row = heroMeetingSlotBounds(index, frame, bevel);
+                    final boolean occupied = (heroMeetingArmies.flags[index] & 1) != 0;
+                    final boolean selected = selectedMeetingSlot == index;
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(selected ? PARCHMENT_DARK : STONE_DARK);
+                    canvas.drawRoundRect(row, bevel, bevel, paint);
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(selected ? bevel * 0.8f : bevel * 0.3f);
+                    paint.setColor(selected ? GOLD : STONE_LIGHT);
+                    canvas.drawRoundRect(row, bevel, bevel, paint);
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(selected ? TEXT : (occupied ? TEXT : PARCHMENT_DARK));
+                    final String value = occupied ? heroMeetingArmies.creatureNames[index] + " × " + heroMeetingArmies.counts[index]
+                            : getContext().getString(R.string.thor_army_empty);
+                    drawEllipsizedText(canvas, value, row.centerX(), row.centerY(), row.width() * 0.88f,
+                            Math.min(22f * density, row.height() * 0.55f));
+                }
+            }
+            final int[] actions = {ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT,
+                    ThorActionIds.HERO_MEETING_SWAP_ARMIES, ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT};
+            final int[] labels = {R.string.thor_army_move_right, R.string.thor_army_swap, R.string.thor_army_move_left};
+            for (int index = 0; index < actions.length; ++index)
+            {
+                final RectF button = heroMeetingActionBounds(index, frame, bevel);
+                final boolean enabled = isActionEnabled(actions[index]);
+                paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
+                canvas.drawRoundRect(button, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(2f, bevel * 0.35f));
+                paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
+                canvas.drawRoundRect(button, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+                drawFittedText(canvas, getContext().getString(labels[index]), button.centerX(), button.centerY(),
+                        button.width() * 0.85f, Math.min(22f * density, button.height() * 0.48f));
+            }
+        }
+
+        private RectF heroMeetingHeadingBounds(final int side, final RectF frame, final float bevel)
+        {
+            final float gap = Math.max(bevel, 8f);
+            final float width = (frame.width() - bevel * 6f - gap) * 0.5f;
+            final float left = frame.left + bevel * 3f + side * (width + gap);
+            final float top = frame.top + frame.height() * 0.16f;
+            return new RectF(left, top, left + width, top + frame.height() * 0.05f);
+        }
+
+        private RectF heroMeetingSlotBounds(final int index, final RectF frame, final float bevel)
+        {
+            final int side = index / 7;
+            final int row = index % 7;
+            final RectF heading = heroMeetingHeadingBounds(side, frame, bevel);
+            final float gap = Math.max(bevel * 0.7f, 6f);
+            final float bottom = frame.top + frame.height() * 0.75f;
+            final float height = (bottom - heading.bottom - gap * 6f) / 7f;
+            final float top = heading.bottom + gap + row * (height + gap);
+            return new RectF(heading.left, top, heading.right, top + height);
+        }
+
+        private RectF heroMeetingActionBounds(final int index, final RectF frame, final float bevel)
+        {
+            final float gap = Math.max(bevel, 8f);
+            final float width = (frame.width() - bevel * 6f - gap * 2f) / 3f;
+            final float left = frame.left + bevel * 3f + index * (width + gap);
+            final float top = frame.top + frame.height() * 0.80f;
+            return new RectF(left, top, left + width, frame.bottom - bevel * 3f);
+        }
+
+        private void handleHeroMeetingTap(final float x, final float y)
+        {
+            if (!heroMeetingArmies.complete() || pendingMeetingAction)
+                return;
+            final RectF frame = adventureFrame();
+            final float bevel = adventureBevel();
+            for (int index = 0; index < ThorHeroMeetingArmies.SLOT_COUNT; ++index)
+            {
+                if (!heroMeetingSlotBounds(index, frame, bevel).contains(x, y))
+                    continue;
+                final boolean occupied = (heroMeetingArmies.flags[index] & 1) != 0;
+                if (selectedMeetingSlot < 0)
+                {
+                    if (occupied && heroMeetingArmies.locallyControllable)
+                        selectedMeetingSlot = index;
+                }
+                else if (selectedMeetingSlot == index)
+                {
+                    selectedMeetingSlot = -1;
+                }
+                else if (isActionEnabled(ThorActionIds.HERO_MEETING_TRANSFER_STACK))
+                {
+                    final int sourceSide = selectedMeetingSlot / 7;
+                    final int destinationSide = index / 7;
+                    NativeMethods.submitThorHeroMeetingTransfer(revision, heroMeetingArmies.armyIds[sourceSide],
+                            selectedMeetingSlot % 7, heroMeetingArmies.armyIds[destinationSide], index % 7);
+                    selectedMeetingSlot = -1;
+                    pendingMeetingAction = true;
+                }
+                performClick();
+                setContentDescription(commandDeckDescription());
+                invalidate();
+                return;
+            }
+            final int[] actions = {ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT,
+                    ThorActionIds.HERO_MEETING_SWAP_ARMIES, ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT};
+            for (int index = 0; index < actions.length; ++index)
+            {
+                if (heroMeetingActionBounds(index, frame, bevel).contains(x, y) && isActionEnabled(actions[index]))
+                {
+                    NativeMethods.submitThorAction(revision, actions[index], ThorActionIds.NO_TARGET);
+                    pendingMeetingAction = true;
+                    selectedMeetingSlot = -1;
+                    performClick();
+                    invalidate();
+                    return;
+                }
+            }
         }
 
         private void drawHeroDashboard(final Canvas canvas, final RectF frame, final float dividerY,

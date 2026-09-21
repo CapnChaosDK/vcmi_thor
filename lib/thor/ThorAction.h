@@ -27,7 +27,11 @@ enum class ThorAction : std::uint8_t
 	BATTLE_TACTICS_NEXT = 11,
 	BATTLE_TACTICS_END = 12,
 	SELECT_HERO = 13,
-	SELECT_TOWN = 14
+	SELECT_TOWN = 14,
+	HERO_MEETING_TRANSFER_STACK = 15,
+	HERO_MEETING_ARMY_LEFT_TO_RIGHT = 16,
+	HERO_MEETING_ARMY_RIGHT_TO_LEFT = 17,
+	HERO_MEETING_SWAP_ARMIES = 18
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
@@ -44,6 +48,10 @@ struct DLL_LINKAGE ThorActionRequest
 	std::uint64_t revision = 0;
 	ThorAction action = ThorAction::NONE;
 	int targetId = -1;
+	int sourceArmyId = -1;
+	int sourceSlot = -1;
+	int destinationArmyId = -1;
+	int destinationSlot = -1;
 };
 
 enum class ThorActionValidation

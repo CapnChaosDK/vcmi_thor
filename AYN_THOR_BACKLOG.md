@@ -1081,3 +1081,33 @@ Status: `hardware validated`
 - The exact APK was checksum-verified, installed in place, and launched on an AYN Thor. The user reported the complete Slice 17 hardware checklist passed, including friendly and enemy active-unit data, opponent-turn read-only updates with disabled controls, Count/HP/round refresh, Wait/Defend safety, tactics, child/modal restoration, Battle Result cleanup, lifecycle, and upper-input regressions.
 - Slice 17 is hardware validated. Future slices must preserve the distinction between the local controller stack, which alone determines lower-screen command availability, and `battleActiveUnit()`, which may supply only the exact current read-only opponent dashboard during normal Battle. Preserve the bounded four-detail payload, no-global-lookup boundary, action IDs 0–12, revision/epoch safety, exact top-owner checks, and native Battle lifecycle.
 - Historical promotion note (superseded): this Slice 17 candidate has now been collected into `ayn-thor-dual-screen` through the Slice 19 consolidation.
+
+## Slice 20 — Hero Meeting Army Deck
+
+- Status: `awaiting hardware validation`.
+- The lower Hero Meeting deck publishes only two hero identities/names, their fixed seven-slot army snapshots, and local-control state. Each slot retains its native army ID plus slot index; empty slots remain addressable and visible. Creature art, artifacts, bonuses, coordinates, and game-state mutation remain out of scope.
+- Stack transfers and whole-army commands use revision-bound semantic actions 15–18, are revalidated on MainGUI against the exact active exchange window and published identities, and use the existing callback/controller paths. A consumed lower action invalidates its rendered action epoch until the ordinary garrison refresh publishes a new snapshot.
+- Android keeps selection local to the lower deck, clears it on revision/context/lifecycle changes, and does not synthesize upper-screen input. A first occupied-slot tap selects, a second tap submits exact source/destination identities, and duplicate taps are suppressed while pending.
+
+### Required AYN Thor hardware checklist
+
+1. Open a Hero Meeting between two locally owned heroes with several different creatures and at least one empty slot on each side.
+2. Verify both hero names and all 14 fixed slots match the upper Hero Meeting exactly.
+3. Verify creature names/counts update correctly and empty slots remain visibly fixed.
+4. Tap one occupied stack; verify only the lower source highlight changes and upper selection/focus remains untouched.
+5. Tap it again; verify lower selection cancels with no game action.
+6. Select a stack and tap an empty slot in the same army; verify the exact stack moves.
+7. Select a stack and tap an empty slot in the opposite army; verify the exact legal move.
+8. Merge two same-creature stacks and verify resulting counts on both screens.
+9. Swap two different-creature stacks and verify exact positions on both screens.
+10. Exercise the final-required-stack case and verify the source hero is never illegally left without a required army stack.
+11. Test `Move all →`.
+12. Test `← Move all`.
+13. Test `Swap armies`.
+14. Rapidly tap two destinations after selecting a source; verify at most one stale-revision operation executes.
+15. Change the upper army before completing a lower selection; verify the old lower selection becomes inert after the newer revision.
+16. Open a Hero/Quest/other child window from Hero Meeting and close it; verify normal parent restoration, no residual lower hit regions, and no stale Hero Meeting command.
+17. Background/resume and lower-panel off/on; verify one current deck, no duplicate presentation, and no stale source selection.
+18. Verify controller, keyboard, and upper touchscreen Hero Meeting behavior remain unchanged.
+19. Recheck Adventure Actions/Heroes/Towns, Hero dashboard, Town dashboard, Battle dashboard/commands, and normal return to Adventure.
+20. Check for crashes, wrong-army transfer, count corruption, duplicate commands, revision loops, lower-screen focus theft, or stale touch regions.

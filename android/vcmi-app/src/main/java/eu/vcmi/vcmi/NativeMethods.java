@@ -44,6 +44,8 @@ public class NativeMethods
     public static native void heroesDataUpdate();
 
     public static native void submitThorAction(long revision, int actionId, int targetId);
+    public static native void submitThorHeroMeetingTransfer(long revision, int sourceArmyId, int sourceSlot,
+                                                            int destinationArmyId, int destinationSlot);
     public static native void clearThorActions();
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
@@ -102,6 +104,22 @@ public class NativeMethods
             return;
         final ThorTownRoster roster = ThorTownRoster.copyOf(ids, names, flags);
         ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorTowns(revision, roster));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorHeroMeetingArmies(final long revision, final int leftHeroId, final int rightHeroId,
+                                                    final String[] heroNames, final int[] armyIds, final int[] creatureIds,
+                                                    final int[] counts, final String[] creatureNames, final int[] flags,
+                                                    final int locallyControllable)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        final ThorHeroMeetingArmies armies = ThorHeroMeetingArmies.copyOf(leftHeroId, rightHeroId, heroNames, armyIds,
+                creatureIds, counts, creatureNames, flags, locallyControllable);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorHeroMeetingArmies(revision, armies));
     }
 
     public static void setupMsg(final Messenger msg)

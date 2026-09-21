@@ -64,6 +64,10 @@
     <string name="thor_town_none">None</string>
     <string name="thor_context_hero_meeting">Hero meeting</string>
     <string name="thor_context_hero_meeting_status">Review hero exchange</string>
+    <string name="thor_army_empty">Empty</string>
+    <string name="thor_army_move_right">Move all →</string>
+    <string name="thor_army_swap">Swap armies</string>
+    <string name="thor_army_move_left">← Move all</string>
     <string name="thor_context_battle">Battle</string>
     <string name="thor_context_battle_status">Combat in progress</string>
     <string name="thor_context_battle_tactics">Battle tactics</string>

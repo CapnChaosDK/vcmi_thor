@@ -12,6 +12,10 @@
 #include "CWindowWithArtifacts.h"
 #include "../widgets/CExchangeController.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#endif
+
 class CGarrisonSlot;
 class CMultiLineLabel;
 class LRClickableAreaWText;
@@ -82,5 +86,11 @@ public:
 	// IGarrisonHolder impl
 	void updateGarrisons() override;
 	bool holdsGarrison(const CArmedInstance * army) override;
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	void updateThorActionState(bool invalidateActions = false);
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 
 };

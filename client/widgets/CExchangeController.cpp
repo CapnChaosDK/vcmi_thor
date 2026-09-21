@@ -17,6 +17,7 @@
 
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
+#include "../../lib/mapObjects/army/CStackInstance.h"
 
 CExchangeController::CExchangeController(ObjectInstanceID hero1, ObjectInstanceID hero2)
 	: left(GAME->interface()->cb->getHero(hero1))
@@ -118,6 +119,44 @@ void CExchangeController::moveStack(bool leftToRight, SlotID sourceSlot)
 			GAME->interface()->cb->mergeOrSwapStacks(source, target, sourceSlot, targetSlot);
 		}
 	}
+}
+
+bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot)
+{
+	const auto source = sourceLeft ? left : right;
+	const auto destination = destinationLeft ? left : right;
+	if(!source || !destination || sourceSlot == destinationSlot && source == destination)
+		return false;
+	const auto * sourceStack = source->getStackPtr(sourceSlot);
+	if(!sourceStack)
+		return false;
+	const auto * destinationStack = destination->getStackPtr(destinationSlot);
+	const auto sourceIsLastRequiredStack = source != destination && source->stacksCount() == 1 && source->needsLastStack();
+	if(!destinationStack && sourceIsLastRequiredStack)
+	{
+		const auto amount = sourceStack->getCount() - 1;
+		if(amount <= 0)
+			return false;
+		GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, amount);
+		return true;
+	}
+	if(destinationStack && destinationStack->getCreature() == sourceStack->getCreature())
+	{
+		if(sourceIsLastRequiredStack)
+		{
+			const auto amount = sourceStack->getCount() - 1 + destinationStack->getCount();
+			if(amount <= destinationStack->getCount())
+				return false;
+			GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, amount);
+		}
+		else
+		{
+			GAME->interface()->cb->mergeStacks(source, destination, sourceSlot, destinationSlot);
+		}
+		return true;
+	}
+	GAME->interface()->cb->swapCreatures(source, destination, sourceSlot, destinationSlot);
+	return true;
 }
 
 void CExchangeController::moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget)

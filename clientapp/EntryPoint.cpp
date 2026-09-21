@@ -104,6 +104,26 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_clearThorActio
 {
 	thorActionQueue().clear();
 }
+
+extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingTransfer(JNIEnv *, jclass,
+	jlong revision, jint sourceArmyId, jint sourceSlot, jint destinationArmyId, jint destinationSlot)
+{
+	if(revision <= 0 || sourceArmyId < 0 || destinationArmyId < 0 || sourceSlot < 0 || sourceSlot >= GameConstants::ARMY_SIZE
+		|| destinationSlot < 0 || destinationSlot >= GameConstants::ARMY_SIZE)
+	{
+		logGlobal->debug("Thor Hero Meeting transfer rejected: malformed endpoint");
+		return;
+	}
+	ThorActionRequest request;
+	request.revision = static_cast<std::uint64_t>(revision);
+	request.action = ThorAction::HERO_MEETING_TRANSFER_STACK;
+	request.sourceArmyId = sourceArmyId;
+	request.sourceSlot = sourceSlot;
+	request.destinationArmyId = destinationArmyId;
+	request.destinationSlot = destinationSlot;
+	if(!thorActionQueue().submit(request))
+		logGlobal->debug("Thor Hero Meeting transfer rejected: queue full");
+}
 #endif
 #endif
 

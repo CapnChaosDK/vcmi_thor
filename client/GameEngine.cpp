@@ -38,6 +38,10 @@
 #include "CPlayerInterface.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "windows/CExchangeWindow.h"
+#endif
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../lib/thor/ThorAction.h"
 #include "../lib/thor/ThorContext.h"
 #endif
@@ -196,6 +200,22 @@ void GameEngine::updateFrame()
 					: adventureInt->getAdventureShortcuts().executeThorAction(request->action);
 			if(executed)
 				adventureInt->updateThorActionState(true);
+		}
+		else if(context.contextId == ThorContextIds::HERO_MEETING)
+		{
+			auto exchangeWindow = windows().topWindow<CExchangeWindow>();
+			if(!exchangeWindow || !exchangeWindow->matchesThorContext(context))
+			{
+				logGlobal->debug("Thor action rejected: inactive Hero Meeting");
+				continue;
+			}
+			exchangeWindow->updateThorActionState();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: Hero Meeting state changed");
+				continue;
+			}
+			executed = exchangeWindow->executeThorAction(*request);
 		}
 		else
 		{

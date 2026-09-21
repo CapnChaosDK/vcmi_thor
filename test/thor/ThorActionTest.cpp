@@ -21,7 +21,11 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(12), ThorAction::BATTLE_TACTICS_END);
 	EXPECT_EQ(thorActionFromId(13), ThorAction::SELECT_HERO);
 	EXPECT_EQ(thorActionFromId(14), ThorAction::SELECT_TOWN);
-	EXPECT_EQ(thorActionFromId(15), std::nullopt);
+	EXPECT_EQ(thorActionFromId(15), ThorAction::HERO_MEETING_TRANSFER_STACK);
+	EXPECT_EQ(thorActionFromId(16), ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT);
+	EXPECT_EQ(thorActionFromId(17), ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT);
+	EXPECT_EQ(thorActionFromId(18), ThorAction::HERO_MEETING_SWAP_ARMIES);
+	EXPECT_EQ(thorActionFromId(19), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -66,6 +70,57 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_END), 2048);
 	EXPECT_EQ(thorActionMask(ThorAction::SELECT_HERO), 4096);
 	EXPECT_EQ(thorActionMask(ThorAction::SELECT_TOWN), 8192);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK), 16384);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT), 32768);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT), 65536);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES), 131072);
+}
+
+TEST(ThorActionTest, HeroMeetingTransferRequiresPublishedEndpoints)
+{
+	ThorContextRecord context;
+	context.revision = 20;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK);
+	ThorHeroMeetingArmies armies;
+	armies.leftHeroId = 1;
+	armies.rightHeroId = 2;
+	armies.leftArmyId = 1;
+	armies.rightArmyId = 2;
+	armies.locallyControllable = true;
+	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARMY_SIZE; ++index)
+	{
+		armies.leftSlots[index].armyId = 1;
+		armies.leftSlots[index].slot = static_cast<int>(index);
+		armies.rightSlots[index].armyId = 2;
+		armies.rightSlots[index].slot = static_cast<int>(index);
+	}
+	armies.leftSlots[0] = {1, 0, true, 3, "Pikemen", 12};
+	context.heroMeetingArmies = armies;
+	ThorActionRequest request;
+	request.revision = 20;
+	request.action = ThorAction::HERO_MEETING_TRANSFER_STACK;
+	request.sourceArmyId = 1;
+	request.sourceSlot = 0;
+	request.destinationArmyId = 2;
+	request.destinationSlot = 6;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.sourceSlot = 7;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.sourceSlot = 0;
+	request.destinationArmyId = 9;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.destinationArmyId = 2;
+	request.destinationSlot = 7;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.destinationSlot = 6;
+	request.sourceArmyId = 2;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.enabledActionMask = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK);
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
 }
 
 TEST(ThorActionTest, TownTargetMustMatchPublishedRosterAndRevision)

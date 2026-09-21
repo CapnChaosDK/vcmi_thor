@@ -104,6 +104,12 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishTowns(revision, roster);
     }
 
+    void publishThorHeroMeetingArmies(final long revision, final ThorHeroMeetingArmies armies)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.publishHeroMeetingArmies(revision, armies);
+    }
+
     @Override
     public void loadLibraries()
     {

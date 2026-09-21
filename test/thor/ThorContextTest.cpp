@@ -240,6 +240,42 @@ TEST(ThorContextPayloadTest, BoundsEveryDetailLineWithoutSplittingUtf8)
 	EXPECT_EQ(published.details[1], std::string(128, 'b'));
 }
 
+TEST(ThorContextStoreTest, HeroMeetingArmySnapshotIsRevisionBoundAndClearsOutsideContext)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	ThorHeroMeetingArmies armies;
+	armies.leftHeroId = 11;
+	armies.rightHeroId = 12;
+	armies.leftArmyId = 11;
+	armies.rightArmyId = 12;
+	armies.leftHeroName = std::string(128, 'L') + "x";
+	armies.rightHeroName = "Right";
+	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARMY_SIZE; ++index)
+	{
+		armies.leftSlots[index] = {11, static_cast<int>(index), false, -1, "", 0};
+		armies.rightSlots[index] = {12, static_cast<int>(index), false, -1, "", 0};
+	}
+	armies.leftSlots[0] = {11, 0, true, 4, std::string(128, 'P') + "x", 15};
+	context.heroMeetingArmies = armies;
+	const auto first = store.publishNext(context);
+	const auto unchanged = store.publishNext(context);
+	EXPECT_EQ(first.revision, unchanged.revision);
+	EXPECT_EQ(first.heroMeetingArmies->leftHeroName.size(), 128);
+	EXPECT_EQ(first.heroMeetingArmies->leftSlots[0].creatureName.size(), 128);
+	context.heroMeetingArmies->leftSlots[0].count = 16;
+	const auto changedCount = store.publishNext(context);
+	EXPECT_GT(changedCount.revision, first.revision);
+	context.heroMeetingArmies->leftSlots[0] = {11, 0, false, -1, "", 0};
+	context.heroMeetingArmies->rightSlots[1] = {12, 1, true, 4, "Pikemen", 16};
+	const auto movedStack = store.publishNext(context);
+	EXPECT_GT(movedStack.revision, changedCount.revision);
+	context.contextId = ThorContextIds::UNKNOWN;
+	const auto cleared = store.publishNext(context);
+	EXPECT_FALSE(cleared.heroMeetingArmies.has_value());
+}
+
 TEST(ThorContextStoreTest, BattleDashboardSnapshotIsAtomicAndDoesNotChurn)
 {
 	ThorContextStore store;
