@@ -780,6 +780,13 @@ void BattleInterface::startAction(const BattleAction & action)
 
 	stacksController->startAction(action);
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	// BattleStacksController clears activeStack as an action begins. Publish that
+	// transition immediately so the companion dashboard cannot retain the prior
+	// unit while an opponent action or animation is in progress.
+	windowObject->updateThorActionState();
+#endif
+
 	if (!action.isUnitAction())
 		return;
 
