@@ -35,19 +35,19 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 It has two validation levels:
 
 1. Relevant pushes to `ayn-thor-dual-screen` and pull requests targeting it run a no-secret preflight. It restores the immutable Conan dependency archive when available and runs the focused host-native `ThorContext*` tests. Documentation-only changes do not trigger it.
-2. A trusted push to `ci/thor-*-validation` runs that preflight, then a dependent full ARM64 candidate job. The full job uses Ubuntu 24.04, Temurin JDK 17, recursive submodules, the official Android Conan bundle and profiles, `android-thor-release`, `arm64-v8a`, the required Qt compatibility hook, validation signing, focused Android Thor tests, package verification, checksum generation, receipt generation, and artifact upload.
+2. A trusted push to the permanent `ci/thor-candidate-validation` transport branch runs that preflight, then a dependent full ARM64 candidate job. The full job uses Ubuntu 24.04, Temurin JDK 17, recursive submodules, the official Android Conan bundle and profiles, `android-thor-release`, `arm64-v8a`, the required Qt compatibility hook, validation signing, focused Android Thor tests, package verification, checksum generation, receipt generation, and artifact upload.
 
-The full job cannot start until preflight succeeds. It never runs for pull requests, so signing secrets are not available to fork PRs or arbitrary branches. A manual dispatch from `ayn-thor-dual-screen` can request the same trusted full path with `full_arm64`.
+The full job cannot start until preflight succeeds. It never runs for pull requests, so signing secrets are not available to fork PRs or arbitrary branches. A manual dispatch from `ci/thor-candidate-validation` can request the same trusted full path with `full_arm64`.
 
-The workflow concurrency group includes both workflow and ref. A new push cancels an obsolete run for that candidate branch without cancelling a different candidate or workflow.
+The workflow concurrency group includes both workflow and ref. A new push cancels an obsolete run for the permanent candidate branch without cancelling a different workflow.
 
 ### Caches and receipts
 
 The dependency archive is cached separately from the Conan installation. Its key includes the runner, Android ARM64 identity, and the hash of `CI/install_conan_dependencies.sh`; changing the release definition therefore cannot reuse the old archive. The installer only downloads a missing archive and uses robust retrying downloads. Caches never contain credentials, signing material, APKs, or build directories.
 
-The ARM64 compilation uses a 3 GB `ccache` directory cached by runner OS, Android NDK r29, ABI, schema version, and candidate ref. The broader restore prefixes let later commits on a candidate ref reuse safe compatible objects. `CCACHE_BASEDIR`, content-based compiler checking, and disabled directory hashing avoid ephemeral runner paths needlessly reducing reuse. The workflow passes the C and C++ launcher settings explicitly to CMake, proves the launchers are configured, verifies cacheable compiler calls, and includes the ccache statistics in the job summary and candidate artifact.
+The ARM64 compilation uses a 3 GB `ccache` directory cached by runner OS, Android NDK r29, ABI, cache schema version, permanent candidate ref, and commit SHA. A commit-specific primary key is saved after every successful candidate; its same-ref restore prefix allows later candidate commits to reuse only compatible objects from prior permanent-candidate builds. Do not rely on GitHub Actions cache sharing between sibling branches. `CCACHE_BASEDIR`, content-based compiler checking, and disabled directory hashing avoid ephemeral runner paths needlessly reducing reuse. The workflow passes the C and C++ launcher settings explicitly to CMake, proves the launchers are configured, verifies cacheable compiler calls, and reports the restore result/key, calls, hits, misses, hit percentage, current cache size, warm/cold classification, and ARM64 build duration in both the summary and receipt.
 
-Gradle uses the checked-in wrapper and `gradle/actions/setup-gradle@v6` with its open/basic GitHub Actions cache provider. Do not set `GRADLE_USER_HOME` to `RUNNER_TEMP`; that would defeat the supported cache. Generated signed APKs and signing material are not cached.
+Gradle uses the checked-in wrapper and `gradle/actions/setup-gradle@v6` with its open/basic GitHub Actions cache provider. Do not set `GRADLE_USER_HOME` to `RUNNER_TEMP`; that would defeat the supported cache. Generated CMake/Ninja trees, Qt deployment trees, Gradle-generated sources, APKs, validation receipts, and signing material are never cached. Every runner starts with a fresh generated build tree; only dependency, compiler-object, and supported Gradle state caches are reused.
 
 Successful full candidates upload a seven-day artifact named `thor-candidate-arm64-<run-id>` containing:
 
@@ -61,13 +61,13 @@ The JSON receipt records the real candidate commit, run ID and number, package I
 ## Candidate and promotion flow
 
 ```text
-Implementation
+implementation on `ayn-thor-dual-screen`
     ↓
 local cheap checks
     ↓
-create ci/thor-sliceN-validation from ayn-thor-dual-screen
+update `ci/thor-candidate-validation` to the exact candidate tree
     ↓
-push candidate branch
+push the permanent candidate branch
     ↓
 permanent Thor CI preflight
     ↓
@@ -90,14 +90,25 @@ git log --oneline -5
 git remote -v
 ```
 
-Make approved product, test, and documentation changes on `ayn-thor-dual-screen`. Before candidate creation, run `git diff --check`, review the diff/stat, and do not discard unrelated work. Build an exact candidate from the implementation commit:
+Make approved product, test, and documentation changes on `ayn-thor-dual-screen`. Before candidate creation, run `git diff --check`, review the diff/stat, and do not discard unrelated work. Update the permanent candidate transport branch to the exact candidate tree:
 
 ```powershell
-git switch -c ci/thor-sliceN-validation
-git add -- <approved slice files>
-git commit -m "Candidate Thor Slice N build"
-git push -u origin ci/thor-sliceN-validation
+git switch ci/thor-candidate-validation
+git merge --ff-only ayn-thor-dual-screen
+git push origin ci/thor-candidate-validation
 ```
+
+The candidate branch is CI transport state, not validated product history. Prefer the fast-forward above. If documentation or promotion commits mean a fast-forward cannot represent the exact current candidate tree, update only this branch deliberately:
+
+```powershell
+git switch ci/thor-candidate-validation
+git reset --hard ayn-thor-dual-screen
+git push --force-with-lease origin ci/thor-candidate-validation
+```
+
+`--force-with-lease` is permitted only for `ci/thor-candidate-validation`, after confirming its target and the current remote state. Never rewrite `ayn-thor-dual-screen`, an upstream branch, validated product history, releases, or tags. Do not create `ci/thor-sliceN-validation` branches for future slices.
+
+The first run on the permanent branch can be cold when no compatible entry exists. Existing evidence shows a cold candidate taking about 19m55s for CMake with `0 / 842` ccache hits (run `35581988420`), while later same-slice candidates took about 1m29s for CMake with `833 / 842` hits (`98.93%`, runs `35585305840` and `35586360399`). A normal small follow-up candidate should therefore be visibly warm, but the hit rate is diagnostic only: cache misses from changed compiler inputs, headers, toolchain/NDK, ABI, or configuration are correct and must not fail a build.
 
 After CI succeeds, download the artifact into an ignored or explicitly excluded directory. Verify the GitHub artifact digest and the APK SHA-256 inside it, inspect the package ID, and retain the receipt with the candidate commit and run ID before installation. Install with `adb install -r -d` to preserve Thor package data.
 
@@ -138,6 +149,12 @@ sed -i '/^CLASSPATH=/i sed -i "/android\\.bundle\\.enableUncompressedNativeLibs/
 Do not remove this workaround without validating the same toolchain. Do not pass `--no-build`: Qt would then skip creating/copying the Gradle wrapper needed for packaging.
 
 On this Windows workstation, use local checks for fast feedback only. The official `dependencies-android-arm64-v8a` bundle contains Linux-host Qt tools, and Android Studio's JDK 25 can have a Gradle cache-close limitation. Linux/JDK 17 CI is the authoritative full-package and test gate.
+
+### Editor evaluation
+
+`ENABLE_EDITOR=OFF` was evaluated for `android-thor-release` and is intentionally **not** set. The full editor currently accounts for roughly 73 of the observed 842 cold cacheable compiler calls, but Android packages the editor as an activity/process and the monolithic client links the editor object library when it is enabled. More importantly, the Android launcher has an editor-startup route that calls the editor bridge from the Qt main path, while the bridge include is conditional on `ENABLE_EDITOR`; simply disabling the preset would leave a packaging/runtime coupling rather than a proven game-only reduction. The normal launcher remains required and enabled.
+
+The permanent same-branch compiler cache is the principal optimization. Keep the editor enabled until an editor-specific packaging and launch validation proves a clean separation; do not trade an unsupported editor path for a small build-time saving without that evidence.
 
 ## AYN Thor installation and smoke check
 

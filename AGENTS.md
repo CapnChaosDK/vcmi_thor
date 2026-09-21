@@ -167,6 +167,12 @@ VCMI is built as **C++20**: the root `CMakeLists.txt` sets `CMAKE_CXX_STANDARD` 
 
 For platform-specific build and test instructions see [`docs/developers/Building_Windows.md`](docs/developers/Building_Windows.md), [`docs/developers/Building_Linux.md`](docs/developers/Building_Linux.md), [`docs/developers/Building_macOS.md`](docs/developers/Building_macOS.md), [`docs/developers/Building_Android.md`](docs/developers/Building_Android.md), [`docs/developers/Building_iOS.md`](docs/developers/Building_iOS.md).
 
+### AYN Thor Android candidates
+
+- `.github/workflows/thor-ci.yml` is the permanent Thor CI workflow. Full ARM64 candidates use the one transport branch `ci/thor-candidate-validation`; do not create per-slice candidate branches.
+- Reusing that branch is intentional: it preserves compatible `ccache` continuity between slices while each GitHub runner still creates fresh CMake, Qt, Gradle, and APK output trees. Never cache complete build/output trees.
+- The CI artifact must still complete package verification and then pass manual AYN Thor hardware validation before the exact product tree is promoted. `docs/AYN_THOR_BUILD_PLAYBOOK.md` is the authoritative detailed procedure, including the narrowly permitted `--force-with-lease` branch update.
+
 ## Common Development Tasks
 
 ### Adding a New Game Mechanic
