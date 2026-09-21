@@ -87,6 +87,9 @@ TEST(ThorActionTest, ValidatesBattleContextsSeparately)
 	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_WAIT}, context), ThorActionValidation::VALID);
 	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_DEFEND}, context), ThorActionValidation::UNAVAILABLE);
 	EXPECT_EQ(validateThorActionRequest({42, ThorAction::OPEN_SAVE_GAME}, context), ThorActionValidation::WRONG_CONTEXT);
+	context.actionSubjectId = 101; // read-only opponent information does not enable commands
+	context.enabledActionMask = 0;
+	EXPECT_EQ(validateThorActionRequest({42, ThorAction::BATTLE_WAIT}, context), ThorActionValidation::UNAVAILABLE);
 
 	context.contextId = ThorContextIds::BATTLE_TACTICS;
 	context.enabledActionMask = thorActionMask(ThorAction::BATTLE_TACTICS_END);

@@ -994,17 +994,25 @@ void BattleWindow::updateThorActionState(bool invalidateActions)
 	context.enabledActionMask = 0;
 	context.activeActionMask = 0;
 	const auto * activeStack = owner.stacksController->getActiveStack();
-	context.actionSubjectId = activeStack ? static_cast<std::int64_t>(activeStack->unitId()) : -1;
-	if(activeStack)
+	// The controller's active stack is the unit the local player can command.
+	// During opponent turns that pointer is null, while the battle callback still
+	// exposes the exact current unit whose action is shown on the upper screen.
+	const auto * displayedStack = activeStack;
+	if(!displayedStack && !owner.isInTacticsMode())
+		displayedStack = dynamic_cast<const CStack *>(owner.getBattle()->battleActiveUnit());
+	if(displayedStack && (!displayedStack->alive() || displayedStack->getCount() <= 0))
+		displayedStack = nullptr;
+	context.actionSubjectId = displayedStack ? static_cast<std::int64_t>(displayedStack->unitId()) : -1;
+	if(displayedStack)
 	{
-		context.title = activeStack->getName();
-		context.details[0] = std::to_string(activeStack->getCount());
-		context.details[1] = std::to_string(activeStack->getAttack(activeStack->isShooter()));
-		context.details[2] = std::to_string(activeStack->getDefense(activeStack->isShooter()));
+		context.title = displayedStack->getName();
+		context.details[0] = std::to_string(displayedStack->getCount());
+		context.details[1] = std::to_string(displayedStack->getAttack(displayedStack->isShooter()));
+		context.details[2] = std::to_string(displayedStack->getDefense(displayedStack->isShooter()));
 
-		const auto maximumHealth = activeStack->getMaxHealth();
-		const auto topCreatureHealth = std::max<int64_t>(activeStack->getAvailableHealth()
-			- static_cast<int64_t>(activeStack->getCount() - 1) * maximumHealth, 0);
+		const auto maximumHealth = displayedStack->getMaxHealth();
+		const auto topCreatureHealth = std::max<int64_t>(displayedStack->getAvailableHealth()
+			- static_cast<int64_t>(displayedStack->getCount() - 1) * maximumHealth, 0);
 		context.details[3] = std::to_string(topCreatureHealth) + " / " + std::to_string(maximumHealth);
 	}
 	if(!owner.isInTacticsMode())
