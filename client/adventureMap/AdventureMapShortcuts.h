@@ -120,7 +120,9 @@ public:
 	std::uint32_t getThorActiveActionMask();
 	int getThorSelectedHeroId();
 	std::vector<ThorHeroEntry> getThorHeroes();
+	std::vector<ThorTownEntry> getThorTowns();
 	bool selectThorHero(int id);
+	bool selectThorTown(int id);
 	bool executeThorAction(ThorAction action);
 
 	void setState(EAdventureState newState);

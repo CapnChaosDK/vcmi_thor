@@ -2,7 +2,7 @@
 
 ## Slice 18 — Adventure hero quick selector
 
-- Status: `hardware validated`. The Adventure summary contrast correction candidate `217866f94d26894a8d03dcf7a1b2001b995adf11` passed Thor CI run `35617394300` (preflight and ARM64 package). Its artifact ZIP SHA-256 is `7a7976ca6eb009d25b61fd4197329ff6c48440e033e00995559896b38b7f34b2`, and the receipt and local APK checksum agree on SHA-256 `b73d433e2e2422b5aab22b1c7e7c453d1a822dd013e0c116f87043aa6b17fa01`. The verified APK was installed and launched on an AYN Thor. The user subsequently confirmed all focused hardware checks passed, including the selected-hero information that had been invisible on the prior candidate. The overlap had already been corrected by the preceding layout change.
+- Status: `hardware validated`. The exact tested product tree is `217866f94d26894a8d03dcf7a1b2001b995adf11`, which retains the final non-overlapping layout and selected-hero summary contrast correction. Thor CI run `35617394300` passed; its artifact ZIP SHA-256 is `7a7976ca6eb009d25b61fd4197329ff6c48440e033e00995559896b38b7f34b2`, and the verified APK SHA-256 is `b73d433e2e2422b5aab22b1c7e7c453d1a822dd013e0c116f87043aa6b17fa01`. The user confirmed all focused hardware checks passed on an AYN Thor.
 - Behavior: the lower Adventure deck offers local Actions and Heroes tabs. Actions retains all eight existing commands. Heroes lists at most the base-game eight locally owned heroes in native sidebar order, with bounded translated names, movement, selection and sleep state. An empty roster displays “No heroes”. No army, map position, path, portrait, or other player's data is published.
 - Boundary: the native Adventure publication owns a typed roster, using the same object-instance ID as `selectedHeroId`. An over-limit roster fails closed. Roster and action-state changes are semantic revisions; identical frames do not publish. Leaving Adventure clears the roster and disables hit regions.
 - Request: immutable IDs 1–12 remain intact; `SELECT_HERO = 13` uses mask bit 4096. Android submits rendered revision, action 13 and stable hero ID; legacy actions carry -1. Tabs are Android-only and never submit gameplay input.
@@ -11,7 +11,7 @@
 - Refresh: activation, every semantic Adventure state refresh, hero movement, selection, sleep, turn, addition, removal and reordered local list replace the roster by revision. Stale rows and modal contexts fail closed.
 - Automated acceptance: native stable IDs/masks, targeted request validation, roster equality/bounds, stale epoch and queue checks; Android ID/resource/bounded-roster contracts. Permanent Thor CI remains the full ARM64 package gate.
 - Regression risks: ownership changes between publication and tap, a removed hero retaining a row, double taps crossing revisions, modal transitions, long UTF-8 names, and Actions/Battle dashboard interference.
-- Candidate procedure completed on `ci/thor-slice18-validation`; future slices use the reusable `ci/thor-candidate-validation` ref as described in `docs/AYN_THOR_BUILD_PLAYBOOK.md` to preserve compatible `ccache` continuity. Each run still builds fresh output trees and requires its own CI receipt and manual hardware validation.
+- Candidate procedure: Slice 18 remains hardware validated but is not promoted automatically. Future candidates use the reusable `ci/thor-candidate-validation` transport branch and its guarded exact-tip update described in `docs/AYN_THOR_BUILD_PLAYBOOK.md`; no full build tree is cached.
 
 Hardware checklist for this candidate (user confirmed all passed):
 
@@ -33,11 +33,25 @@ Hardware checklist for this candidate (user confirmed all passed):
 16. Recheck Battle Wait/Defend, opponent-turn information, tactics, Battle Result, Hero and Town dashboards.
 17. Check for crashes, duplicate presentation, delayed/wrong-player selection, stale regions, focus loss and update loops.
 
-### Final hardware validation and next-slice handover — 2026-09-21
+## Slice 19 — Adventure town quick selector
 
-- The exact tested product tree is candidate `217866f94d26894a8d03dcf7a1b2001b995adf11`; later candidate commits `9945ff955` and this handover change are documentation only. The user reported every item above passed on the checksum-verified CI APK, including readable selected-hero information, non-overlapping lower controls, selection synchronization, stale-input safety, lifecycle restoration, and upper-input regressions.
-- Slice 18 is hardware validated, but that is not an instruction to promote or push `ayn-thor-dual-screen`; promotion remains a separate explicit decision. Preserve the typed roster, stable hero IDs, native ownership/revision checks, Actions tab, eight existing commands, and all previously validated Hero/Town/Battle behavior.
-- Before Slice 19 implementation, record its proposed scope and approval. For its full ARM64 candidate, reuse `ci/thor-candidate-validation` with the playbook's exact expected-remote-tip `--force-with-lease` update. The ref name keeps compatible `ccache` keys continuous across slices; never cache full build/output trees or treat a cache hit as validation. Record the new run ID, receipt commit, checksums, and device results independently.
+- Status: `awaiting hardware validation`; candidate commit will be recorded after CI publication.
+- User-visible behavior: the lower Adventure deck has Android-local `Actions`, `Heroes`, and `Towns` tabs. Towns lists only the local player's towns in the same native order as the upper town list, shows a selected marker, and one tap selects a town without opening Town Window. Slice 18 Actions/Heroes behavior, layout, and hero-summary contrast remain unchanged.
+- Boundary and native responsibility: `ThorTownEntry` publishes only stable town object IDs, bounded translated names, and selected state in `ADVENTURE_MAP`. The hard transport bound is `THOR_MAX_TOWNS = 64`; an over-limit or invalid collection fails closed with no partial roster and `SELECT_TOWN` disabled. MainGUI rechecks rendered revision, exact Adventure context/owner, mask, published membership, ownership, and selectable state, then uses `PlayerLocalState::setSelection(town)`. An accepted tap consumes its epoch and clears duplicates. No coordinates, direct game-state changes, town-window opening, or additional town data are used.
+- Android responsibility: copy the revision-bound roster; render five touch-sized rows per page; provide local-only Previous/Next and indicator controls; clamp and selected-page-sync on revisions; and discard stale tab/page/context regions. Empty rosters show localized `No towns`.
+- Stable contract: actions 0–13 are unchanged. `SELECT_TOWN = 14`, with mask `8192`, carries the rendered revision and stable town ID.
+- Automated acceptance: native ID/mask, revision/context/mask/target validation, stale epoch, semantic roster equality, UTF-8 bounding, context clearing, and overflow fail-closed tests; Android ID/resource/roster and five-row page contract tests.
+- Regression risks: ownership/removal/reorder between publish and tap, stale page hit regions, page controls accidentally dispatching gameplay, long translated names, and Slice 18 deck regressions.
+- Required hardware checklist after checksum-verified CI APK:
+
+  1. Confirm Slice 18 Actions/Heroes still render without overlap or contrast regressions.
+  2. Confirm Towns shows only locally owned towns, in upper-list order, with translated names and a selected marker.
+  3. Tap unselected and selected towns; verify ordinary upper selection only, never Town Window or duplicate action.
+  4. Use upper selection, reorder, acquire/capture, and lose/remove operations where practical; verify immediate synchronized/inert lower rows.
+  5. Rapidly tap two rows; at most one request from the old revision may execute.
+  6. With more than five towns, verify Previous/Next, indicator, selected-page synchronization, and no native action from page controls.
+  7. Rapidly switch tabs; open Hero/Town/modal/Battle contexts; toggle the display and background/resume; verify no stale row, residual panel, or focus loss.
+  8. Recheck existing Adventure, Battle, Hero, Town, touchscreen, and controller behavior; confirm no crash, duplicate presentation, revision churn, delayed/wrong-player selection, or stale row.
 
 This is the maintained planning and validation record for the AYN Thor fork. Do not remove deferred work when implementing an earlier slice. Before each implementation slice, record the proposed behavior, implementation boundary, native and Android responsibilities, focused acceptance tests, and regression risks, then wait for user approval.
 
@@ -45,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 18 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 18; Slice 19 scope awaits approval.
+- Phase: Slices 1 through 18 are implemented, CI-built, and hardware-validated; Slice 19 is awaiting hardware validation.
+- Status: `hardware validated` through Slice 18.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -54,6 +68,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Remote safety: `origin` points to the CapnChaosDK fork; the local `upstream` push URL is disabled.
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
+- Permanent candidate CI transport branch: `ci/thor-candidate-validation`. This is intentionally reused for every future full ARM64 candidate so its same-branch compiler cache survives across slices; the historical per-slice branches recorded below remain historical evidence only.
 - Build readiness: use Linux/JDK 17 CI for a complete ARM64 APK. This Windows host is useful for focused source checks, but the official dependency cache contains Linux-host Qt generators and Android Studio's JDK 25 has a Gradle cache-close limitation.
 - Published implementation: Slice 1 commit `ed8e57130`; Slice 2 commit `9300bcc59`; Slice 3 promoted after hardware validation; Slice 4 commit `17fbdfbb9`; Slice 5 commit `9b8664177`; Slice 6 promoted after hardware validation; Slice 7 commit `981d2b65a`; Slice 8 promoted after hardware validation; Slice 10 product commit `8bd603d6684d107e6f72e48fbb9e04eaa4b38293`; Slice 11 product commit `873faeaedc153f400d39c2677cfe495bf3d07bd9`; Slice 12 product commit `221a9f9eba3614665bcce8e84c86868f1d252d20`; Slice 13 product commit `f12865c7fd4dd9208d14c928402702fffcc719bc`; Slice 14 product commit `e60e7e1051d08c5fae07be207182c3f175047429`; Slice 15 product commit `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec`.
 - Hardware validation: the lower command deck is visible and inert; it preserves upper-screen focus through resume/toggle checks. Slice 2 additionally shows the localized `Main menu / Choose a game mode` context and logs monotonic `MAIN_MENU` revisions. Slice 3 shows the localized New Game card, clears it safely on unsupported tabs, and passes panel-toggle, pause/resume, and input-regression checks. Slice 4 adds the localized Load Game card and restores the root card on Back. Slice 5 adds the localized Campaign card and restores New Game on Back. Slice 6 adds the localized Credits card and restores Main Menu on exit. Slice 7 adds localized lobby/setup cards and restores them after unsupported children close. Slice 8 adds localized Adventure Map, Hero, and Town cards, restores approved parents through normal activation, and clears unsupported child/battle contexts safely. Slice 9 adds Hero Meeting and Battle lifecycle cards, including the corrected Battle Result restoration path. Slice 10 adds Kingdom Overview, Quest Log, Scenario Journal, Puzzle Map, and Save Game cards through their concrete native owners; every focused manual check passed after the CI-built APK was installed on an AYN Thor. Slice 12 adds the native Next Hero, Move Hero, Sleep/Wake, and End Turn routes; its focused checks passed on the CI-verified APK, including ordinary End Turn confirmation, rapid/stale input safety, and upper-input regressions. All validated contexts pass transition, lifecycle, inertness, and upper-input checks; malformed and mod-added tabs continue to fail closed.
@@ -62,7 +77,6 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Slice 15 promotion: product commit `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` adds the read-only Town Window dashboard. The CI-built artifact passed the complete Town accuracy, construction/hero refresh, town switching, child/modal restoration, lower-display recreation, inert-touch, Adventure command, and upper-input regression checklist on an AYN Thor.
 - Slice 16 validation: candidate commit `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` adds the context-aware Battle command deck. The CI-built artifact passed focused native and Android tests, and the final AYN Thor hardware checklist passed after the post-opening publication refresh. The candidate remains on `ci/thor-slice16-validation`; promotion is a separate explicit operation.
 - Slice 17 validation: candidate commit `d4c9193be2d99233c00e2b4054d0484e0c67bf99` adds the live Battle information dashboard and the opponent-turn active-unit correction. CI run `35586360399` passed focused native and Android Thor checks, ARM64 packaging, and package verification. The checksum-verified APK (`29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`) was installed and launched on an AYN Thor; the user reported all focused checks passed. The candidate remains on `ci/thor-slice17-validation`; promotion is a separate explicit operation.
-- Slice 18 validation: candidate product commit `217866f94d26894a8d03dcf7a1b2001b995adf11` adds the Adventure hero quick selector with the final spacing and summary-contrast corrections. CI run `35617394300` passed, and its checksum-verified APK (`b73d433e2e2422b5aab22b1c7e7c453d1a822dd013e0c116f87043aa6b17fa01`) was installed on an AYN Thor. The user confirmed the full focused checklist passed. The candidate remains on `ci/thor-slice18-validation`; promotion is separate.
 - Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, Slice 6 on 2026-09-15, Slices 7 and 8 on 2026-09-17, and Slice 10 through the approved implementation brief on 2026-09-17.
 
 ## Working rules
@@ -81,6 +95,15 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Do not commit or push a slice until the user reports its focused hardware checks passed.
 - Never push to the official upstream remote or rewrite validated history without explicit approval.
 - Preserve unrelated working-tree changes.
+- Future full ARM64 candidates follow this default sequence: implementation on `ayn-thor-dual-screen` → local checks → update/push `ci/thor-candidate-validation` → Thor CI preflight, package verification, receipt, checksum, and artifact → manual AYN Thor hardware validation → promotion of the exact tested product tree. Do not create `ci/thor-sliceN-validation` branches.
+- `ci/thor-candidate-validation` is a disposable CI transport branch, not product history. Prefer fast-forward updates; only it may be reset to the exact candidate and pushed with guarded `--force-with-lease` when necessary. Never use that permission to rewrite `ayn-thor-dual-screen`, upstream, validated product history, releases, or tags.
+- Retain clean generated CMake/Qt/Gradle/APK trees on GitHub runners. Reuse only the safe dependency, compiler-object (`ccache`), and supported Gradle caches; never cache complete build/output trees. Manual hardware validation remains mandatory.
+
+### Permanent candidate CI policy
+
+`.github/workflows/thor-ci.yml` is the sole permanent Thor workflow. Its full ARM64 job accepts trusted pushes only from `ci/thor-candidate-validation`, preserving the existing preflight, package ID verification, checksums, receipt, seven-day artifact, focused tests, and signing safety. It reports cache restoration/key, call count, hits, misses, hit rate, cache size, reuse classification, and build duration so cold versus warm behavior is explicit.
+
+Historic slice entries retain the branches and run IDs that actually validated them. They do not authorize reuse of the old per-slice branch convention for future work; see `docs/AYN_THOR_BUILD_PLAYBOOK.md` for the detailed procedure.
 
 ## Discovery checklist
 

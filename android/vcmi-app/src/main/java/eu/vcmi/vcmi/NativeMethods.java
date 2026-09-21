@@ -92,6 +92,18 @@ public class NativeMethods
         ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorHeroes(revision, roster));
     }
 
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorTowns(final long revision, final int[] ids, final String[] names, final int[] flags)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        final ThorTownRoster roster = ThorTownRoster.copyOf(ids, names, flags);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorTowns(revision, roster));
+    }
+
     public static void setupMsg(final Messenger msg)
     {
         serverMessengerRef = new WeakReference<>(msg);

@@ -15,7 +15,8 @@ namespace
 			&& lhs.selectedHeroId == rhs.selectedHeroId
 			&& lhs.actionSubjectId == rhs.actionSubjectId
 			&& lhs.actionEpoch == rhs.actionEpoch
-			&& lhs.heroes == rhs.heroes;
+			&& lhs.heroes == rhs.heroes
+			&& lhs.towns == rhs.towns;
 	}
 
 	void normalizeActionSubject(ThorContextRecord & context)
@@ -32,8 +33,12 @@ namespace
 			detail = thorBoundedText(std::move(detail));
 		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.heroes.size() > THOR_MAX_HEROES)
 			context.heroes.clear();
+		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.towns.size() > THOR_MAX_TOWNS)
+			context.towns.clear();
 		for(auto & hero : context.heroes)
 			hero.name = thorBoundedText(std::move(hero.name));
+		for(auto & town : context.towns)
+			town.name = thorBoundedText(std::move(town.name));
 	}
 }
 

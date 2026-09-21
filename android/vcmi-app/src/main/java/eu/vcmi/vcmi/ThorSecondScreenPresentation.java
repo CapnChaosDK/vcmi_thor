@@ -61,15 +61,21 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateHeroes(roster);
     }
 
-    boolean isHeroesMode()
-    {
-        return foundationView != null && foundationView.heroesMode;
-    }
-
-    void setHeroesMode(final boolean value)
+    void updateTowns(final ThorTownRoster roster)
     {
         if (foundationView != null)
-            foundationView.heroesMode = value;
+            foundationView.updateTowns(roster);
+    }
+
+    int getAdventureTab()
+    {
+        return foundationView == null ? 0 : foundationView.adventureTab;
+    }
+
+    void setAdventureTab(final int value)
+    {
+        if (foundationView != null)
+            foundationView.adventureTab = value;
     }
 
     private static final class ThorFoundationView extends View
@@ -91,7 +97,9 @@ final class ThorSecondScreenPresentation extends Presentation
         private int enabledActionMask;
         private int activeActionMask;
         private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
-        private boolean heroesMode;
+        private ThorTownRoster towns = ThorTownRoster.EMPTY;
+        private int adventureTab;
+        private int townPage;
 
         ThorFoundationView(final Context context)
         {
@@ -108,13 +116,19 @@ final class ThorSecondScreenPresentation extends Presentation
                            final int enabledActionMask, final int activeActionMask)
         {
             if (revision != this.revision)
+            {
                 heroes = ThorHeroRoster.EMPTY;
+                towns = ThorTownRoster.EMPTY;
+                townPage = 0;
+            }
             this.revision = revision;
             this.contextId = contextId;
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
-                heroesMode = false;
+                adventureTab = 0;
                 heroes = ThorHeroRoster.EMPTY;
+                towns = ThorTownRoster.EMPTY;
+                townPage = 0;
             }
             this.enabledActionMask = enabledActionMask;
             this.activeActionMask = activeActionMask;
@@ -292,6 +306,14 @@ final class ThorSecondScreenPresentation extends Presentation
             invalidate();
         }
 
+        void updateTowns(final ThorTownRoster roster)
+        {
+            towns = ThorContextIds.ADVENTURE_MAP.equals(contextId) ? roster : ThorTownRoster.EMPTY;
+            syncTownPageToSelection();
+            setContentDescription(commandDeckDescription());
+            invalidate();
+        }
+
         @Override
         protected void onDraw(final Canvas canvas)
         {
@@ -370,8 +392,10 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
                 drawAdventureTabs(canvas, frame, dividerY, bevel, density);
-                if (heroesMode)
+                if (adventureTab == 1)
                     drawHeroes(canvas, frame, dividerY, bevel, density);
+                else if (adventureTab == 2)
+                    drawTowns(canvas, frame, dividerY, bevel, density);
                 else
                     drawAdventureActions(canvas, frame, dividerY, bevel, density);
             }
@@ -394,19 +418,43 @@ final class ThorSecondScreenPresentation extends Presentation
                     final int tab = tabAt(event.getX(), event.getY());
                     if (tab >= 0)
                     {
-                        heroesMode = tab == 1;
+                        adventureTab = tab;
                         setContentDescription(commandDeckDescription());
                         invalidate();
                         performClick();
                         return true;
                     }
-                    if (heroesMode)
+                    if (adventureTab == 1)
                     {
                         final int row = heroAt(event.getX(), event.getY());
                         if (row >= 0 && isActionEnabled(ThorActionIds.SELECT_HERO))
                         {
                             performClick();
                             NativeMethods.submitThorAction(revision, ThorActionIds.SELECT_HERO, heroes.ids[row]);
+                        }
+                        return true;
+                    }
+                    if (adventureTab == 2)
+                    {
+                        if (townPageCount() > 1 && townPreviousBounds().contains(event.getX(), event.getY()))
+                        {
+                            townPage = Math.max(0, townPage - 1);
+                            invalidate();
+                            performClick();
+                            return true;
+                        }
+                        if (townPageCount() > 1 && townNextBounds().contains(event.getX(), event.getY()))
+                        {
+                            townPage = Math.min(townPageCount() - 1, townPage + 1);
+                            invalidate();
+                            performClick();
+                            return true;
+                        }
+                        final int row = townAt(event.getX(), event.getY());
+                        if (row >= 0 && isActionEnabled(ThorActionIds.SELECT_TOWN))
+                        {
+                            performClick();
+                            NativeMethods.submitThorAction(revision, ThorActionIds.SELECT_TOWN, towns.ids[row]);
                         }
                         return true;
                     }
@@ -578,7 +626,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final float left = frame.left + bevel * 3f;
             final float gap = Math.max(bevel, 8f);
-            final float width = (frame.width() - bevel * 6f - gap) / 2f;
+            final float width = (frame.width() - bevel * 6f - gap * 2f) / 3f;
             final float top = dividerY + bevel * 2f;
             return new RectF(left + index * (width + gap), top,
                     left + index * (width + gap) + width,
@@ -590,7 +638,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final RectF frame = adventureFrame();
             final float bevel = adventureBevel();
             final float dividerY = frame.top + frame.height() * ThorAdventureLayout.DIVIDER;
-            for (int index = 0; index < 2; ++index)
+            for (int index = 0; index < 3; ++index)
                 if (tabBounds(index, frame, dividerY, bevel).contains(x, y))
                     return index;
             return -1;
@@ -613,16 +661,17 @@ final class ThorSecondScreenPresentation extends Presentation
         private void drawAdventureTabs(final Canvas canvas, final RectF frame, final float dividerY,
                                        final float bevel, final float density)
         {
-            for (int index = 0; index < 2; ++index)
+            final int[] labels = {R.string.thor_tab_actions, R.string.thor_tab_heroes, R.string.thor_tab_towns};
+            for (int index = 0; index < labels.length; ++index)
             {
                 final RectF tab = tabBounds(index, frame, dividerY, bevel);
                 paint.setStyle(Paint.Style.FILL);
-                paint.setColor(index == (heroesMode ? 1 : 0) ? STONE_DARK : PARCHMENT_DARK);
+                paint.setColor(index == adventureTab ? STONE_DARK : PARCHMENT_DARK);
                 canvas.drawRoundRect(tab, bevel, bevel, paint);
                 paint.setColor(TEXT);
-                paint.setFakeBoldText(index == (heroesMode ? 1 : 0));
+                paint.setFakeBoldText(index == adventureTab);
                 paint.setTextAlign(Paint.Align.CENTER);
-                drawFittedText(canvas, getContext().getString(index == 0 ? R.string.thor_tab_actions : R.string.thor_tab_heroes),
+                drawFittedText(canvas, getContext().getString(labels[index]),
                         tab.centerX(), tab.centerY(), tab.width() * 0.85f, Math.min(26f * density, tab.height() * 0.55f));
             }
             paint.setFakeBoldText(false);
@@ -690,6 +739,137 @@ final class ThorSecondScreenPresentation extends Presentation
                             row.top + row.height() * 0.82f, row.width() * 0.8f,
                             Math.min(21f * density, row.height() * 0.19f));
             }
+        }
+
+        private int townPageCount()
+        {
+            return Math.max(1, (towns.ids.length + ThorAdventureLayout.TOWN_ROWS_PER_PAGE - 1)
+                    / ThorAdventureLayout.TOWN_ROWS_PER_PAGE);
+        }
+
+        private void syncTownPageToSelection()
+        {
+            final int pages = townPageCount();
+            townPage = Math.min(Math.max(0, townPage), pages - 1);
+            for (int index = 0; index < towns.ids.length; ++index)
+                if ((towns.flags[index] & 1) != 0)
+                {
+                    townPage = index / ThorAdventureLayout.TOWN_ROWS_PER_PAGE;
+                    return;
+                }
+        }
+
+        private RectF townBounds(final int pageRow, final RectF frame, final float dividerY, final float bevel)
+        {
+            final float gap = Math.max(bevel, 8f);
+            final float top = actionTop(frame, dividerY, bevel);
+            final float left = frame.left + bevel * 3f;
+            final float width = frame.width() - bevel * 6f;
+            final float navigationHeight = Math.max(34f * getResources().getDisplayMetrics().density,
+                    (frame.bottom - top) * 0.11f);
+            final float bottom = frame.bottom - bevel * 3f - navigationHeight - gap;
+            final float height = (bottom - top - gap * (ThorAdventureLayout.TOWN_ROWS_PER_PAGE - 1))
+                    / ThorAdventureLayout.TOWN_ROWS_PER_PAGE;
+            final float rowTop = top + pageRow * (height + gap);
+            return new RectF(left, rowTop, left + width, rowTop + height);
+        }
+
+        private RectF townPreviousBounds()
+        {
+            final RectF frame = adventureFrame();
+            final float bevel = adventureBevel();
+            final float dividerY = frame.top + frame.height() * ThorAdventureLayout.DIVIDER;
+            final RectF lastRow = townBounds(ThorAdventureLayout.TOWN_ROWS_PER_PAGE - 1, frame, dividerY, bevel);
+            final float gap = Math.max(bevel, 8f);
+            final float top = lastRow.bottom + gap;
+            final float width = (lastRow.width() - gap * 2f) * 0.30f;
+            return new RectF(lastRow.left, top, lastRow.left + width, frame.bottom - bevel * 3f);
+        }
+
+        private RectF townNextBounds()
+        {
+            final RectF previous = townPreviousBounds();
+            final RectF frame = adventureFrame();
+            final float bevel = adventureBevel();
+            return new RectF(frame.right - bevel * 3f - previous.width(), previous.top,
+                    frame.right - bevel * 3f, previous.bottom);
+        }
+
+        private int townAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            final float bevel = adventureBevel();
+            final float dividerY = frame.top + frame.height() * ThorAdventureLayout.DIVIDER;
+            final int first = townPage * ThorAdventureLayout.TOWN_ROWS_PER_PAGE;
+            final int count = Math.min(ThorAdventureLayout.TOWN_ROWS_PER_PAGE, towns.ids.length - first);
+            for (int row = 0; row < count; ++row)
+                if (townBounds(row, frame, dividerY, bevel).contains(x, y))
+                    return first + row;
+            return -1;
+        }
+
+        private void drawTowns(final Canvas canvas, final RectF frame, final float dividerY,
+                               final float bevel, final float density)
+        {
+            paint.setTextAlign(Paint.Align.CENTER);
+            if (towns.ids.length == 0)
+            {
+                paint.setColor(PARCHMENT_DARK);
+                drawFittedText(canvas, getContext().getString(R.string.thor_no_towns), frame.centerX(),
+                        (dividerY + frame.bottom) * 0.55f, frame.width() * 0.8f, 30f * density);
+                return;
+            }
+
+            final int first = townPage * ThorAdventureLayout.TOWN_ROWS_PER_PAGE;
+            final int count = Math.min(ThorAdventureLayout.TOWN_ROWS_PER_PAGE, towns.ids.length - first);
+            for (int rowIndex = 0; rowIndex < count; ++rowIndex)
+            {
+                final int index = first + rowIndex;
+                final RectF row = townBounds(rowIndex, frame, dividerY, bevel);
+                final boolean selected = (towns.flags[index] & 1) != 0;
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(STONE_DARK);
+                canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(selected ? bevel * 0.8f : bevel * 0.3f);
+                paint.setColor(selected ? GOLD : STONE_LIGHT);
+                canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(TEXT);
+                paint.setFakeBoldText(selected);
+                drawEllipsizedText(canvas, (selected ? "● " : "") + towns.names[index], row.centerX(), row.centerY(),
+                        row.width() * 0.87f, Math.min(28f * density, row.height() * 0.45f));
+            }
+            paint.setFakeBoldText(false);
+
+            if (townPageCount() > 1)
+            {
+                final RectF previous = townPreviousBounds();
+                final RectF next = townNextBounds();
+                drawTownPageControl(canvas, previous, R.string.thor_town_previous, townPage > 0, bevel, density);
+                drawTownPageControl(canvas, next, R.string.thor_town_next, townPage + 1 < townPageCount(), bevel, density);
+                paint.setColor(PARCHMENT_DARK);
+                paint.setTextAlign(Paint.Align.CENTER);
+                drawFittedText(canvas, getContext().getString(R.string.thor_town_page, townPage + 1, townPageCount()),
+                        frame.centerX(), previous.centerY(), frame.width() * 0.28f, Math.min(20f * density, previous.height() * 0.5f));
+            }
+        }
+
+        private void drawTownPageControl(final Canvas canvas, final RectF bounds, final int label, final boolean enabled,
+                                         final float bevel, final float density)
+        {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
+            canvas.drawRoundRect(bounds, bevel, bevel, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(Math.max(2f, bevel * 0.3f));
+            paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
+            canvas.drawRoundRect(bounds, bevel, bevel, paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+            paint.setTextAlign(Paint.Align.CENTER);
+            drawFittedText(canvas, getContext().getString(label), bounds.centerX(), bounds.centerY(), bounds.width() * 0.75f,
+                    Math.min(20f * density, bounds.height() * 0.5f));
         }
 
         private void drawAdventureActions(final Canvas canvas, final RectF frame, final float dividerY,
@@ -909,7 +1089,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
 
-            if (heroesMode)
+            if (adventureTab == 1)
             {
                 final StringBuilder description = new StringBuilder(getContext().getString(R.string.thor_tab_heroes));
                 if (heroes.ids.length == 0)
@@ -919,6 +1099,17 @@ final class ThorSecondScreenPresentation extends Presentation
                             .append(heroes.movement[index]).append(" / ").append(heroes.maximum[index])
                             .append((heroes.flags[index] & 1) != 0 ? " ●" : "")
                             .append((heroes.flags[index] & 2) != 0 ? " " + getContext().getString(R.string.thor_hero_sleeping) : "");
+                return description.toString();
+            }
+
+            if (adventureTab == 2)
+            {
+                final StringBuilder description = new StringBuilder(getContext().getString(R.string.thor_tab_towns));
+                if (towns.ids.length == 0)
+                    return description.append(". ").append(getContext().getString(R.string.thor_no_towns)).toString();
+                for (int index = 0; index < towns.ids.length; ++index)
+                    description.append(". ").append(towns.names[index])
+                            .append((towns.flags[index] & 1) != 0 ? " ●" : "");
                 return description.toString();
             }
 

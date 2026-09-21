@@ -49,6 +49,7 @@ public:
 	void publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask,
 		std::uint32_t activeActionMask);
 	void publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes);
+	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);
 
 	static void cacheVM(JNIEnv * env);
 

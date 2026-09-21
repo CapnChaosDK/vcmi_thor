@@ -170,7 +170,7 @@ void GameEngine::updateFrame()
 			logGlobal->debug("Thor action rejected: unavailable action %d", static_cast<int>(request->action));
 			continue;
 		case ThorActionValidation::INVALID_TARGET:
-			logGlobal->debug("Thor action rejected: invalid hero target %d", request->targetId);
+			logGlobal->debug("Thor action rejected: invalid target %d", request->targetId);
 			continue;
 		case ThorActionValidation::VALID:
 			break;
@@ -191,7 +191,9 @@ void GameEngine::updateFrame()
 			}
 			executed = request->action == ThorAction::SELECT_HERO
 				? adventureInt->getAdventureShortcuts().selectThorHero(request->targetId)
-				: adventureInt->getAdventureShortcuts().executeThorAction(request->action);
+				: request->action == ThorAction::SELECT_TOWN
+					? adventureInt->getAdventureShortcuts().selectThorTown(request->targetId)
+					: adventureInt->getAdventureShortcuts().executeThorAction(request->action);
 			if(executed)
 				adventureInt->updateThorActionState(true);
 		}

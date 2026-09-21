@@ -24,7 +24,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private int enabledActionMask;
     private int activeActionMask;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
-    private boolean heroesMode;
+    private ThorTownRoster towns = ThorTownRoster.EMPTY;
+    private int adventureTab;
     private boolean started;
     private boolean resumed;
 
@@ -87,8 +88,9 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextRevision = revision;
         contextId = id == null || id.isEmpty() ? ThorContextIds.UNKNOWN : id;
         if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
-            heroesMode = false;
+            adventureTab = 0;
         heroes = ThorHeroRoster.EMPTY;
+        towns = ThorTownRoster.EMPTY;
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
         contextDetails[0] = ThorContextDetails.orEmpty(detailLine1);
@@ -122,6 +124,15 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         heroes = roster;
         if (presentation != null)
             presentation.updateHeroes(roster);
+    }
+
+    void publishTowns(final long revision, final ThorTownRoster roster)
+    {
+        if (revision != contextRevision || !ThorContextIds.ADVENTURE_MAP.equals(contextId))
+            return;
+        towns = roster;
+        if (presentation != null)
+            presentation.updateTowns(roster);
     }
 
     @Override
@@ -174,10 +185,11 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         {
             newPresentation.show();
             presentation = newPresentation;
-            newPresentation.setHeroesMode(heroesMode);
+            newPresentation.setAdventureTab(adventureTab);
             newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, contextDetails,
                     enabledActionMask, activeActionMask);
             newPresentation.updateHeroes(heroes);
+            newPresentation.updateTowns(towns);
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)
@@ -215,7 +227,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             return;
 
         final ThorSecondScreenPresentation oldPresentation = presentation;
-        heroesMode = ThorContextIds.ADVENTURE_MAP.equals(contextId) && oldPresentation.isHeroesMode();
+        adventureTab = ThorContextIds.ADVENTURE_MAP.equals(contextId) ? oldPresentation.getAdventureTab() : 0;
         presentation = null;
         NativeMethods.clearThorActions();
         try

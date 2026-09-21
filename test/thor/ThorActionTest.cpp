@@ -20,7 +20,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(11), ThorAction::BATTLE_TACTICS_NEXT);
 	EXPECT_EQ(thorActionFromId(12), ThorAction::BATTLE_TACTICS_END);
 	EXPECT_EQ(thorActionFromId(13), ThorAction::SELECT_HERO);
-	EXPECT_EQ(thorActionFromId(14), std::nullopt);
+	EXPECT_EQ(thorActionFromId(14), ThorAction::SELECT_TOWN);
+	EXPECT_EQ(thorActionFromId(15), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -36,6 +37,7 @@ TEST(ThorActionTest, AllowsOnlySliceTwelveAdventureActions)
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::TOGGLE_HERO_SLEEP));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::END_TURN));
 	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::SELECT_HERO));
+	EXPECT_TRUE(isThorActionAllowedInAdventureMap(ThorAction::SELECT_TOWN));
 	EXPECT_FALSE(isThorActionAllowedInAdventureMap(static_cast<ThorAction>(99)));
 }
 
@@ -63,6 +65,28 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_NEXT), 1024);
 	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_END), 2048);
 	EXPECT_EQ(thorActionMask(ThorAction::SELECT_HERO), 4096);
+	EXPECT_EQ(thorActionMask(ThorAction::SELECT_TOWN), 8192);
+}
+
+TEST(ThorActionTest, TownTargetMustMatchPublishedRosterAndRevision)
+{
+	ThorContextRecord context;
+	context.revision = 8;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = thorActionMask(ThorAction::SELECT_TOWN);
+	context.towns.push_back({42, "Castle Stronghold", false});
+	EXPECT_EQ(validateThorActionRequest({8, ThorAction::SELECT_TOWN, 42}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({8, ThorAction::SELECT_TOWN}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({8, ThorAction::SELECT_TOWN, 43}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::SELECT_TOWN, 42}, context), ThorActionValidation::STALE_REVISION);
+	context.contextId = ThorContextIds::TOWN_WINDOW;
+	EXPECT_EQ(validateThorActionRequest({8, ThorAction::SELECT_TOWN, 42}, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = 0;
+	EXPECT_EQ(validateThorActionRequest({8, ThorAction::SELECT_TOWN, 42}, context), ThorActionValidation::UNAVAILABLE);
+	context.enabledActionMask = thorActionMask(ThorAction::SELECT_TOWN);
+	context.towns.clear();
+	EXPECT_EQ(validateThorActionRequest({8, ThorAction::SELECT_TOWN, 42}, context), ThorActionValidation::INVALID_TARGET);
 }
 
 TEST(ThorActionTest, TargetMustMatchPublishedHeroAndRevision)
@@ -167,6 +191,22 @@ TEST(ThorActionTest, ConsumedActionInvalidatesItsRenderedRevision)
 	const auto consumed = store.publishNext(context);
 	EXPECT_EQ(consumed.revision, rendered.revision + 1);
 	EXPECT_EQ(validateThorActionRequest({rendered.revision, ThorAction::MOVE_HERO}, consumed), ThorActionValidation::STALE_REVISION);
+}
+
+TEST(ThorActionTest, ConsumedTownActionInvalidatesItsRenderedRevision)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = thorActionMask(ThorAction::SELECT_TOWN);
+	context.towns.push_back({4, "Castle Stronghold", true});
+	const auto rendered = store.publishNext(context);
+
+	++context.actionEpoch;
+	const auto consumed = store.publishNext(context);
+	EXPECT_EQ(consumed.revision, rendered.revision + 1);
+	EXPECT_EQ(validateThorActionRequest({rendered.revision, ThorAction::SELECT_TOWN, 4}, consumed),
+		ThorActionValidation::STALE_REVISION);
 }
 
 TEST(ThorActionTest, BattleActionSubjectChangesRevisionWithoutMaskChurn)
