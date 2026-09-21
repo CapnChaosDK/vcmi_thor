@@ -192,6 +192,10 @@ void BattleInterface::openingEnd()
 	activateStack();
 	battleOpeningDelayActive = false;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	windowObject->updateThorActionState();
+#endif
+
 	CTutorialWindow::openWindowFirstTime(TutorialMode::TOUCH_BATTLE);
 }
 
