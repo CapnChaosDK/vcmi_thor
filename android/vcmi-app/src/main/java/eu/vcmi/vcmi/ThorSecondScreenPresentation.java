@@ -323,7 +323,9 @@ final class ThorSecondScreenPresentation extends Presentation
 
             final boolean battleDashboard = ThorContextIds.BATTLE.equals(contextId)
                     || ThorContextIds.BATTLE_TACTICS.equals(contextId);
-            final float dividerY = frame.top + contentHeight * (battleDashboard ? 0.55f : 0.34f);
+            final boolean adventure = ThorContextIds.ADVENTURE_MAP.equals(contextId);
+            final float dividerY = frame.top + contentHeight * (battleDashboard ? 0.55f
+                    : adventure ? ThorAdventureLayout.DIVIDER : 0.34f);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(PARCHMENT_DARK);
             canvas.drawRect(frame.left + bevel * 2f, frame.top + bevel * 2f, frame.right - bevel * 2f, dividerY - bevel, paint);
@@ -353,12 +355,15 @@ final class ThorSecondScreenPresentation extends Presentation
                 paint.setTextAlign(Paint.Align.CENTER);
                 paint.setFakeBoldText(true);
                 paint.setColor(TEXT);
-                drawFittedText(canvas, title, getWidth() * 0.5f, frame.top + contentHeight * 0.18f, contentWidth * 0.82f,
+                drawFittedText(canvas, title, getWidth() * 0.5f,
+                        frame.top + contentHeight * (adventure ? ThorAdventureLayout.TITLE : 0.18f), contentWidth * 0.82f,
                         Math.min(42f * density, contentHeight * 0.09f));
 
                 paint.setFakeBoldText(false);
                 paint.setColor(PARCHMENT_DARK);
-                drawFittedText(canvas, status, getWidth() * 0.5f, dividerY + contentHeight * 0.075f,
+                drawFittedText(canvas, status, getWidth() * 0.5f,
+                        adventure ? frame.top + contentHeight * ThorAdventureLayout.STATUS
+                                : dividerY + contentHeight * 0.075f,
                         contentWidth * 0.78f, Math.min(30f * density, contentHeight * 0.055f));
             }
 
@@ -576,14 +581,15 @@ final class ThorSecondScreenPresentation extends Presentation
             final float width = (frame.width() - bevel * 6f - gap) / 2f;
             final float top = dividerY + bevel * 2f;
             return new RectF(left + index * (width + gap), top,
-                    left + index * (width + gap) + width, actionTop(frame, dividerY, bevel) - bevel);
+                    left + index * (width + gap) + width,
+                    dividerY + (frame.bottom - dividerY) * ThorAdventureLayout.TAB_END);
         }
 
         private int tabAt(final float x, final float y)
         {
             final RectF frame = adventureFrame();
             final float bevel = adventureBevel();
-            final float dividerY = frame.top + frame.height() * 0.34f;
+            final float dividerY = frame.top + frame.height() * ThorAdventureLayout.DIVIDER;
             for (int index = 0; index < 2; ++index)
                 if (tabBounds(index, frame, dividerY, bevel).contains(x, y))
                     return index;
@@ -626,17 +632,21 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final float gap = Math.max(bevel, 8f);
             final float top = actionTop(frame, dividerY, bevel);
-            final float height = (frame.bottom - bevel * 3f - top - gap * (ThorHeroRoster.MAX_HEROES - 1))
-                    / ThorHeroRoster.MAX_HEROES;
-            return new RectF(frame.left + bevel * 3f, top + index * (height + gap),
-                    frame.right - bevel * 3f, top + index * (height + gap) + height);
+            final float left = frame.left + bevel * 3f;
+            final float width = (frame.width() - bevel * 6f - gap) / ThorAdventureLayout.HERO_COLUMNS;
+            final float height = (frame.bottom - bevel * 3f - top - gap * (ThorAdventureLayout.HERO_ROWS - 1))
+                    / ThorAdventureLayout.HERO_ROWS;
+            final int column = index % ThorAdventureLayout.HERO_COLUMNS;
+            final int row = index / ThorAdventureLayout.HERO_COLUMNS;
+            return new RectF(left + column * (width + gap), top + row * (height + gap),
+                    left + column * (width + gap) + width, top + row * (height + gap) + height);
         }
 
         private int heroAt(final float x, final float y)
         {
             final RectF frame = adventureFrame();
             final float bevel = adventureBevel();
-            final float dividerY = frame.top + frame.height() * 0.34f;
+            final float dividerY = frame.top + frame.height() * ThorAdventureLayout.DIVIDER;
             for (int index = 0; index < heroes.ids.length; ++index)
                 if (heroBounds(index, frame, dividerY, bevel).contains(x, y))
                     return index;
@@ -667,14 +677,18 @@ final class ThorSecondScreenPresentation extends Presentation
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(TEXT);
                 paint.setFakeBoldText(selected);
-                final String name = (selected ? "● " : "") + heroes.names[index]
-                        + ((heroes.flags[index] & 2) != 0 ? " · " + getContext().getString(R.string.thor_hero_sleeping) : "");
-                drawFittedText(canvas, name, row.centerX(), row.top + row.height() * 0.30f,
-                        row.width() * 0.87f, Math.min(27f * density, row.height() * 0.31f));
+                final boolean sleeping = (heroes.flags[index] & 2) != 0;
+                final String name = (selected ? "● " : "") + heroes.names[index];
+                drawEllipsizedText(canvas, name, row.centerX(), row.top + row.height() * (sleeping ? 0.22f : 0.31f),
+                        row.width() * 0.87f, Math.min(27f * density, row.height() * 0.24f));
                 paint.setFakeBoldText(false);
                 drawFittedText(canvas, heroes.movement[index] + " / " + heroes.maximum[index], row.centerX(),
-                        row.top + row.height() * 0.72f, row.width() * 0.8f,
-                        Math.min(23f * density, row.height() * 0.27f));
+                        row.top + row.height() * (sleeping ? 0.53f : 0.71f), row.width() * 0.8f,
+                        Math.min(23f * density, row.height() * 0.23f));
+                if (sleeping)
+                    drawFittedText(canvas, getContext().getString(R.string.thor_hero_sleeping), row.centerX(),
+                            row.top + row.height() * 0.82f, row.width() * 0.8f,
+                            Math.min(21f * density, row.height() * 0.19f));
             }
         }
 
@@ -790,7 +804,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private float actionTop(final RectF frame, final float dividerY, final float bevel)
         {
-            return dividerY + (frame.bottom - dividerY) * 0.13f + bevel;
+            return dividerY + (frame.bottom - dividerY) * (ThorContextIds.ADVENTURE_MAP.equals(contextId)
+                    ? ThorAdventureLayout.CONTENT_START : 0.13f) + bevel;
         }
 
         private float sectionGap(final RectF frame, final float dividerY, final float bevel)
@@ -809,7 +824,8 @@ final class ThorSecondScreenPresentation extends Presentation
             final float bevel = Math.max(3f * density, margin * 0.16f);
             final boolean battleDashboard = ThorContextIds.BATTLE.equals(contextId)
                     || ThorContextIds.BATTLE_TACTICS.equals(contextId);
-            final float dividerY = frame.top + (getHeight() - margin * 2f) * (battleDashboard ? 0.55f : 0.34f);
+            final float dividerY = frame.top + (getHeight() - margin * 2f) * (battleDashboard ? 0.55f
+                    : ThorAdventureLayout.DIVIDER);
             if (ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.BATTLE_TACTICS.equals(contextId))
             {
                 final int[] actions = ThorContextIds.BATTLE_TACTICS.equals(contextId)
@@ -930,6 +946,27 @@ final class ThorSecondScreenPresentation extends Presentation
                 paint.setTextSize(textSize);
             }
             canvas.drawText(text, centerX, baseline - (paint.ascent() + paint.descent()) * 0.5f, paint);
+        }
+
+        private void drawEllipsizedText(final Canvas canvas, final String text, final float centerX,
+                                       final float baseline, final float maxWidth, final float preferredSize)
+        {
+            float textSize = preferredSize;
+            paint.setTextSize(textSize);
+            while (textSize > preferredSize * 0.72f && paint.measureText(text) > maxWidth)
+            {
+                textSize -= 1f;
+                paint.setTextSize(textSize);
+            }
+            String fitted = text;
+            if (paint.measureText(fitted) > maxWidth)
+            {
+                int end = fitted.length();
+                while (end > 0 && paint.measureText(fitted, 0, end) + paint.measureText("…") > maxWidth)
+                    end = fitted.offsetByCodePoints(end, -1);
+                fitted = fitted.substring(0, end) + "…";
+            }
+            canvas.drawText(fitted, centerX, baseline - (paint.ascent() + paint.descent()) * 0.5f, paint);
         }
     }
 }
