@@ -220,8 +220,8 @@ jobs:
           ccache --show-stats | tee thor-ccache-stats.txt
           cacheable_calls="$(awk '/Cacheable calls:/ { print $3 }' thor-ccache-stats.txt)"
           test "${cacheable_calls:-0}" -gt 0
-          cache_hits="$(awk '/^[[:space:]]*Hits:/ { print $2 }' thor-ccache-stats.txt)"
-          cache_misses="$(awk '/^[[:space:]]*Misses:/ { print $2 }' thor-ccache-stats.txt)"
+          cache_hits="$(awk '/^[[:space:]]*Hits:/ { print $2; exit }' thor-ccache-stats.txt)"
+          cache_misses="$(awk '/^[[:space:]]*Misses:/ { print $2; exit }' thor-ccache-stats.txt)"
           cache_hit_percent="$(awk -v hits="${cache_hits:-0}" -v calls="$cacheable_calls" 'BEGIN { printf "%.2f", calls ? (100 * hits / calls) : 0 }')"
           cache_size="$(awk '/^Cache size \(GB\):/ { print $4 " GB / " $6 " GB" }' thor-ccache-stats.txt)"
           cache_reuse='cold/low reuse'
