@@ -203,24 +203,4 @@ public class ThorContextIdsTest
         assertTrue(tabBottom + 35f < contentTop);
         assertTrue((frameHeight - contentTop) / ThorAdventureLayout.HERO_ROWS > 140f);
     }
-
-    @Test
-    public void adventureHeaderTabsAndCardsUseSeparateBands()
-    {
-        assertEquals(2, ThorAdventureLayout.HERO_COLUMNS);
-        assertEquals(4, ThorAdventureLayout.HERO_ROWS);
-        assertTrue(ThorAdventureLayout.TITLE < ThorAdventureLayout.STATUS);
-        assertTrue(ThorAdventureLayout.STATUS < ThorAdventureLayout.DIVIDER);
-        assertTrue(ThorAdventureLayout.TAB_END < ThorAdventureLayout.CONTENT_START);
-
-        // On the measured 1080 x 1240 panel, the status stays above the divider,
-        // the tabs end before the gameplay heading, and four hero rows remain touch-sized.
-        final float frameHeight = 1142f;
-        final float divider = frameHeight * ThorAdventureLayout.DIVIDER;
-        final float tabBottom = divider + (frameHeight - divider) * ThorAdventureLayout.TAB_END;
-        final float contentTop = divider + (frameHeight - divider) * ThorAdventureLayout.CONTENT_START;
-        assertTrue(frameHeight * ThorAdventureLayout.STATUS + 35f < divider);
-        assertTrue(tabBottom + 35f < contentTop);
-        assertTrue((frameHeight - contentTop) / ThorAdventureLayout.HERO_ROWS > 140f);
-    }
 }
