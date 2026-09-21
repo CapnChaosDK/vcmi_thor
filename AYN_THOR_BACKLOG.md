@@ -6,8 +6,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 16 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 16.
+- Phase: Slices 1 through 17 are implemented, CI-built, and hardware-validated.
+- Status: `hardware validated` through Slice 17.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -22,6 +22,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Slice 14 promotion: product commit `e60e7e1051d08c5fae07be207182c3f175047429` adds the read-only Hero Window dashboard. The CI-built artifact passed the complete Hero accuracy, hero-switching, long-text, child/modal restoration, lower-display recreation, inert-touch, Adventure command, and upper-input regression checklist on an AYN Thor.
 - Slice 15 promotion: product commit `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` adds the read-only Town Window dashboard. The CI-built artifact passed the complete Town accuracy, construction/hero refresh, town switching, child/modal restoration, lower-display recreation, inert-touch, Adventure command, and upper-input regression checklist on an AYN Thor.
 - Slice 16 validation: candidate commit `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` adds the context-aware Battle command deck. The CI-built artifact passed focused native and Android tests, and the final AYN Thor hardware checklist passed after the post-opening publication refresh. The candidate remains on `ci/thor-slice16-validation`; promotion is a separate explicit operation.
+- Slice 17 validation: candidate commit `d4c9193be2d99233c00e2b4054d0484e0c67bf99` adds the live Battle information dashboard and the opponent-turn active-unit correction. CI run `35586360399` passed focused native and Android Thor checks, ARM64 packaging, and package verification. The checksum-verified APK (`29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`) was installed and launched on an AYN Thor; the user reported all focused checks passed. The candidate remains on `ci/thor-slice17-validation`; promotion is a separate explicit operation.
 - Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, Slice 6 on 2026-09-15, Slices 7 and 8 on 2026-09-17, and Slice 10 through the approved implementation brief on 2026-09-17.
 
 ## Working rules
@@ -959,13 +960,13 @@ Status: `hardware validated`
 
 ## Slice 17: Live Battle information dashboard
 
-Status: `awaiting hardware validation`
+Status: `hardware validated`
 
 ### User-visible behavior and information boundary
 
 - With the exact active top owner `BattleWindow`, the lower display now combines the Slice 16 controls with a read-only active-unit dashboard: Battle identity, round, translated active-creature name, count, effective Attack, effective Defense, and current top-creature HP / maximum HP.
 - In tactics, the same dashboard shows the selected tactics stack and retains exactly Next Unit and Start Battle. Normal Battle retains exactly Wait and Defend. Battle Result and every non-Battle owner remain inert and cannot retain an active-unit snapshot.
-- The sole source is the active stack already owned by `BattleInterface::stacksController`. This slice adds no army list, turn queue, target, hidden/fogged state, range, spell list/effects, hero data, prediction, quick selection, creature art, or battle action.
+- The command source is the active stack already owned by `BattleInterface::stacksController`. When it is absent during a normal opponent turn, the read-only dashboard uses only `battleActiveUnit()`, the battle callback's exact current active unit. This slice adds no army list, turn queue, target, hidden/fogged state, range, spell list/effects, hero data, prediction, quick selection, creature art, or battle action.
 
 ### Native responsibilities and refresh/invalidation rules
 
@@ -1004,8 +1005,15 @@ Status: `awaiting hardware validation`
 - Primary risks are stale snapshots during an active-stack handoff, effects changing current values, animation/spell blocking, Battle Result lifecycle restoration, long localized names, and regression to the validated Slice 16 command safety or Adventure/Hero/Town cards.
 - Before candidate creation, review the complete diff, run `git diff --check`, focused native Thor tests, and the inexpensive Android source/resource test. Create `ci/thor-slice17-validation` from the complete candidate, commit it, and push only that branch to trigger the existing `.github/workflows/thor-ci.yml` preflight and dependent ARM64 candidate job. Do not install an APK, promote, merge, or mark Slice 17 hardware validated until CI artifact verification and every checklist item above are completed.
 
-### Opponent-turn correction awaiting retest
+### Opponent-turn correction
 
 - Hardware testing found that opponent turns showed `No active unit` even though the upper Battle view was animating the current enemy unit. The local `BattleStacksController::activeStack` is cleared during action handoff and is not populated for opponent input.
 - The dashboard now falls back to the battle callback's exact `battleActiveUnit()` when the local controller has no active stack in normal Battle. This is the authoritative current unit, not an army lookup or a future queue entry. Only this one unit supplies the read-only fields; command availability still comes solely from the local controller and native block/target checks. Invalid or dead units produce the local no-active fallback.
-- Recheck opponent movement and attacks on the next CI-built candidate: current enemy name/count/Attack/Defense/HP should appear, damage should refresh the displayed count/HP, buttons should remain disabled, and the following local turn should restore its own dashboard and actions. Also repeat the Battle Result, child/modal, and rapid-tap safety checks. Keep Slice 17 at `awaiting hardware validation` until these checks pass.
+- The user confirmed the correction on the checksum-verified CI-built candidate: opponent turns retain the current enemy name/count/Attack/Defense/HP, its read-only data refreshes correctly, controls remain disabled, and the following local turn restores its own dashboard and actions. All remaining focused Slice 17 checks also passed.
+
+### Final hardware validation and next-slice handover
+
+- CI run `35586360399` passed for product candidate `d4c9193be2d99233c00e2b4054d0484e0c67bf99`. Its validated receipt records `is.xyz.vcmi.thor`, ARM64 artifact `thor-candidate-arm64-35586360399`, and APK SHA-256 `29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`.
+- The exact APK was checksum-verified, installed in place, and launched on an AYN Thor. The user reported the complete Slice 17 hardware checklist passed, including friendly and enemy active-unit data, opponent-turn read-only updates with disabled controls, Count/HP/round refresh, Wait/Defend safety, tactics, child/modal restoration, Battle Result cleanup, lifecycle, and upper-input regressions.
+- Slice 17 is hardware validated. Future slices must preserve the distinction between the local controller stack, which alone determines lower-screen command availability, and `battleActiveUnit()`, which may supply only the exact current read-only opponent dashboard during normal Battle. Preserve the bounded four-detail payload, no-global-lookup boundary, action IDs 0–12, revision/epoch safety, exact top-owner checks, and native Battle lifecycle.
+- The tested candidate has not been promoted to `ayn-thor-dual-screen`. Promotion remains a separate explicit user-authorized step; the next slice requires a new approved scope and candidate strategy.
