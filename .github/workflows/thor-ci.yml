@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - ayn-thor-dual-screen
-      - ci/thor-*-validation
+      - ci/thor-candidate-validation
     paths-ignore:
       - AYN_THOR_BACKLOG.md
       - docs/**
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       full_arm64:
-        description: Run the trusted full ARM64 candidate build (default branch only)
+        description: Run the trusted full ARM64 candidate build (permanent candidate branch only)
         required: true
         default: false
         type: boolean
@@ -99,8 +99,8 @@ jobs:
     name: Thor ARM64 candidate
     needs: preflight
     if: >-
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/ci/thor-') && endsWith(github.ref, '-validation')) ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/ayn-thor-dual-screen' && inputs.full_arm64)
+      (github.event_name == 'push' && github.ref == 'refs/heads/ci/thor-candidate-validation') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/ci/thor-candidate-validation' && inputs.full_arm64)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     defaults:
@@ -144,10 +144,20 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/thor-ccache
-          key: thor-ccache-v1-${{ runner.os }}-android-ndk-r29-arm64-v8a-${{ github.ref_name }}-${{ github.sha }}
+          key: thor-ccache-v2-${{ runner.os }}-android-ndk-r29-arm64-v8a-${{ github.ref_name }}-${{ github.sha }}
           restore-keys: |
-            thor-ccache-v1-${{ runner.os }}-android-ndk-r29-arm64-v8a-${{ github.ref_name }}-
-            thor-ccache-v1-${{ runner.os }}-android-ndk-r29-arm64-v8a-
+            thor-ccache-v2-${{ runner.os }}-android-ndk-r29-arm64-v8a-${{ github.ref_name }}-
+
+      - name: Report compiler cache restore
+        run: |
+          restored_key='${{ steps.ccache.outputs.cache-matched-key }}'
+          if [ -n "$restored_key" ]; then
+            echo 'CCACHE_RESTORED=yes' >> "$GITHUB_ENV"
+            echo "CCACHE_RESTORED_KEY=$restored_key" >> "$GITHUB_ENV"
+          else
+            echo 'CCACHE_RESTORED=no' >> "$GITHUB_ENV"
+            echo 'CCACHE_RESTORED_KEY=(none)' >> "$GITHUB_ENV"
+          fi
 
       - name: Install build dependencies
         run: |
@@ -196,7 +206,11 @@ jobs:
             out/build/android-thor-release/CMakeCache.txt
 
       - name: Build Thor ARM64 APK
-        run: cmake --build --preset android-thor-release
+        run: |
+          build_started_at="$(date +%s)"
+          cmake --build --preset android-thor-release
+          build_finished_at="$(date +%s)"
+          echo "ARM64_BUILD_DURATION_SECONDS=$((build_finished_at - build_started_at))" >> "$GITHUB_ENV"
         env:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -206,6 +220,22 @@ jobs:
           ccache --show-stats | tee thor-ccache-stats.txt
           cacheable_calls="$(awk '/Cacheable calls:/ { print $3 }' thor-ccache-stats.txt)"
           test "${cacheable_calls:-0}" -gt 0
+          cache_hits="$(awk '/^[[:space:]]*Hits:/ { print $2; exit }' thor-ccache-stats.txt)"
+          cache_misses="$(awk '/^[[:space:]]*Misses:/ { print $2; exit }' thor-ccache-stats.txt)"
+          cache_hit_percent="$(awk -v hits="${cache_hits:-0}" -v calls="$cacheable_calls" 'BEGIN { printf "%.2f", calls ? (100 * hits / calls) : 0 }')"
+          cache_size="$(awk '/^[[:space:]]*Cache size \(GB\):/ { print $4 " GB / " $6 " GB"; exit }' thor-ccache-stats.txt)"
+          cache_reuse='cold/low reuse'
+          if awk -v hit_percent="$cache_hit_percent" 'BEGIN { exit !(hit_percent >= 90) }'; then
+            cache_reuse='warm'
+          fi
+          {
+            echo "CCACHE_CACHEABLE_CALLS=$cacheable_calls"
+            echo "CCACHE_HITS=${cache_hits:-0}"
+            echo "CCACHE_MISSES=${cache_misses:-0}"
+            echo "CCACHE_HIT_PERCENT=$cache_hit_percent"
+            echo "CCACHE_SIZE=${cache_size:-unavailable}"
+            echo "CCACHE_REUSE_CLASS=$cache_reuse"
+          } >> "$GITHUB_ENV"
 
       - name: Run focused Android Thor tests
         working-directory: out/build/android-thor-release/android-build
@@ -247,6 +277,17 @@ jobs:
               "git_ref": os.environ["GITHUB_REF"],
               "build_preset": "android-thor-release",
               "android_abi": "arm64-v8a",
+              "ccache": {
+                  "restored": os.environ["CCACHE_RESTORED"],
+                  "restored_key": os.environ["CCACHE_RESTORED_KEY"],
+                  "cacheable_calls": os.environ["CCACHE_CACHEABLE_CALLS"],
+                  "hits": os.environ["CCACHE_HITS"],
+                  "misses": os.environ["CCACHE_MISSES"],
+                  "hit_percentage": os.environ["CCACHE_HIT_PERCENT"],
+                  "size": os.environ["CCACHE_SIZE"],
+                  "reuse_classification": os.environ["CCACHE_REUSE_CLASS"]
+              },
+              "arm64_build_duration_seconds": os.environ["ARM64_BUILD_DURATION_SECONDS"],
               "tests": {
                   "focused_native_thor": "passed",
                   "focused_android_thor": "passed"
@@ -265,10 +306,19 @@ jobs:
             echo '- Package: `is.xyz.vcmi.thor`'
             echo "- APK SHA-256: \`$APK_SHA256\`"
             echo "- Artifact: \`$THOR_ARTIFACT_NAME\`"
+            echo "- ARM64 build duration: \`${ARM64_BUILD_DURATION_SECONDS}s\`"
             echo '- Focused native Thor tests: passed'
             echo '- Focused Android Thor tests: passed'
             echo
             echo '### ccache statistics'
+            echo "- Cache entry restored: \`$CCACHE_RESTORED\`"
+            echo "- Restored cache key: \`$CCACHE_RESTORED_KEY\`"
+            echo "- Reuse classification: \`$CCACHE_REUSE_CLASS\`"
+            echo "- Cacheable compiler calls: \`$CCACHE_CACHEABLE_CALLS\`"
+            echo "- Hits: \`$CCACHE_HITS\`"
+            echo "- Misses: \`$CCACHE_MISSES\`"
+            echo "- Hit percentage: \`${CCACHE_HIT_PERCENT}%\`"
+            echo "- Current ccache size: \`$CCACHE_SIZE\`"
             echo '```text'
             ccache --show-stats
             echo '```'
