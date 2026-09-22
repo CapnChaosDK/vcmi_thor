@@ -78,7 +78,7 @@ TEST(ThorActionTest, ValidatesHeroMeetingPublishedSlot)
 	context.revision = 5;
 	context.contextId = ThorContextIds::HERO_MEETING;
 	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK);
-	context.heroMeeting.slots.push_back({7, 1, 0, true, 42, "Creature", 10, true});
+	context.heroMeeting.armySlots.push_back({7, 1, 0, true, 42, "Creature", 10, true});
 	EXPECT_EQ(validateThorActionRequest({5, ThorAction::HERO_MEETING_MOVE_STACK, 7}, context), ThorActionValidation::VALID);
 	EXPECT_EQ(validateThorActionRequest({4, ThorAction::HERO_MEETING_MOVE_STACK, 7}, context), ThorActionValidation::STALE_REVISION);
 	EXPECT_EQ(validateThorActionRequest({5, ThorAction::HERO_MEETING_MOVE_STACK, 6}, context), ThorActionValidation::INVALID_TARGET);

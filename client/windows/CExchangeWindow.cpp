@@ -450,7 +450,7 @@ void CExchangeWindow::updateThorState(bool consume)
 				if(entry.movable)
 					context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK);
 			}
-			context.heroMeeting.slots.push_back(std::move(entry));
+			context.heroMeeting.armySlots.push_back(std::move(entry));
 		}
 	}
 	context = thorContextStore().publishNext(std::move(context));
@@ -472,11 +472,11 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	int side = -1, slot = -1;
 	if(!thorDecodeHeroMeetingSlotKey(request.targetId, side, slot))
 		return false;
-	const auto published = std::find_if(context.heroMeeting.slots.begin(), context.heroMeeting.slots.end(),
+	const auto published = std::find_if(context.heroMeeting.armySlots.begin(), context.heroMeeting.armySlots.end(),
 		[&](const auto & entry) { return entry.key == request.targetId; });
 	const SlotID slotId(slot);
 	const auto * creature = heroInst[side]->getCreature(slotId);
-	if(published == context.heroMeeting.slots.end() || !published->movable || !creature
+	if(published == context.heroMeeting.armySlots.end() || !published->movable || !creature
 		|| creature->getId().getNum() != published->creatureId
 		|| heroInst[1 - side]->tempOwner != GAME->interface()->cb->getPlayerID()
 		|| !heroInst[1 - side]->getSlotFor(creature).validSlot())

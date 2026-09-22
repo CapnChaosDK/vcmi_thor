@@ -107,7 +107,7 @@ struct DLL_LINKAGE ThorHeroMeetingArmy
 {
 	std::array<int, THOR_HERO_MEETING_SIDES> heroIds = {-1, -1};
 	std::array<std::string, THOR_HERO_MEETING_SIDES> heroNames;
-	std::vector<ThorHeroMeetingSlot> slots;
+	std::vector<ThorHeroMeetingSlot> armySlots;
 	bool operator==(const ThorHeroMeetingArmy &) const = default;
 };
 

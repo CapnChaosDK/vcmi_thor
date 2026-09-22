@@ -90,9 +90,9 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	}
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK)
 	{
-		const auto slot = std::find_if(context.heroMeeting.slots.begin(), context.heroMeeting.slots.end(),
+		const auto slot = std::find_if(context.heroMeeting.armySlots.begin(), context.heroMeeting.armySlots.end(),
 			[&](const auto & entry) { return entry.key == request.targetId; });
-		if(slot == context.heroMeeting.slots.end() || !slot->occupied || !slot->movable)
+		if(slot == context.heroMeeting.armySlots.end() || !slot->occupied || !slot->movable)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	return ThorActionValidation::VALID;

@@ -195,7 +195,7 @@ void CAndroidVMHelper::publishThorHeroMeeting(std::uint64_t revision, const Thor
 		"(J[I[Ljava/lang/String;[I[I[I[I[Ljava/lang/String;[I[I)V",
 		[revision, &meeting](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
-			const auto size = static_cast<jsize>(meeting.slots.size());
+			const auto size = static_cast<jsize>(meeting.armySlots.size());
 			jintArray heroIds = env->NewIntArray(2);
 			jintArray keys = env->NewIntArray(size), sides = env->NewIntArray(size), slots = env->NewIntArray(size);
 			jintArray creatureIds = env->NewIntArray(size), counts = env->NewIntArray(size), flags = env->NewIntArray(size);
@@ -212,7 +212,7 @@ void CAndroidVMHelper::publishThorHeroMeeting(std::uint64_t revision, const Thor
 			}
 			for(jsize index = 0; index < size; ++index)
 			{
-				const auto & entry = meeting.slots[index];
+				const auto & entry = meeting.armySlots[index];
 				const jint key = entry.key, side = entry.side, slot = entry.slot, creature = entry.creatureId;
 				const jint count = entry.count, state = (entry.occupied ? 1 : 0) | (entry.movable ? 2 : 0);
 				env->SetIntArrayRegion(keys, index, 1, &key); env->SetIntArrayRegion(sides, index, 1, &side);
