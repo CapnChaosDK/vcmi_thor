@@ -104,6 +104,21 @@ public class NativeMethods
         ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorTowns(revision, roster));
     }
 
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorHeroMeeting(final long revision, final int[] heroIds, final String[] heroNames,
+            final int[] keys, final int[] sides, final int[] slots, final int[] creatureIds,
+            final String[] creatureNames, final int[] counts, final int[] flags)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        final ThorHeroMeetingArmy army = ThorHeroMeetingArmy.copyOf(heroIds, heroNames, keys, sides, slots,
+                creatureIds, creatureNames, counts, flags);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorHeroMeeting(revision, army));
+    }
+
     public static void setupMsg(final Messenger msg)
     {
         serverMessengerRef = new WeakReference<>(msg);

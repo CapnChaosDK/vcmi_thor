@@ -38,6 +38,7 @@
 #include "CPlayerInterface.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "windows/CExchangeWindow.h"
 #include "../lib/thor/ThorAction.h"
 #include "../lib/thor/ThorContext.h"
 #endif
@@ -196,6 +197,14 @@ void GameEngine::updateFrame()
 					: adventureInt->getAdventureShortcuts().executeThorAction(request->action);
 			if(executed)
 				adventureInt->updateThorActionState(true);
+		}
+		else if(context.contextId == ThorContextIds::HERO_MEETING)
+		{
+			auto exchangeWindow = ENGINE->windows().topWindow<CExchangeWindow>();
+			if(!exchangeWindow)
+				continue;
+			exchangeWindow->updateThorState();
+			executed = exchangeWindow->executeThorAction(*request);
 		}
 		else
 		{

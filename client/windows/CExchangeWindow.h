@@ -11,6 +11,9 @@
 
 #include "CWindowWithArtifacts.h"
 #include "../widgets/CExchangeController.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#endif
 
 class CGarrisonSlot;
 class CMultiLineLabel;
@@ -82,5 +85,10 @@ public:
 	// IGarrisonHolder impl
 	void updateGarrisons() override;
 	bool holdsGarrison(const CArmedInstance * army) override;
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void updateThorState(bool consume = false);
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 
 };

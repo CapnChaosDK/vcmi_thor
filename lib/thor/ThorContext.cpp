@@ -1,6 +1,8 @@
 #include "ThorContext.h"
+#include "ThorAction.h"
 
 #include <utility>
+#include <set>
 
 namespace
 {
@@ -16,7 +18,8 @@ namespace
 			&& lhs.actionSubjectId == rhs.actionSubjectId
 			&& lhs.actionEpoch == rhs.actionEpoch
 			&& lhs.heroes == rhs.heroes
-			&& lhs.towns == rhs.towns;
+			&& lhs.towns == rhs.towns
+			&& lhs.heroMeeting == rhs.heroMeeting;
 	}
 
 	void normalizeActionSubject(ThorContextRecord & context)
@@ -39,6 +42,27 @@ namespace
 			hero.name = thorBoundedText(std::move(hero.name));
 		for(auto & town : context.towns)
 			town.name = thorBoundedText(std::move(town.name));
+		bool validMeeting = context.contextId == ThorContextIds::HERO_MEETING
+			&& context.heroMeeting.slots.size() == THOR_HERO_MEETING_SLOT_COUNT
+			&& context.heroMeeting.heroIds[0] >= 0 && context.heroMeeting.heroIds[1] >= 0;
+		std::set<int> meetingKeys;
+		for(const auto & slot : context.heroMeeting.slots)
+		{
+			validMeeting &= slot.key == thorHeroMeetingSlotKey(slot.side, slot.slot)
+				&& slot.count >= 0 && slot.occupied == (slot.creatureId >= 0 && slot.count > 0)
+				&& (slot.occupied || !slot.movable);
+			meetingKeys.insert(slot.key);
+		}
+		validMeeting &= meetingKeys.size() == THOR_HERO_MEETING_SLOT_COUNT;
+		if(!validMeeting)
+		{
+			context.heroMeeting = {};
+			context.enabledActionMask &= ~thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK);
+		}
+		for(auto & name : context.heroMeeting.heroNames)
+			name = thorBoundedText(std::move(name));
+		for(auto & slot : context.heroMeeting.slots)
+			slot.creatureName = thorBoundedText(std::move(slot.creatureName));
 	}
 }
 

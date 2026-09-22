@@ -34,6 +34,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::SELECT_HERO;
 	case static_cast<int>(ThorAction::SELECT_TOWN):
 		return ThorAction::SELECT_TOWN;
+	case static_cast<int>(ThorAction::HERO_MEETING_MOVE_STACK):
+		return ThorAction::HERO_MEETING_MOVE_STACK;
 	default:
 		return std::nullopt;
 	}
@@ -47,6 +49,8 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 		return action == ThorAction::BATTLE_WAIT || action == ThorAction::BATTLE_DEFEND;
 	if(contextId == ThorContextIds::BATTLE_TACTICS)
 		return action == ThorAction::BATTLE_TACTICS_NEXT || action == ThorAction::BATTLE_TACTICS_END;
+	if(contextId == ThorContextIds::HERO_MEETING)
+		return action == ThorAction::HERO_MEETING_MOVE_STACK;
 	return false;
 }
 
@@ -82,6 +86,13 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			? std::any_of(context.heroes.begin(), context.heroes.end(), [&](const auto & hero) { return hero.id == request.targetId; })
 			: std::any_of(context.towns.begin(), context.towns.end(), [&](const auto & town) { return town.id == request.targetId; });
 		if(!hasTarget)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK)
+	{
+		const auto slot = std::find_if(context.heroMeeting.slots.begin(), context.heroMeeting.slots.end(),
+			[&](const auto & entry) { return entry.key == request.targetId; });
+		if(slot == context.heroMeeting.slots.end() || !slot->occupied || !slot->movable)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	return ThorActionValidation::VALID;

@@ -35,6 +35,7 @@
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/texts/TextOperations.h"
+#include "../../lib/CCreatureHandler.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
@@ -297,7 +298,7 @@ void CExchangeWindow::activate()
 	CStatusbarWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::HERO_MEETING);
+	updateThorState();
 #endif
 }
 
@@ -411,7 +412,81 @@ void CExchangeWindow::updateGarrisons()
 	garr->recreateSlots();
 
 	updateArtifacts();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	updateThorState();
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CExchangeWindow::updateThorState(bool consume)
+{
+	if(!isActive() || !ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.enabledActionMask = 0;
+	for(int side = 0; side < 2; ++side)
+	{
+		const auto * hero = heroInst[side];
+		context.heroMeeting.heroIds[side] = hero->id.getNum();
+		context.heroMeeting.heroNames[side] = GAME->translator().translate(hero->getNameTextID());
+		const auto * destination = heroInst[1 - side];
+		const bool destinationOwned = destination->tempOwner == GAME->interface()->cb->getPlayerID();
+		for(int slot = 0; slot < GameConstants::ARMY_SIZE; ++slot)
+		{
+			ThorHeroMeetingSlot entry;
+			entry.key = thorHeroMeetingSlotKey(side, slot);
+			entry.side = side;
+			entry.slot = slot;
+			const SlotID slotId(slot);
+			const auto * creature = hero->getCreature(slotId);
+			entry.occupied = creature != nullptr;
+			if(creature)
+			{
+				entry.creatureId = creature->getId().getNum();
+				entry.count = hero->getStackCount(slotId);
+				entry.creatureName = entry.count == 1 ? creature->getNameSingularTranslated() : creature->getNamePluralTranslated();
+				entry.movable = !consume && destinationOwned && destination->getSlotFor(creature).validSlot();
+				if(entry.movable)
+					context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK);
+			}
+			context.heroMeeting.slots.push_back(std::move(entry));
+		}
+	}
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper helper;
+	helper.publishThorContext(context.revision, context.contextId, context.title, context.status);
+	helper.publishThorActionState(context.revision, context.enabledActionMask, 0);
+	helper.publishThorHeroMeeting(context.revision, context.heroMeeting);
+}
+
+bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
+{
+	if(request.action != ThorAction::HERO_MEETING_MOVE_STACK || !isActive() || !ENGINE->windows().isTopWindow(this))
+		return false;
+	const auto context = thorContextStore().snapshot();
+	if(validateThorActionRequest(request, context) != ThorActionValidation::VALID
+		|| context.heroMeeting.heroIds[0] != heroInst[0]->id.getNum()
+		|| context.heroMeeting.heroIds[1] != heroInst[1]->id.getNum())
+		return false;
+	int side = -1, slot = -1;
+	if(!thorDecodeHeroMeetingSlotKey(request.targetId, side, slot))
+		return false;
+	const auto published = std::find_if(context.heroMeeting.slots.begin(), context.heroMeeting.slots.end(),
+		[&](const auto & entry) { return entry.key == request.targetId; });
+	const SlotID slotId(slot);
+	const auto * creature = heroInst[side]->getCreature(slotId);
+	if(published == context.heroMeeting.slots.end() || !published->movable || !creature
+		|| creature->getId().getNum() != published->creatureId
+		|| heroInst[1 - side]->tempOwner != GAME->interface()->cb->getPlayerID()
+		|| !heroInst[1 - side]->getSlotFor(creature).validSlot())
+		return false;
+	updateThorState(true);
+	thorActionQueue().clear();
+	controller.moveStack(side == 0, slotId);
+	return true;
+}
+#endif
 
 bool CExchangeWindow::holdsGarrison(const CArmedInstance * army)
 {

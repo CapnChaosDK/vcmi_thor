@@ -87,6 +87,44 @@ inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
 inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;
 inline constexpr std::size_t THOR_MAX_TOWNS = 64;
+inline constexpr std::size_t THOR_HERO_MEETING_SIDES = 2;
+inline constexpr std::size_t THOR_HERO_MEETING_SLOT_COUNT = THOR_HERO_MEETING_SIDES * GameConstants::ARMY_SIZE;
+
+struct DLL_LINKAGE ThorHeroMeetingSlot
+{
+	int key = -1;
+	int side = -1;
+	int slot = -1;
+	bool occupied = false;
+	int creatureId = -1;
+	std::string creatureName;
+	int count = 0;
+	bool movable = false;
+	bool operator==(const ThorHeroMeetingSlot &) const = default;
+};
+
+struct DLL_LINKAGE ThorHeroMeetingArmy
+{
+	std::array<int, THOR_HERO_MEETING_SIDES> heroIds = {-1, -1};
+	std::array<std::string, THOR_HERO_MEETING_SIDES> heroNames;
+	std::vector<ThorHeroMeetingSlot> slots;
+	bool operator==(const ThorHeroMeetingArmy &) const = default;
+};
+
+constexpr int thorHeroMeetingSlotKey(int side, int slot)
+{
+	return side >= 0 && side < static_cast<int>(THOR_HERO_MEETING_SIDES)
+		&& slot >= 0 && slot < GameConstants::ARMY_SIZE ? side * GameConstants::ARMY_SIZE + slot : -1;
+}
+
+constexpr bool thorDecodeHeroMeetingSlotKey(int key, int & side, int & slot)
+{
+	if(key < 0 || key >= static_cast<int>(THOR_HERO_MEETING_SLOT_COUNT))
+		return false;
+	side = key / GameConstants::ARMY_SIZE;
+	slot = key % GameConstants::ARMY_SIZE;
+	return true;
+}
 struct DLL_LINKAGE ThorHeroEntry
 {
 	int id = -1;
@@ -121,6 +159,7 @@ struct DLL_LINKAGE ThorContextRecord
 	ThorContextDetails details;
 	std::vector<ThorHeroEntry> heroes;
 	std::vector<ThorTownEntry> towns;
+	ThorHeroMeetingArmy heroMeeting;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.
