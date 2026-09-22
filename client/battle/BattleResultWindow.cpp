@@ -260,7 +260,9 @@ BattleResultResources BattleResultWindow::getResources(const BattleResult & br)
 
 void BattleResultWindow::activate()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	const bool wasActive = isActive();
+#endif
 	owner.showingDialog->setBusy();
 	CIntObject::activate();
 
@@ -272,7 +274,9 @@ void BattleResultWindow::activate()
 
 void BattleResultWindow::deactivate()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	const bool wasActive = isActive();
+#endif
 	CIntObject::deactivate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
