@@ -27,6 +27,29 @@ std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTransferPair(int
 		sourceKey % slotsPerArmy, destinationKey < slotsPerArmy, destinationKey % slotsPerArmy};
 }
 
+bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftToRight)
+{
+	const auto & source = leftToRight ? armies.leftSlots : armies.rightSlots;
+	const auto & destination = leftToRight ? armies.rightSlots : armies.leftSlots;
+	const auto occupied = std::count_if(source.begin(), source.end(), [](const auto & slot) { return slot.occupied; });
+	if(occupied == 0)
+		return false;
+	if(occupied == 1)
+	{
+		const auto onlyStack = std::find_if(source.begin(), source.end(), [](const auto & slot) { return slot.occupied; });
+		if(onlyStack->count <= 1)
+			return false;
+	}
+
+	const bool hasFreeDestination = std::any_of(destination.begin(), destination.end(),
+		[](const auto & slot) { return !slot.occupied; });
+	return std::any_of(source.begin(), source.end(), [&](const auto & stack)
+	{
+		return stack.occupied && (hasFreeDestination || std::any_of(destination.begin(), destination.end(),
+			[&](const auto & target) { return target.occupied && target.creatureId == stack.creatureId; }));
+	});
+}
+
 std::optional<ThorAction> thorActionFromId(int actionId)
 {
 	switch(actionId)

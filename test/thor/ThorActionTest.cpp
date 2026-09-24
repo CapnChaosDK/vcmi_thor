@@ -69,6 +69,33 @@ TEST(ThorActionTest, HeroMeetingPairEncodingRejectsMalformedAndOverflowValues)
 	EXPECT_FALSE(decodeThorHeroMeetingTransferPair(3 * 14 + 4));
 }
 
+TEST(ThorActionTest, HeroMeetingMoveAllAvailabilityRequiresARealStackChange)
+{
+	ThorHeroMeetingArmies armies;
+	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARMY_SIZE; ++index)
+	{
+		armies.leftSlots[index] = {1, static_cast<int>(index), false, -1, {}, 0};
+		armies.rightSlots[index] = {2, static_cast<int>(index), false, -1, {}, 0};
+	}
+	EXPECT_FALSE(canThorHeroMeetingMoveArmy(armies, true));
+	EXPECT_FALSE(canThorHeroMeetingMoveArmy(armies, false));
+
+	armies.rightSlots[0] = {2, 0, true, 3, "Pikemen", 1};
+	EXPECT_FALSE(canThorHeroMeetingMoveArmy(armies, false)); // The source hero must keep its final unit.
+	armies.rightSlots[0].count = 2;
+	EXPECT_TRUE(canThorHeroMeetingMoveArmy(armies, false));
+
+	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARMY_SIZE; ++index)
+		armies.leftSlots[index] = {1, static_cast<int>(index), true, static_cast<int>(index + 10), "Other", 2};
+	EXPECT_FALSE(canThorHeroMeetingMoveArmy(armies, false)); // No free destination or matching creature.
+	armies.leftSlots[6].creatureId = 3;
+	EXPECT_TRUE(canThorHeroMeetingMoveArmy(armies, false)); // A full destination can still merge.
+	armies.rightSlots[0].count = 1;
+	EXPECT_FALSE(canThorHeroMeetingMoveArmy(armies, false));
+	armies.rightSlots[1] = {2, 1, true, 4, "Archers", 1};
+	EXPECT_TRUE(canThorHeroMeetingMoveArmy(armies, false)); // The other stack can remain while Pikemen move.
+}
+
 TEST(ThorActionTest, AllowsOnlySliceTwelveAdventureActions)
 {
 	EXPECT_FALSE(isThorActionAllowedInAdventureMap(ThorAction::NONE));

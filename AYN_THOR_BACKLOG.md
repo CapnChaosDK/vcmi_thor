@@ -1096,6 +1096,7 @@ Status: `hardware validated`
 - Native action 16 encodes source and destination keys as `sourceKey * 14 + destinationKey`, with keys 0–6 for the left army and 7–13 for the right. Named encode/decode helpers reject malformed and same-side pairs. Native execution rechecks the active top exchange window, current snapshot, ownership, endpoints, transfer legality, and last-stack rule before consuming the action epoch and using existing callback operations.
 - Branch compatibility note: the brief describes action 15 as source-only quick transfer, while the checked-out Slice 20 code uses it for a two-tap exact-slot transfer. This implementation preserves the checked-out Slice 20 tap behavior and numeric ID/mask 15; action 16 is reserved for drag.
 - Existing whole-army action values move to 17–19 to free action 16; their controls and callback paths remain unchanged.
+- Candidate `a7c7a2b573591b59d03b71961ef2da9232f539da` passed CI run `36042932091`, but device testing found that a `Move all` request with no remaining legal stack change could leave every lower action disabled. The native action mask now disables a whole-army direction when it cannot move a stack, and a rejected exact-slot request restores a fresh action revision. Retest both paths on a new CI candidate.
 
 ### Required AYN Thor hardware checklist
 

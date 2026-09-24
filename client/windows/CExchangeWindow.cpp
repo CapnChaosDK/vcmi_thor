@@ -459,9 +459,11 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 	{
 		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
-			| thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT)
-			| thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT)
 			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES);
+		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, true))
+			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT);
+		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, false))
+			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT);
 	}
 	const auto previous = thorContextStore().snapshot();
 	context.actionEpoch = previous.contextId == ThorContextIds::HERO_MEETING ? previous.actionEpoch + (invalidateActions ? 1 : 0) : 0;
@@ -491,10 +493,17 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		return false;
 	if(!context.heroMeetingArmies->locallyControllable || thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies)
 		return false;
+	const auto rejectWithoutCallback = [this]()
+	{
+		// A rejected request has no garrison callback to restore the lower action state.
+		updateThorActionState(true);
+		updateThorActionState();
+		return false;
+	};
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK
 		&& !controller.canTransferStack(request.sourceArmyId == heroInst[0]->id.getNum(), SlotID(request.sourceSlot),
 			request.destinationArmyId == heroInst[0]->id.getNum(), SlotID(request.destinationSlot)))
-		return false;
+		return rejectWithoutCallback();
 	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)
 	{
 		const auto pair = decodeThorHeroMeetingTransferPair(request.targetId);
@@ -502,7 +511,7 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 			return false;
 		if(!controller.canTransferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
 			pair->destinationIsLeft, SlotID(pair->destinationSlot)))
-			return false;
+			return rejectWithoutCallback();
 	}
 
 	// Consume this rendered action epoch before invoking any callback that can mutate army state.

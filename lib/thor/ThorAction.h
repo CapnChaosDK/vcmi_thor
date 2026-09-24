@@ -72,6 +72,9 @@ struct DLL_LINKAGE ThorHeroMeetingTransferPair
 DLL_LINKAGE std::optional<int> encodeThorHeroMeetingTransferPair(int sourceKey, int destinationKey);
 DLL_LINKAGE std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTransferPair(int encodedPair);
 
+/// Mirrors whether native bulkMoveArmy can produce at least one stack change for this published army snapshot.
+DLL_LINKAGE bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftToRight);
+
 enum class ThorActionValidation
 {
 	VALID,
