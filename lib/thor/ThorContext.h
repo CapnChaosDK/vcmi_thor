@@ -89,6 +89,7 @@ using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUN
 inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;
 inline constexpr std::size_t THOR_MAX_TOWNS = 64;
 inline constexpr std::size_t THOR_HERO_MEETING_ARMY_SIZE = GameConstants::ARMY_SIZE;
+inline constexpr std::size_t THOR_HERO_MEETING_SLOT_KEY_COUNT = THOR_HERO_MEETING_ARMY_SIZE * 2;
 struct DLL_LINKAGE ThorHeroEntry
 {
 	int id = -1;

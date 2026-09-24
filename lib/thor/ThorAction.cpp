@@ -2,6 +2,31 @@
 
 #include <algorithm>
 
+std::optional<int> encodeThorHeroMeetingTransferPair(int sourceKey, int destinationKey)
+{
+	constexpr int slotKeyCount = static_cast<int>(THOR_HERO_MEETING_SLOT_KEY_COUNT);
+	if(sourceKey < 0 || sourceKey >= slotKeyCount || destinationKey < 0 || destinationKey >= slotKeyCount
+		|| sourceKey / static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)
+			== destinationKey / static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE))
+		return std::nullopt;
+	return sourceKey * slotKeyCount + destinationKey;
+}
+
+std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTransferPair(int encodedPair)
+{
+	constexpr int slotKeyCount = static_cast<int>(THOR_HERO_MEETING_SLOT_KEY_COUNT);
+	if(encodedPair < 0 || encodedPair >= slotKeyCount * slotKeyCount)
+		return std::nullopt;
+	const auto sourceKey = encodedPair / slotKeyCount;
+	const auto destinationKey = encodedPair % slotKeyCount;
+	const auto verifiedPair = encodeThorHeroMeetingTransferPair(sourceKey, destinationKey);
+	if(!verifiedPair || *verifiedPair != encodedPair)
+		return std::nullopt;
+	const auto slotsPerArmy = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+	return ThorHeroMeetingTransferPair{sourceKey, destinationKey, sourceKey < slotsPerArmy,
+		sourceKey % slotsPerArmy, destinationKey < slotsPerArmy, destinationKey % slotsPerArmy};
+}
+
 std::optional<ThorAction> thorActionFromId(int actionId)
 {
 	switch(actionId)
@@ -34,6 +59,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::SELECT_HERO;
 	case static_cast<int>(ThorAction::SELECT_TOWN):
 		return ThorAction::SELECT_TOWN;
+	case static_cast<int>(ThorAction::HERO_MEETING_MOVE_STACK):
+		return ThorAction::HERO_MEETING_MOVE_STACK;
 	case static_cast<int>(ThorAction::HERO_MEETING_TRANSFER_STACK):
 		return ThorAction::HERO_MEETING_TRANSFER_STACK;
 	case static_cast<int>(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT):
@@ -56,7 +83,8 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 	if(contextId == ThorContextIds::BATTLE_TACTICS)
 		return action == ThorAction::BATTLE_TACTICS_NEXT || action == ThorAction::BATTLE_TACTICS_END;
 	if(contextId == ThorContextIds::HERO_MEETING)
-		return action == ThorAction::HERO_MEETING_TRANSFER_STACK || action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT
+		return action == ThorAction::HERO_MEETING_MOVE_STACK || action == ThorAction::HERO_MEETING_TRANSFER_STACK
+			|| action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT
 			|| action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT || action == ThorAction::HERO_MEETING_SWAP_ARMIES;
 	return false;
 }
@@ -95,9 +123,10 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		if(!hasTarget)
 			return ThorActionValidation::INVALID_TARGET;
 	}
-	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)
+	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK)
 	{
-		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable || request.sourceSlot < 0
+		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable || request.targetId != -1
+			|| request.sourceSlot < 0
 			|| request.sourceSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE) || request.destinationSlot < 0
 			|| request.destinationSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE))
 			return ThorActionValidation::INVALID_TARGET;
@@ -111,6 +140,23 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		const auto & source = (sourceIsLeft ? armies.leftSlots : armies.rightSlots)[request.sourceSlot];
 		const auto & destination = (destinationIsLeft ? armies.leftSlots : armies.rightSlots)[request.destinationSlot];
 		if(!source.occupied || source.armyId != request.sourceArmyId || destination.armyId != request.destinationArmyId)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)
+	{
+		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable || request.sourceArmyId != -1
+			|| request.sourceSlot != -1 || request.destinationArmyId != -1 || request.destinationSlot != -1)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto pair = decodeThorHeroMeetingTransferPair(request.targetId);
+		if(!pair)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto & armies = *context.heroMeetingArmies;
+		const auto & source = (pair->sourceIsLeft ? armies.leftSlots : armies.rightSlots)[pair->sourceSlot];
+		const auto & destination = (pair->destinationIsLeft ? armies.leftSlots : armies.rightSlots)[pair->destinationSlot];
+		const int sourceArmyId = pair->sourceIsLeft ? armies.leftArmyId : armies.rightArmyId;
+		const int destinationArmyId = pair->destinationIsLeft ? armies.leftArmyId : armies.rightArmyId;
+		if(!source.occupied || source.armyId != sourceArmyId || source.slot != pair->sourceSlot
+			|| destination.armyId != destinationArmyId || destination.slot != pair->destinationSlot)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	if((request.action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT || request.action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT

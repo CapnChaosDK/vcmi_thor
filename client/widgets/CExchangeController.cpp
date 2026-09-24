@@ -121,11 +121,13 @@ void CExchangeController::moveStack(bool leftToRight, SlotID sourceSlot)
 	}
 }
 
-bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot)
+bool CExchangeController::canTransferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
+	SlotID destinationSlot) const
 {
 	const auto source = sourceLeft ? left : right;
 	const auto destination = destinationLeft ? left : right;
-	if(!source || !destination || (sourceSlot == destinationSlot && source == destination))
+	if(!source || !destination || !sourceSlot.validSlot() || !destinationSlot.validSlot()
+		|| (sourceSlot == destinationSlot && source == destination))
 		return false;
 	const auto * sourceStack = source->getStackPtr(sourceSlot);
 	if(!sourceStack)
@@ -133,10 +135,28 @@ bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool
 	const auto * destinationStack = destination->getStackPtr(destinationSlot);
 	const auto sourceIsLastRequiredStack = source != destination && source->stacksCount() == 1 && source->needsLastStack();
 	if(!destinationStack && sourceIsLastRequiredStack)
+		return sourceStack->getCount() > 1;
+	if(destinationStack && destinationStack->getCreature() == sourceStack->getCreature())
+	{
+		if(sourceIsLastRequiredStack)
+			return sourceStack->getCount() > 1;
+	}
+	return true;
+}
+
+bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
+	SlotID destinationSlot)
+{
+	if(!canTransferStack(sourceLeft, sourceSlot, destinationLeft, destinationSlot))
+		return false;
+	const auto source = sourceLeft ? left : right;
+	const auto destination = destinationLeft ? left : right;
+	const auto * sourceStack = source->getStackPtr(sourceSlot);
+	const auto * destinationStack = destination->getStackPtr(destinationSlot);
+	const auto sourceIsLastRequiredStack = source != destination && source->stacksCount() == 1 && source->needsLastStack();
+	if(!destinationStack && sourceIsLastRequiredStack)
 	{
 		const auto amount = sourceStack->getCount() - 1;
-		if(amount <= 0)
-			return false;
 		GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, amount);
 		return true;
 	}
@@ -145,8 +165,6 @@ bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool
 		if(sourceIsLastRequiredStack)
 		{
 			const auto amount = sourceStack->getCount() - 1 + destinationStack->getCount();
-			if(amount <= destinationStack->getCount())
-				return false;
 			GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, amount);
 		}
 		else

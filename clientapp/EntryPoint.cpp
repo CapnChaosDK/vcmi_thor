@@ -116,7 +116,7 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHero
 	}
 	ThorActionRequest request;
 	request.revision = static_cast<std::uint64_t>(revision);
-	request.action = ThorAction::HERO_MEETING_TRANSFER_STACK;
+	request.action = ThorAction::HERO_MEETING_MOVE_STACK;
 	request.sourceArmyId = sourceArmyId;
 	request.sourceSlot = sourceSlot;
 	request.destinationArmyId = destinationArmyId;

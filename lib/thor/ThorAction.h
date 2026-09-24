@@ -28,10 +28,11 @@ enum class ThorAction : std::uint8_t
 	BATTLE_TACTICS_END = 12,
 	SELECT_HERO = 13,
 	SELECT_TOWN = 14,
-	HERO_MEETING_TRANSFER_STACK = 15,
-	HERO_MEETING_ARMY_LEFT_TO_RIGHT = 16,
-	HERO_MEETING_ARMY_RIGHT_TO_LEFT = 17,
-	HERO_MEETING_SWAP_ARMIES = 18
+	HERO_MEETING_MOVE_STACK = 15,
+	HERO_MEETING_TRANSFER_STACK = 16,
+	HERO_MEETING_ARMY_LEFT_TO_RIGHT = 17,
+	HERO_MEETING_ARMY_RIGHT_TO_LEFT = 18,
+	HERO_MEETING_SWAP_ARMIES = 19
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
@@ -53,6 +54,23 @@ struct DLL_LINKAGE ThorActionRequest
 	int destinationArmyId = -1;
 	int destinationSlot = -1;
 };
+
+/// A directional pair of fixed Hero Meeting slot keys. Keys 0-6 are left, 7-13 are right.
+struct DLL_LINKAGE ThorHeroMeetingTransferPair
+{
+	int sourceKey = -1;
+	int destinationKey = -1;
+	bool sourceIsLeft = false;
+	int sourceSlot = -1;
+	bool destinationIsLeft = false;
+	int destinationSlot = -1;
+	bool operator==(const ThorHeroMeetingTransferPair &) const = default;
+};
+
+/// Action-16 payload: sourceKey * 14 + destinationKey, bounded to [0, 195].
+/// Same-side pairs and identical endpoints are rejected by both helpers.
+DLL_LINKAGE std::optional<int> encodeThorHeroMeetingTransferPair(int sourceKey, int destinationKey);
+DLL_LINKAGE std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTransferPair(int encodedPair);
 
 enum class ThorActionValidation
 {

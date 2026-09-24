@@ -243,7 +243,9 @@ jobs:
           sdl_java_src_dir="$(cmake -N -LA .. | sed -n 's/^SDL_JAVA_SRC_DIR:STRING=//p')"
           ORG_GRADLE_PROJECT_SDL_JAVA_SRC_DIR="$sdl_java_src_dir" \
             ./gradlew --no-daemon :vcmi-app:testReleaseUnitTest \
-              --tests eu.vcmi.vcmi.ThorContextIdsTest
+              --tests eu.vcmi.vcmi.ThorContextIdsTest \
+              --tests eu.vcmi.vcmi.ThorHeroMeetingTransferPairTest \
+              --tests eu.vcmi.vcmi.ThorHeroMeetingGestureTest
 
       - name: Verify and checksum APK
         run: |

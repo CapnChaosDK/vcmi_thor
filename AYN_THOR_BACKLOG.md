@@ -1086,8 +1086,16 @@ Status: `hardware validated`
 
 - Status: `awaiting hardware validation`.
 - The lower Hero Meeting deck publishes only two hero identities/names, their fixed seven-slot army snapshots, and local-control state. Each slot retains its native army ID plus slot index; empty slots remain addressable and visible. Creature art, artifacts, bonuses, coordinates, and game-state mutation remain out of scope.
-- Stack transfers and whole-army commands use revision-bound semantic actions 15–18, are revalidated on MainGUI against the exact active exchange window and published identities, and use the existing callback/controller paths. A consumed lower action invalidates its rendered action epoch until the ordinary garrison refresh publishes a new snapshot.
+- Stack transfers and whole-army commands use revision-bound semantic actions 15–19, are revalidated on MainGUI against the exact active exchange window and published identities, and use the existing callback/controller paths. A consumed lower action invalidates its rendered action epoch until the ordinary garrison refresh publishes a new snapshot.
 - Android keeps selection local to the lower deck, clears it on revision/context/lifecycle changes, and does not synthesize upper-screen input. A first occupied-slot tap selects, a second tap submits exact source/destination identities, and duplicate taps are suppressed while pending.
+
+## Slice 21 — Precise Hero Meeting drag-and-drop army transfer
+
+- Status: `review blocked; not ready for candidate CI`. No candidate build or physical validation has been recorded. The local Slice 20 action 15 remains a two-tap exact-slot transfer, while the approved Slice 21 contract requires the existing source-only quick transfer to remain intact; reconcile that baseline before candidate CI.
+- Drag starts only from an occupied row, uses Android's configured touch slop, and submits one revision-bound exact-slot transfer on a valid opposite-army drop. Same-side, outside-row, cancelled, stale, hidden, and recreated interactions submit no action. The fourteen-slot native snapshot remains the sole gameplay-facing publication.
+- Native action 16 encodes source and destination keys as `sourceKey * 14 + destinationKey`, with keys 0–6 for the left army and 7–13 for the right. Named encode/decode helpers reject malformed and same-side pairs. Native execution rechecks the active top exchange window, current snapshot, ownership, endpoints, transfer legality, and last-stack rule before consuming the action epoch and using existing callback operations.
+- Branch compatibility note: the brief describes action 15 as source-only quick transfer, while the checked-out Slice 20 code uses it for a two-tap exact-slot transfer. This implementation preserves the checked-out Slice 20 tap behavior and numeric ID/mask 15; action 16 is reserved for drag.
+- Existing whole-army action values move to 17–19 to free action 16; their controls and callback paths remain unchanged.
 
 ### Required AYN Thor hardware checklist
 

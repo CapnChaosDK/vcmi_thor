@@ -17,10 +17,11 @@ final class ThorActionIds
     static final int BATTLE_TACTICS_END = 12;
     static final int SELECT_HERO = 13;
     static final int SELECT_TOWN = 14;
-    static final int HERO_MEETING_TRANSFER_STACK = 15;
-    static final int HERO_MEETING_ARMY_LEFT_TO_RIGHT = 16;
-    static final int HERO_MEETING_ARMY_RIGHT_TO_LEFT = 17;
-    static final int HERO_MEETING_SWAP_ARMIES = 18;
+    static final int HERO_MEETING_MOVE_STACK = 15;
+    static final int HERO_MEETING_TRANSFER_STACK = 16;
+    static final int HERO_MEETING_ARMY_LEFT_TO_RIGHT = 17;
+    static final int HERO_MEETING_ARMY_RIGHT_TO_LEFT = 18;
+    static final int HERO_MEETING_SWAP_ARMIES = 19;
     static final int NO_TARGET = -1;
 
     private ThorActionIds()

@@ -18,6 +18,7 @@ public:
 	void swapArmy();
 	void moveArmy(bool leftToRight, std::optional<SlotID> heldSlot);
 	void moveStack(bool leftToRight, SlotID sourceSlot);
+	bool canTransferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot) const;
 	bool transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
 	void moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget);
 	void swapArtifacts(bool equipped, bool baclpack);

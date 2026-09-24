@@ -457,7 +457,8 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 	context.heroMeetingArmies = thorHeroMeetingArmies(heroInst);
 	if(context.heroMeetingArmies->locallyControllable && !invalidateActions)
 	{
-		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
+		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK)
+			| thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT)
 			| thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT)
 			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES);
@@ -474,7 +475,8 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 
 bool CExchangeWindow::matchesThorContext(const ThorContextRecord & context) const
 {
-	if(!isActive() || context.contextId != ThorContextIds::HERO_MEETING || !context.heroMeetingArmies)
+	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this
+		|| context.contextId != ThorContextIds::HERO_MEETING || !context.heroMeetingArmies)
 		return false;
 	const auto & armies = *context.heroMeetingArmies;
 	return heroInst[0] && heroInst[1] && armies.leftHeroId == heroInst[0]->id.getNum()
@@ -487,15 +489,41 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	const auto context = thorContextStore().snapshot();
 	if(!matchesThorContext(context) || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
 		return false;
-	if(!context.heroMeetingArmies->locallyControllable)
+	if(!context.heroMeetingArmies->locallyControllable || thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies)
 		return false;
+	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK
+		&& !controller.canTransferStack(request.sourceArmyId == heroInst[0]->id.getNum(), SlotID(request.sourceSlot),
+			request.destinationArmyId == heroInst[0]->id.getNum(), SlotID(request.destinationSlot)))
+		return false;
+	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)
+	{
+		const auto pair = decodeThorHeroMeetingTransferPair(request.targetId);
+		if(!pair)
+			return false;
+		if(!controller.canTransferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
+			pair->destinationIsLeft, SlotID(pair->destinationSlot)))
+			return false;
+	}
+
+	// Consume this rendered action epoch before invoking any callback that can mutate army state.
+	updateThorActionState(true);
 	bool executed = false;
 	switch(request.action)
 	{
-	case ThorAction::HERO_MEETING_TRANSFER_STACK:
+	case ThorAction::HERO_MEETING_MOVE_STACK:
 		executed = controller.transferStack(request.sourceArmyId == heroInst[0]->id.getNum(), SlotID(request.sourceSlot),
 			request.destinationArmyId == heroInst[0]->id.getNum(), SlotID(request.destinationSlot));
 		break;
+	case ThorAction::HERO_MEETING_TRANSFER_STACK:
+	{
+		const auto pair = decodeThorHeroMeetingTransferPair(request.targetId);
+		if(pair)
+		{
+			executed = controller.transferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
+				pair->destinationIsLeft, SlotID(pair->destinationSlot));
+		}
+		break;
+	}
 	case ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT:
 		controller.moveArmy(true, std::nullopt);
 		executed = true;
@@ -511,8 +539,6 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	default:
 		break;
 	}
-	if(executed)
-		updateThorActionState(true);
 	return executed;
 }
 #endif
