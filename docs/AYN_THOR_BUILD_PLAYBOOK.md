@@ -25,6 +25,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 15 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed the complete Town-card accuracy, construction/hero refresh, town switching, child/modal restoration, display recreation, inert-touch, Adventure-command, and upper-input regression checklist.
 - Slice 16 final product commit: `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` — context-aware Battle command deck. Its candidate CI run `35577409407` passed and the hardware checklist was completed; its verified APK SHA-256 was `d1ca061bd346e9022801d78fd0ef69cb70da3b1c902662868670b4a20acc65f3`.
 - Slice 17 final product commit: `d4c9193be2d99233c00e2b4054d0484e0c67bf99` — live Battle information dashboard with the exact current opponent unit retained as read-only information during opponent turns. Candidate CI run `35586360399` passed; artifact `thor-candidate-arm64-35586360399`, package `is.xyz.vcmi.thor`, APK SHA-256 `29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`. The checksum-verified APK was installed in place and all focused hardware checks passed.
+- Slice 20 candidate product commit: `0cf21166a79f33886a59213629d235600a5a0d78` — Hero Meeting army exchange deck. The authoritative full ARM64 candidate build, focused native and Android tests, and package-verification gates passed. Record the run, artifact, and checksum from its validation receipt before installation; Slice 20 remains pending physical AYN Thor validation.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
@@ -113,6 +114,8 @@ The first run on the permanent branch can be cold when no compatible entry exist
 After CI succeeds, download the artifact into an ignored or explicitly excluded directory. Verify the GitHub artifact digest and the APK SHA-256 inside it, inspect the package ID, and retain the receipt with the candidate commit and run ID before installation. Install with `adb install -r -d` to preserve Thor package data.
 
 Manual AYN Thor hardware validation remains mandatory. CI is not a substitute for visual, focus, touch, controller, panel-toggle, or pause/resume checks.
+
+For Slice 20 and later native transport work, avoid identifiers that collide with Qt keyword macros in headers included by Qt translation units. In particular, the C++ Hero Meeting collection is `armySlots`; the Java/JNI transport may continue to call its array `slots` because that wire-facing name is not processed by the C++ preprocessor. Keep lifecycle-only `wasActive` snapshots under the same `VCMI_ANDROID && TARGET_AYN_THOR` guard as their Thor publication uses so generic Android and desktop warning-as-error builds do not see unused declarations.
 
 Before promotion, compare the candidate against the proposed implementation tip. This reports every product/build change after the hardware-tested commit while allowing only validation-documentation changes:
 
