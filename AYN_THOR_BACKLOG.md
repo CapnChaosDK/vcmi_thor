@@ -1127,3 +1127,11 @@ Status: `hardware validated`
 23. Move less than touch slop and confirm the ordinary tap behavior; test the final-stack rule against the upper garrison.
 24. Cancel drags between rows, on the source side, by leaving Hero Meeting, by toggling the lower display, and through background/resume; verify no delayed transfer or stale highlight.
 25. Perform rapid successive gestures; verify stale requests cannot execute twice. Recheck upper quick-transfer arrows, keyboard modifiers, artifacts, controller/mouse focus, Hero Meeting and Battle Result restoration, and display recreation.
+
+### Next-slice handover
+
+- Preserve the tested action contract: IDs 0–15 keep their existing meanings; action 15 carries one occupied source key and calls native quick transfer. Action 16 carries a bounded opposite-army source/destination pair for exact-slot drag. Whole-army actions remain 17–19.
+- The lower display supplies touch intent only. Native Hero Meeting ownership, published slot identities, current army contents, destination choice, merge/swap, and final-required-stack checks remain authoritative at execution time.
+- A legal-looking action may be a no-op with no garrison callback. Keep whole-army availability tied to a possible change and restore a fresh action revision after native rejection; otherwise the lower controls can remain grey. Keep one-shot revision consumption for accepted requests.
+- Keep gesture state scoped to the rendered revision and presentation. A short tap uses the pressed source key; an exact drag needs an opposite-army destination. Cancel on pointer changes, `ACTION_CANCEL`, context changes, modal replacement, panel toggles, and resume before any queued action can replay.
+- The exact hardware-tested product/build tree is `24a061c915977684299250ccd20b7668ab041901`. Later documentation commits do not change that tree. Product promotion must reconcile the divergent local and remote Slice 20 histories without replacing the tested tree silently.

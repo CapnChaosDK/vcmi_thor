@@ -25,6 +25,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slice 15 is hardware validated. The checksum-verified candidate APK was installed in place on an AYN Thor and passed the complete Town-card accuracy, construction/hero refresh, town switching, child/modal restoration, display recreation, inert-touch, Adventure-command, and upper-input regression checklist.
 - Slice 16 final product commit: `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` — context-aware Battle command deck. Its candidate CI run `35577409407` passed and the hardware checklist was completed; its verified APK SHA-256 was `d1ca061bd346e9022801d78fd0ef69cb70da3b1c902662868670b4a20acc65f3`.
 - Slice 17 final product commit: `d4c9193be2d99233c00e2b4054d0484e0c67bf99` — live Battle information dashboard with the exact current opponent unit retained as read-only information during opponent turns. Candidate CI run `35586360399` passed; artifact `thor-candidate-arm64-35586360399`, package `is.xyz.vcmi.thor`, APK SHA-256 `29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`. The checksum-verified APK was installed in place and all focused hardware checks passed.
+- Slices 20 and 21 are hardware validated on candidate `24a061c915977684299250ccd20b7668ab041901`, pending product promotion. Thor CI run `36048661976` passed; artifact ZIP SHA-256 `f87e45e01d99156b1deb072066c09006a29fa5ec3223ee92633ec92e327ffb22`; APK SHA-256 `112ffc5c94eace5c65990cb02f04dbe9ac1f067428d9247ef1a3fe12c9c4f658`. The verified APK was installed on an AYN Thor, and the user reported that the full Slice 21 checklist on the preceding candidate and the focused source-only action-15 retest on this candidate passed. The exact receipt and test history are in `AYN_THOR_BACKLOG.md`.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
 
@@ -113,6 +114,14 @@ The first run on the permanent branch can be cold when no compatible entry exist
 After CI succeeds, download the artifact into an ignored or explicitly excluded directory. Verify the GitHub artifact digest and the APK SHA-256 inside it, inspect the package ID, and retain the receipt with the candidate commit and run ID before installation. Install with `adb install -r -d` to preserve Thor package data.
 
 Manual AYN Thor hardware validation remains mandatory. CI is not a substitute for visual, focus, touch, controller, panel-toggle, or pause/resume checks.
+
+### Hero Meeting lessons from Slices 20 and 21
+
+- Compare the approved new-slice contract with the published preceding slice and the local implementation before changing an existing action. Slice 21 initially passed CI and a full device checklist while action 15 still meant a two-tap exact-slot transfer locally; the published Slice 20 contract required a source-only quick transfer. Keep action 15 source-only and action 16 as the exact destination pair.
+- Android should report the source slot or the drag pair, then let the native exchange controller choose or validate the operation. For a short touch, retain the pressed source key even if release falls over a neighboring row. Arm exact-slot dragging independently of whether a quick transfer has a free or matching destination.
+- A consumed lower action can disable the deck until a new snapshot arrives. Some native requests cannot change a stack and produce no garrison callback. Check native transfer availability before consuming the action epoch, mask whole-army directions with no legal change, and publish a fresh revision after a rejected request that cannot trigger a callback.
+- Preserve drag cancellation across pointer changes, `ACTION_CANCEL`, revision changes, context/window changes, presentation replacement, lower-panel toggles, and background/resume. A stale highlight or armed gesture must never become a later transfer.
+- When the local implementation branch and remote product branch diverge, do not merge them and assume the tested APK still represents the result. Compare the full product/build tree with the hardware-tested SHA; publish documentation or review work on a separate branch until exact-tree promotion is deliberately reconciled.
 
 Before promotion, compare the candidate against the proposed implementation tip. This reports every product/build change after the hardware-tested commit while allowing only validation-documentation changes:
 
