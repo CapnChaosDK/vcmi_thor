@@ -173,6 +173,24 @@ For platform-specific build and test instructions see [`docs/developers/Building
 - Reusing that branch is intentional: it preserves compatible `ccache` continuity between slices while each GitHub runner still creates fresh CMake, Qt, Gradle, and APK output trees. Never cache complete build/output trees.
 - The CI artifact must still complete package verification and then pass manual AYN Thor hardware validation before the exact product tree is promoted. `docs/AYN_THOR_BUILD_PLAYBOOK.md` is the authoritative detailed procedure, including the narrowly permitted `--force-with-lease` branch update.
 
+#### Codex Thor development workflow
+
+For AYN Thor development:
+
+1. Treat `ayn-thor-dual-screen` as the implementation branch.
+2. Read `AYN_THOR_BACKLOG.md` and `docs/AYN_THOR_BUILD_PLAYBOOK.md` before implementing a Thor slice.
+3. Inspect the existing implementation before changing architecture.
+4. Implement the requested slice completely, including focused tests.
+5. Run cheap/static/focused checks when practical.
+6. Do not attempt to reproduce the complete Android ARM64 package build in the Codex Cloud environment.
+7. `.github/workflows/thor-ci.yml` is the authoritative full build and package validation environment.
+8. Never create temporary per-slice Thor CI workflows or candidate branches.
+9. `ci/thor-candidate-validation` is the only full ARM64 candidate transport branch.
+10. Do not expose or duplicate Android signing credentials outside GitHub Actions.
+11. Update relevant Thor markdown documentation to reflect the actual implementation.
+12. Record hardware validation only after the user confirms the physical AYN Thor checks for the exact candidate.
+13. Do not merge or rewrite validated history without explicit user instruction.
+
 ## Common Development Tasks
 
 ### Adding a New Game Mechanic
