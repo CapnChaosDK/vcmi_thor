@@ -1091,12 +1091,13 @@ Status: `hardware validated`
 
 ## Slice 21 — Precise Hero Meeting drag-and-drop army transfer
 
-- Status: `review blocked; not ready for candidate CI`. No candidate build or physical validation has been recorded. The local Slice 20 action 15 remains a two-tap exact-slot transfer, while the approved Slice 21 contract requires the existing source-only quick transfer to remain intact; reconcile that baseline before candidate CI.
+- Status: `hardware checklist passed on candidate 0bd4fc0e4ee130f3d491b0c6ceac4b6ebbf4abde; promotion blocked by action-15 contract mismatch`. The local Slice 20 action 15 remains a two-tap exact-slot transfer, while the approved Slice 21 contract requires the existing source-only quick transfer to remain intact; reconcile that baseline before promotion.
 - Drag starts only from an occupied row, uses Android's configured touch slop, and submits one revision-bound exact-slot transfer on a valid opposite-army drop. Same-side, outside-row, cancelled, stale, hidden, and recreated interactions submit no action. The fourteen-slot native snapshot remains the sole gameplay-facing publication.
 - Native action 16 encodes source and destination keys as `sourceKey * 14 + destinationKey`, with keys 0–6 for the left army and 7–13 for the right. Named encode/decode helpers reject malformed and same-side pairs. Native execution rechecks the active top exchange window, current snapshot, ownership, endpoints, transfer legality, and last-stack rule before consuming the action epoch and using existing callback operations.
 - Branch compatibility note: the brief describes action 15 as source-only quick transfer, while the checked-out Slice 20 code uses it for a two-tap exact-slot transfer. This implementation preserves the checked-out Slice 20 tap behavior and numeric ID/mask 15; action 16 is reserved for drag.
 - Existing whole-army action values move to 17–19 to free action 16; their controls and callback paths remain unchanged.
-- Candidate `a7c7a2b573591b59d03b71961ef2da9232f539da` passed CI run `36042932091`, but device testing found that a `Move all` request with no remaining legal stack change could leave every lower action disabled. The native action mask now disables a whole-army direction when it cannot move a stack, and a rejected exact-slot request restores a fresh action revision. Retest both paths on a new CI candidate.
+- Candidate `a7c7a2b573591b59d03b71961ef2da9232f539da` passed CI run `36042932091`, but device testing found that a `Move all` request with no remaining legal stack change could leave every lower action disabled. The native action mask now disables a whole-army direction when it cannot move a stack, and a rejected exact-slot request restores a fresh action revision.
+- On 2026-09-24, corrected candidate `0bd4fc0e4ee130f3d491b0c6ceac4b6ebbf4abde` passed Thor CI run `36046034743` with focused native and Android tests and package verification. The artifact ZIP SHA-256 was `0d8dfb2231f432b56fda5e6d97f4d9754ff91779a03e900355b739ba8a1b77d4`; the APK SHA-256 was `42e317c9b99743be57a51720cdd59b629297197bdabb587bceada03885881741`. The checksum-verified APK was installed and launched on an AYN Thor. The user reported that the full Slice 21 hardware checklist, including the corrected `Move all` and rejected-drop paths, passed. No product promotion has occurred.
 
 ### Required AYN Thor hardware checklist
 
@@ -1120,3 +1121,8 @@ Status: `hardware validated`
 18. Verify controller, keyboard, and upper touchscreen Hero Meeting behavior remain unchanged.
 19. Recheck Adventure Actions/Heroes/Towns, Hero dashboard, Town dashboard, Battle dashboard/commands, and normal return to Adventure.
 20. Check for crashes, wrong-army transfer, count corruption, duplicate commands, revision loops, lower-screen focus theft, or stale touch regions.
+21. Drag left→right and right→left to chosen empty slots; verify the exact destinations on both screens.
+22. Drag onto the chosen same-creature and different-creature destinations; verify native merge and swap results.
+23. Move less than touch slop and confirm the ordinary tap behavior; test the final-stack rule against the upper garrison.
+24. Cancel drags between rows, on the source side, by leaving Hero Meeting, by toggling the lower display, and through background/resume; verify no delayed transfer or stale highlight.
+25. Perform rapid successive gestures; verify stale requests cannot execute twice. Recheck upper quick-transfer arrows, keyboard modifiers, artifacts, controller/mouse focus, Hero Meeting and Battle Result restoration, and display recreation.
