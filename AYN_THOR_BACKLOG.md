@@ -59,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 19 are implemented, CI-built, and hardware-validated.
-- Status: `hardware validated` through Slice 19.
+- Phase: Slices 1 through 19 are promoted; Slices 20 and 21 are implemented, CI-built, and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`.
+- Status: `hardware validated` through Slice 21; Slice 20/21 product promotion remains pending.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1084,14 +1084,14 @@ Status: `hardware validated`
 
 ## Slice 20 — Hero Meeting Army Deck
 
-- Status: `awaiting hardware validation`.
+- Status: `hardware validated` on candidate `24a061c915977684299250ccd20b7668ab041901`; product promotion remains pending.
 - The lower Hero Meeting deck publishes only two hero identities/names, their fixed seven-slot army snapshots, and local-control state. Each slot retains its native army ID plus slot index; empty slots remain addressable and visible. Creature art, artifacts, bonuses, coordinates, and game-state mutation remain out of scope.
 - Stack transfers and whole-army commands use revision-bound semantic actions 15–19, are revalidated on MainGUI against the exact active exchange window and published identities, and use the existing callback/controller paths. A consumed lower action invalidates its rendered action epoch until the ordinary garrison refresh publishes a new snapshot.
 - A tap on an occupied slot submits action 15 with only its source key. Native `CExchangeController::moveStack` chooses the destination using the existing quick-transfer rules. Duplicate taps are suppressed while an action is pending; Android does not synthesize upper-screen input.
 
 ## Slice 21 — Precise Hero Meeting drag-and-drop army transfer
 
-- Status: `awaiting hardware validation of the source-only action-15 correction`. Candidate `0bd4fc0e4ee130f3d491b0c6ceac4b6ebbf4abde` passed its full hardware checklist, but its two-tap action 15 did not match the approved Slice 20 source-only quick-transfer contract. The corrected product tree requires a fresh candidate build and focused device retest before promotion.
+- Status: `hardware validated` on candidate `24a061c915977684299250ccd20b7668ab041901`; product promotion remains pending. Candidate `0bd4fc0e4ee130f3d491b0c6ceac4b6ebbf4abde` passed the earlier full hardware checklist, but its two-tap action 15 did not match the approved Slice 20 source-only quick-transfer contract. The later candidate restored that contract and passed the focused device retest recorded below.
 - Drag starts only from an occupied row, uses Android's configured touch slop, and submits one revision-bound exact-slot transfer on a valid opposite-army drop. Same-side, outside-row, cancelled, stale, hidden, and recreated interactions submit no action. The fourteen-slot native snapshot remains the sole gameplay-facing publication.
 - Native action 16 encodes source and destination keys as `sourceKey * 14 + destinationKey`, with keys 0–6 for the left army and 7–13 for the right. Named encode/decode helpers reject malformed and same-side pairs. Native execution rechecks the active top exchange window, current snapshot, ownership, endpoints, transfer legality, and last-stack rule before consuming the action epoch and using existing callback operations.
 - Action 15 retains its numeric ID and source-only quick-transfer semantics; action 16 remains the exact-slot drag action. Native quick transfer chooses the destination through `CExchangeController::moveStack`; Android submits only the source key.
