@@ -25,6 +25,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private int activeActionMask;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
+    private ThorHeroMeetingArmy heroMeeting = ThorHeroMeetingArmy.EMPTY;
     private int adventureTab;
     private boolean started;
     private boolean resumed;
@@ -91,6 +92,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             adventureTab = 0;
         heroes = ThorHeroRoster.EMPTY;
         towns = ThorTownRoster.EMPTY;
+        heroMeeting = ThorHeroMeetingArmy.EMPTY;
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
         contextDetails[0] = ThorContextDetails.orEmpty(detailLine1);
@@ -133,6 +135,15 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         towns = roster;
         if (presentation != null)
             presentation.updateTowns(roster);
+    }
+
+    void publishHeroMeeting(final long revision, final ThorHeroMeetingArmy army)
+    {
+        if (revision != contextRevision || !ThorContextIds.HERO_MEETING.equals(contextId))
+            return;
+        heroMeeting = army;
+        if (presentation != null)
+            presentation.updateHeroMeeting(army);
     }
 
     @Override
@@ -190,6 +201,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     enabledActionMask, activeActionMask);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
+            newPresentation.updateHeroMeeting(heroMeeting);
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)

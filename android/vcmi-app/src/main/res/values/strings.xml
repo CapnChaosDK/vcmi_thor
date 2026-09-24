@@ -64,6 +64,7 @@
     <string name="thor_town_none">None</string>
     <string name="thor_context_hero_meeting">Hero meeting</string>
     <string name="thor_context_hero_meeting_status">Review hero exchange</string>
+    <string name="thor_army_empty">Empty</string>
     <string name="thor_context_battle">Battle</string>
     <string name="thor_context_battle_status">Combat in progress</string>
     <string name="thor_context_battle_tactics">Battle tactics</string>

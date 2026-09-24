@@ -162,7 +162,9 @@ void AdventureMapInterface::showInfoBoxMessage(const std::vector<Component> & co
 
 void AdventureMapInterface::activate()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	const bool wasActive = isActive();
+#endif
 	CIntObject::activate();
 
 	adjustActiveness();
@@ -230,7 +232,9 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 
 void AdventureMapInterface::deactivate()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	const bool wasActive = isActive();
+#endif
 	CIntObject::deactivate();
 	ENGINE->cursor().set(Cursor::Map::POINTER);
 

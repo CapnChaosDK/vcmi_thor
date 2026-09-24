@@ -516,7 +516,9 @@ void BattleWindow::heroManaPointsChanged(const CGHeroInstance * hero)
 
 void BattleWindow::activate()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	const bool wasActive = isActive();
+#endif
 	ENGINE->setStatusbar(console);
 	CIntObject::activate();
 	GAME->interface()->cingconsole->activate();
@@ -529,7 +531,9 @@ void BattleWindow::activate()
 
 void BattleWindow::deactivate()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	const bool wasActive = isActive();
+#endif
 	ENGINE->setStatusbar(nullptr);
 	CIntObject::deactivate();
 	GAME->interface()->cingconsole->deactivate();

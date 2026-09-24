@@ -21,7 +21,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(12), ThorAction::BATTLE_TACTICS_END);
 	EXPECT_EQ(thorActionFromId(13), ThorAction::SELECT_HERO);
 	EXPECT_EQ(thorActionFromId(14), ThorAction::SELECT_TOWN);
-	EXPECT_EQ(thorActionFromId(15), std::nullopt);
+	EXPECT_EQ(thorActionFromId(15), ThorAction::HERO_MEETING_MOVE_STACK);
+	EXPECT_EQ(thorActionFromId(16), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -52,6 +53,8 @@ TEST(ThorActionTest, AllowsOnlyActionsForTheirExactContext)
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::BATTLE_TACTICS_END, ThorContextIds::BATTLE_TACTICS));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::BATTLE_WAIT, ThorContextIds::BATTLE_RESULT));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::BATTLE_DEFEND, ThorContextIds::HERO_WINDOW));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_MOVE_STACK, ThorContextIds::HERO_MEETING));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_MOVE_STACK, ThorContextIds::BATTLE));
 }
 
 TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
@@ -66,6 +69,37 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::BATTLE_TACTICS_END), 2048);
 	EXPECT_EQ(thorActionMask(ThorAction::SELECT_HERO), 4096);
 	EXPECT_EQ(thorActionMask(ThorAction::SELECT_TOWN), 8192);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK), 16384);
+}
+
+TEST(ThorActionTest, ValidatesHeroMeetingPublishedSlot)
+{
+	ThorContextRecord context;
+	context.revision = 5;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK);
+	context.heroMeeting.armySlots.push_back({7, 1, 0, true, 42, "Creature", 10, true});
+	EXPECT_EQ(validateThorActionRequest({5, ThorAction::HERO_MEETING_MOVE_STACK, 7}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({4, ThorAction::HERO_MEETING_MOVE_STACK, 7}, context), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(validateThorActionRequest({5, ThorAction::HERO_MEETING_MOVE_STACK, 6}, context), ThorActionValidation::INVALID_TARGET);
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	EXPECT_EQ(validateThorActionRequest({5, ThorAction::HERO_MEETING_MOVE_STACK, 7}, context), ThorActionValidation::WRONG_CONTEXT);
+}
+
+TEST(ThorActionTest, HeroMeetingSlotKeysAreBoundedAndStable)
+{
+	for(int side = 0; side < 2; ++side)
+		for(int slot = 0; slot < GameConstants::ARMY_SIZE; ++slot)
+		{
+			const int key = thorHeroMeetingSlotKey(side, slot);
+			int decodedSide = -1, decodedSlot = -1;
+			EXPECT_TRUE(thorDecodeHeroMeetingSlotKey(key, decodedSide, decodedSlot));
+			EXPECT_EQ(decodedSide, side);
+			EXPECT_EQ(decodedSlot, slot);
+		}
+	int side = -1, slot = -1;
+	EXPECT_EQ(thorHeroMeetingSlotKey(2, 0), -1);
+	EXPECT_FALSE(thorDecodeHeroMeetingSlotKey(14, side, slot));
 }
 
 TEST(ThorActionTest, TownTargetMustMatchPublishedRosterAndRevision)

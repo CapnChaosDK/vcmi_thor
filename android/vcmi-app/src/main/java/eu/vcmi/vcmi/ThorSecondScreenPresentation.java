@@ -67,6 +67,12 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateTowns(roster);
     }
 
+    void updateHeroMeeting(final ThorHeroMeetingArmy army)
+    {
+        if (foundationView != null)
+            foundationView.updateHeroMeeting(army);
+    }
+
     int getAdventureTab()
     {
         return foundationView == null ? 0 : foundationView.adventureTab;
@@ -98,6 +104,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private int activeActionMask;
         private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
         private ThorTownRoster towns = ThorTownRoster.EMPTY;
+        private ThorHeroMeetingArmy heroMeeting = ThorHeroMeetingArmy.EMPTY;
         private int adventureTab;
         private int townPage;
 
@@ -119,6 +126,7 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
+                heroMeeting = ThorHeroMeetingArmy.EMPTY;
                 townPage = 0;
             }
             this.revision = revision;
@@ -128,6 +136,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 adventureTab = 0;
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
+                heroMeeting = ThorHeroMeetingArmy.EMPTY;
                 townPage = 0;
             }
             this.enabledActionMask = enabledActionMask;
@@ -314,6 +323,12 @@ final class ThorSecondScreenPresentation extends Presentation
             invalidate();
         }
 
+        void updateHeroMeeting(final ThorHeroMeetingArmy army)
+        {
+            heroMeeting = ThorContextIds.HERO_MEETING.equals(contextId) ? army : ThorHeroMeetingArmy.EMPTY;
+            invalidate();
+        }
+
         @Override
         protected void onDraw(final Canvas canvas)
         {
@@ -359,6 +374,11 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawLine(frame.left + bevel * 2f, dividerY, frame.right - bevel * 2f, dividerY, paint);
 
+            if (ThorContextIds.HERO_MEETING.equals(contextId))
+            {
+                drawHeroMeeting(canvas, frame, bevel, density);
+                return;
+            }
             if (battleDashboard)
             {
                 drawBattleDashboard(canvas, frame, dividerY, bevel, density);
@@ -408,11 +428,19 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId)
                     && !ThorContextIds.BATTLE.equals(contextId)
-                    && !ThorContextIds.BATTLE_TACTICS.equals(contextId))
+                    && !ThorContextIds.BATTLE_TACTICS.equals(contextId)
+                    && !ThorContextIds.HERO_MEETING.equals(contextId))
                 return false;
 
             if (event.getAction() == android.view.MotionEvent.ACTION_UP)
             {
+                if (ThorContextIds.HERO_MEETING.equals(contextId))
+                {
+                    final int key = heroMeetingKeyAt(event.getX(), event.getY());
+                    if (key >= 0 && isActionEnabled(ThorActionIds.HERO_MEETING_MOVE_STACK))
+                        NativeMethods.submitThorAction(revision, ThorActionIds.HERO_MEETING_MOVE_STACK, key);
+                    return true;
+                }
                 if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 {
                     final int tab = tabAt(event.getX(), event.getY());
@@ -467,6 +495,61 @@ final class ThorSecondScreenPresentation extends Presentation
                 }
             }
             return true;
+        }
+
+        private RectF heroMeetingRowBounds(final int side, final int slot)
+        {
+            final RectF frame = adventureFrame();
+            final float gap = adventureBevel();
+            final float columnWidth = (frame.width() - gap * 7f) / 2f;
+            final float top = frame.top + frame.height() * 0.19f;
+            final float rowGap = Math.max(4f, gap * 0.55f);
+            final float rowHeight = (frame.bottom - gap * 3f - top - rowGap * 6f) / 7f;
+            final float left = frame.left + gap * 3f + side * (columnWidth + gap);
+            return new RectF(left, top + slot * (rowHeight + rowGap), left + columnWidth,
+                    top + slot * (rowHeight + rowGap) + rowHeight);
+        }
+
+        private int heroMeetingKeyAt(final float x, final float y)
+        {
+            if (heroMeeting.keys.length != ThorHeroMeetingArmy.SLOT_COUNT)
+                return -1;
+            for (int index = 0; index < heroMeeting.keys.length; ++index)
+                if ((heroMeeting.flags[index] & 3) == 3
+                        && heroMeetingRowBounds(heroMeeting.sides[index], heroMeeting.slots[index]).contains(x, y))
+                    return heroMeeting.keys[index];
+            return -1;
+        }
+
+        private void drawHeroMeeting(final Canvas canvas, final RectF frame, final float bevel, final float density)
+        {
+            paint.setStyle(Paint.Style.FILL); paint.setTextAlign(Paint.Align.CENTER); paint.setColor(TEXT);
+            paint.setFakeBoldText(true);
+            drawFittedText(canvas, getContext().getString(R.string.thor_context_hero_meeting), frame.centerX(),
+                    frame.top + frame.height() * 0.065f, frame.width() * 0.8f, 30f * density);
+            if (heroMeeting.keys.length != ThorHeroMeetingArmy.SLOT_COUNT)
+                return;
+            for (int side = 0; side < 2; ++side)
+                drawEllipsizedText(canvas, heroMeeting.heroNames[side], heroMeetingRowBounds(side, 0).centerX(),
+                        frame.top + frame.height() * 0.135f, frame.width() * 0.40f, 28f * density);
+            for (int index = 0; index < heroMeeting.keys.length; ++index)
+            {
+                final RectF row = heroMeetingRowBounds(heroMeeting.sides[index], heroMeeting.slots[index]);
+                final boolean occupied = (heroMeeting.flags[index] & 1) != 0;
+                final boolean movable = (heroMeeting.flags[index] & 2) != 0;
+                paint.setColor(movable ? STONE_DARK : Color.rgb(76, 74, 67));
+                canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(Math.max(2f, bevel * 0.35f));
+                paint.setColor(movable ? GOLD : STONE_LIGHT); canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL); paint.setColor(movable ? TEXT : PARCHMENT);
+                final String arrow = movable ? (heroMeeting.sides[index] == 0 ? "  →" : "←  ") : "";
+                final String label = occupied ? heroMeeting.creatureNames[index] + " ×" + heroMeeting.counts[index]
+                        : getContext().getString(R.string.thor_army_empty);
+                drawEllipsizedText(canvas, heroMeeting.sides[index] == 0 ? label + arrow : arrow + label,
+                        row.centerX(), row.centerY(), row.width() * 0.9f,
+                        Math.min(24f * density, row.height() * 0.45f));
+            }
+            paint.setFakeBoldText(false);
         }
 
         @Override

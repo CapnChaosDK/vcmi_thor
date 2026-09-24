@@ -172,6 +172,8 @@ For platform-specific build and test instructions see [`docs/developers/Building
 - `.github/workflows/thor-ci.yml` is the permanent Thor CI workflow. Full ARM64 candidates use the one transport branch `ci/thor-candidate-validation`; do not create per-slice candidate branches.
 - Reusing that branch is intentional: it preserves compatible `ccache` continuity between slices while each GitHub runner still creates fresh CMake, Qt, Gradle, and APK output trees. Never cache complete build/output trees.
 - The CI artifact must still complete package verification and then pass manual AYN Thor hardware validation before the exact product tree is promoted. `docs/AYN_THOR_BUILD_PLAYBOOK.md` is the authoritative detailed procedure, including the narrowly permitted `--force-with-lease` branch update.
+- A green Thor candidate run establishes the automated ARM64 build, focused tests, and package gates only. Record it in the Thor markdown, but keep the slice `in progress` until the checksum-verified APK passes the physical-device checklist.
+- Keep Thor-only lifecycle snapshots and their uses behind `#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)`. Native transport members must also avoid Qt keyword-macro names such as `slots`; use descriptive macro-safe names such as `armySlots` without renaming Java/JNI wire fields.
 
 #### Codex Thor development workflow
 

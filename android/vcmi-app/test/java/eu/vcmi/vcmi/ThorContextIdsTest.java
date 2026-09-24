@@ -115,7 +115,8 @@ public class ThorContextIdsTest
 		assertEquals(512, ThorActionIds.maskFor(ThorActionIds.BATTLE_DEFEND));
 		assertEquals(1024, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_NEXT));
 		assertEquals(2048, ThorActionIds.maskFor(ThorActionIds.BATTLE_TACTICS_END));
-		assertEquals(0, ThorActionIds.maskFor(15));
+		assertEquals(15, ThorActionIds.HERO_MEETING_MOVE_STACK);
+		assertEquals(16384, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_MOVE_STACK));
 		assertEquals(0, ThorActionIds.maskFor(99));
     }
 
