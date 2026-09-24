@@ -501,8 +501,8 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		return false;
 	};
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK
-		&& !controller.canTransferStack(request.sourceArmyId == heroInst[0]->id.getNum(), SlotID(request.sourceSlot),
-			request.destinationArmyId == heroInst[0]->id.getNum(), SlotID(request.destinationSlot)))
+		&& !controller.canMoveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
+			SlotID(request.targetId % static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE))))
 		return rejectWithoutCallback();
 	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)
 	{
@@ -520,8 +520,9 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	switch(request.action)
 	{
 	case ThorAction::HERO_MEETING_MOVE_STACK:
-		executed = controller.transferStack(request.sourceArmyId == heroInst[0]->id.getNum(), SlotID(request.sourceSlot),
-			request.destinationArmyId == heroInst[0]->id.getNum(), SlotID(request.destinationSlot));
+		controller.moveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
+			SlotID(request.targetId % static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)));
+		executed = true;
 		break;
 	case ThorAction::HERO_MEETING_TRANSFER_STACK:
 	{

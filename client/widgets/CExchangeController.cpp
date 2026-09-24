@@ -97,6 +97,19 @@ void CExchangeController::moveArmy(bool leftToRight, std::optional<SlotID> heldS
 	GAME->interface()->cb->bulkMoveArmy(source->id, target->id, heldSlot.value());
 }
 
+bool CExchangeController::canMoveStack(bool leftToRight, SlotID sourceSlot) const
+{
+	const auto source = leftToRight ? left : right;
+	const auto target = leftToRight ? right : left;
+	if(!source || !target || !sourceSlot.validSlot())
+		return false;
+	const auto * creature = source->getCreature(sourceSlot);
+	if(!creature)
+		return false;
+	const auto targetSlot = target->getSlotFor(creature);
+	return targetSlot.validSlot() && canTransferStack(leftToRight, sourceSlot, !leftToRight, targetSlot);
+}
+
 void CExchangeController::moveStack(bool leftToRight, SlotID sourceSlot)
 {
 	const auto source = leftToRight ? left : right;

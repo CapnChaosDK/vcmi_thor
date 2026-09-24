@@ -44,8 +44,6 @@ public class NativeMethods
     public static native void heroesDataUpdate();
 
     public static native void submitThorAction(long revision, int actionId, int targetId);
-    public static native void submitThorHeroMeetingTransfer(long revision, int sourceArmyId, int sourceSlot,
-                                                            int destinationArmyId, int destinationSlot);
     public static native void clearThorActions();
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

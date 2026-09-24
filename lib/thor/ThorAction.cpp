@@ -148,21 +148,18 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	}
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK)
 	{
-		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable || request.targetId != -1
-			|| request.sourceSlot < 0
-			|| request.sourceSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE) || request.destinationSlot < 0
-			|| request.destinationSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE))
+		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable || request.targetId < 0
+			|| request.targetId >= static_cast<int>(THOR_HERO_MEETING_SLOT_KEY_COUNT)
+			|| request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1)
 			return ThorActionValidation::INVALID_TARGET;
 		const auto & armies = *context.heroMeetingArmies;
-		const auto sourceIsLeft = request.sourceArmyId == armies.leftArmyId;
-		const auto destinationIsLeft = request.destinationArmyId == armies.leftArmyId;
-		if((!sourceIsLeft && request.sourceArmyId != armies.rightArmyId)
-			|| (!destinationIsLeft && request.destinationArmyId != armies.rightArmyId)
-			|| (request.sourceArmyId == request.destinationArmyId && request.sourceSlot == request.destinationSlot))
-			return ThorActionValidation::INVALID_TARGET;
-		const auto & source = (sourceIsLeft ? armies.leftSlots : armies.rightSlots)[request.sourceSlot];
-		const auto & destination = (destinationIsLeft ? armies.leftSlots : armies.rightSlots)[request.destinationSlot];
-		if(!source.occupied || source.armyId != request.sourceArmyId || destination.armyId != request.destinationArmyId)
+		const auto slotsPerArmy = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+		const auto sourceIsLeft = request.targetId < slotsPerArmy;
+		const auto sourceSlot = request.targetId % slotsPerArmy;
+		const auto sourceArmyId = sourceIsLeft ? armies.leftArmyId : armies.rightArmyId;
+		const auto & source = (sourceIsLeft ? armies.leftSlots : armies.rightSlots)[sourceSlot];
+		if(!source.occupied || source.armyId != sourceArmyId || source.slot != sourceSlot)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)

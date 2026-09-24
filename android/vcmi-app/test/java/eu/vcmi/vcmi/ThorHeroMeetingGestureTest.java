@@ -21,7 +21,10 @@ public class ThorHeroMeetingGestureTest
         final ThorHeroMeetingGesture nearRowEdge = new ThorHeroMeetingGesture();
         nearRowEdge.begin(8, 2, true, 20f, 30f);
         nearRowEdge.move(23f, 34f, 10f, 8, true);
-        assertEquals(ThorHeroMeetingGesture.Kind.TAP, nearRowEdge.finish(8, true, 9).kind);
+        final ThorHeroMeetingGesture.Result edgeResult = nearRowEdge.finish(8, true, 9);
+        assertEquals(ThorHeroMeetingGesture.Kind.TAP, edgeResult.kind);
+        assertEquals(2, edgeResult.sourceKey); // Quick tap uses the pressed source, even at a row edge.
+        assertEquals(9, edgeResult.destinationKey);
     }
 
     @Test

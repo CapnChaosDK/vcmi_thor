@@ -147,7 +147,7 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES), 262144);
 }
 
-TEST(ThorActionTest, HeroMeetingQuickMoveRequiresPublishedEndpoints)
+TEST(ThorActionTest, HeroMeetingQuickMoveRequiresPublishedSourceOnly)
 {
 	ThorContextRecord context;
 	context.revision = 20;
@@ -167,31 +167,51 @@ TEST(ThorActionTest, HeroMeetingQuickMoveRequiresPublishedEndpoints)
 		armies.rightSlots[index].slot = static_cast<int>(index);
 	}
 	armies.leftSlots[0] = {1, 0, true, 3, "Pikemen", 12};
+	armies.rightSlots[6] = {2, 6, true, 4, "Archers", 8};
 	context.heroMeetingArmies = armies;
 	ThorActionRequest request;
 	request.revision = 20;
 	request.action = ThorAction::HERO_MEETING_MOVE_STACK;
-	request.sourceArmyId = 1;
-	request.sourceSlot = 0;
-	request.destinationArmyId = 2;
-	request.destinationSlot = 6;
+	request.targetId = 0;
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
-	request.sourceSlot = 7;
+	request.targetId = 13;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.targetId = 1; // Empty published source.
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.targetId = -1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.targetId = 14;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.targetId = 0;
+	request.sourceArmyId = 1; // Action 15 carries no endpoint fields.
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.sourceArmyId = -1;
 	request.sourceSlot = 0;
-	request.destinationArmyId = 9;
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.sourceSlot = -1;
 	request.destinationArmyId = 2;
-	request.destinationSlot = 7;
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.destinationArmyId = -1;
 	request.destinationSlot = 6;
-	request.sourceArmyId = 2;
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.destinationSlot = -1;
+	context.heroMeetingArmies->leftSlots[0].slot = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArmies->leftSlots[0].slot = 0;
+	context.heroMeetingArmies->leftSlots[0].armyId = 2;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArmies->leftSlots[0].armyId = 1;
+	request.revision -= 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision += 1;
 	context.enabledActionMask = 0;
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
 	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK);
 	context.contextId = ThorContextIds::ADVENTURE_MAP;
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.heroMeetingArmies->locallyControllable = false;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
 }
 
 TEST(ThorActionTest, HeroMeetingDragTransferRequiresValidPublishedOppositeArmyEndpoints)

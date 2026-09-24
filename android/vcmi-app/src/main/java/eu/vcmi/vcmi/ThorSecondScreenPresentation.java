@@ -686,7 +686,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 return;
             final int sourceKey = heroMeetingSlotAt(x, y, adventureFrame(), adventureBevel());
             final boolean movable = sourceKey >= 0 && (heroMeetingArmies.flags[sourceKey] & 1) != 0
-                    && isActionEnabled(ThorActionIds.HERO_MEETING_MOVE_STACK);
+                    && isActionEnabled(ThorActionIds.HERO_MEETING_TRANSFER_STACK);
             heroMeetingGesture.begin(revision, sourceKey, movable, x, y);
         }
 
@@ -722,10 +722,10 @@ final class ThorSecondScreenPresentation extends Presentation
             final int destinationKey = heroMeetingSlotAt(x, y, adventureFrame(), adventureBevel());
             final ThorHeroMeetingGesture.Result result = heroMeetingGesture.finish(revision,
                     ThorContextIds.HERO_MEETING.equals(contextId), destinationKey);
-            selectedMeetingSlot = result.kind == ThorHeroMeetingGesture.Kind.TAP ? selectedMeetingSlot : -1;
+            selectedMeetingSlot = -1;
             if (result.kind == ThorHeroMeetingGesture.Kind.TAP)
             {
-                handleHeroMeetingTap(x, y);
+                submitHeroMeetingQuickTap(result.sourceKey);
                 return;
             }
             if (result.kind == ThorHeroMeetingGesture.Kind.DROP && !pendingMeetingAction
@@ -831,28 +831,7 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 if (!heroMeetingSlotBounds(index, frame, bevel).contains(x, y))
                     continue;
-                final boolean occupied = (heroMeetingArmies.flags[index] & 1) != 0;
-                if (selectedMeetingSlot < 0)
-                {
-                    if (occupied && heroMeetingArmies.locallyControllable)
-                        selectedMeetingSlot = index;
-                }
-                else if (selectedMeetingSlot == index)
-                {
-                    selectedMeetingSlot = -1;
-                }
-                else if (isActionEnabled(ThorActionIds.HERO_MEETING_MOVE_STACK))
-                {
-                    final int sourceSide = selectedMeetingSlot / 7;
-                    final int destinationSide = index / 7;
-                    NativeMethods.submitThorHeroMeetingTransfer(revision, heroMeetingArmies.armyIds[sourceSide],
-                            selectedMeetingSlot % 7, heroMeetingArmies.armyIds[destinationSide], index % 7);
-                    selectedMeetingSlot = -1;
-                    pendingMeetingAction = true;
-                }
-                performClick();
-                setContentDescription(commandDeckDescription());
-                invalidate();
+                submitHeroMeetingQuickTap(index);
                 return;
             }
             final int[] actions = {ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT,
@@ -869,6 +848,20 @@ final class ThorSecondScreenPresentation extends Presentation
                     return;
                 }
             }
+        }
+
+        private void submitHeroMeetingQuickTap(final int sourceKey)
+        {
+            if (pendingMeetingAction || !heroMeetingArmies.complete() || !heroMeetingArmies.locallyControllable
+                    || sourceKey < 0 || sourceKey >= ThorHeroMeetingArmies.SLOT_COUNT
+                    || (heroMeetingArmies.flags[sourceKey] & 1) == 0
+                    || !isActionEnabled(ThorActionIds.HERO_MEETING_MOVE_STACK))
+                return;
+            NativeMethods.submitThorAction(revision, ThorActionIds.HERO_MEETING_MOVE_STACK, sourceKey);
+            pendingMeetingAction = true;
+            performClick();
+            setContentDescription(commandDeckDescription());
+            invalidate();
         }
 
         private void drawHeroDashboard(final Canvas canvas, final RectF frame, final float dividerY,

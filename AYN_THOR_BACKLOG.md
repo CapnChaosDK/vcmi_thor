@@ -1087,14 +1087,14 @@ Status: `hardware validated`
 - Status: `awaiting hardware validation`.
 - The lower Hero Meeting deck publishes only two hero identities/names, their fixed seven-slot army snapshots, and local-control state. Each slot retains its native army ID plus slot index; empty slots remain addressable and visible. Creature art, artifacts, bonuses, coordinates, and game-state mutation remain out of scope.
 - Stack transfers and whole-army commands use revision-bound semantic actions 15–19, are revalidated on MainGUI against the exact active exchange window and published identities, and use the existing callback/controller paths. A consumed lower action invalidates its rendered action epoch until the ordinary garrison refresh publishes a new snapshot.
-- Android keeps selection local to the lower deck, clears it on revision/context/lifecycle changes, and does not synthesize upper-screen input. A first occupied-slot tap selects, a second tap submits exact source/destination identities, and duplicate taps are suppressed while pending.
+- A tap on an occupied slot submits action 15 with only its source key. Native `CExchangeController::moveStack` chooses the destination using the existing quick-transfer rules. Duplicate taps are suppressed while an action is pending; Android does not synthesize upper-screen input.
 
 ## Slice 21 — Precise Hero Meeting drag-and-drop army transfer
 
-- Status: `hardware checklist passed on candidate 0bd4fc0e4ee130f3d491b0c6ceac4b6ebbf4abde; promotion blocked by action-15 contract mismatch`. The local Slice 20 action 15 remains a two-tap exact-slot transfer, while the approved Slice 21 contract requires the existing source-only quick transfer to remain intact; reconcile that baseline before promotion.
+- Status: `awaiting hardware validation of the source-only action-15 correction`. Candidate `0bd4fc0e4ee130f3d491b0c6ceac4b6ebbf4abde` passed its full hardware checklist, but its two-tap action 15 did not match the approved Slice 20 source-only quick-transfer contract. The corrected product tree requires a fresh candidate build and focused device retest before promotion.
 - Drag starts only from an occupied row, uses Android's configured touch slop, and submits one revision-bound exact-slot transfer on a valid opposite-army drop. Same-side, outside-row, cancelled, stale, hidden, and recreated interactions submit no action. The fourteen-slot native snapshot remains the sole gameplay-facing publication.
 - Native action 16 encodes source and destination keys as `sourceKey * 14 + destinationKey`, with keys 0–6 for the left army and 7–13 for the right. Named encode/decode helpers reject malformed and same-side pairs. Native execution rechecks the active top exchange window, current snapshot, ownership, endpoints, transfer legality, and last-stack rule before consuming the action epoch and using existing callback operations.
-- Branch compatibility note: the brief describes action 15 as source-only quick transfer, while the checked-out Slice 20 code uses it for a two-tap exact-slot transfer. This implementation preserves the checked-out Slice 20 tap behavior and numeric ID/mask 15; action 16 is reserved for drag.
+- Action 15 retains its numeric ID and source-only quick-transfer semantics; action 16 remains the exact-slot drag action. Native quick transfer chooses the destination through `CExchangeController::moveStack`; Android submits only the source key.
 - Existing whole-army action values move to 17–19 to free action 16; their controls and callback paths remain unchanged.
 - Candidate `a7c7a2b573591b59d03b71961ef2da9232f539da` passed CI run `36042932091`, but device testing found that a `Move all` request with no remaining legal stack change could leave every lower action disabled. The native action mask now disables a whole-army direction when it cannot move a stack, and a rejected exact-slot request restores a fresh action revision.
 - On 2026-09-24, corrected candidate `0bd4fc0e4ee130f3d491b0c6ceac4b6ebbf4abde` passed Thor CI run `36046034743` with focused native and Android tests and package verification. The artifact ZIP SHA-256 was `0d8dfb2231f432b56fda5e6d97f4d9754ff91779a03e900355b739ba8a1b77d4`; the APK SHA-256 was `42e317c9b99743be57a51720cdd59b629297197bdabb587bceada03885881741`. The checksum-verified APK was installed and launched on an AYN Thor. The user reported that the full Slice 21 hardware checklist, including the corrected `Move all` and rejected-drop paths, passed. No product promotion has occurred.
@@ -1104,20 +1104,20 @@ Status: `hardware validated`
 1. Open a Hero Meeting between two locally owned heroes with several different creatures and at least one empty slot on each side.
 2. Verify both hero names and all 14 fixed slots match the upper Hero Meeting exactly.
 3. Verify creature names/counts update correctly and empty slots remain visibly fixed.
-4. Tap one occupied stack; verify only the lower source highlight changes and upper selection/focus remains untouched.
-5. Tap it again; verify lower selection cancels with no game action.
-6. Select a stack and tap an empty slot in the same army; verify the exact stack moves.
-7. Select a stack and tap an empty slot in the opposite army; verify the exact legal move.
-8. Merge two same-creature stacks and verify resulting counts on both screens.
-9. Swap two different-creature stacks and verify exact positions on both screens.
+4. Tap one occupied stack; verify one native quick transfer occurs and upper selection/focus remains untouched.
+5. Tap a stack whose destination has a matching creature; verify the native quick-transfer merge and counts on both screens.
+6. Tap a stack whose destination has a free slot; verify native quick-transfer placement on both screens.
+7. Verify an empty row tap performs no transfer and rapid repeat taps cannot duplicate a stale action.
+8. Drag onto a matching creature to verify an exact-slot merge on both screens.
+9. Drag onto a different creature to verify an exact-slot swap on both screens.
 10. Exercise the final-required-stack case and verify the source hero is never illegally left without a required army stack.
 11. Test `Move all →`.
 12. Test `← Move all`.
 13. Test `Swap armies`.
-14. Rapidly tap two destinations after selecting a source; verify at most one stale-revision operation executes.
-15. Change the upper army before completing a lower selection; verify the old lower selection becomes inert after the newer revision.
+14. Rapidly tap two sources; verify at most one stale-revision operation executes.
+15. Change the upper army during a lower gesture; verify the old gesture becomes inert after the newer revision.
 16. Open a Hero/Quest/other child window from Hero Meeting and close it; verify normal parent restoration, no residual lower hit regions, and no stale Hero Meeting command.
-17. Background/resume and lower-panel off/on; verify one current deck, no duplicate presentation, and no stale source selection.
+17. Background/resume and lower-panel off/on; verify one current deck, no duplicate presentation, and no stale gesture.
 18. Verify controller, keyboard, and upper touchscreen Hero Meeting behavior remain unchanged.
 19. Recheck Adventure Actions/Heroes/Towns, Hero dashboard, Town dashboard, Battle dashboard/commands, and normal return to Adventure.
 20. Check for crashes, wrong-army transfer, count corruption, duplicate commands, revision loops, lower-screen focus theft, or stale touch regions.
