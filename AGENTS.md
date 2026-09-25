@@ -201,6 +201,21 @@ checks were not run and the next candidate action.
 - Reuse this one transport branch. Never create per-slice candidate branches or
   workflows. Prefer fast-forward; only the guarded, verified `--force-with-lease`
   procedure in the playbook may reset this disposable branch to an exact candidate.
+- A normal implementation branch or Codex-created `codex/...` branch/PR is the
+  review and delivery branch; it does not replace the permanent candidate handoff.
+  Once a coherent implementation commit has passed focused validation and independent
+  review and has been successfully published to the fork, advance
+  `ci/thor-candidate-validation` to that exact published SHA when authenticated
+  remote write access is available. Fetch and verify the current candidate ref first,
+  use a normal fast-forward whenever possible, and use only the playbook's guarded
+  `--force-with-lease` procedure when a reset is genuinely required.
+- The candidate-branch push is part of normal feature completion when remote access
+  permits it and must trigger the existing Thor workflow. Do not wait for the full
+  ARM64 run to finish; report the exact candidate SHA and GitHub Actions run/link and
+  stop at `awaiting CI` or `awaiting hardware validation` as appropriate. If remote
+  write access is unavailable, report the exact published/local implementation SHA
+  and the precise candidate handoff that remains; do not silently stop after opening
+  an implementation PR.
 - Preserve the Conan archive cache, supported Gradle cache, and same-ref 3 GB
   `ccache`. Each run must create clean generated build/output trees.
 - Success means preflight and ARM64 jobs pass, focused tests pass, package ID is
@@ -263,6 +278,10 @@ Before completion:
 5. Follow the active task's commit/PR instructions. A normal development commit may
    precede CI/device validation, but it is not a validated promotion. Keep receipt-only
    documentation commits distinct where useful.
+6. For a hardware-relevant Thor feature, if the implementation commit has been
+   published and authenticated remote access permits it, complete the permanent
+   candidate handoff to that exact SHA before declaring the coding task complete.
+   Opening a PR alone is not the candidate handoff.
 
 Do not claim to have committed, pushed, opened a PR, triggered CI, merged, promoted,
 or modified a remote unless that action actually succeeded. Do not push or merge
@@ -289,9 +308,12 @@ selection among equally safe technical details do not require user approval.
 A substantial Thor feature is done only when the coherent implementation and focused
 tests are complete; independent review findings are fixed; relevant documentation is
 current; `git diff --check` passes; status/stat/full diff have been inspected; and CI
-status is reported or the exact candidate action is supplied. Hardware-relevant work
-must include its checklist and honest `awaiting hardware validation` state until the
-exact candidate passes on-device.
+status is reported or the exact candidate action is supplied. When the implementation
+has been published and authenticated remote access is available, "CI status reported"
+includes advancing `ci/thor-candidate-validation` to the exact implementation SHA and
+reporting the triggered Thor workflow run; do not stop merely because a Codex branch
+or PR exists. Hardware-relevant work must include its checklist and honest
+`awaiting hardware validation` state until the exact candidate passes on-device.
 
 Keep the final response concise and operational: selected/implemented feature,
 important architectural decisions, validation commands/results, CI run/link or next
@@ -300,8 +322,11 @@ action, hardware checklist/status, and unresolved issues.
 ## Short-prompt semantics
 
 - **“Implement the next feature.”** Discover the next logical backlog slice, announce
-  it briefly, design, implement, test, independently review, remediate, document, and
-  prepare/perform CI and delivery steps that the actual environment supports.
+  it briefly, design, implement, test, independently review, remediate, document,
+  publish the normal implementation branch/PR when supported, then hand the exact
+  reviewed implementation SHA to `ci/thor-candidate-validation` and report the
+  triggered Thor CI run when authenticated remote access permits it. Do not wait for
+  the full ARM64 run or hardware test.
 - **“Implement slice 21.”** Locate its current specification and status, verify both
   against code/history, then run the same complete workflow without duplicating work.
 - **“Review the current Thor implementation.”** Do not choose a new feature. Inspect
