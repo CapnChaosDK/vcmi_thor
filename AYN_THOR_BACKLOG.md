@@ -53,7 +53,7 @@ Hardware checklist for this candidate (user confirmed all passed):
   7. Rapidly switch tabs; open Hero/Town/modal/Battle contexts; toggle the display and background/resume; verify no stale row, residual panel, or focus loss.
   8. Recheck existing Adventure, Battle, Hero, Town, touchscreen, and controller behavior; confirm no crash, duplicate presentation, revision churn, delayed/wrong-player selection, or stale row. **Completed: all required checks passed on 2026-09-21.**
 
-This is the maintained planning and validation record for the AYN Thor fork. Do not remove deferred work when implementing an earlier slice. Before each implementation slice, record the proposed behavior, implementation boundary, native and Android responsibilities, focused acceptance tests, and regression risks, then wait for user approval.
+This is the maintained planning, product-contract, and validation-history record for the AYN Thor fork. `AGENTS.md` is authoritative for autonomous workflow and next-slice selection. Do not remove deferred work when implementing an earlier slice. Before or during each implementation slice, record the behavior, implementation boundary, native and Android responsibilities, focused acceptance tests, and regression risks. Briefly announce an unambiguous selected slice and proceed; request user input only under the stop conditions in `AGENTS.md`.
 
 Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardware validation`, `hardware validated`, `blocked`, `deferred`.
 
@@ -78,7 +78,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Slice 15 promotion: product commit `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` adds the read-only Town Window dashboard. The CI-built artifact passed the complete Town accuracy, construction/hero refresh, town switching, child/modal restoration, lower-display recreation, inert-touch, Adventure command, and upper-input regression checklist on an AYN Thor.
 - Slice 16 validation: candidate commit `f4df29a2eaa0b64a42faae5ceac3d56e1549d270` adds the context-aware Battle command deck. The CI-built artifact passed focused native and Android tests, and the final AYN Thor hardware checklist passed after the post-opening publication refresh. Its former per-slice validation history is collected into the authoritative branch.
 - Slice 17 validation: candidate commit `d4c9193be2d99233c00e2b4054d0484e0c67bf99` adds the live Battle information dashboard and the opponent-turn active-unit correction. CI run `35586360399` passed focused native and Android Thor checks, ARM64 packaging, and package verification. The checksum-verified APK (`29051c550f49ff86e823e2d990d47f01a1346526e6c5ea8a1500934bb3bb8148`) was installed and launched on an AYN Thor; the user reported all focused checks passed. Its former per-slice validation history is collected into the authoritative branch.
-- Approval to implement feature slices: yes; Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, Slice 6 on 2026-09-15, Slices 7 and 8 on 2026-09-17, and Slice 10 through the approved implementation brief on 2026-09-17.
+- Historical approvals: Slices 1 through 3 were approved by the user on 2026-09-13, Slice 4 on 2026-09-14, Slice 5 on 2026-09-15, Slice 6 on 2026-09-15, Slices 7 and 8 on 2026-09-17, and Slice 10 through the approved implementation brief on 2026-09-17. These receipts remain historical evidence; current autonomous selection and escalation follow `AGENTS.md`.
 
 ## Working rules
 
@@ -93,7 +93,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 - Preserve VCMI's complete owner lifecycle when closing or replacing windows. A Thor context optimization must not batch-remove an inactive parent window if its normal reactivation/deactivation performs visual, input, audio, or restoration cleanup.
 - Never bundle proprietary Heroes III artwork. Decode only player-installed assets and always retain a generic/text fallback.
 - Keep automated device interaction brief: connection, installation, explicit activity launch, process/display/log/state checks. Manual hardware behavior is user-validated.
-- Do not commit or push a slice until the user reports its focused hardware checks passed.
+- Development commits and the permanent candidate-branch push may precede hardware validation. Do not describe or promote a slice as hardware validated until the user confirms the focused checks for the exact checksum-verified candidate.
 - Never push to the official upstream remote or rewrite validated history without explicit approval.
 - Preserve unrelated working-tree changes.
 - Future full ARM64 candidates follow this default sequence: implementation on `ayn-thor-dual-screen` → local checks → update/push `ci/thor-candidate-validation` → Thor CI preflight, package verification, receipt, checksum, and artifact → manual AYN Thor hardware validation → promotion of the exact tested product tree. Do not create `ci/thor-sliceN-validation` branches.
@@ -480,7 +480,7 @@ Approved by the user on 2026-09-17.
 
 ## Next action
 
-Slices 1 through 9 are hardware-validated. Propose and obtain approval for any future read-only context before implementation; native commands, coordinate injection, and mutable gameplay state remain separately scoped.
+Slices 1 through 9 are hardware-validated. At that checkpoint, future read-only contexts required separate proposals and approval, while native commands, coordinate injection, and mutable gameplay state remained separately scoped. That historical approval gate was superseded by the autonomous selection and escalation rules in `AGENTS.md`.
 
 ## Approved Slice 9: read-only Hero Meeting and Battle lifecycle contexts
 
@@ -904,7 +904,7 @@ Status: `hardware validated`
 - Candidate artifact: `thor-candidate-arm64-35519819523`; artifact ZIP SHA-256 `52888aa096054de6f4d57df3ce9d0533ab3459e60a06136038070452531f812f`; APK SHA-256 `4e8158af4543e74922458608460738be331d3b726fed0ac880f202c9243a8cac`.
 - The artifact checksum and embedded validation receipt were verified before installation. The APK was installed in place on the AYN Thor, preserving Thor package data, and launched successfully.
 - On 2026-09-20, the user reported that all twelve Slice 14 hardware checks passed. Slice 14 is therefore hardware validated; the exact tested product tree is `e60e7e1051d08c5fae07be207182c3f175047429` (`thor: add hero window information dashboard`).
-- Future slices must retain the generic bounded detail-line contract, no-churn revisions, authoritative Hero Window lifecycle, inert `HERO_WINDOW` lower display, Slice 13 Adventure snapshot, and all eight Adventure commands. Start a new slice only with a separately approved scope and validation record.
+- Future slices must retain the generic bounded detail-line contract, no-churn revisions, authoritative Hero Window lifecycle, inert `HERO_WINDOW` lower display, Slice 13 Adventure snapshot, and all eight Adventure commands. The then-current requirement for a separately approved scope is historical; new work follows the selection and escalation rules in `AGENTS.md` and still requires a validation record.
 
 ## Slice 15: Town Window live information dashboard
 
@@ -961,7 +961,7 @@ Status: `hardware validated`
 - Candidate artifact: `thor-candidate-arm64-35528064000`; artifact ZIP SHA-256 `29dc8ad80cb7fa95386eef30baa4e5c3ca9b8c3c625b30e0639474885d95d0e3`; APK SHA-256 `c3491ee34b11f962fd4700031d450195120003c11d0cc3123042785b1419be12`.
 - The artifact checksum and embedded validation receipt were verified before installation. The APK was installed in place on the AYN Thor, preserving Thor package data, and launched successfully.
 - On 2026-09-20, the user reported that all fourteen Slice 15 hardware checks passed. Slice 15 is therefore hardware validated; the exact tested product tree is `df97a1899dd9deb300a3b6b5fe21803e1e4bfcec` (`Candidate Thor Slice 15 build`).
-- Future slices must retain the generic bounded detail-line contract, no-churn revisions, exact Town Window ownership and visibility boundary, inert `TOWN_WINDOW` lower display, Slice 13 Adventure snapshot and commands, and Slice 14 Hero dashboard behavior. Start a new slice only with separately approved scope and validation record.
+- Future slices must retain the generic bounded detail-line contract, no-churn revisions, exact Town Window ownership and visibility boundary, inert `TOWN_WINDOW` lower display, Slice 13 Adventure snapshot and commands, and Slice 14 Hero dashboard behavior. The then-current separate-approval requirement is historical; new work follows `AGENTS.md` and still requires a validation record.
 
 ## Slice 16: Context-aware Battle command deck
 
