@@ -244,7 +244,7 @@ void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, c
 		"(JII[Ljava/lang/String;[I[I[Ljava/lang/String;)V",
 		[revision, &artifacts](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
-			const auto size = static_cast<jsize>(artifacts.slots.size());
+			const auto size = static_cast<jsize>(artifacts.artifactSlots.size());
 			jintArray positions = env->NewIntArray(size);
 			jintArray flags = env->NewIntArray(size);
 			jclass stringClass = env->FindClass("java/lang/String");
@@ -259,7 +259,7 @@ void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, c
 			}
 			for(jsize index = 0; index < size; ++index)
 			{
-				const auto & slot = artifacts.slots[index];
+				const auto & slot = artifacts.artifactSlots[index];
 				const jint position = slot.position;
 				const jint state = (slot.occupied ? 1 : 0) | (slot.locked ? 2 : 0) | (slot.backpack ? 4 : 0);
 				env->SetIntArrayRegion(positions, index, 1, &position);

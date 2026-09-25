@@ -82,19 +82,19 @@ namespace
 			return;
 		auto & artifacts = *context.heroMeetingArtifacts;
 		if(artifacts.leftHeroId < 0 || artifacts.rightHeroId < 0 || artifacts.leftHeroId == artifacts.rightHeroId
-			|| artifacts.slots.size() != THOR_HERO_MEETING_ARTIFACT_COUNT)
+			|| artifacts.artifactSlots.size() != THOR_HERO_MEETING_ARTIFACT_COUNT)
 		{
 			context.heroMeetingArtifacts.reset();
 			return;
 		}
 		artifacts.leftHeroName = thorBoundedText(std::move(artifacts.leftHeroName));
 		artifacts.rightHeroName = thorBoundedText(std::move(artifacts.rightHeroName));
-		for(std::size_t index = 0; index < artifacts.slots.size(); ++index)
+		for(std::size_t index = 0; index < artifacts.artifactSlots.size(); ++index)
 		{
-			auto & slot = artifacts.slots[index];
+			auto & slot = artifacts.artifactSlots[index];
 			const auto sideOffset = index % (THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT);
 			const bool backpack = sideOffset >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT;
-			const int expectedHero = index < artifacts.slots.size() / 2 ? artifacts.leftHeroId : artifacts.rightHeroId;
+			const int expectedHero = index < artifacts.artifactSlots.size() / 2 ? artifacts.leftHeroId : artifacts.rightHeroId;
 			if(slot.heroId != expectedHero || slot.position != static_cast<int>(sideOffset)
 				|| slot.backpack != backpack || (!slot.occupied && !slot.name.empty()))
 			{

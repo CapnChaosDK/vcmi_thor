@@ -158,7 +158,7 @@ struct DLL_LINKAGE ThorHeroMeetingArtifacts
 	int rightHeroId = -1;
 	std::string leftHeroName;
 	std::string rightHeroName;
-	std::vector<ThorHeroMeetingArtifact> slots;
+	std::vector<ThorHeroMeetingArtifact> artifactSlots;
 	bool operator==(const ThorHeroMeetingArtifacts &) const = default;
 };
 

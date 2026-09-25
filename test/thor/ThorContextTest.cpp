@@ -289,19 +289,19 @@ TEST(ThorContextStoreTest, HeroMeetingArtifactSnapshotIsBoundedRevisionBoundAndC
 	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARTIFACT_COUNT; ++index)
 	{
 		const auto sideOffset = index % (THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT);
-		artifacts.slots.push_back({index < THOR_HERO_MEETING_ARTIFACT_COUNT / 2 ? 11 : 12,
+		artifacts.artifactSlots.push_back({index < THOR_HERO_MEETING_ARTIFACT_COUNT / 2 ? 11 : 12,
 			static_cast<int>(sideOffset), sideOffset >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT,
 			false, index == 0, ""});
 	}
-	artifacts.slots[1].occupied = true;
-	artifacts.slots[1].name = std::string(128, 'A') + "x";
+	artifacts.artifactSlots[1].occupied = true;
+	artifacts.artifactSlots[1].name = std::string(128, 'A') + "x";
 	context.heroMeetingArtifacts = artifacts;
 	const auto first = store.publishNext(context);
 	ASSERT_TRUE(first.heroMeetingArtifacts);
-	EXPECT_EQ(first.heroMeetingArtifacts->slots.size(), THOR_HERO_MEETING_ARTIFACT_COUNT);
-	EXPECT_EQ(first.heroMeetingArtifacts->slots[1].name.size(), 128);
+	EXPECT_EQ(first.heroMeetingArtifacts->artifactSlots.size(), THOR_HERO_MEETING_ARTIFACT_COUNT);
+	EXPECT_EQ(first.heroMeetingArtifacts->artifactSlots[1].name.size(), 128);
 	EXPECT_EQ(store.publishNext(context).revision, first.revision);
-	context.heroMeetingArtifacts->slots[1].name = "Changed";
+	context.heroMeetingArtifacts->artifactSlots[1].name = "Changed";
 	EXPECT_EQ(store.publishNext(context).revision, first.revision + 1);
 	context.contextId = ThorContextIds::UNKNOWN;
 	EXPECT_FALSE(store.publishNext(context).heroMeetingArtifacts);
@@ -319,9 +319,9 @@ TEST(ThorContextStoreTest, HeroMeetingArtifactSnapshotRejectsMalformedShapeAndId
 	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARTIFACT_COUNT; ++index)
 	{
 		const auto offset = index % 24;
-		artifacts.slots.push_back({index < 24 ? 1 : 2, static_cast<int>(offset), offset >= 19, false, false, ""});
+		artifacts.artifactSlots.push_back({index < 24 ? 1 : 2, static_cast<int>(offset), offset >= 19, false, false, ""});
 	}
-	artifacts.slots[24].heroId = 1;
+	artifacts.artifactSlots[24].heroId = 1;
 	context.heroMeetingArtifacts = artifacts;
 	EXPECT_FALSE(store.publishNext(context).heroMeetingArtifacts);
 }

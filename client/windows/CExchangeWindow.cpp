@@ -461,7 +461,7 @@ namespace
 			return result;
 		result.leftHeroName = heroes[0]->getObjectName().toString(&GAME->translator());
 		result.rightHeroName = heroes[1]->getObjectName().toString(&GAME->translator());
-		result.slots.reserve(THOR_HERO_MEETING_ARTIFACT_COUNT);
+		result.artifactSlots.reserve(THOR_HERO_MEETING_ARTIFACT_COUNT);
 		for(std::size_t side = 0; side < heroes.size(); ++side)
 		{
 			const auto append = [&](const auto & place, bool backpack)
@@ -478,7 +478,7 @@ namespace
 					if(artifact->isScroll() && artifact->getScrollSpellID().hasValue())
 						slot.name += " — " + artifact->getScrollSpellID().toSpell()->getNameTranslated();
 				}
-				result.slots.push_back(std::move(slot));
+				result.artifactSlots.push_back(std::move(slot));
 			};
 			for(const auto & [position, place] : widgets[side]->artWorn)
 				append(place, false);
