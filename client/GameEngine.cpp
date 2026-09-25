@@ -175,6 +175,16 @@ void GameEngine::updateFrame()
 			continue;
 		case ThorActionValidation::INVALID_TARGET:
 			logGlobal->debug("Thor action rejected: invalid target %d", request->targetId);
+			if(context.contextId == ThorContextIds::HERO_MEETING)
+			{
+				auto exchangeWindow = windows().topWindow<CExchangeWindow>();
+				if(exchangeWindow && exchangeWindow->matchesThorContext(context))
+				{
+					// Android has already disabled its local controls for this current-revision request.
+					exchangeWindow->updateThorActionState(true);
+					exchangeWindow->updateThorActionState();
+				}
+			}
 			continue;
 		case ThorActionValidation::VALID:
 			break;

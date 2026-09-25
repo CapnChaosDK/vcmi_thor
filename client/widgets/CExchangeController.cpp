@@ -190,6 +190,35 @@ bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool
 	return true;
 }
 
+bool CExchangeController::canSplitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
+	SlotID destinationSlot, int amount) const
+{
+	const auto source = sourceLeft ? left : right;
+	const auto destination = destinationLeft ? left : right;
+	if(!source || !destination || !sourceSlot.validSlot() || !destinationSlot.validSlot()
+		|| (source == destination && sourceSlot == destinationSlot) || amount < 1)
+		return false;
+	const auto * sourceStack = source->getStackPtr(sourceSlot);
+	const auto * destinationStack = destination->getStackPtr(destinationSlot);
+	if(!sourceStack || sourceStack->getCount() <= amount
+		|| (destinationStack && destinationStack->getCreature() != sourceStack->getCreature()))
+		return false;
+	const auto destinationCount = destinationStack ? destinationStack->getCount() : 0;
+	return destinationCount <= std::numeric_limits<int>::max() - amount;
+}
+
+bool CExchangeController::splitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
+	SlotID destinationSlot, int amount)
+{
+	if(!canSplitStackExact(sourceLeft, sourceSlot, destinationLeft, destinationSlot, amount))
+		return false;
+	const auto source = sourceLeft ? left : right;
+	const auto destination = destinationLeft ? left : right;
+	const auto destinationCount = destination->getStackCount(destinationSlot);
+	GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, destinationCount + amount);
+	return true;
+}
+
 void CExchangeController::moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget)
 {
 	const auto source = leftToRight ? left : right;

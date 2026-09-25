@@ -112,10 +112,24 @@ final class ThorSecondScreenPresentation extends Presentation
         private int selectedMeetingSlot = -1;
         private boolean pendingMeetingAction;
         private final ThorHeroMeetingGesture heroMeetingGesture = new ThorHeroMeetingGesture();
+        private final ThorHeroMeetingSplitState heroMeetingSplit = new ThorHeroMeetingSplitState();
         private final int touchSlop;
         private boolean heroMeetingTouchSequence;
         private boolean heroMeetingTouchCancelled;
         private long heroMeetingTouchRevision;
+        private final Runnable heroMeetingLongPress = () ->
+        {
+            if (heroMeetingGesture.activateLongPress(revision, ThorContextIds.HERO_MEETING.equals(contextId)))
+            {
+                final int source = heroMeetingGesture.sourceKey();
+                if (heroMeetingSplit.begin(revision, source, heroMeetingArmies.counts[source]))
+                {
+                    selectedMeetingSlot = source;
+                    setContentDescription(commandDeckDescription());
+                    invalidate();
+                }
+            }
+        };
 
         ThorFoundationView(final Context context)
         {
@@ -142,6 +156,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 townPage = 0;
                 selectedMeetingSlot = -1;
                 pendingMeetingAction = false;
+                heroMeetingSplit.cancel();
                 cancelHeroMeetingGesture();
             }
             this.revision = revision;
@@ -158,6 +173,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
                 selectedMeetingSlot = -1;
                 pendingMeetingAction = false;
+                heroMeetingSplit.cancel();
                 cancelHeroMeetingGesture();
             }
             this.enabledActionMask = enabledActionMask;
@@ -621,6 +637,20 @@ final class ThorSecondScreenPresentation extends Presentation
                             Math.min(22f * density, row.height() * 0.55f));
                 }
             }
+            if (heroMeetingSplit.stage() != ThorHeroMeetingSplitState.Stage.NONE)
+            {
+                paint.setColor(PARCHMENT_DARK);
+                final int instruction = heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION
+                        ? R.string.thor_split_select_destination : R.string.thor_split_amount;
+                drawFittedText(canvas, getContext().getString(instruction), frame.centerX(),
+                        frame.top + frame.height() * 0.775f, frame.width() * 0.8f,
+                        Math.min(22f * density, frame.height() * 0.03f));
+            }
+            if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)
+            {
+                drawHeroMeetingSplitEditor(canvas, frame, bevel, density);
+                return;
+            }
             final int[] actions = {ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT,
                     ThorActionIds.HERO_MEETING_SWAP_ARMIES, ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT};
             final int[] labels = {R.string.thor_army_move_right, R.string.thor_army_swap, R.string.thor_army_move_left};
@@ -672,6 +702,40 @@ final class ThorSecondScreenPresentation extends Presentation
             return new RectF(left, top, left + width, frame.bottom - bevel * 3f);
         }
 
+        private RectF heroMeetingSplitButtonBounds(final int index, final RectF frame, final float bevel)
+        {
+            final float gap = Math.max(bevel * 0.5f, 5f);
+            final float width = (frame.width() - bevel * 6f - gap * 5f) / 6f;
+            final float left = frame.left + bevel * 3f + index * (width + gap);
+            final float top = frame.top + frame.height() * 0.82f;
+            return new RectF(left, top, left + width, frame.bottom - bevel * 3f);
+        }
+
+        private void drawHeroMeetingSplitEditor(final Canvas canvas, final RectF frame, final float bevel,
+                                                 final float density)
+        {
+            final int[] labels = {R.string.thor_split_minus_ten, R.string.thor_split_minus_one,
+                    R.string.thor_split_plus_one, R.string.thor_split_plus_ten,
+                    R.string.thor_split_cancel, R.string.thor_split_confirm};
+            for (int index = 0; index < labels.length; ++index)
+            {
+                final RectF button = heroMeetingSplitButtonBounds(index, frame, bevel);
+                paint.setColor(STONE_DARK);
+                canvas.drawRoundRect(button, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(2f, bevel * 0.35f));
+                paint.setColor(GOLD);
+                canvas.drawRoundRect(button, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(TEXT);
+                final String label = index == 5
+                        ? getContext().getString(labels[index]) + " " + heroMeetingSplit.amount()
+                        : getContext().getString(labels[index]);
+                drawFittedText(canvas, label, button.centerX(), button.centerY(), button.width() * 0.86f,
+                        Math.min(20f * density, button.height() * 0.45f));
+            }
+        }
+
         private int heroMeetingSlotAt(final float x, final float y, final RectF frame, final float bevel)
         {
             for (int index = 0; index < ThorHeroMeetingArmies.SLOT_COUNT; ++index)
@@ -682,12 +746,17 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void beginHeroMeetingGesture(final float x, final float y)
         {
+            if (heroMeetingSplit.stage() != ThorHeroMeetingSplitState.Stage.NONE)
+                return;
             if (pendingMeetingAction || !heroMeetingArmies.complete() || !heroMeetingArmies.locallyControllable)
                 return;
             final int sourceKey = heroMeetingSlotAt(x, y, adventureFrame(), adventureBevel());
             final boolean movable = sourceKey >= 0 && (heroMeetingArmies.flags[sourceKey] & 1) != 0
                     && isActionEnabled(ThorActionIds.HERO_MEETING_TRANSFER_STACK);
-            heroMeetingGesture.begin(revision, sourceKey, movable, x, y);
+            if (heroMeetingGesture.begin(revision, sourceKey, movable, x, y)
+                    && heroMeetingArmies.counts[sourceKey] >= 2
+                    && isActionEnabled(ThorActionIds.HERO_MEETING_SPLIT_STACK))
+                postDelayed(heroMeetingLongPress, ViewConfiguration.getLongPressTimeout());
         }
 
         private void updateHeroMeetingGesture(final float x, final float y)
@@ -696,7 +765,10 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean dragging = heroMeetingGesture.move(x, y, touchSlop, revision,
                     ThorContextIds.HERO_MEETING.equals(contextId));
             if (dragging)
+            {
+                removeCallbacks(heroMeetingLongPress);
                 selectedMeetingSlot = heroMeetingGesture.sourceKey();
+            }
             else if (wasDragging)
                 selectedMeetingSlot = -1;
             if (dragging || wasDragging)
@@ -705,6 +777,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void finishHeroMeetingGesture(final float x, final float y)
         {
+            removeCallbacks(heroMeetingLongPress);
             if (!heroMeetingGesture.isArmed())
             {
                 handleHeroMeetingTap(x, y);
@@ -728,6 +801,13 @@ final class ThorSecondScreenPresentation extends Presentation
                 submitHeroMeetingQuickTap(result.sourceKey);
                 return;
             }
+            if (result.kind == ThorHeroMeetingGesture.Kind.LONG_PRESS)
+            {
+                selectedMeetingSlot = result.sourceKey;
+                setContentDescription(commandDeckDescription());
+                invalidate();
+                return;
+            }
             if (result.kind == ThorHeroMeetingGesture.Kind.DROP && !pendingMeetingAction
                     && isActionEnabled(ThorActionIds.HERO_MEETING_TRANSFER_STACK))
             {
@@ -746,7 +826,9 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void cancelHeroMeetingGesture()
         {
+            removeCallbacks(heroMeetingLongPress);
             heroMeetingGesture.cancel();
+            heroMeetingSplit.cancel();
             selectedMeetingSlot = -1;
             if (heroMeetingTouchSequence)
                 heroMeetingTouchCancelled = true;
@@ -755,6 +837,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void clearHeroMeetingSelection()
         {
+            removeCallbacks(heroMeetingLongPress);
             heroMeetingGesture.cancel();
             selectedMeetingSlot = -1;
             invalidate();
@@ -804,7 +887,9 @@ final class ThorSecondScreenPresentation extends Presentation
         @Override
         protected void onDetachedFromWindow()
         {
+            removeCallbacks(heroMeetingLongPress);
             heroMeetingGesture.cancel();
+            heroMeetingSplit.cancel();
             selectedMeetingSlot = -1;
             heroMeetingTouchSequence = false;
             heroMeetingTouchCancelled = false;
@@ -827,13 +912,36 @@ final class ThorSecondScreenPresentation extends Presentation
                 return;
             final RectF frame = adventureFrame();
             final float bevel = adventureBevel();
+            if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)
+            {
+                handleHeroMeetingSplitEditorTap(x, y, frame, bevel);
+                return;
+            }
             for (int index = 0; index < ThorHeroMeetingArmies.SLOT_COUNT; ++index)
             {
                 if (!heroMeetingSlotBounds(index, frame, bevel).contains(x, y))
                     continue;
+                if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION)
+                {
+                    if (index == heroMeetingSplit.sourceKey())
+                    {
+                        heroMeetingSplit.cancel();
+                        selectedMeetingSlot = -1;
+                        setContentDescription(commandDeckDescription());
+                        invalidate();
+                        return;
+                    }
+                    if (heroMeetingSplit.selectDestination(revision, index, heroMeetingArmies))
+                        selectedMeetingSlot = heroMeetingSplit.sourceKey();
+                    setContentDescription(commandDeckDescription());
+                    invalidate();
+                    return;
+                }
                 submitHeroMeetingQuickTap(index);
                 return;
             }
+            if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION)
+                return;
             final int[] actions = {ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT,
                     ThorActionIds.HERO_MEETING_SWAP_ARMIES, ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT};
             for (int index = 0; index < actions.length; ++index)
@@ -847,6 +955,39 @@ final class ThorSecondScreenPresentation extends Presentation
                     invalidate();
                     return;
                 }
+            }
+        }
+
+        private void handleHeroMeetingSplitEditorTap(final float x, final float y, final RectF frame,
+                                                      final float bevel)
+        {
+            for (int index = 0; index < 6; ++index)
+            {
+                if (!heroMeetingSplitButtonBounds(index, frame, bevel).contains(x, y))
+                    continue;
+                if (index < 4)
+                {
+                    heroMeetingSplit.adjust(new int[]{-10, -1, 1, 10}[index]);
+                }
+                else if (index == 4)
+                {
+                    heroMeetingSplit.cancel();
+                    selectedMeetingSlot = -1;
+                }
+                else if (isActionEnabled(ThorActionIds.HERO_MEETING_SPLIT_STACK))
+                {
+                    final int source = heroMeetingSplit.sourceKey();
+                    final int destination = heroMeetingSplit.destinationKey();
+                    NativeMethods.submitThorHeroMeetingSplit(revision, heroMeetingArmies.armyIds[source / 7], source % 7,
+                            heroMeetingArmies.armyIds[destination / 7], destination % 7, heroMeetingSplit.amount());
+                    pendingMeetingAction = true;
+                    heroMeetingSplit.cancel();
+                    selectedMeetingSlot = -1;
+                }
+                performClick();
+                setContentDescription(commandDeckDescription());
+                invalidate();
+                return;
             }
         }
 
@@ -1473,6 +1614,22 @@ final class ThorSecondScreenPresentation extends Presentation
                         + getContext().getString(R.string.thor_battle_hp) + " " + battleValue(3) + ". "
                         + getContext().getString(R.string.thor_action_next_unit) + ", "
                         + getContext().getString(R.string.thor_action_start_battle);
+
+            if (ThorContextIds.HERO_MEETING.equals(contextId))
+            {
+                if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION)
+                    return title + ". " + getContext().getString(R.string.thor_split_select_destination);
+                if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)
+                    return title + ". " + getContext().getString(R.string.thor_split_amount) + " "
+                            + heroMeetingSplit.amount() + ". "
+                            + getContext().getString(R.string.thor_split_minus_ten) + ", "
+                            + getContext().getString(R.string.thor_split_minus_one) + ", "
+                            + getContext().getString(R.string.thor_split_plus_one) + ", "
+                            + getContext().getString(R.string.thor_split_plus_ten) + ", "
+                            + getContext().getString(R.string.thor_split_cancel)
+                            + ", " + getContext().getString(R.string.thor_split_confirm);
+                return title + ". " + status + ". " + getContext().getString(R.string.thor_split_accessibility);
+            }
 
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;

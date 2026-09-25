@@ -95,4 +95,27 @@ public class ThorHeroMeetingGestureTest
         assertFalse(ThorHeroMeetingGesture.retainsArmies(21, ThorContextIds.ADVENTURE_MAP,
                 21, ThorContextIds.HERO_MEETING));
     }
+
+    @Test
+    public void stationaryLongPressSuppressesTapWhileMovementWinsBeforeActivation()
+    {
+        final ThorHeroMeetingGesture stationary = new ThorHeroMeetingGesture();
+        stationary.begin(22, 0, true, 10f, 10f);
+        assertTrue(stationary.activateLongPress(22, true));
+        assertTrue(stationary.isLongPressed());
+        assertEquals(ThorHeroMeetingGesture.Kind.LONG_PRESS, stationary.finish(22, true, 0).kind);
+
+        final ThorHeroMeetingGesture moved = new ThorHeroMeetingGesture();
+        moved.begin(22, 0, true, 10f, 10f);
+        assertTrue(moved.move(21f, 10f, 10f, 22, true));
+        assertFalse(moved.activateLongPress(22, true));
+        assertEquals(ThorHeroMeetingGesture.Kind.DROP, moved.finish(22, true, 7).kind);
+
+        final ThorHeroMeetingGesture boundary = new ThorHeroMeetingGesture();
+        boundary.begin(22, 0, true, 10f, 10f);
+        assertFalse(boundary.move(20f, 10f, 10f, 22, true));
+        assertTrue(boundary.activateLongPress(22, true));
+        boundary.cancel();
+        assertEquals(ThorHeroMeetingGesture.Kind.CANCELLED, boundary.finish(22, true, 7).kind);
+    }
 }
