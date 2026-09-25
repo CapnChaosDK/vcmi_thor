@@ -276,6 +276,56 @@ TEST(ThorContextStoreTest, HeroMeetingArmySnapshotIsRevisionBoundAndClearsOutsid
 	EXPECT_FALSE(cleared.heroMeetingArmies.has_value());
 }
 
+TEST(ThorContextStoreTest, HeroMeetingArtifactSnapshotIsBoundedRevisionBoundAndCleared)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	ThorHeroMeetingArtifacts artifacts;
+	artifacts.leftHeroId = 11;
+	artifacts.rightHeroId = 12;
+	artifacts.leftHeroName = "Left";
+	artifacts.rightHeroName = "Right";
+	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARTIFACT_COUNT; ++index)
+	{
+		const auto sideOffset = index % (THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT);
+		artifacts.slots.push_back({index < THOR_HERO_MEETING_ARTIFACT_COUNT / 2 ? 11 : 12,
+			static_cast<int>(sideOffset), sideOffset >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT,
+			false, index == 0, ""});
+	}
+	artifacts.slots[1].occupied = true;
+	artifacts.slots[1].name = std::string(128, 'A') + "x";
+	context.heroMeetingArtifacts = artifacts;
+	const auto first = store.publishNext(context);
+	ASSERT_TRUE(first.heroMeetingArtifacts);
+	EXPECT_EQ(first.heroMeetingArtifacts->slots.size(), THOR_HERO_MEETING_ARTIFACT_COUNT);
+	EXPECT_EQ(first.heroMeetingArtifacts->slots[1].name.size(), 128);
+	EXPECT_EQ(store.publishNext(context).revision, first.revision);
+	context.heroMeetingArtifacts->slots[1].name = "Changed";
+	EXPECT_EQ(store.publishNext(context).revision, first.revision + 1);
+	context.contextId = ThorContextIds::UNKNOWN;
+	EXPECT_FALSE(store.publishNext(context).heroMeetingArtifacts);
+}
+
+TEST(ThorContextStoreTest, HeroMeetingArtifactSnapshotRejectsMalformedShapeAndIdentity)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.heroMeetingArtifacts = ThorHeroMeetingArtifacts{1, 2, "Left", "Right", {}};
+	EXPECT_FALSE(store.publishNext(context).heroMeetingArtifacts);
+
+	auto artifacts = ThorHeroMeetingArtifacts{1, 2, "Left", "Right", {}};
+	for(std::size_t index = 0; index < THOR_HERO_MEETING_ARTIFACT_COUNT; ++index)
+	{
+		const auto offset = index % 24;
+		artifacts.slots.push_back({index < 24 ? 1 : 2, static_cast<int>(offset), offset >= 19, false, false, ""});
+	}
+	artifacts.slots[24].heroId = 1;
+	context.heroMeetingArtifacts = artifacts;
+	EXPECT_FALSE(store.publishNext(context).heroMeetingArtifacts);
+}
+
 TEST(ThorContextStoreTest, BattleDashboardSnapshotIsAtomicAndDoesNotChurn)
 {
 	ThorContextStore store;

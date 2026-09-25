@@ -68,6 +68,13 @@
     <string name="thor_army_move_right">Move all →</string>
     <string name="thor_army_swap">Swap armies</string>
     <string name="thor_army_move_left">← Move all</string>
+    <string name="thor_meeting_army">Army</string>
+    <string name="thor_meeting_artifacts">Artifacts</string>
+    <string name="thor_artifact_equipped">Equipped:</string>
+    <string name="thor_artifact_backpack">Backpack:</string>
+    <string name="thor_artifact_locked">Locked</string>
+    <string name="thor_previous">Previous</string>
+    <string name="thor_next">Next</string>
     <string name="thor_split_select_destination">Select destination</string>
     <string name="thor_split_amount">Creatures to move</string>
     <string name="thor_split_minus_ten">−10</string>

@@ -122,6 +122,22 @@ public class NativeMethods
         ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorHeroMeetingArmies(revision, armies));
     }
 
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorHeroMeetingArtifacts(final long revision, final int leftHeroId, final int rightHeroId,
+                                                       final String[] heroNames, final int[] positions,
+                                                       final int[] flags, final String[] names)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        final ThorHeroMeetingArtifacts artifacts = ThorHeroMeetingArtifacts.copyOf(leftHeroId, rightHeroId,
+                heroNames, positions, flags, names);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorHeroMeetingArtifacts(revision, artifacts));
+    }
+
     public static void setupMsg(final Messenger msg)
     {
         serverMessengerRef = new WeakReference<>(msg);

@@ -90,6 +90,10 @@ inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLA
 inline constexpr std::size_t THOR_MAX_TOWNS = 64;
 inline constexpr std::size_t THOR_HERO_MEETING_ARMY_SIZE = GameConstants::ARMY_SIZE;
 inline constexpr std::size_t THOR_HERO_MEETING_SLOT_KEY_COUNT = THOR_HERO_MEETING_ARMY_SIZE * 2;
+inline constexpr std::size_t THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT = 19;
+inline constexpr std::size_t THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT = 5;
+inline constexpr std::size_t THOR_HERO_MEETING_ARTIFACT_COUNT =
+	(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT) * 2;
 struct DLL_LINKAGE ThorHeroEntry
 {
 	int id = -1;
@@ -136,6 +140,28 @@ struct DLL_LINKAGE ThorHeroMeetingArmies
 	bool operator==(const ThorHeroMeetingArmies &) const = default;
 };
 
+struct DLL_LINKAGE ThorHeroMeetingArtifact
+{
+	int heroId = -1;
+	int position = -1;
+	bool backpack = false;
+	bool occupied = false;
+	bool locked = false;
+	std::string name;
+	bool operator==(const ThorHeroMeetingArtifact &) const = default;
+};
+
+/// Read-only snapshot of the equipped slots and five currently visible backpack slots for both heroes.
+struct DLL_LINKAGE ThorHeroMeetingArtifacts
+{
+	int leftHeroId = -1;
+	int rightHeroId = -1;
+	std::string leftHeroName;
+	std::string rightHeroName;
+	std::vector<ThorHeroMeetingArtifact> slots;
+	bool operator==(const ThorHeroMeetingArtifacts &) const = default;
+};
+
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
 {
@@ -152,6 +178,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::vector<ThorHeroEntry> heroes;
 	std::vector<ThorTownEntry> towns;
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
+	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

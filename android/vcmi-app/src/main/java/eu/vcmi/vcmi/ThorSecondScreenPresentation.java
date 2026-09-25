@@ -75,6 +75,12 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateHeroMeetingArmies(armies);
     }
 
+    void updateHeroMeetingArtifacts(final ThorHeroMeetingArtifacts artifacts)
+    {
+        if (foundationView != null)
+            foundationView.updateHeroMeetingArtifacts(artifacts);
+    }
+
     int getAdventureTab()
     {
         return foundationView == null ? 0 : foundationView.adventureTab;
@@ -107,6 +113,9 @@ final class ThorSecondScreenPresentation extends Presentation
         private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
         private ThorTownRoster towns = ThorTownRoster.EMPTY;
         private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+        private ThorHeroMeetingArtifacts heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
+        private final ThorHeroMeetingModeState heroMeetingMode = new ThorHeroMeetingModeState();
+        private int artifactPage;
         private int adventureTab;
         private int townPage;
         private int selectedMeetingSlot = -1;
@@ -119,7 +128,8 @@ final class ThorSecondScreenPresentation extends Presentation
         private long heroMeetingTouchRevision;
         private final Runnable heroMeetingLongPress = () ->
         {
-            if (heroMeetingGesture.activateLongPress(revision, ThorContextIds.HERO_MEETING.equals(contextId)))
+            if (heroMeetingMode.mode() == ThorHeroMeetingModeState.ARMY
+                    && heroMeetingGesture.activateLongPress(revision, ThorContextIds.HERO_MEETING.equals(contextId)))
             {
                 final int source = heroMeetingGesture.sourceKey();
                 if (heroMeetingSplit.begin(revision, source, heroMeetingArmies.counts[source]))
@@ -153,6 +163,8 @@ final class ThorSecondScreenPresentation extends Presentation
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+                heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
+                artifactPage = 0;
                 townPage = 0;
                 selectedMeetingSlot = -1;
                 pendingMeetingAction = false;
@@ -161,6 +173,7 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             this.revision = revision;
             this.contextId = contextId;
+            heroMeetingMode.update(revision, ThorContextIds.HERO_MEETING.equals(contextId));
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
                 adventureTab = 0;
@@ -367,6 +380,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     ? armies : ThorHeroMeetingArmies.EMPTY;
             selectedMeetingSlot = -1;
             pendingMeetingAction = false;
+            setContentDescription(commandDeckDescription());
+            invalidate();
+        }
+
+        void updateHeroMeetingArtifacts(final ThorHeroMeetingArtifacts artifacts)
+        {
+            heroMeetingArtifacts = ThorContextIds.HERO_MEETING.equals(contextId) && artifacts.complete()
+                    ? artifacts : ThorHeroMeetingArtifacts.EMPTY;
             setContentDescription(commandDeckDescription());
             invalidate();
         }
@@ -604,6 +625,12 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(PARCHMENT_DARK);
             drawFittedText(canvas, status, frame.centerX(), frame.top + frame.height() * 0.13f, frame.width() * 0.78f,
                     Math.min(24f * density, frame.height() * 0.035f));
+            drawHeroMeetingModes(canvas, frame, bevel, density);
+            if (heroMeetingMode.mode() == ThorHeroMeetingModeState.ARTIFACTS)
+            {
+                drawHeroMeetingArtifacts(canvas, frame, bevel, density);
+                return;
+            }
             if (!heroMeetingArmies.complete())
                 return;
 
@@ -670,6 +697,83 @@ final class ThorSecondScreenPresentation extends Presentation
                         button.width() * 0.85f, Math.min(22f * density, button.height() * 0.48f));
             }
             drawHeroMeetingDragFeedback(canvas, frame, bevel, density);
+        }
+
+        private void drawHeroMeetingModes(final Canvas canvas, final RectF frame, final float bevel, final float density)
+        {
+            final int[] labels = {R.string.thor_meeting_army, R.string.thor_meeting_artifacts};
+            for (int index = 0; index < 2; ++index)
+            {
+                final RectF tab = heroMeetingModeBounds(index, frame, bevel);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(heroMeetingMode.mode() == index ? STONE_DARK : STONE_LIGHT);
+                canvas.drawRoundRect(tab, bevel, bevel, paint);
+                paint.setColor(TEXT);
+                drawFittedText(canvas, getContext().getString(labels[index]), tab.centerX(), tab.centerY(),
+                        tab.width() * 0.85f, Math.min(20f * density, tab.height() * 0.55f));
+            }
+        }
+
+        private void drawHeroMeetingArtifacts(final Canvas canvas, final RectF frame, final float bevel,
+                                               final float density)
+        {
+            if (!heroMeetingArtifacts.complete())
+                return;
+            for (int side = 0; side < 2; ++side)
+            {
+                final RectF heading = heroMeetingHeadingBounds(side, frame, bevel);
+                paint.setColor(PARCHMENT_DARK);
+                paint.setFakeBoldText(true);
+                drawEllipsizedText(canvas, heroMeetingArtifacts.heroNames[side], heading.centerX(), heading.centerY(),
+                        heading.width() * 0.9f, Math.min(26f * density, heading.height() * 0.6f));
+                paint.setFakeBoldText(false);
+                for (int row = 0; row < 6; ++row)
+                {
+                    final int local = artifactPage * 6 + row;
+                    if (local >= ThorHeroMeetingArtifacts.PER_HERO)
+                        continue;
+                    final int index = side * ThorHeroMeetingArtifacts.PER_HERO + local;
+                    final RectF bounds = heroMeetingArtifactBounds(side, row, frame, bevel);
+                    final boolean occupied = (heroMeetingArtifacts.flags[index] & 1) != 0;
+                    final boolean locked = (heroMeetingArtifacts.flags[index] & 2) != 0;
+                    final boolean backpack = (heroMeetingArtifacts.flags[index] & 4) != 0;
+                    paint.setColor(locked ? Color.rgb(76, 74, 67) : STONE_DARK);
+                    canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                    paint.setColor(occupied ? TEXT : PARCHMENT_DARK);
+                    final String prefix = backpack ? getContext().getString(R.string.thor_artifact_backpack)
+                            : getContext().getString(R.string.thor_artifact_equipped);
+                    final String value = prefix + " " + (occupied ? heroMeetingArtifacts.names[index]
+                            : getContext().getString(R.string.thor_army_empty))
+                            + (locked ? " " + getContext().getString(R.string.thor_artifact_locked) : "");
+                    drawEllipsizedText(canvas, value, bounds.centerX(), bounds.centerY(), bounds.width() * 0.9f,
+                            Math.min(20f * density, bounds.height() * 0.5f));
+                }
+            }
+            final String page = (artifactPage + 1) + " / 4";
+            drawFittedText(canvas, getContext().getString(R.string.thor_previous), frame.left + frame.width() * 0.2f,
+                    frame.top + frame.height() * 0.86f, frame.width() * 0.25f, 20f * density);
+            drawFittedText(canvas, page, frame.centerX(), frame.top + frame.height() * 0.86f,
+                    frame.width() * 0.2f, 20f * density);
+            drawFittedText(canvas, getContext().getString(R.string.thor_next), frame.left + frame.width() * 0.8f,
+                    frame.top + frame.height() * 0.86f, frame.width() * 0.25f, 20f * density);
+        }
+
+        private RectF heroMeetingModeBounds(final int mode, final RectF frame, final float bevel)
+        {
+            final float width = frame.width() * 0.18f;
+            final float left = frame.centerX() + (mode == 0 ? -width - bevel : bevel);
+            return new RectF(left, frame.top + frame.height() * 0.115f, left + width,
+                    frame.top + frame.height() * 0.155f);
+        }
+
+        private RectF heroMeetingArtifactBounds(final int side, final int row, final RectF frame, final float bevel)
+        {
+            final RectF heading = heroMeetingHeadingBounds(side, frame, bevel);
+            final float gap = Math.max(bevel * 0.7f, 6f);
+            final float bottom = frame.top + frame.height() * 0.78f;
+            final float height = (bottom - heading.bottom - gap * 5f) / 6f;
+            final float top = heading.bottom + gap + row * (height + gap);
+            return new RectF(heading.left, top, heading.right, top + height);
         }
 
         private RectF heroMeetingHeadingBounds(final int side, final RectF frame, final float bevel)
@@ -908,10 +1012,37 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void handleHeroMeetingTap(final float x, final float y)
         {
-            if (!heroMeetingArmies.complete() || pendingMeetingAction)
-                return;
             final RectF frame = adventureFrame();
             final float bevel = adventureBevel();
+            for (int mode = 0; mode < 2; ++mode)
+            {
+                if (heroMeetingModeBounds(mode, frame, bevel).contains(x, y))
+                {
+                    heroMeetingMode.select(revision, mode);
+                    artifactPage = 0;
+                    clearHeroMeetingSelection();
+                    performClick();
+                    setContentDescription(commandDeckDescription());
+                    invalidate();
+                    return;
+                }
+            }
+            if (heroMeetingMode.mode() == ThorHeroMeetingModeState.ARTIFACTS)
+            {
+                if (y >= frame.top + frame.height() * 0.80f && y <= frame.top + frame.height() * 0.92f)
+                {
+                    if (x < frame.centerX() - frame.width() * 0.12f)
+                        artifactPage = Math.max(0, artifactPage - 1);
+                    else if (x > frame.centerX() + frame.width() * 0.12f)
+                        artifactPage = Math.min(3, artifactPage + 1);
+                    performClick();
+                    setContentDescription(commandDeckDescription());
+                    invalidate();
+                }
+                return;
+            }
+            if (!heroMeetingArmies.complete() || pendingMeetingAction)
+                return;
             if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)
             {
                 handleHeroMeetingSplitEditorTap(x, y, frame, bevel);
@@ -1617,6 +1748,29 @@ final class ThorSecondScreenPresentation extends Presentation
 
             if (ThorContextIds.HERO_MEETING.equals(contextId))
             {
+                if (heroMeetingMode.mode() == ThorHeroMeetingModeState.ARTIFACTS)
+                {
+                    final StringBuilder description = new StringBuilder(title).append(". ")
+                            .append(getContext().getString(R.string.thor_meeting_artifacts));
+                    if (heroMeetingArtifacts.complete())
+                        for (int side = 0; side < 2; ++side)
+                        {
+                            description.append(". ").append(heroMeetingArtifacts.heroNames[side]);
+                            for (int row = 0; row < 6; ++row)
+                            {
+                                final int local = artifactPage * 6 + row;
+                                if (local >= ThorHeroMeetingArtifacts.PER_HERO)
+                                    break;
+                                final int index = side * ThorHeroMeetingArtifacts.PER_HERO + local;
+                                description.append(". ").append((heroMeetingArtifacts.flags[index] & 1) != 0
+                                        ? heroMeetingArtifacts.names[index]
+                                        : getContext().getString(R.string.thor_army_empty));
+                                if ((heroMeetingArtifacts.flags[index] & 2) != 0)
+                                    description.append(" ").append(getContext().getString(R.string.thor_artifact_locked));
+                            }
+                        }
+                    return description.toString();
+                }
                 if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION)
                     return title + ". " + getContext().getString(R.string.thor_split_select_destination);
                 if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)

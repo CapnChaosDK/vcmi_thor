@@ -17,7 +17,8 @@ namespace
 			&& lhs.actionEpoch == rhs.actionEpoch
 			&& lhs.heroes == rhs.heroes
 			&& lhs.towns == rhs.towns
-			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies;
+			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies
+			&& lhs.heroMeetingArtifacts == rhs.heroMeetingArtifacts;
 	}
 
 	void normalizeActionSubject(ThorContextRecord & context)
@@ -37,40 +38,71 @@ namespace
 		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.towns.size() > THOR_MAX_TOWNS)
 			context.towns.clear();
 		if(context.contextId != ThorContextIds::HERO_MEETING)
+		{
 			context.heroMeetingArmies.reset();
+			context.heroMeetingArtifacts.reset();
+		}
 		for(auto & hero : context.heroes)
 			hero.name = thorBoundedText(std::move(hero.name));
 		for(auto & town : context.towns)
 			town.name = thorBoundedText(std::move(town.name));
-		if(!context.heroMeetingArmies)
-			return;
-		auto & armies = *context.heroMeetingArmies;
-		const bool validIds = armies.leftHeroId >= 0 && armies.rightHeroId >= 0 && armies.leftHeroId != armies.rightHeroId
-			&& armies.leftArmyId >= 0 && armies.rightArmyId >= 0 && armies.leftArmyId != armies.rightArmyId;
-		if(!validIds)
+		if(context.heroMeetingArmies)
 		{
-			context.heroMeetingArmies.reset();
+			auto & armies = *context.heroMeetingArmies;
+			const bool validIds = armies.leftHeroId >= 0 && armies.rightHeroId >= 0 && armies.leftHeroId != armies.rightHeroId
+				&& armies.leftArmyId >= 0 && armies.rightArmyId >= 0 && armies.leftArmyId != armies.rightArmyId;
+			if(!validIds)
+			{
+				context.heroMeetingArmies.reset();
+				context.heroMeetingArtifacts.reset();
+				return;
+			}
+			armies.leftHeroName = thorBoundedText(std::move(armies.leftHeroName));
+			armies.rightHeroName = thorBoundedText(std::move(armies.rightHeroName));
+			auto normalizeSlots = [](auto & slots, int armyId)
+			{
+				for(std::size_t index = 0; index < slots.size(); ++index)
+				{
+					auto & slot = slots[index];
+					if(slot.armyId != armyId || slot.slot != static_cast<int>(index) || slot.count < 0
+						|| (slot.occupied && (slot.creatureId < 0 || slot.count <= 0))
+						|| (!slot.occupied && (slot.creatureId != -1 || slot.count != 0)))
+						return false;
+					slot.creatureName = thorBoundedText(std::move(slot.creatureName));
+					if(!slot.occupied)
+						slot.creatureName.clear();
+				}
+				return true;
+			};
+			if(!normalizeSlots(armies.leftSlots, armies.leftArmyId) || !normalizeSlots(armies.rightSlots, armies.rightArmyId))
+				context.heroMeetingArmies.reset();
+		}
+
+		if(!context.heroMeetingArtifacts)
+			return;
+		auto & artifacts = *context.heroMeetingArtifacts;
+		if(artifacts.leftHeroId < 0 || artifacts.rightHeroId < 0 || artifacts.leftHeroId == artifacts.rightHeroId
+			|| artifacts.slots.size() != THOR_HERO_MEETING_ARTIFACT_COUNT)
+		{
+			context.heroMeetingArtifacts.reset();
 			return;
 		}
-		armies.leftHeroName = thorBoundedText(std::move(armies.leftHeroName));
-		armies.rightHeroName = thorBoundedText(std::move(armies.rightHeroName));
-		auto normalizeSlots = [](auto & slots, int armyId)
+		artifacts.leftHeroName = thorBoundedText(std::move(artifacts.leftHeroName));
+		artifacts.rightHeroName = thorBoundedText(std::move(artifacts.rightHeroName));
+		for(std::size_t index = 0; index < artifacts.slots.size(); ++index)
 		{
-			for(std::size_t index = 0; index < slots.size(); ++index)
+			auto & slot = artifacts.slots[index];
+			const auto sideOffset = index % (THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT);
+			const bool backpack = sideOffset >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT;
+			const int expectedHero = index < artifacts.slots.size() / 2 ? artifacts.leftHeroId : artifacts.rightHeroId;
+			if(slot.heroId != expectedHero || slot.position != static_cast<int>(sideOffset)
+				|| slot.backpack != backpack || (!slot.occupied && !slot.name.empty()))
 			{
-				auto & slot = slots[index];
-				if(slot.armyId != armyId || slot.slot != static_cast<int>(index) || slot.count < 0
-					|| (slot.occupied && (slot.creatureId < 0 || slot.count <= 0))
-					|| (!slot.occupied && (slot.creatureId != -1 || slot.count != 0)))
-					return false;
-				slot.creatureName = thorBoundedText(std::move(slot.creatureName));
-				if(!slot.occupied)
-					slot.creatureName.clear();
+				context.heroMeetingArtifacts.reset();
+				return;
 			}
-			return true;
-		};
-		if(!normalizeSlots(armies.leftSlots, armies.leftArmyId) || !normalizeSlots(armies.rightSlots, armies.rightArmyId))
-			context.heroMeetingArmies.reset();
+			slot.name = thorBoundedText(std::move(slot.name));
+		}
 	}
 }
 

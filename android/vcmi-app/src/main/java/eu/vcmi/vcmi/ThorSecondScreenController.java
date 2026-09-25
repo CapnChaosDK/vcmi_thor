@@ -26,6 +26,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+    private final ThorHeroMeetingArtifactCache heroMeetingArtifactCache = new ThorHeroMeetingArtifactCache();
     private int adventureTab;
     private boolean started;
     private boolean resumed;
@@ -93,6 +94,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         heroes = ThorHeroRoster.EMPTY;
         towns = ThorTownRoster.EMPTY;
         heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+        heroMeetingArtifactCache.reset(revision, contextId);
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
         contextDetails[0] = ThorContextDetails.orEmpty(detailLine1);
@@ -144,6 +146,14 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         heroMeetingArmies = armies;
         if (presentation != null)
             presentation.updateHeroMeetingArmies(armies);
+    }
+
+    void publishHeroMeetingArtifacts(final long revision, final ThorHeroMeetingArtifacts artifacts)
+    {
+        if (!heroMeetingArtifactCache.accept(revision, artifacts))
+            return;
+        if (presentation != null)
+            presentation.updateHeroMeetingArtifacts(artifacts);
     }
 
     @Override
@@ -202,6 +212,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
             newPresentation.updateHeroMeetingArmies(heroMeetingArmies);
+            newPresentation.updateHeroMeetingArtifacts(heroMeetingArtifactCache.snapshot());
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)

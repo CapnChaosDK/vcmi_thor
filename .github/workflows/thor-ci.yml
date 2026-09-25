@@ -246,7 +246,10 @@ jobs:
               --tests eu.vcmi.vcmi.ThorContextIdsTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingTransferPairTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingGestureTest \
-              --tests eu.vcmi.vcmi.ThorHeroMeetingSplitStateTest
+              --tests eu.vcmi.vcmi.ThorHeroMeetingSplitStateTest \
+              --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactsTest \
+              --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactCacheTest \
+              --tests eu.vcmi.vcmi.ThorHeroMeetingModeStateTest
 
       - name: Verify and checksum APK
         run: |

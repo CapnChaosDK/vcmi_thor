@@ -51,6 +51,7 @@ public:
 	void publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes);
 	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);
 	void publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies);
+	void publishThorHeroMeetingArtifacts(std::uint64_t revision, const ThorHeroMeetingArtifacts & artifacts);
 
 	static void cacheVM(JNIEnv * env);
 

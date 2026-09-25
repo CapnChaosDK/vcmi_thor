@@ -238,6 +238,46 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, const ThorHeroMeetingArtifacts & artifacts)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArtifacts",
+		"(JII[Ljava/lang/String;[I[I[Ljava/lang/String;)V",
+		[revision, &artifacts](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto size = static_cast<jsize>(artifacts.slots.size());
+			jintArray positions = env->NewIntArray(size);
+			jintArray flags = env->NewIntArray(size);
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray heroNames = env->NewObjectArray(2, stringClass, nullptr);
+			jobjectArray names = env->NewObjectArray(size, stringClass, nullptr);
+			const std::array heroNameValues = {artifacts.leftHeroName, artifacts.rightHeroName};
+			for(jsize side = 0; side < 2; ++side)
+			{
+				jstring name = env->NewStringUTF(heroNameValues[side].c_str());
+				env->SetObjectArrayElement(heroNames, side, name);
+				env->DeleteLocalRef(name);
+			}
+			for(jsize index = 0; index < size; ++index)
+			{
+				const auto & slot = artifacts.slots[index];
+				const jint position = slot.position;
+				const jint state = (slot.occupied ? 1 : 0) | (slot.locked ? 2 : 0) | (slot.backpack ? 4 : 0);
+				env->SetIntArrayRegion(positions, index, 1, &position);
+				env->SetIntArrayRegion(flags, index, 1, &state);
+				jstring name = env->NewStringUTF(slot.name.c_str());
+				env->SetObjectArrayElement(names, index, name);
+				env->DeleteLocalRef(name);
+			}
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(artifacts.leftHeroId),
+				static_cast<jint>(artifacts.rightHeroId), heroNames, positions, flags, names);
+			env->DeleteLocalRef(positions);
+			env->DeleteLocalRef(flags);
+			env->DeleteLocalRef(heroNames);
+			env->DeleteLocalRef(names);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 jclass CAndroidVMHelper::findClass(const std::string & name, bool classloaded)
 {
 	if(alwaysUseLoadedClass || classloaded)

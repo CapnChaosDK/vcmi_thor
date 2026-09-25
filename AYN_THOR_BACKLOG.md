@@ -59,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 22 are promoted. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 was CI-built and hardware-validated on candidate `bff5550956b1297b66f132d94ac8d495342a5623`.
-- Status: `hardware validated` through Slice 22.
+- Phase: Slices 1 through 22 are promoted. Slice 23 is implemented and awaiting candidate CI and hardware validation. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 was CI-built and hardware-validated on candidate `bff5550956b1297b66f132d94ac8d495342a5623`.
+- Status: `hardware validated` through Slice 22; Slice 23 implementation is complete locally and is `awaiting CI`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1163,3 +1163,27 @@ Status: `hardware validated`
 - Preserve action IDs 15–20 exactly. Action 20 is the only detailed split request and always means a genuinely partial move; do not reuse action 16 encoding or infer quantity in Android.
 - Keep split selection/editor state local to one rendered revision and presentation. Native `CExchangeWindow`/`CExchangeController` remains authoritative and the server callback remains the only mutation route.
 - Multi-slot redistribution remains deferred. Hero Meeting artifacts belong to Milestone 10 and must not be folded into this slice.
+
+## Slice 23 — Hero Meeting artifact deck foundation
+
+- Status: `implemented`; awaiting candidate CI and checksum-verified AYN Thor hardware validation.
+- `CExchangeWindow` publishes an immutable, bounded snapshot of both exact exchange heroes, all 19 equipped positions, and the five backpack positions currently exposed by each owned artifact widget. Stable hero/position identity, translated bounded names (including the spell identity for scrolls), occupancy, lock state, and equipped/backpack identity participate in semantic revision equality. Artifact refresh uses the existing exchange update path and clears outside the exact Hero Meeting lifecycle.
+- JNI transports the artifact snapshot in dedicated, shape-checked arrays. Android copies it into a dedicated immutable model, rejects malformed payloads, caches the latest matching revision for presentation recreation, and never overloads the validated army arrays.
+- Hero Meeting now has local-only Army and Artifacts modes. Army remains the default and retains action IDs 0–20 and all Slice 20–22 touch/gesture behavior. Artifacts presents six read-only text rows per hero on four local pages; empty and locked positions are explicit. Tabs and paging never submit native input. Mode, page, gestures, and split state reset on revision/context or presentation lifecycle replacement.
+- Focused native coverage checks bounds, stable identity, semantic no-churn/change revisions, malformed rejection, and context clearing. Focused JVM coverage checks immutable array shapes/backpack flags and mode retention/reset; the permanent Thor workflow runs both new JVM tests alongside the unchanged Army gesture/action coverage.
+- The complete behavior contract and device procedure remain authoritative in [`docs/AYN_THOR_SLICE_23_SPEC.md`](docs/AYN_THOR_SLICE_23_SPEC.md).
+
+### Required AYN Thor hardware checklist
+
+1. Recheck Army quick tap, exact drag, long-press split, and all whole-army controls unchanged.
+2. Compare both hero names, equipped positions, visible backpack positions, empty slots, locked slots, and spell-scroll names with the upper exchange.
+3. Touch every artifact row and page locally; verify no gameplay mutation or native command.
+4. Scroll the upper backpack and move/equip artifacts through normal upper controls; verify exactly one fresh lower snapshot without stale entries or revision churn.
+5. Switch modes rapidly and verify no retained Army selection/split editor, artifact hitbox leakage, duplicate command, or disabled-control deadlock.
+6. Exercise child/modal restoration, panel toggle/reconnect, and background/resume; verify Army defaults on replacement and no stale inventory.
+7. Recheck upper artifact mouse/touch/controller/keyboard paths and the Adventure/Battle decks; watch for focus theft, crashes, stale names, or wrong-hero data.
+
+### Next-slice handover
+
+- Preserve action IDs 0–20 and keep the Slice 23 artifact payload read-only. Artifact mutation, drag/drop, bulk movement, assembly, and descriptions remain deferred.
+- Continue sourcing artifact identity only from the active exchange window's two owned heroes/widgets. Any future action must be revision-bound and authoritatively revalidated on the native `MainGUI` path before using existing controller/callback routes.

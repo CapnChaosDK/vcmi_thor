@@ -448,6 +448,43 @@ namespace
 		}
 		return result;
 	}
+
+	ThorHeroMeetingArtifacts thorHeroMeetingArtifacts(const std::array<const CGHeroInstance *, 2> & heroes,
+		const std::array<std::shared_ptr<CArtifactsOfHeroMain>, 2> & widgets)
+	{
+		ThorHeroMeetingArtifacts result;
+		result.leftHeroId = heroes[0] ? heroes[0]->id.getNum() : -1;
+		result.rightHeroId = heroes[1] ? heroes[1]->id.getNum() : -1;
+		if(!heroes[0] || !heroes[1] || !widgets[0] || !widgets[1])
+			return result;
+		result.leftHeroName = heroes[0]->getObjectName().toString(&GAME->translator());
+		result.rightHeroName = heroes[1]->getObjectName().toString(&GAME->translator());
+		result.slots.reserve(THOR_HERO_MEETING_ARTIFACT_COUNT);
+		for(std::size_t side = 0; side < heroes.size(); ++side)
+		{
+			const auto append = [&](const auto & place, bool backpack)
+			{
+				ThorHeroMeetingArtifact slot;
+				slot.heroId = heroes[side]->id.getNum();
+				slot.position = place->slot.getNum();
+				slot.backpack = backpack;
+				slot.locked = place->isLocked();
+				if(const auto * artifact = widgets[side]->getArt(place->slot))
+				{
+					slot.occupied = true;
+					slot.name = artifact->getType()->getNameTranslated();
+					if(artifact->isScroll() && artifact->getScrollSpellID().hasValue())
+						slot.name += " — " + artifact->getScrollSpellID().toSpell()->getNameTranslated();
+				}
+				result.slots.push_back(std::move(slot));
+			};
+			for(const auto & [position, place] : widgets[side]->artWorn)
+				append(place, false);
+			for(const auto & place : widgets[side]->backpack)
+				append(place, true);
+		}
+		return result;
+	}
 }
 
 void CExchangeWindow::updateThorActionState(bool invalidateActions)
@@ -455,6 +492,7 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 	ThorContextRecord context;
 	context.contextId = ThorContextIds::HERO_MEETING;
 	context.heroMeetingArmies = thorHeroMeetingArmies(heroInst);
+	context.heroMeetingArtifacts = thorHeroMeetingArtifacts(heroInst, artifs);
 	if(context.heroMeetingArmies->locallyControllable && !invalidateActions)
 	{
 		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK)
@@ -473,6 +511,7 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 		return;
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
 	CAndroidVMHelper().publishThorHeroMeetingArmies(context.revision, *context.heroMeetingArmies);
+	CAndroidVMHelper().publishThorHeroMeetingArtifacts(context.revision, *context.heroMeetingArtifacts);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 }
 
@@ -632,4 +671,9 @@ void CExchangeWindow::updateArtifacts()
 		morale[leftRight]->set(hero);
 		luck[leftRight]->set(hero);
 	}
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		updateThorActionState();
+#endif
 }
