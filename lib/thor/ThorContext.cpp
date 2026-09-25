@@ -96,7 +96,7 @@ namespace
 			const bool backpack = sideOffset >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT;
 			const int expectedHero = index < artifacts.artifactSlots.size() / 2 ? artifacts.leftHeroId : artifacts.rightHeroId;
 			if(slot.heroId != expectedHero || slot.position != static_cast<int>(sideOffset)
-				|| slot.backpack != backpack || (slot.occupied ? slot.instanceId < 0 : (!slot.name.empty() || slot.instanceId != -1))
+				|| slot.backpack != backpack || (slot.occupied ? slot.instanceId < 0 : (!slot.name.empty() || slot.instanceId != -1)))
 			{
 				context.heroMeetingArtifacts.reset();
 				return;
