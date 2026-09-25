@@ -7,6 +7,10 @@ on:
       - master
       - develop
   pull_request:
+    branches:
+      - beta
+      - master
+      - develop
   workflow_dispatch:
 
 concurrency:
