@@ -59,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 22 are promoted. Slice 23 is implemented and awaiting candidate CI and hardware validation. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 was CI-built and hardware-validated on candidate `bff5550956b1297b66f132d94ac8d495342a5623`.
-- Status: `hardware validated` through Slice 22; Slice 23 implementation is complete locally and is `awaiting CI`.
+- Phase: Slices 1 through 23 are promoted. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 on `bff5550956b1297b66f132d94ac8d495342a5623`; and Slice 23 on `6db4f294b24504dc5e3d8c0dffa5daabcc52fdf3`.
+- Status: `hardware validated` through Slice 23.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1166,7 +1166,8 @@ Status: `hardware validated`
 
 ## Slice 23 — Hero Meeting artifact deck foundation
 
-- Status: `implemented`; awaiting candidate CI and checksum-verified AYN Thor hardware validation.
+- Status: `hardware validated` on candidate `6db4f294b24504dc5e3d8c0dffa5daabcc52fdf3` and promoted with the same product/build tree.
+- Candidate `6db4f294b24504dc5e3d8c0dffa5daabcc52fdf3` passed Thor CI run `36176901100` (#66), including focused native and Android tests, ARM64 packaging, and package verification. Artifact `thor-candidate-arm64-36176901100` has GitHub ZIP SHA-256 `36f39ae8bf4b252f0b29ea394f4d2be1a02cb6555c3352365f99cf691bec8a08`; the receipt and independently hashed APK SHA-256 is `70e75f8464acb96c01a395d42834c910dc5d3eafc54aa92edb3587ac22288f21`. The receipt identifies package `is.xyz.vcmi.thor`, version `1.8.0`, version code `1800`, and ABI `arm64-v8a`. The verified APK was installed with app data preserved and launched on an AYN Thor over wireless ADB on 2026-09-25. The user reported that the Slice 23 hardware checks passed.
 - `CExchangeWindow` publishes an immutable, bounded snapshot of both exact exchange heroes, all 19 equipped positions, and the five backpack positions currently exposed by each owned artifact widget. Stable hero/position identity, translated bounded names (including the spell identity for scrolls), occupancy, lock state, and equipped/backpack identity participate in semantic revision equality. Artifact refresh uses the existing exchange update path and clears outside the exact Hero Meeting lifecycle.
 - JNI transports the artifact snapshot in dedicated, shape-checked arrays. Android copies it into a dedicated immutable model, rejects malformed payloads, caches the latest matching revision for presentation recreation, and never overloads the validated army arrays.
 - Hero Meeting now has local-only Army and Artifacts modes. Army remains the default and retains action IDs 0–20 and all Slice 20–22 touch/gesture behavior. Artifacts presents six read-only text rows per hero on four local pages; empty and locked positions are explicit. Tabs and paging never submit native input. Mode, page, gestures, and split state reset on revision/context or presentation lifecycle replacement.
