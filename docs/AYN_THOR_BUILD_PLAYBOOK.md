@@ -1,6 +1,6 @@
 # AYN Thor build and device-validation playbook
 
-This is the concise hand-off for creating and validating future AYN Thor Android slices. Read it with `AYN_THOR_BACKLOG.md`, which remains the approval and product-scope record.
+This is the concise hand-off for creating and validating future AYN Thor Android slices. Read it with `AGENTS.md`, which governs autonomous workflow and escalation, and `AYN_THOR_BACKLOG.md`, which records product scope, status, and validation history.
 
 ## Validated starting point
 
@@ -91,7 +91,7 @@ git log --oneline -5
 git remote -v
 ```
 
-Make approved product, test, and documentation changes on `ayn-thor-dual-screen`. Before candidate creation, run `git diff --check`, review the diff/stat, and do not discard unrelated work. Update the permanent candidate transport branch to the exact candidate tree:
+Make product, test, and documentation changes on `ayn-thor-dual-screen` after selecting and scoping the slice under `AGENTS.md`. Before candidate creation, run `git diff --check`, review the complete diff/stat, and do not discard unrelated work. Update the permanent candidate transport branch to the exact candidate tree:
 
 ```powershell
 git switch ci/thor-candidate-validation
