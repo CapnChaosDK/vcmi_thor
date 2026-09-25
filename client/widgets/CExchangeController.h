@@ -21,6 +21,10 @@ public:
 	bool canMoveStack(bool leftToRight, SlotID sourceSlot) const;
 	bool canTransferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot) const;
 	bool transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
+	bool canSplitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
+		int amount) const;
+	bool splitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
+		int amount);
 	void moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget);
 	void swapArtifacts(bool equipped, bool baclpack);
 	void moveArtifacts(bool leftToRight, bool equipped, bool baclpack);

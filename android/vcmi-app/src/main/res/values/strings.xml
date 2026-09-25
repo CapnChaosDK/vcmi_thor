@@ -68,6 +68,15 @@
     <string name="thor_army_move_right">Move all →</string>
     <string name="thor_army_swap">Swap armies</string>
     <string name="thor_army_move_left">← Move all</string>
+    <string name="thor_split_select_destination">Select destination</string>
+    <string name="thor_split_amount">Creatures to move</string>
+    <string name="thor_split_minus_ten">−10</string>
+    <string name="thor_split_minus_one">−1</string>
+    <string name="thor_split_plus_one">+1</string>
+    <string name="thor_split_plus_ten">+10</string>
+    <string name="thor_split_cancel">Cancel</string>
+    <string name="thor_split_confirm">Split</string>
+    <string name="thor_split_accessibility">Tap to quick transfer, drag to transfer exactly, or long press to split</string>
     <string name="thor_context_battle">Battle</string>
     <string name="thor_context_battle_status">Combat in progress</string>
     <string name="thor_context_battle_tactics">Battle tactics</string>

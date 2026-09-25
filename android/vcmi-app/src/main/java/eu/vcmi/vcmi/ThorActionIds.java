@@ -22,6 +22,7 @@ final class ThorActionIds
     static final int HERO_MEETING_ARMY_LEFT_TO_RIGHT = 17;
     static final int HERO_MEETING_ARMY_RIGHT_TO_LEFT = 18;
     static final int HERO_MEETING_SWAP_ARMIES = 19;
+    static final int HERO_MEETING_SPLIT_STACK = 20;
     static final int NO_TARGET = -1;
 
     private ThorActionIds()
@@ -30,7 +31,7 @@ final class ThorActionIds
 
     static int maskFor(final int actionId)
     {
-        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= HERO_MEETING_SWAP_ARMIES
+        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= HERO_MEETING_SPLIT_STACK
                 ? 1 << (actionId - 1) : 0;
     }
 }

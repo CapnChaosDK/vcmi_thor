@@ -50,6 +50,23 @@ bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftT
 	});
 }
 
+bool canThorHeroMeetingSplitStack(const ThorHeroMeetingArmies & armies, int sourceArmyId, int sourceSlot,
+	int destinationArmyId, int destinationSlot, int amount)
+{
+	if(!armies.locallyControllable || sourceSlot < 0 || destinationSlot < 0
+		|| sourceSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)
+		|| destinationSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)
+		|| (sourceArmyId != armies.leftArmyId && sourceArmyId != armies.rightArmyId)
+		|| (destinationArmyId != armies.leftArmyId && destinationArmyId != armies.rightArmyId)
+		|| (sourceArmyId == destinationArmyId && sourceSlot == destinationSlot) || amount < 1)
+		return false;
+	const auto & source = (sourceArmyId == armies.leftArmyId ? armies.leftSlots : armies.rightSlots)[sourceSlot];
+	const auto & destination = (destinationArmyId == armies.leftArmyId ? armies.leftSlots : armies.rightSlots)[destinationSlot];
+	return source.occupied && source.armyId == sourceArmyId && source.slot == sourceSlot && source.count > amount
+		&& destination.armyId == destinationArmyId && destination.slot == destinationSlot
+		&& (!destination.occupied || destination.creatureId == source.creatureId);
+}
+
 std::optional<ThorAction> thorActionFromId(int actionId)
 {
 	switch(actionId)
@@ -92,6 +109,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT;
 	case static_cast<int>(ThorAction::HERO_MEETING_SWAP_ARMIES):
 		return ThorAction::HERO_MEETING_SWAP_ARMIES;
+	case static_cast<int>(ThorAction::HERO_MEETING_SPLIT_STACK):
+		return ThorAction::HERO_MEETING_SPLIT_STACK;
 	default:
 		return std::nullopt;
 	}
@@ -108,7 +127,8 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 	if(contextId == ThorContextIds::HERO_MEETING)
 		return action == ThorAction::HERO_MEETING_MOVE_STACK || action == ThorAction::HERO_MEETING_TRANSFER_STACK
 			|| action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT
-			|| action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT || action == ThorAction::HERO_MEETING_SWAP_ARMIES;
+			|| action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT || action == ThorAction::HERO_MEETING_SWAP_ARMIES
+			|| action == ThorAction::HERO_MEETING_SPLIT_STACK;
 	return false;
 }
 
@@ -151,7 +171,7 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable || request.targetId < 0
 			|| request.targetId >= static_cast<int>(THOR_HERO_MEETING_SLOT_KEY_COUNT)
 			|| request.sourceArmyId != -1 || request.sourceSlot != -1
-			|| request.destinationArmyId != -1 || request.destinationSlot != -1)
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
 			return ThorActionValidation::INVALID_TARGET;
 		const auto & armies = *context.heroMeetingArmies;
 		const auto slotsPerArmy = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
@@ -165,7 +185,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)
 	{
 		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable || request.sourceArmyId != -1
-			|| request.sourceSlot != -1 || request.destinationArmyId != -1 || request.destinationSlot != -1)
+			|| request.sourceSlot != -1 || request.destinationArmyId != -1 || request.destinationSlot != -1
+			|| request.amount != -1)
 			return ThorActionValidation::INVALID_TARGET;
 		const auto pair = decodeThorHeroMeetingTransferPair(request.targetId);
 		if(!pair)
@@ -177,6 +198,13 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		const int destinationArmyId = pair->destinationIsLeft ? armies.leftArmyId : armies.rightArmyId;
 		if(!source.occupied || source.armyId != sourceArmyId || source.slot != pair->sourceSlot
 			|| destination.armyId != destinationArmyId || destination.slot != pair->destinationSlot)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::HERO_MEETING_SPLIT_STACK)
+	{
+		if(request.targetId != -1 || !context.heroMeetingArmies
+			|| !canThorHeroMeetingSplitStack(*context.heroMeetingArmies, request.sourceArmyId, request.sourceSlot,
+				request.destinationArmyId, request.destinationSlot, request.amount))
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	if((request.action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT || request.action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT

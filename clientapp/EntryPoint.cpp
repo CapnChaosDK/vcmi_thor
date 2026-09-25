@@ -100,6 +100,26 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActi
 	logGlobal->debug("Thor action queued: revision %llu action %d", static_cast<unsigned long long>(revision), actionId);
 }
 
+extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingSplit(JNIEnv *, jclass,
+	jlong revision, jint sourceArmyId, jint sourceSlot, jint destinationArmyId, jint destinationSlot, jint amount)
+{
+	if(revision <= 0 || sourceArmyId < 0 || destinationArmyId < 0)
+	{
+		logGlobal->debug("Thor split rejected: malformed request");
+		return;
+	}
+	ThorActionRequest request;
+	request.revision = static_cast<std::uint64_t>(revision);
+	request.action = ThorAction::HERO_MEETING_SPLIT_STACK;
+	request.sourceArmyId = sourceArmyId;
+	request.sourceSlot = sourceSlot;
+	request.destinationArmyId = destinationArmyId;
+	request.destinationSlot = destinationSlot;
+	request.amount = amount;
+	if(!thorActionQueue().submit(request))
+		logGlobal->debug("Thor split rejected: queue full");
+}
+
 extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_clearThorActions(JNIEnv *, jclass)
 {
 	thorActionQueue().clear();

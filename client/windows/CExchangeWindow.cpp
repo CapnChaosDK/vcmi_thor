@@ -459,7 +459,8 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 	{
 		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
-			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES);
+			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES)
+			| thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK);
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, true))
 			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT);
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, false))
@@ -491,8 +492,6 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	const auto context = thorContextStore().snapshot();
 	if(!matchesThorContext(context) || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
 		return false;
-	if(!context.heroMeetingArmies->locallyControllable || thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies)
-		return false;
 	const auto rejectWithoutCallback = [this]()
 	{
 		// A rejected request has no garrison callback to restore the lower action state.
@@ -500,6 +499,8 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		updateThorActionState();
 		return false;
 	};
+	if(!context.heroMeetingArmies->locallyControllable || thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies)
+		return rejectWithoutCallback();
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK
 		&& !controller.canMoveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
 			SlotID(request.targetId % static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE))))
@@ -511,6 +512,15 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 			return false;
 		if(!controller.canTransferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
 			pair->destinationIsLeft, SlotID(pair->destinationSlot)))
+			return rejectWithoutCallback();
+	}
+	if(request.action == ThorAction::HERO_MEETING_SPLIT_STACK)
+	{
+		const auto & armies = *context.heroMeetingArmies;
+		const bool sourceLeft = request.sourceArmyId == armies.leftArmyId;
+		const bool destinationLeft = request.destinationArmyId == armies.leftArmyId;
+		if(!controller.canSplitStackExact(sourceLeft, SlotID(request.sourceSlot), destinationLeft,
+			SlotID(request.destinationSlot), request.amount))
 			return rejectWithoutCallback();
 	}
 
@@ -546,6 +556,13 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		controller.swapArmy();
 		executed = true;
 		break;
+	case ThorAction::HERO_MEETING_SPLIT_STACK:
+	{
+		const auto & armies = *context.heroMeetingArmies;
+		executed = controller.splitStackExact(request.sourceArmyId == armies.leftArmyId, SlotID(request.sourceSlot),
+			request.destinationArmyId == armies.leftArmyId, SlotID(request.destinationSlot), request.amount);
+		break;
+	}
 	default:
 		break;
 	}

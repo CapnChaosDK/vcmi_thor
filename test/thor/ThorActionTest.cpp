@@ -27,7 +27,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(17), ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT);
 	EXPECT_EQ(thorActionFromId(18), ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT);
 	EXPECT_EQ(thorActionFromId(19), ThorAction::HERO_MEETING_SWAP_ARMIES);
-	EXPECT_EQ(thorActionFromId(20), std::nullopt);
+	EXPECT_EQ(thorActionFromId(20), ThorAction::HERO_MEETING_SPLIT_STACK);
+	EXPECT_EQ(thorActionFromId(21), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -125,6 +126,8 @@ TEST(ThorActionTest, AllowsOnlyActionsForTheirExactContext)
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::BATTLE_DEFEND, ThorContextIds::HERO_WINDOW));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_MOVE_STACK, ThorContextIds::HERO_MEETING));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_TRANSFER_STACK, ThorContextIds::HERO_MEETING));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_SPLIT_STACK, ThorContextIds::HERO_MEETING));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_SPLIT_STACK, ThorContextIds::ADVENTURE_MAP));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_TRANSFER_STACK, ThorContextIds::ADVENTURE_MAP));
 }
 
@@ -145,6 +148,64 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT), 65536);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT), 131072);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES), 262144);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK), 524288);
+}
+
+TEST(ThorActionTest, HeroMeetingExactSplitValidatesEveryDetailedField)
+{
+	ThorContextRecord context;
+	context.revision = 22;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK);
+	ThorHeroMeetingArmies armies;
+	armies.leftArmyId = armies.leftHeroId = 10;
+	armies.rightArmyId = armies.rightHeroId = 20;
+	armies.locallyControllable = true;
+	for(int slot = 0; slot < 7; ++slot)
+	{
+		armies.leftSlots[slot] = {10, slot, false, -1, {}, 0};
+		armies.rightSlots[slot] = {20, slot, false, -1, {}, 0};
+	}
+	armies.leftSlots[0] = {10, 0, true, 3, "Pikemen", 12};
+	armies.leftSlots[2] = {10, 2, true, 3, "Pikemen", 4};
+	armies.rightSlots[1] = {20, 1, true, 3, "Pikemen", 5};
+	armies.rightSlots[2] = {20, 2, true, 4, "Archers", 5};
+	context.heroMeetingArmies = armies;
+	ThorActionRequest request{22, ThorAction::HERO_MEETING_SPLIT_STACK, -1, 10, 0, 20, 0, 1};
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID); // Empty opposite slot.
+	request.destinationSlot = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID); // Matching opposite stack.
+	request.destinationArmyId = 10;
+	request.destinationSlot = 2;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID); // Matching same-army stack.
+	request.destinationArmyId = 20;
+	request.destinationSlot = 2;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET); // Different creature.
+	request.destinationSlot = 0;
+	request.amount = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.amount = 11;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.amount = 12;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.amount = 1;
+	request.sourceSlot = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET); // Empty source.
+	request.sourceSlot = 0;
+	context.heroMeetingArmies->leftSlots[0].count = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArmies->leftSlots[0].count = 12;
+	request.destinationArmyId = 99;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.destinationArmyId = 20;
+	request.revision = 21;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision = 22;
+	context.enabledActionMask = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK);
+	context.contextId = ThorContextIds::BATTLE;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
 }
 
 TEST(ThorActionTest, HeroMeetingQuickMoveRequiresPublishedSourceOnly)

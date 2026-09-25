@@ -59,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 21 are promoted. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`.
-- Status: `hardware validated` through Slice 21.
+- Phase: Slices 1 through 21 are promoted. Slice 22 is implemented locally and awaits candidate CI and hardware validation. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`.
+- Status: `hardware validated` through Slice 21; Slice 22 is `implemented; awaiting candidate CI and hardware validation`.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1135,3 +1135,30 @@ Status: `hardware validated`
 - A legal-looking action may be a no-op with no garrison callback. Keep whole-army availability tied to a possible change and restore a fresh action revision after native rejection; otherwise the lower controls can remain grey. Keep one-shot revision consumption for accepted requests.
 - Keep gesture state scoped to the rendered revision and presentation. A short tap uses the pressed source key; an exact drag needs an opposite-army destination. Cancel on pointer changes, `ACTION_CANCEL`, context changes, modal replacement, panel toggles, and resume before any queued action can replay.
 - The exact hardware-tested product/build tree is `24a061c915977684299250ccd20b7668ab041901`. Later documentation and promotion commits do not change that tree. The promotion merge retains the published Slice 20 history as a parent while taking the tested candidate's product files.
+
+## Slice 22 — Exact Hero Meeting long-press stack splitting
+
+- Status: `implemented; awaiting candidate CI and hardware validation`.
+- A stationary Android-system-timeout long press on a locally controlled occupied stack of at least two creatures enters revision-scoped local split mode without issuing a native request. Movement beyond touch slop first retains Slice 21 exact drag, while release before the timeout retains action 15 quick transfer. Pointer changes, cancellation, context/revision replacement, presentation loss, display/lifecycle transitions, and leaving Hero Meeting clear the pending gesture and split editor.
+- Split mode highlights the source, accepts an empty or same-creature destination on either army (including the same army), and rejects the source or a different creature. Its lower-only editor defaults to half the source count and provides bounded `−10`, `−1`, `+1`, `+10`, `Cancel`, and `Split` controls. The submitted value is creatures moved and is clamped to `1..source count - 1`.
+- Stable action 20 uses mask `524288` and a dedicated bounded request containing revision, source army/slot, destination army/slot, and amount. Actions 15–19 and action-16 pair encoding are unchanged. Native validation rechecks the published identities and contents, active top `CExchangeWindow`, local ownership, live endpoints, creature compatibility, amount, and integer bounds before consuming the action epoch and calling `CCallback::splitStack` through `CExchangeController::splitStackExact`; Android never mutates game state.
+- Focused native coverage includes ID/mask/context parity and detailed payload validation for stale/unavailable requests, army/slot/amount bounds, empty or single-unit sources, empty/matching/different destinations, and same/opposite-army splits. Focused JVM coverage retains tap/drag touch-slop behavior, adds long-press arbitration, and tests the independent revision-scoped destination/amount state and clamping. Permanent Thor CI includes the new split-state test in its existing focused Android invocation.
+- Regression risks are delayed long-press execution after lifecycle changes, tap/drag arbitration changes, stale endpoint or quantity acceptance, destination-count overflow, failure to restore enabled controls after native rejection, and lower overlay/focus leakage. The implementation keeps timing/UI state presentation-local and performs authoritative native revalidation immediately before the existing callback.
+
+### Required AYN Thor hardware checklist
+
+1. Verify short taps still quick-transfer and exact drags still move, merge, or swap the chosen opposite-army slots in both directions.
+2. Hold a stationary occupied stack; verify no quick transfer occurs, its row highlights, `Select destination` appears, and cancelling submits nothing.
+3. Split into empty and same-creature slots on both sides, plus a legal same-army slot; verify exact small and larger quantities with every `±1`/`±10` control.
+4. Verify a source count of two permits only one creature moved, and full-stack/zero quantities are never submitted.
+5. Tap the source itself, a different-creature target, an outside region, and invalid/changed targets; verify no mutation or delayed command.
+6. Cross touch slop before timeout, release just before timeout, and exercise rapid/stale input; verify drag/tap wins respectively and no request executes twice.
+7. Replace the context with a modal, toggle/reconnect the lower display, background/resume, recreate the presentation, and restore Hero Meeting; verify no stale highlight/editor or disabled-control deadlock.
+8. Recheck upper Hero Meeting split and quick-transfer controls, artifacts, controller, keyboard, mouse, and touch; verify the lower presentation never steals focus.
+9. Recheck Adventure and Battle decks and watch for crashes, count corruption, duplicate action, stale overlay, or wrong-army mutation.
+
+### Next-slice handover
+
+- Preserve action IDs 15–20 exactly. Action 20 is the only detailed split request and always means a genuinely partial move; do not reuse action 16 encoding or infer quantity in Android.
+- Keep split selection/editor state local to one rendered revision and presentation. Native `CExchangeWindow`/`CExchangeController` remains authoritative and the server callback remains the only mutation route.
+- Multi-slot redistribution remains deferred. Hero Meeting artifacts belong to Milestone 10 and must not be folded into this slice.

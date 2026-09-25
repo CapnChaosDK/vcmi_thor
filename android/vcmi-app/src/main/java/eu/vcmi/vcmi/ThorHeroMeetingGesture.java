@@ -15,6 +15,7 @@ final class ThorHeroMeetingGesture
     {
         TAP,
         DROP,
+        LONG_PRESS,
         CANCELLED
     }
 
@@ -36,6 +37,7 @@ final class ThorHeroMeetingGesture
 
     private boolean armed;
     private boolean dragging;
+    private boolean longPressed;
     private long revision;
     private int sourceKey = -1;
     private float downX;
@@ -71,9 +73,17 @@ final class ThorHeroMeetingGesture
         pointerY = y;
         final float dx = x - downX;
         final float dy = y - downY;
-        if (dx * dx + dy * dy > touchSlop * touchSlop)
+        if (!longPressed && dx * dx + dy * dy > touchSlop * touchSlop)
             dragging = true;
         return dragging;
+    }
+
+    boolean activateLongPress(final long currentRevision, final boolean stillInHeroMeeting)
+    {
+        if (!armed || dragging || currentRevision != revision || !stillInHeroMeeting)
+            return false;
+        longPressed = true;
+        return true;
     }
 
     Result finish(final long currentRevision, final boolean stillInHeroMeeting, final int destinationKey)
@@ -82,10 +92,13 @@ final class ThorHeroMeetingGesture
             return CANCELLED;
         final int source = sourceKey;
         final boolean wasDragging = dragging;
+        final boolean wasLongPressed = longPressed;
         final boolean current = stillInHeroMeeting && currentRevision == revision;
         cancel();
         if (!current)
             return CANCELLED;
+        if (wasLongPressed)
+            return new Result(Kind.LONG_PRESS, source, -1);
         if (!wasDragging)
             return new Result(Kind.TAP, source, destinationKey);
         if (ThorHeroMeetingTransferPair.encode(source, destinationKey) == ThorHeroMeetingTransferPair.INVALID)
@@ -97,6 +110,7 @@ final class ThorHeroMeetingGesture
     {
         armed = false;
         dragging = false;
+        longPressed = false;
         revision = 0;
         sourceKey = -1;
         downX = downY = pointerX = pointerY = 0;
@@ -110,6 +124,11 @@ final class ThorHeroMeetingGesture
     boolean isDragging()
     {
         return armed && dragging;
+    }
+
+    boolean isLongPressed()
+    {
+        return armed && longPressed;
     }
 
     int sourceKey()

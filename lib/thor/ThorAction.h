@@ -32,7 +32,8 @@ enum class ThorAction : std::uint8_t
 	HERO_MEETING_TRANSFER_STACK = 16,
 	HERO_MEETING_ARMY_LEFT_TO_RIGHT = 17,
 	HERO_MEETING_ARMY_RIGHT_TO_LEFT = 18,
-	HERO_MEETING_SWAP_ARMIES = 19
+	HERO_MEETING_SWAP_ARMIES = 19,
+	HERO_MEETING_SPLIT_STACK = 20
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
@@ -53,6 +54,7 @@ struct DLL_LINKAGE ThorActionRequest
 	int sourceSlot = -1;
 	int destinationArmyId = -1;
 	int destinationSlot = -1;
+	int amount = -1;
 };
 
 /// A directional pair of fixed Hero Meeting slot keys. Keys 0-6 are left, 7-13 are right.
@@ -74,6 +76,8 @@ DLL_LINKAGE std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTran
 
 /// Mirrors whether native bulkMoveArmy can produce at least one stack change for this published army snapshot.
 DLL_LINKAGE bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftToRight);
+DLL_LINKAGE bool canThorHeroMeetingSplitStack(const ThorHeroMeetingArmies & armies,
+	int sourceArmyId, int sourceSlot, int destinationArmyId, int destinationSlot, int amount);
 
 enum class ThorActionValidation
 {
