@@ -148,6 +148,7 @@ struct DLL_LINKAGE ThorHeroMeetingArtifact
 	bool occupied = false;
 	bool locked = false;
 	std::string name;
+	int instanceId = -1;
 	bool operator==(const ThorHeroMeetingArtifact &) const = default;
 };
 

@@ -116,6 +116,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private ThorHeroMeetingArtifacts heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
         private final ThorHeroMeetingModeState heroMeetingMode = new ThorHeroMeetingModeState();
         private int artifactPage;
+        private int selectedArtifact = -1;
         private int adventureTab;
         private int townPage;
         private int selectedMeetingSlot = -1;
@@ -165,6 +166,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
                 heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
                 artifactPage = 0;
+                selectedArtifact = -1;
                 townPage = 0;
                 selectedMeetingSlot = -1;
                 pendingMeetingAction = false;
@@ -386,6 +388,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         void updateHeroMeetingArtifacts(final ThorHeroMeetingArtifacts artifacts)
         {
+            selectedArtifact = -1;
             heroMeetingArtifacts = ThorContextIds.HERO_MEETING.equals(contextId) && artifacts.complete()
                     ? artifacts : ThorHeroMeetingArtifacts.EMPTY;
             setContentDescription(commandDeckDescription());
@@ -739,6 +742,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     final boolean backpack = (heroMeetingArtifacts.flags[index] & 4) != 0;
                     paint.setColor(locked ? Color.rgb(76, 74, 67) : STONE_DARK);
                     canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                    if (selectedArtifact == index)
+                    {
+                        paint.setStyle(Paint.Style.STROKE);
+                        paint.setStrokeWidth(Math.max(2f, bevel * 0.4f));
+                        paint.setColor(GOLD);
+                        canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                        paint.setStyle(Paint.Style.FILL);
+                    }
                     paint.setColor(occupied ? TEXT : PARCHMENT_DARK);
                     final String prefix = backpack ? getContext().getString(R.string.thor_artifact_backpack)
                             : getContext().getString(R.string.thor_artifact_equipped);
@@ -756,6 +767,12 @@ final class ThorSecondScreenPresentation extends Presentation
                     frame.width() * 0.2f, 20f * density);
             drawFittedText(canvas, getContext().getString(R.string.thor_next), frame.left + frame.width() * 0.8f,
                     frame.top + frame.height() * 0.86f, frame.width() * 0.25f, 20f * density);
+            if (selectedArtifact >= 0)
+            {
+                paint.setColor(GOLD);
+                drawEllipsizedText(canvas, heroMeetingArtifacts.names[selectedArtifact], frame.centerX(),
+                        frame.top + frame.height() * 0.94f, frame.width() * 0.8f, 18f * density);
+            }
         }
 
         private RectF heroMeetingModeBounds(final int mode, final RectF frame, final float bevel)
@@ -850,6 +867,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void beginHeroMeetingGesture(final float x, final float y)
         {
+            if (heroMeetingMode.mode() != ThorHeroMeetingModeState.ARMY)
+                return;
             if (heroMeetingSplit.stage() != ThorHeroMeetingSplitState.Stage.NONE)
                 return;
             if (pendingMeetingAction || !heroMeetingArmies.complete() || !heroMeetingArmies.locallyControllable)
@@ -930,6 +949,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void cancelHeroMeetingGesture()
         {
+            selectedArtifact = -1;
             removeCallbacks(heroMeetingLongPress);
             heroMeetingGesture.cancel();
             heroMeetingSplit.cancel();
@@ -1020,6 +1040,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 {
                     heroMeetingMode.select(revision, mode);
                     artifactPage = 0;
+                    selectedArtifact = -1;
                     clearHeroMeetingSelection();
                     performClick();
                     setContentDescription(commandDeckDescription());
@@ -1029,6 +1050,46 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             if (heroMeetingMode.mode() == ThorHeroMeetingModeState.ARTIFACTS)
             {
+                if (heroMeetingArtifacts.complete() && !pendingMeetingAction)
+                {
+                    for (int side = 0; side < 2; ++side)
+                    {
+                        for (int row = 0; row < 6; ++row)
+                        {
+                            final int local = artifactPage * 6 + row;
+                            if (local >= ThorHeroMeetingArtifacts.PER_HERO
+                                    || !heroMeetingArtifactBounds(side, row, frame, bevel).contains(x, y))
+                                continue;
+                            final int index = side * ThorHeroMeetingArtifacts.PER_HERO + local;
+                            if ((heroMeetingArtifacts.flags[index] & 2) != 0)
+                                return;
+                            if (selectedArtifact < 0)
+                            {
+                                if ((heroMeetingArtifacts.flags[index] & 1) == 0
+                                        || !isActionEnabled(ThorActionIds.HERO_MEETING_TRANSFER_ARTIFACT))
+                                    return;
+                                selectedArtifact = index;
+                            }
+                            else if (selectedArtifact == index)
+                                selectedArtifact = -1;
+                            else
+                            {
+                                final int pair = ThorHeroMeetingArtifactPair.encode(selectedArtifact, index);
+                                selectedArtifact = -1;
+                                if (pair != ThorHeroMeetingArtifactPair.INVALID
+                                        && isActionEnabled(ThorActionIds.HERO_MEETING_TRANSFER_ARTIFACT))
+                                {
+                                    NativeMethods.submitThorAction(revision,
+                                            ThorActionIds.HERO_MEETING_TRANSFER_ARTIFACT, pair);
+                                    pendingMeetingAction = true;
+                                }
+                            }
+                            performClick();
+                            invalidate();
+                            return;
+                        }
+                    }
+                }
                 if (y >= frame.top + frame.height() * 0.80f && y <= frame.top + frame.height() * 0.92f)
                 {
                     if (x < frame.centerX() - frame.width() * 0.12f)

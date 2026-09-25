@@ -28,7 +28,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(18), ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT);
 	EXPECT_EQ(thorActionFromId(19), ThorAction::HERO_MEETING_SWAP_ARMIES);
 	EXPECT_EQ(thorActionFromId(20), ThorAction::HERO_MEETING_SPLIT_STACK);
-	EXPECT_EQ(thorActionFromId(21), std::nullopt);
+	EXPECT_EQ(thorActionFromId(21), ThorAction::HERO_MEETING_TRANSFER_ARTIFACT);
+	EXPECT_EQ(thorActionFromId(22), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -502,6 +503,58 @@ TEST(ThorActionTest, ConsumingBattleActionClearsRenderedAvailability)
 	EXPECT_GT(consumed.revision, rendered.revision);
 	EXPECT_EQ(consumed.enabledActionMask, 0);
 	EXPECT_EQ(validateThorActionRequest({rendered.revision, ThorAction::BATTLE_DEFEND}, consumed), ThorActionValidation::STALE_REVISION);
+}
+
+TEST(ThorActionTest, ArtifactPairRejectsSameHeroAndMalformedTargets)
+{
+	EXPECT_EQ(encodeThorHeroMeetingArtifactPair(0, 24), 24);
+	EXPECT_EQ(encodeThorHeroMeetingArtifactPair(47, 23), 47 * 48 + 23);
+	EXPECT_FALSE(encodeThorHeroMeetingArtifactPair(0, 23));
+	EXPECT_FALSE(encodeThorHeroMeetingArtifactPair(24, 47));
+	EXPECT_FALSE(encodeThorHeroMeetingArtifactPair(-1, 24));
+	EXPECT_FALSE(encodeThorHeroMeetingArtifactPair(0, 48));
+	EXPECT_EQ(decodeThorHeroMeetingArtifactPair(24), (std::pair{0, 24}));
+	EXPECT_FALSE(decodeThorHeroMeetingArtifactPair(-1));
+	EXPECT_FALSE(decodeThorHeroMeetingArtifactPair(48 * 48));
+	EXPECT_FALSE(decodeThorHeroMeetingArtifactPair(1));
+}
+
+TEST(ThorActionTest, ArtifactRequestRequiresCurrentVisibleUnlockedSource)
+{
+	ThorContextRecord context;
+	context.revision = 8;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT);
+	ThorHeroMeetingArtifacts artifacts;
+	artifacts.leftHeroId = 1;
+	artifacts.rightHeroId = 2;
+	for(int index = 0; index < static_cast<int>(THOR_HERO_MEETING_ARTIFACT_COUNT); ++index)
+		artifacts.artifactSlots.push_back({index < 24 ? 1 : 2, index % 24, index % 24 >= 19, false, false, "", -1});
+	artifacts.artifactSlots[0].occupied = true;
+	artifacts.artifactSlots[0].instanceId = 7;
+	context.heroMeetingArtifacts = artifacts;
+	ThorActionRequest request{8, ThorAction::HERO_MEETING_TRANSFER_ARTIFACT, 24};
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.revision = 7;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision = 8;
+	request.targetId = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.targetId = 24;
+	request.sourceSlot = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.sourceSlot = -1;
+	context.heroMeetingArtifacts->artifactSlots[0].occupied = false;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArtifacts->artifactSlots[0].occupied = true;
+	context.heroMeetingArtifacts->artifactSlots[0].locked = true;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArtifacts->artifactSlots[0].locked = false;
+	context.heroMeetingArtifacts->artifactSlots[24].locked = true;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArtifacts->artifactSlots[24].locked = false;
+	context.enabledActionMask = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
 }
 
 TEST(ThorActionQueueTest, KeepsRequestsBoundedAndOrdered)
