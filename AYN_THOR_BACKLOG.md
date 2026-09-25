@@ -59,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 21 are promoted. Slice 22 is implemented locally and awaits candidate CI and hardware validation. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`.
-- Status: `hardware validated` through Slice 21; Slice 22 is `implemented; awaiting candidate CI and hardware validation`.
+- Phase: Slices 1 through 22 are promoted. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 was CI-built and hardware-validated on candidate `bff5550956b1297b66f132d94ac8d495342a5623`.
+- Status: `hardware validated` through Slice 22.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1138,7 +1138,8 @@ Status: `hardware validated`
 
 ## Slice 22 — Exact Hero Meeting long-press stack splitting
 
-- Status: `implemented; awaiting candidate CI and hardware validation`.
+- Status: `hardware validated` on candidate `bff5550956b1297b66f132d94ac8d495342a5623` and promoted with the same product/build tree.
+- Candidate `bff5550956b1297b66f132d94ac8d495342a5623` passed Thor CI run `36122109291` (#57), including focused native and Android tests, ARM64 packaging, and package verification. Artifact `thor-candidate-arm64-36122109291` has GitHub ZIP SHA-256 `01be7af1d7e834bf8a1e593fd48f225a9700225259390e4b2ebc944cc043b20f`; the receipt and independently hashed APK SHA-256 is `e224cb8806a0e2dfa6701eeb7cfac3df04243ccdc9e88d6bfd49fb6eb7ef8e69`. The receipt identifies package `is.xyz.vcmi.thor`, version `1.8.0`, version code `1800`, and ABI `arm64-v8a`. The verified APK was installed with app data preserved and launched on an AYN Thor on 2026-09-25. The user confirmed that all required Slice 22 hardware checks passed.
 - A stationary Android-system-timeout long press on a locally controlled occupied stack of at least two creatures enters revision-scoped local split mode without issuing a native request. Movement beyond touch slop first retains Slice 21 exact drag, while release before the timeout retains action 15 quick transfer. Pointer changes, cancellation, context/revision replacement, presentation loss, display/lifecycle transitions, and leaving Hero Meeting clear the pending gesture and split editor.
 - Split mode highlights the source, accepts an empty or same-creature destination on either army (including the same army), and rejects the source or a different creature. Its lower-only editor defaults to half the source count and provides bounded `−10`, `−1`, `+1`, `+10`, `Cancel`, and `Split` controls. The submitted value is creatures moved and is clamped to `1..source count - 1`.
 - Stable action 20 uses mask `524288` and a dedicated bounded request containing revision, source army/slot, destination army/slot, and amount. Actions 15–19 and action-16 pair encoding are unchanged. Native validation rechecks the published identities and contents, active top `CExchangeWindow`, local ownership, live endpoints, creature compatibility, amount, and integer bounds before consuming the action epoch and calling `CCallback::splitStack` through `CExchangeController::splitStackExact`; Android never mutates game state.
