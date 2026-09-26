@@ -31,10 +31,13 @@
 #include "../../lib/GameLibrary.h"
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/entities/artifact/CArtifact.h"
+#include "../../lib/entities/artifact/CArtifactInstance.h"
+#include "../../lib/entities/artifact/ArtifactUtils.h"
 #include "../../lib/entities/hero/CHeroHandler.h"
 #include "../../lib/filesystem/Filesystem.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
+#include "../../lib/networkPacks/ArtifactLocation.h"
 #include "../../lib/spells/CSpell.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/texts/TextOperations.h"
@@ -474,6 +477,7 @@ namespace
 				if(const auto * artifact = widgets[side]->getArt(place->slot))
 				{
 					slot.occupied = true;
+					slot.instanceId = artifact->getId().getNum();
 					slot.name = artifact->getType()->getNameTranslated();
 					if(artifact->isScroll() && artifact->getScrollSpellID().hasValue())
 						slot.name += " — " + artifact->getScrollSpellID().toSpell()->getNameTranslated();
@@ -501,6 +505,8 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 			| thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES)
 			| thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK);
+		if(context.heroMeetingArtifacts && getPickedArtifact() == nullptr && GAME->interface()->makingTurn)
+			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT);
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, true))
 			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT);
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, false))
@@ -564,8 +570,42 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 			SlotID(request.destinationSlot), request.amount))
 			return rejectWithoutCallback();
 	}
+	if(request.action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT)
+	{
+		const auto pair = decodeThorHeroMeetingArtifactPair(request.targetId);
+		if(!pair || !context.heroMeetingArtifacts || getPickedArtifact() != nullptr
+			|| !GAME->interface()->makingTurn || thorHeroMeetingArtifacts(heroInst, artifs) != *context.heroMeetingArtifacts)
+			return rejectWithoutCallback();
+		const auto & slots = context.heroMeetingArtifacts->artifactSlots;
+		const auto & source = slots[pair->first];
+		const auto & destination = slots[pair->second];
+		constexpr int perHero = static_cast<int>(THOR_HERO_MEETING_ARTIFACT_COUNT / 2);
+		const auto * sourceHero = heroInst[pair->first / perHero];
+		const auto * destinationHero = heroInst[pair->second / perHero];
+		const auto sourcePosition = ArtifactPosition(source.position);
+		const auto destinationPosition = ArtifactPosition(destination.position);
+		const auto * sourceArtifact = sourceHero->getArt(sourcePosition);
+		const auto * destinationArtifact = destinationHero->getArt(destinationPosition);
+		const bool destinationBackpack = destination.backpack;
+		const auto firstAppendSlot = ArtifactPosition(ArtifactPosition::BACKPACK_START
+			+ destinationHero->artifactsInBackpack.size());
+		if(!sourceArtifact || source.locked || destination.locked
+			|| (destinationBackpack && (destinationArtifact || destinationPosition != firstAppendSlot))
+			|| vstd::contains(ArtifactUtils::unmovableSlots(), sourcePosition)
+			|| (destinationArtifact && vstd::contains(ArtifactUtils::unmovableSlots(), destinationPosition))
+			|| sourceHero->getOwner() != GAME->interface()->playerID
+			|| destinationHero->getOwner() != GAME->interface()->playerID
+			|| sourceArtifact->getId().getNum() != source.instanceId
+			|| (destinationArtifact ? destinationArtifact->getId().getNum() : -1) != destination.instanceId
+			|| !sourceArtifact->getType()->isTradable()
+			|| (destinationArtifact && !destinationArtifact->getType()->isTradable())
+			|| sourceArtifact->isCombined() || (destinationArtifact && destinationArtifact->isCombined())
+			|| !sourceArtifact->canBePutAt(destinationHero, destinationPosition, destinationArtifact != nullptr)
+			|| (destinationArtifact && !destinationArtifact->canBePutAt(sourceHero, sourcePosition, true)))
+			return rejectWithoutCallback();
+	}
 
-	// Consume this rendered action epoch before invoking any callback that can mutate army state.
+	// Consume this rendered action epoch before invoking a gameplay callback.
 	updateThorActionState(true);
 	bool executed = false;
 	switch(request.action)
@@ -602,6 +642,19 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		const auto & armies = *context.heroMeetingArmies;
 		executed = controller.splitStackExact(request.sourceArmyId == armies.leftArmyId, SlotID(request.sourceSlot),
 			request.destinationArmyId == armies.leftArmyId, SlotID(request.destinationSlot), request.amount);
+		break;
+	}
+	case ThorAction::HERO_MEETING_TRANSFER_ARTIFACT:
+	{
+		const auto pair = decodeThorHeroMeetingArtifactPair(request.targetId);
+		if(pair)
+		{
+			const auto & slots = context.heroMeetingArtifacts->artifactSlots;
+			constexpr int perHero = static_cast<int>(THOR_HERO_MEETING_ARTIFACT_COUNT / 2);
+			executed = GAME->interface()->cb->swapArtifacts(
+				ArtifactLocation(heroInst[pair->first / perHero]->id, ArtifactPosition(slots[pair->first].position)),
+				ArtifactLocation(heroInst[pair->second / perHero]->id, ArtifactPosition(slots[pair->second].position)));
+		}
 		break;
 	}
 	default:

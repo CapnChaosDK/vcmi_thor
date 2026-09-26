@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <mutex>
 #include <optional>
+#include <utility>
 
 #include "ThorContext.h"
 
@@ -33,7 +34,8 @@ enum class ThorAction : std::uint8_t
 	HERO_MEETING_ARMY_LEFT_TO_RIGHT = 17,
 	HERO_MEETING_ARMY_RIGHT_TO_LEFT = 18,
 	HERO_MEETING_SWAP_ARMIES = 19,
-	HERO_MEETING_SPLIT_STACK = 20
+	HERO_MEETING_SPLIT_STACK = 20,
+	HERO_MEETING_TRANSFER_ARTIFACT = 21
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
@@ -73,6 +75,10 @@ struct DLL_LINKAGE ThorHeroMeetingTransferPair
 /// Same-side pairs and identical endpoints are rejected by both helpers.
 DLL_LINKAGE std::optional<int> encodeThorHeroMeetingTransferPair(int sourceKey, int destinationKey);
 DLL_LINKAGE std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTransferPair(int encodedPair);
+
+/// Action 21 encodes two distinct artifact row keys in [0, 47].
+DLL_LINKAGE std::optional<int> encodeThorHeroMeetingArtifactPair(int sourceKey, int destinationKey);
+DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroMeetingArtifactPair(int encodedPair);
 
 /// Mirrors whether native bulkMoveArmy can produce at least one stack change for this published army snapshot.
 DLL_LINKAGE bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftToRight);

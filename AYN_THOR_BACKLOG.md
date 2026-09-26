@@ -59,8 +59,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardw
 
 ## Current state
 
-- Phase: Slices 1 through 23 are promoted. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 on `bff5550956b1297b66f132d94ac8d495342a5623`; and Slice 23 on `6db4f294b24504dc5e3d8c0dffa5daabcc52fdf3`.
-- Status: `hardware validated` through Slice 23.
+- Phase: Slices 1 through 24 are promoted. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 on `bff5550956b1297b66f132d94ac8d495342a5623`; Slice 23 on `6db4f294b24504dc5e3d8c0dffa5daabcc52fdf3`; and Slice 24 on `6591870eba4928992435aaa5ce8f277e077bc7e4`.
+- Status: `hardware validated` through Slice 24. The exact Slice 24 candidate was promoted locally with the same product/build tree after the user confirmed its full hardware checklist.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1188,3 +1188,21 @@ Status: `hardware validated`
 
 - Preserve action IDs 0–20 and keep the Slice 23 artifact payload read-only. Artifact mutation, drag/drop, bulk movement, assembly, and descriptions remain deferred.
 - Continue sourcing artifact identity only from the active exchange window's two owned heroes/widgets. Any future action must be revision-bound and authoritatively revalidated on the native `MainGUI` path before using existing controller/callback routes.
+
+## Slice 24 — Exact Hero Meeting artifact tap transfer
+
+- Status: `hardware validated` on candidate `6591870eba4928992435aaa5ce8f277e077bc7e4`. The first implementation candidate `05fc58cec0bc3c77e41eed0aaffd4fda2cbed9f3` failed preflight run [`36181337298`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36181337298) on a native syntax error; corrected candidate `6591870eba4928992435aaa5ce8f277e077bc7e4` passed Thor CI run [`36226537550`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36226537550) (#72), including focused native/Android tests, ARM64 packaging, and package verification. Artifact `thor-candidate-arm64-36226537550` digest: `sha256:f1600537b31eed75396409be37b023b7c14ea2d710165a7480463f0c41be9ec7`; APK SHA-256: `ce7121fd410788dab457ec55a9994742496183e4c5e35df841632023806e33aa`; package: `is.xyz.vcmi.thor`. The build restored the warm ccache (787/842 hits, 93.47%) and took 214 seconds. On 2026-09-26 the checksum-verified APK was installed in place and launched on an AYN Thor. The user confirmed that the full hardware checklist below passed for this exact APK. The exact tested product/build tree was promoted locally at `6591870eba4928992435aaa5ce8f277e077bc7e4`; later receipt-only documentation does not change it.
+- Behavior: in Artifacts mode, tap an occupied unlocked tradable source row, then an unlocked row on the opposite hero to move or swap ordinary uncombined artifacts. A second tap on the source cancels; paging retains the source so equipped and backpack pages can pair. Mode changes, revision replacement, lifecycle changes, and pointer cancellation clear selection. Army mode retains all existing commands and gestures.
+- Boundary: action 21 carries the rendered revision and one bounded 48-by-48 row pair. The native snapshot retains artifact instance IDs for semantic revision equality, while Android receives only the existing plain text/slot data. `MainGUI` revalidates the active top exchange window, both owned heroes and visible slot positions, snapshot identity, lock and tradable state, current turn, upper cursor pickup, and fitting in both directions before consuming one action epoch and sending the existing `swapArtifacts` callback. The server inserts into a backpack rather than swapping occupied backpack rows, so the lower action permits only the exact first empty append position as a backpack destination. The ordinary cross-hero equipped transfer may trigger VCMI's upper-screen assembly prompt. Java does not change game state.
+- Native/Android responsibility: native alone decides whether an exact pair is legal; Android tracks a single local source highlight and selected-name cue, retains it through local paging, and clears it whenever the snapshot, mode, context, or presentation changes. Locked and empty source rows remain inert. The pair encoding allows only opposite-hero rows. Artifact drag/drop and whole-inventory controls remain deferred.
+- Automated acceptance: pair bounds and context/action parity, snapshot instance-ID revision changes, stale and malformed request rejection, and Android pair encoding. The existing Army gesture, split, artifact snapshot, and mode tests remain required.
+- Regression risks: backpack scroll changing visible identity, combination and locked positions, an upper artifact already held in the transition slot, same-name instances, callback rejection without a refresh, stale selection or double tap, and upper-screen input/focus interference.
+
+### Required AYN Thor hardware checklist
+
+1. Open Hero Meeting; verify Army quick transfer, drag, split, and whole-army controls still work.
+2. In Artifacts, tap an occupied source and an empty opposite-hero compatible slot; verify the exact item moves and both screens refresh.
+3. Swap two compatible equipped items; move a backpack source into compatible equipped or first empty opposite backpack positions. Verify occupied or later empty backpack destinations, incompatible, locked, immovable, and empty sources cause no mutation.
+4. Scroll the upper backpack or change an artifact between taps; verify the stale selection clears and no wrong item moves. Exercise rapid double taps.
+5. Select a source, change page, and choose an opposite-hero destination; verify exact transfer. Cancel by tapping the source, changing mode, opening a child, toggling or reconnecting the lower display, and background/resume; verify no delayed action or disabled deck.
+6. If an equipped transfer triggers the ordinary assembly prompt, resolve it on the upper screen and verify Hero Meeting restoration. Recheck upper artifact pickup, assembly, mouse/touch/controller/keyboard controls and Adventure/Battle decks; verify upper focus, context restoration, and absence of crashes or duplicate commands.

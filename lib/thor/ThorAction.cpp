@@ -2,6 +2,28 @@
 
 #include <algorithm>
 
+std::optional<int> encodeThorHeroMeetingArtifactPair(int sourceKey, int destinationKey)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARTIFACT_COUNT);
+	constexpr int perHero = count / 2;
+	if(sourceKey < 0 || destinationKey < 0 || sourceKey >= count || destinationKey >= count
+		|| sourceKey / perHero == destinationKey / perHero)
+		return std::nullopt;
+	return sourceKey * count + destinationKey;
+}
+
+std::optional<std::pair<int, int>> decodeThorHeroMeetingArtifactPair(int encodedPair)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARTIFACT_COUNT);
+	if(encodedPair < 0 || encodedPair >= count * count)
+		return std::nullopt;
+	const int source = encodedPair / count;
+	const int destination = encodedPair % count;
+	if(!encodeThorHeroMeetingArtifactPair(source, destination))
+		return std::nullopt;
+	return std::pair{source, destination};
+}
+
 std::optional<int> encodeThorHeroMeetingTransferPair(int sourceKey, int destinationKey)
 {
 	constexpr int slotKeyCount = static_cast<int>(THOR_HERO_MEETING_SLOT_KEY_COUNT);
@@ -111,6 +133,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::HERO_MEETING_SWAP_ARMIES;
 	case static_cast<int>(ThorAction::HERO_MEETING_SPLIT_STACK):
 		return ThorAction::HERO_MEETING_SPLIT_STACK;
+	case static_cast<int>(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT):
+		return ThorAction::HERO_MEETING_TRANSFER_ARTIFACT;
 	default:
 		return std::nullopt;
 	}
@@ -128,7 +152,7 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 		return action == ThorAction::HERO_MEETING_MOVE_STACK || action == ThorAction::HERO_MEETING_TRANSFER_STACK
 			|| action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT
 			|| action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT || action == ThorAction::HERO_MEETING_SWAP_ARMIES
-			|| action == ThorAction::HERO_MEETING_SPLIT_STACK;
+			|| action == ThorAction::HERO_MEETING_SPLIT_STACK || action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT;
 	return false;
 }
 
@@ -205,6 +229,19 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		if(request.targetId != -1 || !context.heroMeetingArmies
 			|| !canThorHeroMeetingSplitStack(*context.heroMeetingArmies, request.sourceArmyId, request.sourceSlot,
 				request.destinationArmyId, request.destinationSlot, request.amount))
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT)
+	{
+		if(!context.heroMeetingArtifacts || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto pair = decodeThorHeroMeetingArtifactPair(request.targetId);
+		if(!pair)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto & artifacts = context.heroMeetingArtifacts->artifactSlots;
+		if(artifacts.size() != THOR_HERO_MEETING_ARTIFACT_COUNT || !artifacts[pair->first].occupied
+			|| artifacts[pair->first].locked || artifacts[pair->second].locked)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	if((request.action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT || request.action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT
