@@ -47,12 +47,20 @@ TEST(ThorVisualAssetTest, StableKeysSeparateKindsAndUseArtifactTypeIdentity)
 {
 	const auto creatureKey = thorCreatureVisualAssetKey(7);
 	const auto artifactKey = thorArtifactVisualAssetKey(7);
+	const auto heroPortraitKey = thorHeroPortraitVisualAssetKey(7);
 	ASSERT_TRUE(isThorVisualAssetKey(creatureKey));
 	ASSERT_TRUE(isThorVisualAssetKey(artifactKey));
+	ASSERT_TRUE(isThorHeroPortraitVisualAssetKey(heroPortraitKey));
 	EXPECT_NE(creatureKey, artifactKey);
+	EXPECT_NE(creatureKey, heroPortraitKey);
+	EXPECT_NE(artifactKey, heroPortraitKey);
 	EXPECT_EQ(thorArtifactVisualAssetKey(7), thorArtifactVisualAssetKey(7));
 	EXPECT_NE(thorArtifactVisualAssetKey(7), thorArtifactVisualAssetKey(8));
+	EXPECT_EQ(thorHeroPortraitVisualAssetKey(7), thorHeroPortraitVisualAssetKey(7));
+	EXPECT_NE(thorHeroPortraitVisualAssetKey(7), thorHeroPortraitVisualAssetKey(8));
+	EXPECT_EQ(thorVisualAssetAnimationName(ThorVisualAssetKind::HERO), "PortraitsSmall");
 	EXPECT_FALSE(isThorVisualAssetKey(thorArtifactVisualAssetKey(-1)));
+	EXPECT_FALSE(isThorHeroPortraitVisualAssetKey(thorHeroPortraitVisualAssetKey(-1)));
 	EXPECT_FALSE(isThorVisualAssetKey((1ULL << 56) | (1ULL << 40) | 1ULL));
 }
 
@@ -72,6 +80,7 @@ TEST(ThorVisualAssetTest, SnapshotKeysStayWithTheirOccupiedSlotsAndDuplicateType
 {
 	const auto sharedCreature = thorCreatureVisualAssetKey(7);
 	auto armies = armiesWithOneCreature(sharedCreature);
+	armies.heroPortraitAssetKeys = {thorHeroPortraitVisualAssetKey(20), thorHeroPortraitVisualAssetKey(21)};
 	auto artifacts = emptyArtifacts();
 	artifacts.artifactSlots[0].occupied = true;
 	artifacts.artifactSlots[0].instanceId = 400;
@@ -83,13 +92,34 @@ TEST(ThorVisualAssetTest, SnapshotKeysStayWithTheirOccupiedSlotsAndDuplicateType
 	artifacts.artifactSlots[1].visualAssetKey = thorArtifactVisualAssetKey(11);
 
 	const auto keys = collectThorHeroMeetingVisualAssetKeys(armies, artifacts);
-	ASSERT_EQ(keys.size(), 2);
-	EXPECT_EQ(keys[0], sharedCreature);
-	EXPECT_EQ(keys[1], thorArtifactVisualAssetKey(11));
+	ASSERT_EQ(keys.size(), 4);
+	EXPECT_EQ(keys[0], thorHeroPortraitVisualAssetKey(20));
+	EXPECT_EQ(keys[1], thorHeroPortraitVisualAssetKey(21));
+	EXPECT_EQ(keys[2], sharedCreature);
+	EXPECT_EQ(keys[3], thorArtifactVisualAssetKey(11));
 
 	artifacts.artifactSlots[1].artifactTypeId = 12;
 	artifacts.artifactSlots[1].visualAssetKey = thorArtifactVisualAssetKey(12);
-	EXPECT_EQ(collectThorHeroMeetingVisualAssetKeys(armies, artifacts).size(), 3);
+	EXPECT_EQ(collectThorHeroMeetingVisualAssetKeys(armies, artifacts).size(), 5);
+}
+
+TEST(ThorVisualAssetTest, ContextAssetReferencesStayWithinTheirSemanticSurface)
+{
+	ThorContextRecord adventure;
+	adventure.contextId = ThorContextIds::ADVENTURE_MAP;
+	adventure.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(6);
+	EXPECT_EQ(collectThorContextVisualAssetKeys(adventure),
+		std::vector<std::uint64_t>{thorHeroPortraitVisualAssetKey(6)});
+
+	adventure.contextId = ThorContextIds::HERO_WINDOW;
+	EXPECT_EQ(collectThorContextVisualAssetKeys(adventure),
+		std::vector<std::uint64_t>{thorHeroPortraitVisualAssetKey(6)});
+
+	adventure.contextId = ThorContextIds::TOWN_WINDOW;
+	EXPECT_TRUE(collectThorContextVisualAssetKeys(adventure).empty());
+	adventure.contextId = ThorContextIds::ADVENTURE_MAP;
+	adventure.heroPortraitAssetKey = thorCreatureVisualAssetKey(6);
+	EXPECT_TRUE(collectThorContextVisualAssetKeys(adventure).empty());
 }
 
 TEST(ThorVisualAssetTest, AssetCollectionFailsClosedOnTooManySlotsOrInvalidKeys)
@@ -104,6 +134,33 @@ TEST(ThorVisualAssetTest, AssetCollectionFailsClosedOnTooManySlotsOrInvalidKeys)
 	artifacts.artifactSlots[0].visualAssetKey = 9;
 	EXPECT_EQ(collectThorHeroMeetingVisualAssetKeys(armies, artifacts),
 		std::vector<std::uint64_t>{thorCreatureVisualAssetKey(1)});
+}
+
+TEST(ThorVisualAssetTest, HeroMeetingSupportsBothPortraitsWithinTheSharedKeyBound)
+{
+	auto armies = armiesWithOneCreature(thorCreatureVisualAssetKey(100));
+	armies.heroPortraitAssetKeys = {thorHeroPortraitVisualAssetKey(0), thorHeroPortraitVisualAssetKey(1)};
+	armies.rightSlots[0] = {armies.rightArmyId, 0, true, 7, "Creature", 1, thorCreatureVisualAssetKey(7)};
+	for(std::size_t index = 1; index < THOR_HERO_MEETING_ARMY_SIZE; ++index)
+	{
+		armies.leftSlots[index] = {armies.leftArmyId, static_cast<int>(index), true,
+			static_cast<int>(index), "Creature", 1, thorCreatureVisualAssetKey(static_cast<int>(index))};
+		armies.rightSlots[index] = {armies.rightArmyId, static_cast<int>(index), true,
+			static_cast<int>(index + THOR_HERO_MEETING_ARMY_SIZE), "Creature", 1,
+			thorCreatureVisualAssetKey(static_cast<int>(index + THOR_HERO_MEETING_ARMY_SIZE))};
+	}
+	auto artifacts = emptyArtifacts();
+	for(std::size_t index = 0; index < artifacts.artifactSlots.size(); ++index)
+	{
+		auto & artifact = artifacts.artifactSlots[index];
+		artifact.occupied = true;
+		artifact.instanceId = static_cast<int>(index);
+		artifact.artifactTypeId = static_cast<int>(index);
+		artifact.visualAssetKey = thorArtifactVisualAssetKey(static_cast<int>(index));
+		artifact.name = "Artifact";
+	}
+
+	EXPECT_EQ(collectThorHeroMeetingVisualAssetKeys(armies, artifacts).size(), THOR_MAX_VISUAL_ASSET_KEYS);
 }
 
 TEST(ThorVisualAssetTest, DuplicateCacheInsertReusesBytesAndLruEvictionStaysBounded)
