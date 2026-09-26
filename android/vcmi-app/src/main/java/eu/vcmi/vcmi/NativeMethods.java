@@ -46,6 +46,11 @@ public class NativeMethods
     public static native void submitThorAction(long revision, int actionId, int targetId);
     public static native void submitThorHeroMeetingSplit(long revision, int sourceArmyId, int sourceSlot,
                                                          int destinationArmyId, int destinationSlot, int amount);
+    public static native boolean submitThorHeroMeetingRedistribution(long revision, int leftHeroId, int rightHeroId,
+                                                                     int sourceArmyId, int sourceSlot,
+                                                                     int sourceCreatureId, int sourceCount,
+                                                                     int[] destinationArmyIds, int[] destinationSlots,
+                                                                     int[] amounts);
     public static native void clearThorActions();
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

@@ -55,12 +55,13 @@ Hardware checklist for this candidate (user confirmed all passed):
 
 This is the maintained planning, product-contract, and validation-history record for the AYN Thor fork. `AGENTS.md` is authoritative for autonomous workflow and next-slice selection. Do not remove deferred work when implementing an earlier slice. Before or during each implementation slice, record the behavior, implementation boundary, native and Android responsibilities, focused acceptance tests, and regression risks. Briefly announce an unambiguous selected slice and proceed; request user input only under the stop conditions in `AGENTS.md`.
 
-Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting hardware validation`, `hardware validated`, `blocked`, `deferred`.
+Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, `awaiting hardware validation`, `hardware validated`, `blocked`, `deferred`.
 
 ## Current state
 
 - Phase: Slices 1 through 24 are promoted. Slices 20 and 21 were CI-built and hardware-validated on candidate `24a061c915977684299250ccd20b7668ab041901`; Slice 22 on `bff5550956b1297b66f132d94ac8d495342a5623`; Slice 23 on `6db4f294b24504dc5e3d8c0dffa5daabcc52fdf3`; and Slice 24 on `6591870eba4928992435aaa5ce8f277e077bc7e4`.
 - Status: `hardware validated` through Slice 24. The exact Slice 24 candidate was promoted locally with the same product/build tree after the user confirmed its full hardware checklist.
+- Current work: Slice 25 adds Hero Meeting multi-slot army redistribution; candidate CI and device validation are pending.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1128,7 +1129,7 @@ Status: `hardware validated`
 24. Cancel drags between rows, on the source side, by leaving Hero Meeting, by toggling the lower display, and through background/resume; verify no delayed transfer or stale highlight.
 25. Perform rapid successive gestures; verify stale requests cannot execute twice. Recheck upper quick-transfer arrows, keyboard modifiers, artifacts, controller/mouse focus, Hero Meeting and Battle Result restoration, and display recreation.
 
-### Next-slice handover
+### Next-slice handover (historical; superseded by Slice 25)
 
 - Preserve the tested action contract: IDs 0–15 keep their existing meanings; action 15 carries one occupied source key and calls native quick transfer. Action 16 carries a bounded opposite-army source/destination pair for exact-slot drag. Whole-army actions remain 17–19.
 - The lower display supplies touch intent only. Native Hero Meeting ownership, published slot identities, current army contents, destination choice, merge/swap, and final-required-stack checks remain authoritative at execution time.
@@ -1162,7 +1163,7 @@ Status: `hardware validated`
 
 - Preserve action IDs 15–20 exactly. Action 20 is the only detailed split request and always means a genuinely partial move; do not reuse action 16 encoding or infer quantity in Android.
 - Keep split selection/editor state local to one rendered revision and presentation. Native `CExchangeWindow`/`CExchangeController` remains authoritative and the server callback remains the only mutation route.
-- Multi-slot redistribution remains deferred. Hero Meeting artifacts belong to Milestone 10 and must not be folded into this slice.
+- Multi-slot redistribution was deferred at this handover and is implemented in Slice 25 below. Hero Meeting artifact work remains a separate capability.
 
 ## Slice 23 — Hero Meeting artifact deck foundation
 
@@ -1206,3 +1207,28 @@ Status: `hardware validated`
 4. Scroll the upper backpack or change an artifact between taps; verify the stale selection clears and no wrong item moves. Exercise rapid double taps.
 5. Select a source, change page, and choose an opposite-hero destination; verify exact transfer. Cancel by tapping the source, changing mode, opening a child, toggling or reconnecting the lower display, and background/resume; verify no delayed action or disabled deck.
 6. If an equipped transfer triggers the ordinary assembly prompt, resolve it on the upper screen and verify Hero Meeting restoration. Recheck upper artifact pickup, assembly, mouse/touch/controller/keyboard controls and Adventure/Battle decks; verify upper focus, context restoration, and absence of crashes or duplicate commands.
+
+## Slice 25 — Hero Meeting multi-slot army redistribution
+
+- Status: `awaiting CI`. The implementation is complete locally; no candidate APK or device result exists yet.
+- Behavior: from an occupied Army stack, the existing long-press gesture opens the established split destination prompt. Its explicit **Redistribute** button enters a local multi-slot editor. The editor identifies the source creature and original count, highlights empty or same-creature destinations in either hero's army, and lets the player allocate creatures among several targets with touch-sized amount controls. It shows allocated, maximum movable, and remaining counts. The source retains at least one creature. **Confirm** sends one bounded plan; **Cancel** sends nothing. Short-tap quick transfer, exact drag/drop, exact split, whole-army actions, artifact mode, and action IDs 0–21 retain their prior meanings.
+- Boundary and request contract: action 22 (`HERO_MEETING_REDISTRIBUTE_STACK`) has a dedicated revision-bound payload containing both ordered hero IDs, source army/slot/creature/count, and at most 13 distinct `(army, slot, amount)` destinations. The limit is the 14 fixed two-hero slots minus the source. JNI checks equal array lengths and the hard bound before copying into a fixed native request; malformed plans and action 22 sent through the generic action shape are rejected. Server serializer type 270 carries one fixed-size, 13-target pack.
+- Native responsibility: the Android UI remains a local planner. `GameEngine` consumes the bounded request on the existing interface path, revalidates the semantic revision and current Hero Meeting snapshot, and `CExchangeWindow` checks the exact active top exchange, ordered hero identities, current turn/control, complete army snapshot, and `CExchangeController` legality for every unique target. The server checks the active player, both current hero owners, the allowed exchange query, source identity/count, every destination slot and creature type, merge overflow, distinct destinations, and that the combined move leaves one source creature. Only after every target passes does it send one `BulkRebalanceStacks` update. A cross-hero move is placed first because the existing client visitor derives its garrison refresh from that first move; this refreshes both heroes. A rejected request produces no garrison mutation and explicitly publishes a fresh action revision so the lower controls recover. The bulk visitor applies the already-validated moves sequentially in one pack; its ordinary validation path has no per-destination partial callback. Unexpected internal engine assertion failures are outside the transaction recovery model.
+- Android responsibility: redistribution state is owned by the current presentation and rendered revision. It is cleared on revision or army snapshot changes, owner/control changes, Army/Artifacts mode changes, pointer cancellation, presentation detach/recreation, visibility loss, and activity pause/stop. A held row cannot arm the exact-split gesture while the editor is active. Java performs no game mutation and does not synthesize upper-screen or SDL input.
+- Automated coverage: native action mapping/mask and bounded payload decoding, queue capacity/malformed rejection, source/snapshot identity and count, empty source, valid same- and opposite-hero targets, empty and matching destinations, different-creature and duplicate rejection, slot and target bounds, source-retention, total overflow, stale revision, unavailable/wrong context, and action 22's dedicated-payload requirement. Context tests cover action consumption without semantic churn followed by restoration at a fresh revision. Android state tests cover compatible multi-target selection, allocation clamps and totals, the 13-slot bound, cancel/revision reset, changed army snapshot rejection, and no plan before a positive allocation. Existing Hero Meeting gesture, exact-split, artifact, context, and action tests remain in the focused suite.
+- Regression risks: long-press versus redistribution entry, stale source or destination content between edit and confirmation, overflow when merging into matching stacks, losing the source hero's final unit, incomplete garrison/UI refresh when both heroes are touched, and focus or input interference on the upper display. Full Android 17/Linux candidate CI and physical Thor behavior remain unverified in this environment.
+
+### Required AYN Thor hardware checklist
+
+1. Open a Hero Meeting and confirm that Army remains the default mode. Use a source stack of at least two creatures; verify **Redistribute** is available after long-press while short-tap, drag/drop, and exact split continue to work.
+2. Allocate from one source into multiple empty slots on both heroes and into a matching-creature stack. Verify the source, each target, and the lower snapshot update to the exact requested counts, with at least one source creature retained. Exercise −10/−1/+1/+10 limits and allocated/maximum/remaining totals.
+3. Try a different-creature destination, the source slot itself, a full matching stack, and a plan with no positive allocation. Verify incompatible targets stay unavailable and no invalid plan can be confirmed. Cancel a valid plan and verify no stack changes.
+4. While editing, change the source or a target on the upper screen, then use the lower deck. Verify the prior plan is discarded or rejected with a fresh enabled revision and no partial move.
+5. Switch Army/Artifacts mode; cancel by pointer change or `ACTION_CANCEL`; open/close a child or modal; toggle/reconnect the lower panel; background/resume. Verify the editor and plan reset, no delayed action runs, and the deck re-enables.
+6. Recheck long-press exact split, source-only quick tap, exact drag/drop, whole-army move/swap, and Slice 24 artifact tap transfer. Confirm the upper exchange still reports both hero garrisons after a plan that touches both armies.
+7. Recheck upper touch, mouse/keyboard, and physical controller; close the modal and verify normal Hero Meeting restoration. Confirm the Adventure and Battle decks remain unaffected and the upper display never loses input focus.
+
+### Next-slice handover
+
+- Preserve action IDs 0–22 and serializer type 270. Redistribution remains one source creature type, a maximum of 13 unique army destinations, explicit confirmation, and native/server revalidation.
+- Do not add automatic army optimization, mixed-creature transactions, Java gameplay rules, or artifact changes as part of this capability. Select the next slice from the maintained roadmap only after Slice 25's exact candidate has passed CI and its hardware checklist is confirmed.

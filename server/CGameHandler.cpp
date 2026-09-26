@@ -2044,6 +2044,87 @@ bool CGameHandler::bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destA
 	return true;
 }
 
+bool CGameHandler::redistributeArmyStack(ObjectInstanceID leftHeroId, ObjectInstanceID rightHeroId,
+	ObjectInstanceID sourceArmyId, SlotID sourceSlot, CreatureID expectedCreature, si32 expectedSourceCount,
+	const std::array<ArmyStackRedistributionTarget, MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS> & destinations,
+	ui8 destinationCount, PlayerColor player)
+{
+	const auto reject = [this](const std::string & message)
+	{
+		complain(message);
+		return false;
+	};
+	if(destinationCount == 0 || destinationCount > destinations.size()
+		|| !sourceSlot.validSlot() || leftHeroId == rightHeroId)
+		return reject("Invalid army redistribution request!");
+
+	const auto * leftHero = dynamic_cast<const CGHeroInstance *>(gameInfo().getObjInstance(leftHeroId));
+	const auto * rightHero = dynamic_cast<const CGHeroInstance *>(gameInfo().getObjInstance(rightHeroId));
+	const auto * source = dynamic_cast<const CGHeroInstance *>(gameInfo().getObjInstance(sourceArmyId));
+	if(!leftHero || !rightHero || !source
+		|| (sourceArmyId != leftHeroId && sourceArmyId != rightHeroId)
+		|| leftHero->tempOwner != player || rightHero->tempOwner != player
+		|| source->tempOwner != player || !isAllowedExchange(leftHeroId, rightHeroId))
+		return reject("Army redistribution is not allowed for these heroes!");
+
+	const auto * sourceStack = source->getStackPtr(sourceSlot);
+	if(!sourceStack || sourceStack->getCreatureID() != expectedCreature
+		|| sourceStack->getCount() != expectedSourceCount || expectedSourceCount < 2)
+		return reject("Army redistribution source changed!");
+
+	std::int64_t total = 0;
+	std::vector<std::pair<ObjectInstanceID, SlotID>> seenDestinations;
+	seenDestinations.reserve(destinationCount);
+	BulkRebalanceStacks redistribution;
+	redistribution.moves.reserve(destinationCount);
+	for(std::size_t index = 0; index < destinationCount; ++index)
+	{
+		const auto & target = destinations[index];
+		if(target.armyId != leftHeroId && target.armyId != rightHeroId)
+			return reject("Army redistribution destination is outside the Hero Meeting!");
+		const auto * destination = target.armyId == leftHeroId ? leftHero : rightHero;
+		if(!target.slot.validSlot() || target.amount <= 0
+			|| (target.armyId == sourceArmyId && target.slot == sourceSlot))
+			return reject("Invalid army redistribution destination!");
+		if(std::find(seenDestinations.begin(), seenDestinations.end(), std::pair{target.armyId, target.slot})
+			!= seenDestinations.end())
+			return reject("Duplicate army redistribution destination!");
+		seenDestinations.emplace_back(target.armyId, target.slot);
+		if(destination->tempOwner != player || !isAllowedExchange(sourceArmyId, target.armyId))
+			return reject("Army redistribution destination is not controlled by this player!");
+
+		const auto * destinationStack = destination->getStackPtr(target.slot);
+		if(destinationStack && destinationStack->getCreatureID() != expectedCreature)
+			return reject("Army redistribution cannot mix creature types!");
+		total += target.amount;
+		if(total > static_cast<std::int64_t>(expectedSourceCount) - 1)
+			return reject("Army redistribution would remove the source hero's final stack!");
+		if(destinationStack && destinationStack->getCount() > std::numeric_limits<si32>::max() - target.amount)
+			return reject("Army redistribution count is too large!");
+
+		RebalanceStacks move;
+		move.srcArmy = sourceArmyId;
+		move.dstArmy = target.armyId;
+		move.srcSlot = sourceSlot;
+		move.dstSlot = target.slot;
+		move.count = target.amount;
+		redistribution.moves.push_back(move);
+	}
+	if(total == 0)
+		return reject("Army redistribution must move at least one creature!");
+
+	// BulkRebalanceStacks reports garrison changes using its first move. Put a cross-hero
+	// transfer first so both heroes receive the existing refresh notification.
+	std::stable_partition(redistribution.moves.begin(), redistribution.moves.end(), [sourceArmyId](const RebalanceStacks & move)
+	{
+		return move.dstArmy != sourceArmyId;
+	});
+
+	// All destinations are revalidated before one garrison-update packet applies the complete plan.
+	sendAndApply(redistribution);
+	return true;
+}
+
 bool CGameHandler::bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID srcOwner)
 {
 	if(!slotSrc.validSlot() && complain(complainInvalidSlot))

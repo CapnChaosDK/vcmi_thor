@@ -155,9 +155,54 @@ void GameEngine::updateFrame()
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(adventureInt)
 		adventureInt->updateThorActionState();
-
-	while(const auto request = thorActionQueue().pop())
+	bool thorActionExecuted = false;
+	while(const auto request = thorHeroMeetingRedistributionQueue().pop())
 	{
+		auto context = thorContextStore().snapshot();
+		auto exchangeWindow = windows().topWindow<CExchangeWindow>();
+		const auto restoreRejectedRequest = [&]()
+		{
+			if(context.contextId == ThorContextIds::HERO_MEETING && exchangeWindow
+				&& exchangeWindow->matchesThorContext(context))
+			{
+				exchangeWindow->updateThorActionState(true);
+				exchangeWindow->updateThorActionState();
+			}
+		};
+		if(validateThorHeroMeetingRedistributionRequest(*request, context) != ThorActionValidation::VALID)
+		{
+			restoreRejectedRequest();
+			logGlobal->debug("Thor army redistribution rejected: invalid or stale request");
+			continue;
+		}
+		if(!exchangeWindow || !exchangeWindow->matchesThorContext(context))
+		{
+			logGlobal->debug("Thor army redistribution rejected: inactive Hero Meeting");
+			continue;
+		}
+		exchangeWindow->updateThorActionState();
+		context = thorContextStore().snapshot();
+		if(validateThorHeroMeetingRedistributionRequest(*request, context) != ThorActionValidation::VALID)
+		{
+			restoreRejectedRequest();
+			logGlobal->debug("Thor army redistribution rejected: Hero Meeting state changed");
+			continue;
+		}
+		if(exchangeWindow->executeThorRedistribution(*request))
+		{
+			thorActionQueue().clear();
+			thorHeroMeetingRedistributionQueue().clear();
+			thorActionExecuted = true;
+			logGlobal->debug("Thor army redistribution queued: %llu", static_cast<unsigned long long>(request->revision));
+			break;
+		}
+	}
+
+	while(!thorActionExecuted)
+	{
+		const auto request = thorActionQueue().pop();
+		if(!request)
+			break;
 		const auto context = thorContextStore().snapshot();
 		switch(validateThorActionRequest(*request, context))
 		{
@@ -253,6 +298,7 @@ void GameEngine::updateFrame()
 
 		logGlobal->debug("Thor action executed: %d", static_cast<int>(request->action));
 		thorActionQueue().clear();
+		thorHeroMeetingRedistributionQueue().clear();
 		break;
 	}
 #endif

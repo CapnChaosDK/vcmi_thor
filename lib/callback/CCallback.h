@@ -42,6 +42,9 @@ public:
 	int mergeOrSwapStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override; //first goes to the second
 	int mergeStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override; //first goes to the second
 	int splitStack(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val) override;
+	int redistributeStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
+		ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
+		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations) override;
 	int bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot) override;
 	int bulkSplitStack(ObjectInstanceID armyId, SlotID srcSlot, int howMany = 1) override;
 	int bulkSplitAndRebalanceStack(ObjectInstanceID armyId, SlotID srcSlot) override;

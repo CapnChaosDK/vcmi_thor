@@ -24,6 +24,7 @@ final class ThorActionIds
     static final int HERO_MEETING_SWAP_ARMIES = 19;
     static final int HERO_MEETING_SPLIT_STACK = 20;
     static final int HERO_MEETING_TRANSFER_ARTIFACT = 21;
+    static final int HERO_MEETING_REDISTRIBUTE_STACK = 22;
     static final int NO_TARGET = -1;
 
     private ThorActionIds()

@@ -127,6 +127,9 @@ public class ThorContextIdsTest
 		assertEquals(131072, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT));
 		assertEquals(262144, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SWAP_ARMIES));
 		assertEquals(524288, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SPLIT_STACK));
+		assertEquals(21, ThorActionIds.HERO_MEETING_TRANSFER_ARTIFACT);
+		assertEquals(22, ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
+		assertEquals(2097152, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK));
 		assertEquals(0, ThorActionIds.maskFor(99));
     }
 

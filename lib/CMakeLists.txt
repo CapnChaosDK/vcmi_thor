@@ -618,6 +618,7 @@ set(lib_MAIN_HEADERS
 	mapObjects/army/CArmedInstance.h
 	mapObjects/army/CCommanderInstance.h
 	mapObjects/army/CCreatureSet.h
+	mapObjects/army/ArmyStackRedistribution.h
 	mapObjects/army/CSimpleArmy.h
 	mapObjects/army/CStackBasicDescriptor.h
 	mapObjects/army/CStackInstance.h

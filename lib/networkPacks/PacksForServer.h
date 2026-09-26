@@ -12,6 +12,7 @@
 #include "ArtifactLocation.h"
 #include "NetPacksBase.h"
 #include "TradeItem.h"
+#include "../mapObjects/army/ArmyStackRedistribution.h"
 
 #include "../int3.h"
 #include "../battle/BattleAction.h"
@@ -124,6 +125,35 @@ struct DLL_LINKAGE ArrangeStacks : public CPackForServer
 		h & id1;
 		h & id2;
 		h & val;
+	}
+};
+
+/// One bounded request that redistributes a single creature stack across several compatible army slots.
+struct DLL_LINKAGE RedistributeArmyStack : public CPackForServer
+{
+	ObjectInstanceID leftHero;
+	ObjectInstanceID rightHero;
+	ObjectInstanceID sourceArmy;
+	SlotID sourceSlot;
+	CreatureID expectedCreature;
+	si32 expectedSourceCount = 0;
+	ui8 destinationCount = 0;
+	std::array<ArmyStackRedistributionTarget, MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS> destinations{};
+
+	void visitTyped(ICPackVisitor & visitor) override;
+
+	template <typename Handler>
+	void serialize(Handler & h)
+	{
+		h & static_cast<CPackForServer &>(*this);
+		h & leftHero;
+		h & rightHero;
+		h & sourceArmy;
+		h & sourceSlot;
+		h & expectedCreature;
+		h & expectedSourceCount;
+		h & destinationCount;
+		h & destinations;
 	}
 };
 

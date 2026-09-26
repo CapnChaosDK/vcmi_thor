@@ -85,9 +85,9 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActi
 	}
 
 	const auto action = thorActionFromId(actionId);
-	if(!action)
+	if(!action || *action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK)
 	{
-		logGlobal->debug("Thor action rejected: unknown action %d", actionId);
+		logGlobal->debug("Thor action rejected: unknown or dedicated action %d", actionId);
 		return;
 	}
 
@@ -98,6 +98,61 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActi
 	}
 
 	logGlobal->debug("Thor action queued: revision %llu action %d", static_cast<unsigned long long>(revision), actionId);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingRedistribution(
+	JNIEnv * env, jclass, jlong revision, jint leftHeroId, jint rightHeroId, jint sourceArmyId, jint sourceSlot,
+	jint sourceCreatureId, jint sourceCount, jintArray destinationArmyIds, jintArray destinationSlots, jintArray amounts)
+{
+	if(revision <= 0 || !destinationArmyIds || !destinationSlots || !amounts)
+	{
+		logGlobal->debug("Thor army redistribution rejected: missing destination arrays");
+		return JNI_FALSE;
+	}
+	const auto count = env->GetArrayLength(destinationArmyIds);
+	if(count <= 0 || count > static_cast<jsize>(THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS)
+		|| env->GetArrayLength(destinationSlots) != count || env->GetArrayLength(amounts) != count)
+	{
+		logGlobal->debug("Thor army redistribution rejected: invalid destination array bounds");
+		return JNI_FALSE;
+	}
+	std::array<jint, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> javaArmyIds{};
+	std::array<jint, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> javaSlots{};
+	std::array<jint, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> javaAmounts{};
+	env->GetIntArrayRegion(destinationArmyIds, 0, count, javaArmyIds.data());
+	env->GetIntArrayRegion(destinationSlots, 0, count, javaSlots.data());
+	env->GetIntArrayRegion(amounts, 0, count, javaAmounts.data());
+	if(env->ExceptionCheck())
+	{
+		env->ExceptionClear();
+		logGlobal->debug("Thor army redistribution rejected: failed to decode destination arrays");
+		return JNI_FALSE;
+	}
+	std::array<int, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> nativeArmyIds{};
+	std::array<int, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> nativeSlots{};
+	std::array<int, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> nativeAmounts{};
+	for(jsize index = 0; index < count; ++index)
+	{
+		nativeArmyIds[static_cast<std::size_t>(index)] = javaArmyIds[static_cast<std::size_t>(index)];
+		nativeSlots[static_cast<std::size_t>(index)] = javaSlots[static_cast<std::size_t>(index)];
+		nativeAmounts[static_cast<std::size_t>(index)] = javaAmounts[static_cast<std::size_t>(index)];
+	}
+	const auto request = decodeThorHeroMeetingRedistributionRequest(static_cast<std::uint64_t>(revision),
+		leftHeroId, rightHeroId, sourceArmyId, sourceSlot, sourceCreatureId, sourceCount,
+		std::span<const int>(nativeArmyIds.data(), static_cast<std::size_t>(count)),
+		std::span<const int>(nativeSlots.data(), static_cast<std::size_t>(count)),
+		std::span<const int>(nativeAmounts.data(), static_cast<std::size_t>(count)));
+	if(!request)
+	{
+		logGlobal->debug("Thor army redistribution rejected: malformed plan");
+		return JNI_FALSE;
+	}
+	if(!thorHeroMeetingRedistributionQueue().submit(*request))
+	{
+		logGlobal->debug("Thor army redistribution rejected: queue full or invalid payload");
+		return JNI_FALSE;
+	}
+	return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingSplit(JNIEnv *, jclass,
@@ -123,6 +178,7 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHero
 extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_clearThorActions(JNIEnv *, jclass)
 {
 	thorActionQueue().clear();
+	thorHeroMeetingRedistributionQueue().clear();
 }
 
 #endif

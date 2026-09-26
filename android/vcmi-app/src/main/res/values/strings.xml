@@ -65,6 +65,7 @@
     <string name="thor_context_hero_meeting">Hero meeting</string>
     <string name="thor_context_hero_meeting_status">Review hero exchange</string>
     <string name="thor_army_empty">Empty</string>
+    <string name="thor_army_stack_value">%1$s × %2$d</string>
     <string name="thor_army_move_right">Move all →</string>
     <string name="thor_army_swap">Swap armies</string>
     <string name="thor_army_move_left">← Move all</string>
@@ -83,7 +84,13 @@
     <string name="thor_split_plus_ten">+10</string>
     <string name="thor_split_cancel">Cancel</string>
     <string name="thor_split_confirm">Split</string>
-    <string name="thor_split_accessibility">Tap to quick transfer, drag to transfer exactly, or long press to split</string>
+    <string name="thor_split_accessibility">Tap to quick transfer, drag to transfer exactly, or long press and choose Split or Redistribute</string>
+    <string name="thor_redistribution_enter">Redistribute</string>
+    <string name="thor_redistribution_instructions">%1$s × %2$d. Select compatible destinations and set each allocation.</string>
+    <string name="thor_redistribution_totals">Allocated %1$d / %2$d; remaining %3$d</string>
+    <string name="thor_redistribution_planned">%1$s × %2$d (+%3$d)</string>
+    <string name="thor_redistribution_empty_planned">Empty (+%1$d)</string>
+    <string name="thor_redistribution_confirm">Confirm</string>
     <string name="thor_context_battle">Battle</string>
     <string name="thor_context_battle_status">Combat in progress</string>
     <string name="thor_context_battle_tactics">Battle tactics</string>
