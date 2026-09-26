@@ -184,6 +184,12 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::HERO_MEETING_TRANSFER_ARTIFACT;
 	case static_cast<int>(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK):
 		return ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
+	case static_cast<int>(ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT):
+		return ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT;
+	case static_cast<int>(ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT):
+		return ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT;
+	case static_cast<int>(ThorAction::HERO_MEETING_SWAP_ARTIFACTS):
+		return ThorAction::HERO_MEETING_SWAP_ARTIFACTS;
 	default:
 		return std::nullopt;
 	}
@@ -202,7 +208,10 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT
 			|| action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT || action == ThorAction::HERO_MEETING_SWAP_ARMIES
 			|| action == ThorAction::HERO_MEETING_SPLIT_STACK || action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT
-			|| action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
+			|| action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK
+			|| action == ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT
+			|| action == ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT
+			|| action == ThorAction::HERO_MEETING_SWAP_ARTIFACTS;
 	return false;
 }
 
@@ -218,6 +227,35 @@ bool isThorActionAllowedInAdventureMap(ThorAction action)
 		|| action == ThorAction::END_TURN
 		|| action == ThorAction::SELECT_HERO
 		|| action == ThorAction::SELECT_TOWN;
+}
+
+std::optional<ThorBulkArtifactOperation> thorBulkArtifactOperation(ThorAction action)
+{
+	switch(action)
+	{
+	case ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT:
+		return ThorBulkArtifactOperation::LEFT_TO_RIGHT;
+	case ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT:
+		return ThorBulkArtifactOperation::RIGHT_TO_LEFT;
+	case ThorAction::HERO_MEETING_SWAP_ARTIFACTS:
+		return ThorBulkArtifactOperation::SWAP;
+	default:
+		return std::nullopt;
+	}
+}
+
+bool canExecuteThorBulkArtifactAction(const ThorContextRecord & context,
+	const ThorHeroMeetingArtifacts & currentArtifacts, bool makingTurn, bool pickedArtifact,
+	int leftOwner, int rightOwner, int playerId)
+{
+	return context.contextId == ThorContextIds::HERO_MEETING && context.heroMeetingArtifacts
+		&& *context.heroMeetingArtifacts == currentArtifacts && makingTurn && !pickedArtifact
+		&& leftOwner == playerId && rightOwner == playerId;
+}
+
+bool shouldRestoreThorBulkArtifactActions(bool serverSuccess, std::uint32_t enabledActionMask)
+{
+	return !serverSuccess || enabledActionMask == 0;
 }
 
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)
@@ -283,6 +321,20 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	}
 	if(request.action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK)
 		return ThorActionValidation::INVALID_TARGET; // Action 22 requires its dedicated bounded payload.
+	if(request.action == ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT
+		|| request.action == ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT
+		|| request.action == ThorAction::HERO_MEETING_SWAP_ARTIFACTS)
+	{
+		if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable
+			|| !context.heroMeetingArtifacts
+			|| context.heroMeetingArtifacts->artifactSlots.size() != THOR_HERO_MEETING_ARTIFACT_COUNT
+			|| context.heroMeetingArtifacts->leftHeroId != context.heroMeetingArmies->leftHeroId
+			|| context.heroMeetingArtifacts->rightHeroId != context.heroMeetingArmies->rightHeroId
+			|| request.targetId != -1 || request.sourceArmyId != -1
+			|| request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+	}
 	if(request.action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT)
 	{
 		if(!context.heroMeetingArtifacts || request.sourceArmyId != -1 || request.sourceSlot != -1

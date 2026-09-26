@@ -1355,6 +1355,11 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 		if(auto exchangeWindow = ENGINE->windows().topWindow<CExchangeWindow>())
 			exchangeWindow->onThorRedistributionResult(static_cast<int>(pa->requestID), pa->result);
 	}
+	if(pa->packType == CTypeList::getInstance().getTypeID<BulkExchangeArtifacts>(nullptr))
+	{
+		if(auto exchangeWindow = ENGINE->windows().topWindow<CExchangeWindow>())
+			exchangeWindow->onThorBulkArtifactResult(static_cast<int>(pa->requestID), pa->result);
+	}
 #endif
 
 	if(pa->packType == CTypeList::getInstance().getTypeID<QueryReply>(nullptr))

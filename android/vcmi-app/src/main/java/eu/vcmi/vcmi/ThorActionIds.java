@@ -25,6 +25,9 @@ final class ThorActionIds
     static final int HERO_MEETING_SPLIT_STACK = 20;
     static final int HERO_MEETING_TRANSFER_ARTIFACT = 21;
     static final int HERO_MEETING_REDISTRIBUTE_STACK = 22;
+    static final int HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT = 23;
+    static final int HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT = 24;
+    static final int HERO_MEETING_SWAP_ARTIFACTS = 25;
     static final int NO_TARGET = -1;
 
     private ThorActionIds()
@@ -33,7 +36,18 @@ final class ThorActionIds
 
     static int maskFor(final int actionId)
     {
-        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= HERO_MEETING_REDISTRIBUTE_STACK
+        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= HERO_MEETING_SWAP_ARTIFACTS
                 ? 1 << (actionId - 1) : 0;
+    }
+
+    static int artifactBulkActionForButton(final int index)
+    {
+        switch (index)
+        {
+            case 0: return HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT;
+            case 1: return HERO_MEETING_SWAP_ARTIFACTS;
+            case 2: return HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT;
+            default: return NONE;
+        }
     }
 }

@@ -283,15 +283,15 @@ void CExchangeController::moveSingleStackCreature(bool leftToRight, SlotID sourc
 	}
 }
 
-void CExchangeController::swapArtifacts(bool equipped, bool baclpack)
+int CExchangeController::swapArtifacts(bool equipped, bool baclpack)
 {
-	GAME->interface()->cb->bulkMoveArtifacts(left->id, right->id, true, equipped, baclpack);
+	return GAME->interface()->cb->bulkMoveArtifacts(left->id, right->id, true, equipped, baclpack);
 }
 
-void CExchangeController::moveArtifacts(bool leftToRight, bool equipped, bool baclpack)
+int CExchangeController::moveArtifacts(bool leftToRight, bool equipped, bool baclpack)
 {
 	const auto source = leftToRight ? left : right;
 	const auto target = leftToRight ? right : left;
 
-	GAME->interface()->cb->bulkMoveArtifacts(source->id, target->id, false, equipped, baclpack);
+	return GAME->interface()->cb->bulkMoveArtifacts(source->id, target->id, false, equipped, baclpack);
 }

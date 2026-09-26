@@ -74,6 +74,10 @@
     <string name="thor_artifact_equipped">Equipped:</string>
     <string name="thor_artifact_backpack">Backpack:</string>
     <string name="thor_artifact_locked">Locked</string>
+    <string name="thor_artifact_selected">Selected: %1$s</string>
+    <string name="thor_artifact_move_right">Move all →</string>
+    <string name="thor_artifact_swap">Swap artifacts</string>
+    <string name="thor_artifact_move_left">← Move all</string>
     <string name="thor_previous">Previous</string>
     <string name="thor_next">Next</string>
     <string name="thor_split_select_destination">Select destination</string>
