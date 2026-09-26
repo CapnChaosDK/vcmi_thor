@@ -75,7 +75,7 @@ public class ThorVisualAssetCacheTest
         assertNull(cache.get(oversizedKey));
     }
 
-    @Test public void duplicateAssetsReuseOneEntryAndLruRemainsBounded()
+    @Test public void duplicateAssetsReuseOneEntryAndEntryLruRemainsBounded()
     {
         final ThorVisualAssetCache<String> cache = new ThorVisualAssetCache<>();
         final long first = ThorVisualAssetKey.forCreature(0);
@@ -84,11 +84,30 @@ public class ThorVisualAssetCacheTest
         assertEquals(1, cache.size());
         assertEquals("first", cache.get(first));
 
-        for (int index = 1; index <= ThorVisualAssetCache.MAX_ENTRIES; ++index)
-            assertTrue(cache.put(ThorVisualAssetKey.forArtifactType(index), "asset", 20_000));
-        assertTrue(cache.size() <= ThorVisualAssetCache.MAX_ENTRIES);
-        assertTrue(cache.bytes() <= ThorVisualAssetCache.MAX_BYTES);
+        for (int index = 1; index < ThorVisualAssetCache.MAX_ENTRIES; ++index)
+            assertTrue(cache.put(ThorVisualAssetKey.forArtifactType(index), "asset", 4));
+        assertEquals(ThorVisualAssetCache.MAX_ENTRIES, cache.size());
+        assertNotNull(cache.get(first)); // Refresh the older entry immediately before eviction.
+        assertTrue(cache.put(ThorVisualAssetKey.forArtifactType(ThorVisualAssetCache.MAX_ENTRIES), "asset", 4));
+        assertEquals(ThorVisualAssetCache.MAX_ENTRIES, cache.size());
         assertNotNull(cache.get(first));
         assertFalse(cache.knows(ThorVisualAssetKey.forArtifactType(1)));
+        assertTrue(cache.bytes() <= ThorVisualAssetCache.MAX_BYTES);
+    }
+
+    @Test public void byteBudgetEvictsLeastRecentlyUsedAssets()
+    {
+        final ThorVisualAssetCache<String> cache = new ThorVisualAssetCache<>();
+        final long first = ThorVisualAssetKey.forCreature(0);
+        assertTrue(cache.put(first, "first", 4));
+
+        for (int index = 1; index <= 52; ++index)
+            assertTrue(cache.put(ThorVisualAssetKey.forArtifactType(index), "asset", 20_000));
+
+        assertNotNull(cache.get(first)); // Keep this entry newer than the oversized working set.
+        assertTrue(cache.put(ThorVisualAssetKey.forArtifactType(53), "asset", 20_000));
+        assertNotNull(cache.get(first));
+        assertFalse(cache.knows(ThorVisualAssetKey.forArtifactType(1)));
+        assertTrue(cache.bytes() <= ThorVisualAssetCache.MAX_BYTES);
     }
 }
