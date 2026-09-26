@@ -46,6 +46,7 @@
 #include <fstream>
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/entities/artifact/CArtHandler.h"
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
 #include "../../lib/thor/ThorVisualAssetCache.h"
@@ -424,6 +425,13 @@ void CExchangeWindow::updateGarrisons()
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 namespace
 {
+	ThorVisualAssetPayload unavailableThorVisualAsset(std::uint64_t key)
+	{
+		ThorVisualAssetPayload result;
+		result.key = key;
+		return result;
+	}
+
 	ThorVisualAssetCache & thorHeroMeetingVisualAssetCache()
 	{
 		static ThorVisualAssetCache cache;
@@ -494,16 +502,16 @@ namespace
 		result.pngBytes.resize(static_cast<std::size_t>(size));
 		input.read(reinterpret_cast<char *>(result.pngBytes.data()), static_cast<std::streamsize>(size));
 		if(!input || static_cast<std::size_t>(input.gcount()) != result.pngBytes.size())
-			return ThorVisualAssetPayload{key};
+			return unavailableThorVisualAsset(key);
 		result.width = static_cast<std::uint16_t>(image->width());
 		result.height = static_cast<std::uint16_t>(image->height());
 		if(!isThorVisualAssetPayloadValid(result))
-			return ThorVisualAssetPayload{key};
+			return unavailableThorVisualAsset(key);
 		return result;
 		}
 		catch(const std::exception &)
 		{
-			return ThorVisualAssetPayload{key};
+			return unavailableThorVisualAsset(key);
 		}
 	}
 
