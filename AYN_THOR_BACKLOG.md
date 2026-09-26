@@ -61,7 +61,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 - Phase: Slices 1 through 27 are promoted. Slice 25 PR #11 merged as `b5b9f664e`, Slice 26 PR #12 is merged, and Slice 27 PR #13 merged as product commit `9645eeac4f90c1d9e021fdc4854822478a2ad492` on 2026-09-26.
 - Status: Slices 1 through 27 are hardware validated on their exact candidates. Slice 27 candidate `950e8aaf7760641b0dedb28dd9878cb0d6c675f2` passed Thor CI and its full checksum-specific device checklist before PR #13 was merged.
-- Current work: Slice 28 adds player-installed hero portraits to the Adventure, Hero Window, and Hero Meeting decks. Slice 27's implementation, CI/device receipt, and Slice 26/25 validation history are recorded below.
+- Current work: Slice 28 adds player-installed hero portraits to the Adventure, Hero Window, and Hero Meeting decks. Implementation PR #15 is open; exact candidate `dcf130cbcf05884d9fd551e7e97c8765c93fe13e` is awaiting Thor CI run [`36266461474`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36266461474). Device validation is pending. Slice 27's implementation, CI/device receipt, and Slice 26/25 validation history are recorded below.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -1286,7 +1286,7 @@ Status: `hardware validated`
 
 ## Slice 28 — Player-installed hero portraits across hero-centric decks
 
-- Status: `in progress` on product baseline `9645eeac4f90c1d9e021fdc4854822478a2ad492`, where Slice 27 is merged and hardware validated.
+- Status: `awaiting CI`. Implementation PR [#15](https://github.com/CapnChaosDK/vcmi_thor/pull/15) is based on product commit `9645eeac4f90c1d9e021fdc4854822478a2ad492`. Exact published candidate `dcf130cbcf05884d9fd551e7e97c8765c93fe13e` is running Thor CI run [36266461474](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36266461474) from `ci/thor-candidate-validation`; the run was in progress when recorded. Hardware validation awaits that candidate's CI-built APK and checksum.
 - Behavior: show the selected hero's portrait in the Adventure deck, the exact active hero window's portrait in Hero Window, and the left/right portraits in Hero Meeting. Keep all current names, status/details, row meaning, gestures, hit regions, and gameplay behavior. Missing, corrupt, unsupported, oversized, or undecodable art leaves the existing text presentation usable.
 - Identity and resource boundary: add a `HERO` visual key whose type identity is the stable portrait-source `HeroTypeID` returned by `CGHeroInstance::getPortraitSource()`. This honors map-specific portrait overrides and never uses a hero object pointer or gameplay instance ID. Resolve the existing `PortraitsSmall` resource through VCMI's player-installed resource/render pipeline; store only player-provided frames at runtime.
 - Context and refresh: selected Adventure hero portrait key is published with the Adventure context revision and refreshed with selected-hero information. Hero Window publishes the portrait for its exact `curHero`. Hero Meeting associates separate left/right portrait keys with the ordered hero snapshot. Android accepts a payload only when its key is referenced by the current context and revision; stale delivery after a hero/context change or presentation recreation cannot render against new state.
