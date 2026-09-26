@@ -119,10 +119,13 @@ TEST(ThorVisualAssetTest, DuplicateCacheInsertReusesBytesAndLruEvictionStaysBoun
 	EXPECT_EQ(cache.get(firstKey), original);
 	EXPECT_TRUE(cache.get(firstKey).has_value());
 
-	for(int id = 1; id <= static_cast<int>(THOR_VISUAL_ASSET_CACHE_MAX_ENTRIES); ++id)
+	for(int id = 1; id < static_cast<int>(THOR_VISUAL_ASSET_CACHE_MAX_ENTRIES); ++id)
 		ASSERT_TRUE(cache.put(payload(thorArtifactVisualAssetKey(id))));
 	EXPECT_EQ(cache.size(), THOR_VISUAL_ASSET_CACHE_MAX_ENTRIES);
-	EXPECT_TRUE(cache.get(firstKey).has_value()); // read refreshed its LRU position
+	EXPECT_TRUE(cache.get(firstKey).has_value()); // Refresh the older entry immediately before eviction.
+	ASSERT_TRUE(cache.put(payload(thorArtifactVisualAssetKey(static_cast<int>(THOR_VISUAL_ASSET_CACHE_MAX_ENTRIES)))));
+	EXPECT_EQ(cache.size(), THOR_VISUAL_ASSET_CACHE_MAX_ENTRIES);
+	EXPECT_TRUE(cache.get(firstKey).has_value());
 	EXPECT_FALSE(cache.get(thorArtifactVisualAssetKey(1)).has_value());
 	EXPECT_LE(cache.bytes(), THOR_VISUAL_ASSET_CACHE_MAX_BYTES);
 }
