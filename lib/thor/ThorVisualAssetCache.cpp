@@ -15,6 +15,20 @@ bool isThorVisualAssetPayloadValid(const ThorVisualAssetPayload & payload)
 		&& payload.pngBytes.size() <= THOR_VISUAL_ASSET_MAX_PAYLOAD_BYTES;
 }
 
+std::string_view thorVisualAssetAnimationName(ThorVisualAssetKind kind)
+{
+	switch(kind)
+	{
+	case ThorVisualAssetKind::CREATURE:
+		return "CPRSMALL";
+	case ThorVisualAssetKind::ARTIFACT:
+		return "Artifact";
+	case ThorVisualAssetKind::HERO:
+		return "PortraitsSmall";
+	}
+	return {};
+}
+
 std::vector<std::uint64_t> collectThorHeroMeetingVisualAssetKeys(
 	const ThorHeroMeetingArmies & armies, const ThorHeroMeetingArtifacts & artifacts)
 {
@@ -32,6 +46,9 @@ std::vector<std::uint64_t> collectThorHeroMeetingVisualAssetKeys(
 			result.push_back(key);
 		return result.size() <= THOR_MAX_HERO_MEETING_VISUAL_ASSETS;
 	};
+	for(const auto key : armies.heroPortraitAssetKeys)
+		if(!append(key))
+			return {};
 
 	for(const auto & slot : armies.leftSlots)
 		if(!append(slot.occupied ? slot.visualAssetKey : 0))
@@ -48,6 +65,22 @@ std::vector<std::uint64_t> collectThorHeroMeetingVisualAssetKeys(
 				return result;
 			}
 	return result;
+}
+
+std::vector<std::uint64_t> collectThorContextVisualAssetKeys(const ThorContextRecord & context)
+{
+	if(context.contextId == ThorContextIds::HERO_MEETING)
+	{
+		if(!context.heroMeetingArmies)
+			return {};
+		return collectThorHeroMeetingVisualAssetKeys(*context.heroMeetingArmies,
+			context.heroMeetingArtifacts.value_or(ThorHeroMeetingArtifacts{}));
+	}
+
+	if((context.contextId == ThorContextIds::ADVENTURE_MAP || context.contextId == ThorContextIds::HERO_WINDOW)
+		&& isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))
+		return {context.heroPortraitAssetKey};
+	return {};
 }
 
 void ThorVisualAssetCache::touch(StoredEntry & entry)

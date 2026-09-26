@@ -43,6 +43,7 @@ set(vcmiclientcommon_SRCS
 	gui/FramerateManager.cpp
 	gui/ShortcutHandler.cpp
 	gui/WindowHandler.cpp
+	thor/ThorVisualAssetPublisher.cpp
 
 	lobby/BattleOnlyModeTab.cpp
 	lobby/CBonusSelection.cpp
@@ -252,6 +253,7 @@ set(vcmiclientcommon_HEADERS
 	gui/ShortcutHandler.h
 	gui/TextAlignment.h
 	gui/WindowHandler.h
+	thor/ThorVisualAssetPublisher.h
 
 	lobby/BattleOnlyModeTab.h
 	lobby/CBonusSelection.h

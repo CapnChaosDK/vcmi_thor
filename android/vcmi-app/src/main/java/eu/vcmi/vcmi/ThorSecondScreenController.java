@@ -22,6 +22,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private String contextId = ThorContextIds.UNKNOWN;
     private String contextTitle = "";
     private String contextStatus = "";
+    private long heroPortraitAssetKey;
     private final String[] contextDetails = new String[ThorContextDetails.COUNT];
     private int enabledActionMask;
     private int activeActionMask;
@@ -30,6 +31,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
     private final ThorHeroMeetingArtifactCache heroMeetingArtifactCache = new ThorHeroMeetingArtifactCache();
     private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
+    private final ThorVisualAssetReferences visualAssetReferences = new ThorVisualAssetReferences();
     private int adventureTab;
     private boolean started;
     private boolean resumed;
@@ -85,13 +87,19 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
 
     void publishContext(final long revision, final String id, final String title, final String status,
                         final String detailLine1, final String detailLine2,
-                        final String detailLine3, final String detailLine4)
+                        final String detailLine3, final String detailLine4,
+                        final long publishedHeroPortraitAssetKey)
     {
         if (revision <= contextRevision)
             return;
 
         contextRevision = revision;
         contextId = id == null || id.isEmpty() ? ThorContextIds.UNKNOWN : id;
+        heroPortraitAssetKey = (ThorContextIds.ADVENTURE_MAP.equals(contextId)
+                || ThorContextIds.HERO_WINDOW.equals(contextId))
+                && ThorVisualAssetKey.isHeroPortrait(publishedHeroPortraitAssetKey)
+                ? publishedHeroPortraitAssetKey : 0L;
+        visualAssetReferences.updateContext(contextRevision, contextId, heroPortraitAssetKey);
         if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
             adventureTab = 0;
         heroes = ThorHeroRoster.EMPTY;
@@ -108,7 +116,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         activeActionMask = 0;
         Log.i(LOG_TAG, "Context " + contextId + " revision " + contextRevision);
         if (presentation != null)
-            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, contextDetails,
+            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey, contextDetails,
                     enabledActionMask, activeActionMask);
     }
 
@@ -120,7 +128,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         enabledActionMask = actionMask;
         activeActionMask = activeMask;
         if (presentation != null)
-            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, contextDetails,
+            presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey,
+                    contextDetails,
                     enabledActionMask, activeActionMask);
     }
 
@@ -176,16 +185,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
 
     private boolean referencesVisualAsset(final long revision, final long key)
     {
-        if (revision != contextRevision || !ThorContextIds.HERO_MEETING.equals(contextId)
-                || !ThorVisualAssetKey.isValid(key))
-            return false;
-        for (final long referenced : heroMeetingArmies.visualAssetKeys)
-            if (referenced == key)
-                return true;
-        for (final long referenced : heroMeetingArtifactCache.snapshot().visualAssetKeys)
-            if (referenced == key)
-                return true;
-        return false;
+        return visualAssetReferences.references(revision, key, heroMeetingArmies,
+                heroMeetingArtifactCache.snapshot());
     }
 
     private Bitmap decodeVisualAsset(final int width, final int height, final byte[] encoded)
@@ -266,7 +267,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.show();
             presentation = newPresentation;
             newPresentation.setAdventureTab(adventureTab);
-            newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, contextDetails,
+            newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey,
+                    contextDetails,
                     enabledActionMask, activeActionMask);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
