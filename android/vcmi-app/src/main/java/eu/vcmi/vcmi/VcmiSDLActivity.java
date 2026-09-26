@@ -79,11 +79,12 @@ public class VcmiSDLActivity extends SDLActivity
 
     void publishThorContext(final long revision, final String contextId, final String title, final String status,
                             final String detailLine1, final String detailLine2,
-                            final String detailLine3, final String detailLine4)
+                            final String detailLine3, final String detailLine4,
+                            final long heroPortraitAssetKey)
     {
         if (mThorSecondScreenController != null)
             mThorSecondScreenController.publishContext(revision, contextId, title, status,
-                    detailLine1, detailLine2, detailLine3, detailLine4);
+                    detailLine1, detailLine2, detailLine3, detailLine4, heroPortraitAssetKey);
     }
 
     void publishThorActionState(final long revision, final int enabledActionMask, final int activeActionMask)

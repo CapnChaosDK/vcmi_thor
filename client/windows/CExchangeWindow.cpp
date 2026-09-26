@@ -35,8 +35,6 @@
 #include "../../lib/entities/artifact/CArtifactInstance.h"
 #include "../../lib/entities/artifact/ArtifactUtils.h"
 #include "../../lib/entities/hero/CHeroHandler.h"
-#include "../../lib/filesystem/Filesystem.h"
-#include "../../lib/VCMIDirs.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
@@ -44,16 +42,10 @@
 #include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/texts/TextOperations.h"
 
-#include <fstream>
-
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-#include "render/Canvas.h"
-#include "render/CanvasImage.h"
-#include "render/Colors.h"
-#include "../../lib/entities/artifact/CArtHandler.h"
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
-#include "../../lib/thor/ThorVisualAssetCache.h"
+#include "../thor/ThorVisualAssetPublisher.h"
 
 #endif
 
@@ -429,125 +421,6 @@ void CExchangeWindow::updateGarrisons()
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 namespace
 {
-	ThorVisualAssetPayload unavailableThorVisualAsset(std::uint64_t key)
-	{
-		ThorVisualAssetPayload result;
-		result.key = key;
-		return result;
-	}
-
-	ThorVisualAssetCache & thorHeroMeetingVisualAssetCache()
-	{
-		static ThorVisualAssetCache cache;
-		return cache;
-	}
-
-	ThorVisualAssetPayload loadThorVisualAsset(std::uint64_t key)
-	{
-		ThorVisualAssetPayload result;
-		result.key = key;
-		if(!isThorVisualAssetKey(key) || !LIBRARY || !LIBRARY->creh || !LIBRARY->arth)
-			return result;
-		try
-		{
-		const auto kind = static_cast<ThorVisualAssetKind>(key >> 56);
-		const auto typeId = static_cast<int>((key & 0xffffffffULL) - 1);
-		AnimationPath path;
-		int frame = -1;
-		if(kind == ThorVisualAssetKind::CREATURE)
-		{
-			if(typeId >= static_cast<int>(LIBRARY->creh->objects.size()) || !LIBRARY->creh->objects[typeId])
-				return result;
-			path = AnimationPath::builtin("CPRSMALL");
-			frame = LIBRARY->creh->objects[typeId]->getIconIndex();
-		}
-		else if(kind == ThorVisualAssetKind::ARTIFACT)
-		{
-			if(typeId >= static_cast<int>(LIBRARY->arth->objects.size()) || !LIBRARY->arth->objects[typeId])
-				return result;
-			path = AnimationPath::builtin("Artifact");
-			frame = LIBRARY->arth->objects[typeId]->getIconIndex();
-		}
-		// The renderer resolves bare animation names under SPRITES/ and may use generated layouts.
-		if(frame < 0)
-			return result;
-
-		const auto animation = ENGINE->renderHandler().loadAnimation(path, EImageBlitMode::COLORKEY);
-		if(!animation || static_cast<std::size_t>(frame) >= animation->size())
-			return result;
-		const auto image = animation->getImage(static_cast<std::size_t>(frame), 0, false);
-		if(!image || image->width() <= 0 || image->height() <= 0
-			|| image->width() > static_cast<int>(THOR_VISUAL_ASSET_MAX_DIMENSION)
-			|| image->height() > static_cast<int>(THOR_VISUAL_ASSET_MAX_DIMENSION))
-			return result;
-
-		boost::system::error_code error;
-		const auto directory = VCMIDirs::get().userCachePath() / "thor-visual-assets";
-		boost::filesystem::create_directories(directory, error);
-		if(error)
-			return result;
-		const auto file = directory / boost::filesystem::unique_path("vcmi-thor-visual-%%%%-%%%%.png", error);
-		if(error)
-			return result;
-		struct TemporaryImage
-		{
-			boost::filesystem::path path;
-			~TemporaryImage()
-			{
-				boost::system::error_code cleanupError;
-				boost::filesystem::remove(path, cleanupError);
-			}
-		} temporary{file};
-		const Point dimensions(image->width(), image->height());
-		auto bitmap = ENGINE->renderHandler().createImage(dimensions, CanvasScalingPolicy::IGNORE);
-		{
-			auto canvas = bitmap->getCanvas();
-			canvas.drawColor(Rect(Point(0, 0), dimensions), Colors::TRANSPARENCY);
-			canvas.draw(image, Point(0, 0));
-		}
-		bitmap->exportBitmap(file);
-		const auto size = boost::filesystem::file_size(file, error);
-		if(error || size == 0 || size > THOR_VISUAL_ASSET_MAX_PAYLOAD_BYTES)
-			return result;
-		std::ifstream input(file.string(), std::ios::binary);
-		if(!input)
-			return result;
-		result.pngBytes.resize(static_cast<std::size_t>(size));
-		input.read(reinterpret_cast<char *>(result.pngBytes.data()), static_cast<std::streamsize>(size));
-		if(!input || static_cast<std::size_t>(input.gcount()) != result.pngBytes.size())
-			return unavailableThorVisualAsset(key);
-		result.width = static_cast<std::uint16_t>(image->width());
-		result.height = static_cast<std::uint16_t>(image->height());
-		if(!isThorVisualAssetPayloadValid(result))
-			return unavailableThorVisualAsset(key);
-		return result;
-		}
-		catch(const std::exception &)
-		{
-			return unavailableThorVisualAsset(key);
-		}
-	}
-
-	void publishThorVisualAssets(std::uint64_t revision, const ThorHeroMeetingArmies & armies,
-		const ThorHeroMeetingArtifacts & artifacts)
-	{
-		const auto keys = collectThorHeroMeetingVisualAssetKeys(armies, artifacts);
-		CAndroidVMHelper android;
-		auto & cache = thorHeroMeetingVisualAssetCache();
-		for(const auto key : keys)
-		{
-			if(android.hasThorVisualAsset(key))
-				continue;
-			auto payload = cache.get(key);
-			if(!payload)
-			{
-				payload = loadThorVisualAsset(key);
-				cache.put(*payload);
-			}
-			android.publishThorVisualAsset(revision, *payload);
-		}
-	}
-
 	ThorHeroMeetingArmies thorHeroMeetingArmies(const std::array<const CGHeroInstance *, 2> & heroes)
 	{
 		ThorHeroMeetingArmies result;
@@ -559,6 +432,9 @@ namespace
 			return result;
 		result.leftHeroName = heroes[0]->getObjectName().toString(&GAME->translator());
 		result.rightHeroName = heroes[1]->getObjectName().toString(&GAME->translator());
+		result.heroPortraitAssetKeys = {
+			thorHeroPortraitVisualAssetKey(heroes[0]->getPortraitSource().getNum()),
+			thorHeroPortraitVisualAssetKey(heroes[1]->getPortraitSource().getNum())};
 		result.locallyControllable = GAME->interface()->makingTurn
 			&& heroes[0]->tempOwner == GAME->interface()->playerID && heroes[1]->tempOwner == GAME->interface()->playerID;
 		for(std::size_t side = 0; side < heroes.size(); ++side)
@@ -659,8 +535,7 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 	CAndroidVMHelper().publishThorHeroMeetingArtifacts(context.revision,
 		context.heroMeetingArtifacts.value_or(ThorHeroMeetingArtifacts{}));
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
-	publishThorVisualAssets(context.revision, *context.heroMeetingArmies,
-		context.heroMeetingArtifacts.value_or(ThorHeroMeetingArtifacts{}));
+	publishThorVisualAssets(context);
 }
 
 bool CExchangeWindow::matchesThorContext(const ThorContextRecord & context) const
