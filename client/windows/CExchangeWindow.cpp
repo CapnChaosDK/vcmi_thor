@@ -35,6 +35,7 @@
 #include "../../lib/entities/artifact/CArtifactInstance.h"
 #include "../../lib/entities/artifact/ArtifactUtils.h"
 #include "../../lib/entities/hero/CHeroHandler.h"
+#include "../../lib/filesystem/Filesystem.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
