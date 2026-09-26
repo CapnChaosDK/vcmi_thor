@@ -13,8 +13,9 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 
-#include "../render/Canvas.h"
-#include "../render/CanvasImage.h"
+#include "GameEngine.h"
+#include "render/Canvas.h"
+#include "render/CanvasImage.h"
 #include "../render/Colors.h"
 
 #include "../../lib/CAndroidVMHelper.h"
