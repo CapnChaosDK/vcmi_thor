@@ -47,6 +47,9 @@
 #include <fstream>
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "render/Canvas.h"
+#include "render/CanvasImage.h"
+#include "render/Colors.h"
 #include "../../lib/entities/artifact/CArtHandler.h"
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
@@ -495,7 +498,14 @@ namespace
 				boost::filesystem::remove(path, cleanupError);
 			}
 		} temporary{file};
-		image->exportBitmap(file);
+		const Point dimensions(image->width(), image->height());
+		auto bitmap = ENGINE->renderHandler().createImage(dimensions, CanvasScalingPolicy::IGNORE);
+		{
+			auto canvas = bitmap->getCanvas();
+			canvas.drawColor(Rect(Point(0, 0), dimensions), Colors::TRANSPARENCY);
+			canvas.draw(image, Point(0, 0));
+		}
+		bitmap->exportBitmap(file);
 		const auto size = boost::filesystem::file_size(file, error);
 		if(error || size == 0 || size > THOR_VISUAL_ASSET_MAX_PAYLOAD_BYTES)
 			return result;
