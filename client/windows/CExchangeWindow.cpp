@@ -36,6 +36,7 @@
 #include "../../lib/entities/artifact/ArtifactUtils.h"
 #include "../../lib/entities/hero/CHeroHandler.h"
 #include "../../lib/filesystem/Filesystem.h"
+#include "../../lib/VCMIDirs.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
@@ -477,7 +478,8 @@ namespace
 			return result;
 
 		boost::system::error_code error;
-		const auto directory = boost::filesystem::temp_directory_path(error);
+		const auto directory = VCMIDirs::get().userCachePath() / "thor-visual-assets";
+		boost::filesystem::create_directories(directory, error);
 		if(error)
 			return result;
 		const auto file = directory / boost::filesystem::unique_path("vcmi-thor-visual-%%%%-%%%%.png", error);
