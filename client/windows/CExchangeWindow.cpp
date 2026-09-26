@@ -465,7 +465,8 @@ namespace
 			path = AnimationPath::builtin("Artifact");
 			frame = LIBRARY->arth->objects[typeId]->getIconIndex();
 		}
-		if(frame < 0 || !CResourceHandler::get()->existsResource(path))
+		// The renderer resolves bare animation names under SPRITES/ and may use generated layouts.
+		if(frame < 0)
 			return result;
 
 		const auto animation = ENGINE->renderHandler().loadAnimation(path, EImageBlitMode::COLORKEY);
