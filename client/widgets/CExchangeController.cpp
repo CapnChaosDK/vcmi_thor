@@ -219,6 +219,54 @@ bool CExchangeController::splitStackExact(bool sourceLeft, SlotID sourceSlot, bo
 	return true;
 }
 
+bool CExchangeController::canRedistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot,
+	CreatureID expectedCreature, int expectedSourceCount,
+	const std::vector<ArmyStackRedistributionTarget> & destinations) const
+{
+	const auto sourceIsLeft = left && sourceArmy == left->id;
+	const auto sourceIsRight = right && sourceArmy == right->id;
+	if((!sourceIsLeft && !sourceIsRight) || !sourceSlot.validSlot() || expectedCreature == CreatureID::NONE
+		|| expectedSourceCount < 2 || destinations.empty()
+		|| destinations.size() > MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS)
+		return false;
+	const auto source = sourceIsLeft ? left : right;
+	const auto * sourceStack = source->getStackPtr(sourceSlot);
+	if(!sourceStack || sourceStack->getCreatureID() != expectedCreature || sourceStack->getCount() != expectedSourceCount)
+		return false;
+
+	std::int64_t total = 0;
+	for(std::size_t index = 0; index < destinations.size(); ++index)
+	{
+		const auto & target = destinations[index];
+		const bool destinationIsLeft = left && target.armyId == left->id;
+		const bool destinationIsRight = right && target.armyId == right->id;
+		if((!destinationIsLeft && !destinationIsRight) || !target.slot.validSlot() || target.amount <= 0
+			|| (target.armyId == sourceArmy && target.slot == sourceSlot))
+			return false;
+		for(std::size_t earlier = 0; earlier < index; ++earlier)
+		{
+			if(destinations[earlier].armyId == target.armyId && destinations[earlier].slot == target.slot)
+				return false;
+		}
+		if(!canSplitStackExact(sourceIsLeft, sourceSlot, destinationIsLeft, target.slot, target.amount))
+			return false;
+		total += target.amount;
+		if(total > static_cast<std::int64_t>(expectedSourceCount) - 1)
+			return false;
+	}
+	return total > 0;
+}
+
+int CExchangeController::redistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot,
+	CreatureID expectedCreature, int expectedSourceCount,
+	const std::vector<ArmyStackRedistributionTarget> & destinations)
+{
+	if(!canRedistributeStack(sourceArmy, sourceSlot, expectedCreature, expectedSourceCount, destinations))
+		return -1;
+	return GAME->interface()->cb->redistributeStack(left->id, right->id, sourceArmy, sourceSlot, expectedCreature,
+		expectedSourceCount, destinations);
+}
+
 void CExchangeController::moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget)
 {
 	const auto source = leftToRight ? left : right;

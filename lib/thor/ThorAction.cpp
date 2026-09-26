@@ -1,6 +1,7 @@
 #include "ThorAction.h"
 
 #include <algorithm>
+#include <limits>
 
 std::optional<int> encodeThorHeroMeetingArtifactPair(int sourceKey, int destinationKey)
 {
@@ -89,6 +90,52 @@ bool canThorHeroMeetingSplitStack(const ThorHeroMeetingArmies & armies, int sour
 		&& (!destination.occupied || destination.creatureId == source.creatureId);
 }
 
+std::optional<ThorHeroMeetingRedistributionRequest> decodeThorHeroMeetingRedistributionRequest(
+	std::uint64_t revision, int leftHeroId, int rightHeroId, int sourceArmyId, int sourceSlot,
+	int sourceCreatureId, int sourceCount, std::span<const int> destinationArmyIds,
+	std::span<const int> destinationSlots, std::span<const int> amounts)
+{
+	const auto destinationCount = destinationArmyIds.size();
+	if(revision == 0 || leftHeroId < 0 || rightHeroId < 0 || leftHeroId == rightHeroId
+		|| (sourceArmyId != leftHeroId && sourceArmyId != rightHeroId)
+		|| sourceSlot < 0 || sourceSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)
+		|| sourceCreatureId < 0 || sourceCount < 2 || destinationCount == 0
+		|| destinationCount > THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS
+		|| destinationSlots.size() != destinationCount || amounts.size() != destinationCount)
+		return std::nullopt;
+
+	ThorHeroMeetingRedistributionRequest request;
+	request.revision = revision;
+	request.leftHeroId = leftHeroId;
+	request.rightHeroId = rightHeroId;
+	request.sourceArmyId = sourceArmyId;
+	request.sourceSlot = sourceSlot;
+	request.sourceCreatureId = sourceCreatureId;
+	request.sourceCount = sourceCount;
+	request.destinationCount = destinationCount;
+	std::int64_t total = 0;
+	for(std::size_t index = 0; index < destinationCount; ++index)
+	{
+		const auto armyId = destinationArmyIds[index];
+		const auto slot = destinationSlots[index];
+		const auto amount = amounts[index];
+		if((armyId != leftHeroId && armyId != rightHeroId) || slot < 0
+			|| slot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE) || amount <= 0
+			|| (armyId == sourceArmyId && slot == sourceSlot))
+			return std::nullopt;
+		for(std::size_t earlier = 0; earlier < index; ++earlier)
+		{
+			if(request.destinations[earlier].armyId == armyId && request.destinations[earlier].slot == slot)
+				return std::nullopt;
+		}
+		total += amount;
+		if(total > static_cast<std::int64_t>(sourceCount) - 1)
+			return std::nullopt;
+		request.destinations[index] = {armyId, slot, amount};
+	}
+	return request;
+}
+
 std::optional<ThorAction> thorActionFromId(int actionId)
 {
 	switch(actionId)
@@ -135,6 +182,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::HERO_MEETING_SPLIT_STACK;
 	case static_cast<int>(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT):
 		return ThorAction::HERO_MEETING_TRANSFER_ARTIFACT;
+	case static_cast<int>(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK):
+		return ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
 	default:
 		return std::nullopt;
 	}
@@ -152,7 +201,8 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 		return action == ThorAction::HERO_MEETING_MOVE_STACK || action == ThorAction::HERO_MEETING_TRANSFER_STACK
 			|| action == ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT
 			|| action == ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT || action == ThorAction::HERO_MEETING_SWAP_ARMIES
-			|| action == ThorAction::HERO_MEETING_SPLIT_STACK || action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT;
+			|| action == ThorAction::HERO_MEETING_SPLIT_STACK || action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT
+			|| action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
 	return false;
 }
 
@@ -231,6 +281,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 				request.destinationArmyId, request.destinationSlot, request.amount))
 			return ThorActionValidation::INVALID_TARGET;
 	}
+	if(request.action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK)
+		return ThorActionValidation::INVALID_TARGET; // Action 22 requires its dedicated bounded payload.
 	if(request.action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT)
 	{
 		if(!context.heroMeetingArtifacts || request.sourceArmyId != -1 || request.sourceSlot != -1
@@ -249,6 +301,62 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		&& (!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable))
 		return ThorActionValidation::INVALID_TARGET;
 	return ThorActionValidation::VALID;
+}
+
+ThorActionValidation validateThorHeroMeetingRedistributionRequest(
+	const ThorHeroMeetingRedistributionRequest & request, const ThorContextRecord & context)
+{
+	if(request.action != ThorAction::HERO_MEETING_REDISTRIBUTE_STACK)
+		return ThorActionValidation::UNKNOWN_ACTION;
+	if(request.revision != context.revision)
+		return ThorActionValidation::STALE_REVISION;
+	if(!isThorActionAllowedInContext(request.action, context.contextId))
+		return ThorActionValidation::WRONG_CONTEXT;
+	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
+		return ThorActionValidation::UNAVAILABLE;
+	if(!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable
+		|| request.destinationCount == 0
+		|| request.destinationCount > THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS
+		|| request.leftHeroId < 0 || request.rightHeroId < 0 || request.leftHeroId == request.rightHeroId
+		|| request.leftHeroId != context.heroMeetingArmies->leftHeroId
+		|| request.rightHeroId != context.heroMeetingArmies->rightHeroId
+		|| request.sourceCount < 2 || request.sourceCreatureId < 0 || request.sourceSlot < 0
+		|| request.sourceSlot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)
+		|| (request.sourceArmyId != request.leftHeroId && request.sourceArmyId != request.rightHeroId))
+		return ThorActionValidation::INVALID_TARGET;
+
+	const auto & armies = *context.heroMeetingArmies;
+	const bool sourceIsLeft = request.sourceArmyId == request.leftHeroId;
+	const auto & source = (sourceIsLeft ? armies.leftSlots : armies.rightSlots)[request.sourceSlot];
+	if(source.armyId != request.sourceArmyId || source.slot != request.sourceSlot || !source.occupied
+		|| source.creatureId != request.sourceCreatureId || source.count != request.sourceCount)
+		return ThorActionValidation::INVALID_TARGET;
+
+	std::int64_t total = 0;
+	for(std::size_t index = 0; index < request.destinationCount; ++index)
+	{
+		const auto & target = request.destinations[index];
+		if((target.armyId != request.leftHeroId && target.armyId != request.rightHeroId)
+			|| target.slot < 0 || target.slot >= static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)
+			|| target.amount <= 0 || (target.armyId == request.sourceArmyId && target.slot == request.sourceSlot))
+			return ThorActionValidation::INVALID_TARGET;
+		for(std::size_t earlier = 0; earlier < index; ++earlier)
+		{
+			if(request.destinations[earlier].armyId == target.armyId
+				&& request.destinations[earlier].slot == target.slot)
+				return ThorActionValidation::INVALID_TARGET;
+		}
+		const bool targetIsLeft = target.armyId == request.leftHeroId;
+		const auto & destination = (targetIsLeft ? armies.leftSlots : armies.rightSlots)[target.slot];
+		if(destination.armyId != target.armyId || destination.slot != target.slot
+			|| (destination.occupied && (destination.creatureId != request.sourceCreatureId
+				|| destination.count <= 0 || destination.count > std::numeric_limits<int>::max() - target.amount)))
+			return ThorActionValidation::INVALID_TARGET;
+		total += target.amount;
+		if(total > static_cast<std::int64_t>(request.sourceCount) - 1)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	return total > 0 ? ThorActionValidation::VALID : ThorActionValidation::INVALID_TARGET;
 }
 
 bool ThorActionQueue::submit(ThorActionRequest request)
@@ -290,5 +398,67 @@ std::size_t ThorActionQueue::size() const
 ThorActionQueue & thorActionQueue()
 {
 	static ThorActionQueue queue;
+	return queue;
+}
+
+bool ThorHeroMeetingRedistributionQueue::submit(ThorHeroMeetingRedistributionRequest request)
+{
+	if(request.action != ThorAction::HERO_MEETING_REDISTRIBUTE_STACK
+		|| request.destinationCount == 0
+		|| request.destinationCount > THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS)
+		return false;
+	std::array<int, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> armyIds{};
+	std::array<int, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> slots{};
+	std::array<int, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> amounts{};
+	for(std::size_t index = 0; index < request.destinationCount; ++index)
+	{
+		armyIds[index] = request.destinations[index].armyId;
+		slots[index] = request.destinations[index].slot;
+		amounts[index] = request.destinations[index].amount;
+	}
+	const auto decoded = decodeThorHeroMeetingRedistributionRequest(request.revision, request.leftHeroId,
+		request.rightHeroId, request.sourceArmyId, request.sourceSlot, request.sourceCreatureId,
+		request.sourceCount,
+		std::span<const int>(armyIds.data(), request.destinationCount),
+		std::span<const int>(slots.data(), request.destinationCount),
+		std::span<const int>(amounts.data(), request.destinationCount));
+	if(!decoded)
+		return false;
+	request = *decoded;
+	std::lock_guard lock(mutex);
+	if(count == capacity)
+		return false;
+	requests[(first + count) % capacity] = request;
+	++count;
+	return true;
+}
+
+std::optional<ThorHeroMeetingRedistributionRequest> ThorHeroMeetingRedistributionQueue::pop()
+{
+	std::lock_guard lock(mutex);
+	if(count == 0)
+		return std::nullopt;
+	auto request = requests[first];
+	first = (first + 1) % capacity;
+	--count;
+	return request;
+}
+
+void ThorHeroMeetingRedistributionQueue::clear()
+{
+	std::lock_guard lock(mutex);
+	first = 0;
+	count = 0;
+}
+
+std::size_t ThorHeroMeetingRedistributionQueue::size() const
+{
+	std::lock_guard lock(mutex);
+	return count;
+}
+
+ThorHeroMeetingRedistributionQueue & thorHeroMeetingRedistributionQueue()
+{
+	static ThorHeroMeetingRedistributionQueue queue;
 	return queue;
 }

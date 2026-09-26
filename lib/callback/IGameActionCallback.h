@@ -12,6 +12,7 @@
 #include "../constants/EntityIdentifiers.h"
 #include "../networkPacks/TradeItem.h"
 #include "../int3.h"
+#include "../mapObjects/army/ArmyStackRedistribution.h"
 
 struct ArtifactLocation;
 
@@ -54,6 +55,9 @@ public:
 	virtual int mergeStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)=0;//joins first stack to the second (creatures must be same type)
 	virtual int mergeOrSwapStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) =0; //first goes to the second
 	virtual int splitStack(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val)=0;//split creatures from the first stack
+	virtual int redistributeStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
+		ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
+		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations) = 0;
 	//virtual bool swapArtifacts(const CGHeroInstance * hero1, ui16 pos1, const CGHeroInstance * hero2, ui16 pos2)=0; //swaps artifacts between two given heroes
 	virtual bool swapArtifacts(const ArtifactLocation &l1, const ArtifactLocation &l2)=0;
 	virtual void scrollBackpackArtifacts(ObjectInstanceID hero, bool left) = 0;

@@ -129,6 +129,7 @@ public:
 	virtual void visitMoveHero(MoveHero & pack) {}
 	virtual void visitCastleTeleportHero(CastleTeleportHero & pack) {}
 	virtual void visitArrangeStacks(ArrangeStacks & pack) {}
+	virtual void visitRedistributeArmyStack(RedistributeArmyStack & pack) {}
 	virtual void visitBulkMoveArmy(BulkMoveArmy & pack) {}
 	virtual void visitBulkSplitStack(BulkSplitStack & pack) {}
 	virtual void visitBulkMergeStacks(BulkMergeStacks & pack) {}

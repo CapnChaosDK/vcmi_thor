@@ -15,6 +15,7 @@
 #include "../lib/LoadProgress.h"
 #include "../lib/gameState/GameStatistics.h"
 #include "../lib/networkPacks/PacksForServer.h"
+#include "../lib/mapObjects/army/ArmyStackRedistribution.h"
 #include "../lib/serializer/GameConnectionID.h"
 #include "../lib/serializer/PlayerConnectionID.h"
 
@@ -243,6 +244,11 @@ public:
 	bool spellResearch(ObjectInstanceID tid, SpellID spellAtSlot, bool accepted);
 	bool disbandCreature( ObjectInstanceID id, SlotID pos );
 	bool arrangeStacks( ObjectInstanceID id1, ObjectInstanceID id2, ui8 what, SlotID p1, SlotID p2, si32 val, PlayerColor player);
+	bool redistributeArmyStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
+		ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
+		si32 expectedSourceCount,
+		const std::array<ArmyStackRedistributionTarget, MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS> & destinations,
+		ui8 destinationCount, PlayerColor player);
 	bool bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot);
 	bool bulkSplitStack(SlotID src, ObjectInstanceID srcOwner, si32 howMany);
 	bool bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner);

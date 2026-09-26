@@ -504,7 +504,8 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES)
-			| thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK);
+			| thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK)
+			| thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
 		if(context.heroMeetingArtifacts && getPickedArtifact() == nullptr && GAME->interface()->makingTurn)
 			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT);
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, true))
@@ -661,6 +662,65 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		break;
 	}
 	return executed;
+}
+
+bool CExchangeWindow::executeThorRedistribution(const ThorHeroMeetingRedistributionRequest & request)
+{
+	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this)
+		return false;
+	const auto rejectWithoutCallback = [this]()
+	{
+		updateThorActionState(true);
+		updateThorActionState();
+		return false;
+	};
+	auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context)
+		|| validateThorHeroMeetingRedistributionRequest(request, context) != ThorActionValidation::VALID
+		|| thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies
+		|| !GAME->interface()->makingTurn
+		|| heroInst[0]->tempOwner != GAME->interface()->playerID
+		|| heroInst[1]->tempOwner != GAME->interface()->playerID)
+		return rejectWithoutCallback();
+
+	std::vector<ArmyStackRedistributionTarget> destinations;
+	destinations.reserve(request.destinationCount);
+	for(std::size_t index = 0; index < request.destinationCount; ++index)
+	{
+		const auto & target = request.destinations[index];
+		destinations.push_back({ObjectInstanceID(target.armyId), SlotID(target.slot), target.amount});
+	}
+	if(!controller.canRedistributeStack(ObjectInstanceID(request.sourceArmyId), SlotID(request.sourceSlot),
+		CreatureID(request.sourceCreatureId), request.sourceCount, destinations))
+		return rejectWithoutCallback();
+
+	// Consume this rendered action revision before queuing one server-validated batch.
+	updateThorActionState(true);
+	const auto requestId = controller.redistributeStack(ObjectInstanceID(request.sourceArmyId),
+		SlotID(request.sourceSlot), CreatureID(request.sourceCreatureId), request.sourceCount, destinations);
+	if(requestId < 0)
+		return rejectWithoutCallback();
+	pendingThorRedistributionRequestIds.push_back(requestId);
+	return true;
+}
+
+void CExchangeWindow::onThorRedistributionResult(int requestId, bool success)
+{
+	const auto pending = std::find(pendingThorRedistributionRequestIds.begin(),
+		pendingThorRedistributionRequestIds.end(), requestId);
+	if(pending == pendingThorRedistributionRequestIds.end())
+		return;
+	pendingThorRedistributionRequestIds.erase(pending);
+	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this)
+		return;
+	if(success)
+		updateThorActionState();
+	else
+	{
+		// A rejected server request has no garrison update to publish a replacement revision.
+		updateThorActionState(true);
+		updateThorActionState();
+	}
 }
 #endif
 

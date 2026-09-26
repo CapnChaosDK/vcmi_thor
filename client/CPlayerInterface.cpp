@@ -1349,6 +1349,14 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 	if(pa->packType == CTypeList::getInstance().getTypeID<MoveHero>(nullptr))
 		movementController->onMoveHeroApplied();
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(pa->packType == CTypeList::getInstance().getTypeID<RedistributeArmyStack>(nullptr))
+	{
+		if(auto exchangeWindow = ENGINE->windows().topWindow<CExchangeWindow>())
+			exchangeWindow->onThorRedistributionResult(static_cast<int>(pa->requestID), pa->result);
+	}
+#endif
+
 	if(pa->packType == CTypeList::getInstance().getTypeID<QueryReply>(nullptr))
 	{
 		movementController->onQueryReplyApplied();

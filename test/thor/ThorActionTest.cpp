@@ -29,7 +29,7 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(19), ThorAction::HERO_MEETING_SWAP_ARMIES);
 	EXPECT_EQ(thorActionFromId(20), ThorAction::HERO_MEETING_SPLIT_STACK);
 	EXPECT_EQ(thorActionFromId(21), ThorAction::HERO_MEETING_TRANSFER_ARTIFACT);
-	EXPECT_EQ(thorActionFromId(22), std::nullopt);
+	EXPECT_EQ(thorActionFromId(22), ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -128,6 +128,7 @@ TEST(ThorActionTest, AllowsOnlyActionsForTheirExactContext)
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_MOVE_STACK, ThorContextIds::HERO_MEETING));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_TRANSFER_STACK, ThorContextIds::HERO_MEETING));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_SPLIT_STACK, ThorContextIds::HERO_MEETING));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK, ThorContextIds::HERO_MEETING));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_SPLIT_STACK, ThorContextIds::ADVENTURE_MAP));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_TRANSFER_STACK, ThorContextIds::ADVENTURE_MAP));
 }
@@ -150,6 +151,145 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT), 131072);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES), 262144);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK), 524288);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT), 1048576);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK), 2097152);
+}
+
+TEST(ThorActionTest, HeroMeetingRedistributionDecodingIsBoundedAndRejectsMalformedPlans)
+{
+	const std::array<int, 2> armyIds{10, 20};
+	const std::array<int, 2> slots{2, 1};
+	const std::array<int, 2> amounts{3, 4};
+	const auto request = decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12,
+		armyIds, slots, amounts);
+	ASSERT_TRUE(request.has_value());
+	EXPECT_EQ(request->action, ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
+	EXPECT_EQ(request->destinationCount, 2);
+	EXPECT_EQ(request->destinations[0], (ThorHeroMeetingRedistributionTarget{10, 2, 3}));
+	EXPECT_EQ(request->destinations[1], (ThorHeroMeetingRedistributionTarget{20, 1, 4}));
+
+	const std::array<int, 1> oneArmy{20};
+	const std::array<int, 2> mismatchedSlots{1, 2};
+	const std::array<int, 1> oneAmount{1};
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(0, 10, 20, 10, 0, 3, 12, oneArmy, oneAmount, oneAmount));
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12, oneArmy, mismatchedSlots, oneAmount));
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 99, 0, 3, 12, oneArmy, oneAmount, oneAmount));
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 7, 3, 12, oneArmy, oneAmount, oneAmount));
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 1, oneArmy, oneAmount, oneAmount));
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12, oneArmy, oneAmount,
+		std::array<int, 1>{0}));
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12,
+		std::array<int, 2>{20, 20}, std::array<int, 2>{1, 1}, std::array<int, 2>{1, 1}));
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12,
+		std::array<int, 1>{20}, std::array<int, 1>{1}, std::array<int, 1>{12})); // Keep one source creature.
+	std::array<int, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS + 1> oversized{};
+	EXPECT_FALSE(decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12,
+		oversized, oversized, oversized));
+}
+
+TEST(ThorActionTest, HeroMeetingRedistributionValidatesSnapshotOwnerAndEveryDestination)
+{
+	ThorContextRecord context;
+	context.revision = 30;
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
+	ThorHeroMeetingArmies armies;
+	armies.leftHeroId = armies.leftArmyId = 10;
+	armies.rightHeroId = armies.rightArmyId = 20;
+	armies.locallyControllable = true;
+	for(int slot = 0; slot < 7; ++slot)
+	{
+		armies.leftSlots[slot] = {10, slot, false, -1, {}, 0};
+		armies.rightSlots[slot] = {20, slot, false, -1, {}, 0};
+	}
+	armies.leftSlots[0] = {10, 0, true, 3, "Pikemen", 12};
+	armies.leftSlots[2] = {10, 2, true, 3, "Pikemen", 4};
+	armies.rightSlots[1] = {20, 1, true, 3, "Pikemen", 5};
+	armies.rightSlots[2] = {20, 2, true, 4, "Archers", 5};
+	context.heroMeetingArmies = armies;
+	const auto decoded = decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12,
+		std::array<int, 2>{10, 20}, std::array<int, 2>{1, 1}, std::array<int, 2>{2, 3});
+	ASSERT_TRUE(decoded);
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(*decoded, context), ThorActionValidation::VALID);
+
+	auto request = *decoded;
+	request.destinations[1] = request.destinations[0];
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.destinations[1].armyId = 99;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.destinations[1].slot = 2;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.destinations[0] = {10, 0, 1};
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.destinations[0].amount = 0;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.destinations[0].amount = 10;
+	request.destinations[1].amount = 2;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.destinations[0].amount = std::numeric_limits<int>::max();
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.sourceCount = 11;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	request.sourceCreatureId = 4;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	context.heroMeetingArmies->leftSlots[0].occupied = false; // Source became empty.
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArmies->leftSlots[0] = {10, 0, true, 3, "Pikemen", 12};
+	request.revision = 29;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request = *decoded;
+	request.rightHeroId = 21;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request = *decoded;
+	context.heroMeetingArmies->locallyControllable = false;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	context.heroMeetingArmies->locallyControllable = true;
+	context.contextId = ThorContextIds::BATTLE;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::HERO_MEETING;
+	context.enabledActionMask = 0;
+	EXPECT_EQ(validateThorHeroMeetingRedistributionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	ThorActionRequest genericRequest{30, ThorAction::HERO_MEETING_REDISTRIBUTE_STACK};
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
+	EXPECT_EQ(validateThorActionRequest(genericRequest, context), ThorActionValidation::INVALID_TARGET);
+}
+
+TEST(ThorActionTest, HeroMeetingRedistributionQueueIsBoundedAndRejectsMalformedRequests)
+{
+	ThorHeroMeetingRedistributionQueue queue;
+	const auto decoded = decodeThorHeroMeetingRedistributionRequest(30, 10, 20, 10, 0, 3, 12,
+		std::array<int, 1>{20}, std::array<int, 1>{1}, std::array<int, 1>{4});
+	ASSERT_TRUE(decoded);
+
+	auto malformed = *decoded;
+	malformed.destinations[0].amount = 12;
+	EXPECT_FALSE(queue.submit(malformed));
+	malformed = *decoded;
+	malformed.action = ThorAction::HERO_MEETING_SPLIT_STACK;
+	EXPECT_FALSE(queue.submit(malformed));
+	EXPECT_TRUE(queue.submit(*decoded));
+	EXPECT_EQ(queue.size(), 1);
+	const auto popped = queue.pop();
+	ASSERT_TRUE(popped);
+	EXPECT_EQ(popped->revision, 30);
+	EXPECT_EQ(popped->destinations[0], (ThorHeroMeetingRedistributionTarget{20, 1, 4}));
+
+	for(int request = 0; request < 4; ++request)
+		EXPECT_TRUE(queue.submit(*decoded));
+	EXPECT_FALSE(queue.submit(*decoded));
+	EXPECT_EQ(queue.size(), 4);
+	queue.clear();
+	EXPECT_EQ(queue.size(), 0);
+	EXPECT_FALSE(queue.pop());
 }
 
 TEST(ThorActionTest, HeroMeetingExactSplitValidatesEveryDetailedField)

@@ -100,6 +100,14 @@ void ApplyGhNetPackVisitor::visitArrangeStacks(ArrangeStacks & pack)
 	result = gh.arrangeStacks(pack.id1, pack.id2, pack.what, pack.p1, pack.p2, pack.val, pack.player);
 }
 
+void ApplyGhNetPackVisitor::visitRedistributeArmyStack(RedistributeArmyStack & pack)
+{
+	gh.throwIfWrongOwner(connection, &pack, pack.sourceArmy);
+	gh.throwIfPlayerNotActive(connection, &pack);
+	result = gh.redistributeArmyStack(pack.leftHero, pack.rightHero, pack.sourceArmy, pack.sourceSlot, pack.expectedCreature,
+		pack.expectedSourceCount, pack.destinations, pack.destinationCount, pack.player);
+}
+
 void ApplyGhNetPackVisitor::visitBulkMoveArmy(BulkMoveArmy & pack)
 {
 	gh.throwIfWrongOwner(connection, &pack, pack.srcArmy);

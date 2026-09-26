@@ -115,6 +115,24 @@ int CCallback::splitStack(const CArmedInstance *s1, const CArmedInstance *s2, Sl
 	return 0;
 }
 
+int CCallback::redistributeStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
+	ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
+	int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations)
+{
+	RedistributeArmyStack pack;
+	pack.leftHero = leftHero;
+	pack.rightHero = rightHero;
+	pack.sourceArmy = sourceArmy;
+	pack.sourceSlot = sourceSlot;
+	pack.expectedCreature = expectedCreature;
+	pack.expectedSourceCount = expectedSourceCount;
+	if(destinations.size() > pack.destinations.size())
+		return -1;
+	pack.destinationCount = static_cast<ui8>(destinations.size());
+	std::copy(destinations.begin(), destinations.end(), pack.destinations.begin());
+	return sendRequest(pack);
+}
+
 int CCallback::bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot)
 {
 	BulkMoveArmy pack(srcArmy, destArmy, srcSlot);

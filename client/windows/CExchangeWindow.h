@@ -71,6 +71,9 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 
 	std::array<const CGHeroInstance *, 2> heroInst;
 	std::array<std::shared_ptr<CArtifactsOfHeroMain>, 2> artifs;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::vector<int> pendingThorRedistributionRequestIds;
+#endif
 
 	const CGarrisonSlot * getSelectedSlotID() const;
 
@@ -91,6 +94,8 @@ public:
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	void updateThorActionState(bool invalidateActions = false);
 	bool executeThorAction(const ThorActionRequest & request);
+	bool executeThorRedistribution(const ThorHeroMeetingRedistributionRequest & request);
+	void onThorRedistributionResult(int requestId, bool success);
 #endif
 
 };

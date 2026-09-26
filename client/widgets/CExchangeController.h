@@ -10,6 +10,7 @@
 #pragma once
  
 #include "../../lib/mapObjects/CGHeroInstance.h"
+#include "../../lib/mapObjects/army/ArmyStackRedistribution.h"
  
 class CExchangeController
 {
@@ -25,6 +26,10 @@ public:
 		int amount) const;
 	bool splitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
 		int amount);
+	bool canRedistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
+		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations) const;
+	int redistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
+		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations);
 	void moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget);
 	void swapArtifacts(bool equipped, bool baclpack);
 	void moveArtifacts(bool leftToRight, bool equipped, bool baclpack);

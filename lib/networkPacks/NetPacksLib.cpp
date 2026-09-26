@@ -571,6 +571,11 @@ void ArrangeStacks::visitTyped(ICPackVisitor & visitor)
 	visitor.visitArrangeStacks(*this);
 }
 
+void RedistributeArmyStack::visitTyped(ICPackVisitor & visitor)
+{
+	visitor.visitRedistributeArmyStack(*this);
+}
+
 void BulkMoveArmy::visitTyped(ICPackVisitor & visitor)
 {
 	visitor.visitBulkMoveArmy(*this);
