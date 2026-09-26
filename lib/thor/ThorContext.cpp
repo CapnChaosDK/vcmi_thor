@@ -69,8 +69,13 @@ namespace
 						|| (!slot.occupied && (slot.creatureId != -1 || slot.count != 0)))
 						return false;
 					slot.creatureName = thorBoundedText(std::move(slot.creatureName));
-					if(!slot.occupied)
+					if(slot.occupied)
+						slot.visualAssetKey = thorCreatureVisualAssetKey(slot.creatureId);
+					else
+					{
 						slot.creatureName.clear();
+						slot.visualAssetKey = 0;
+					}
 				}
 				return true;
 			};
@@ -102,6 +107,13 @@ namespace
 				return;
 			}
 			slot.name = thorBoundedText(std::move(slot.name));
+			if(slot.occupied)
+				slot.visualAssetKey = thorArtifactVisualAssetKey(slot.artifactTypeId);
+			else
+			{
+				slot.artifactTypeId = -1;
+				slot.visualAssetKey = 0;
+			}
 		}
 	}
 }

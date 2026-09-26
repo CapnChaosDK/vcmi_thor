@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -94,6 +95,41 @@ inline constexpr std::size_t THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT = 19;
 inline constexpr std::size_t THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT = 5;
 inline constexpr std::size_t THOR_HERO_MEETING_ARTIFACT_COUNT =
 	(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT) * 2;
+inline constexpr std::size_t THOR_MAX_HERO_MEETING_VISUAL_ASSETS = THOR_HERO_MEETING_ARMY_SIZE * 2
+	+ THOR_HERO_MEETING_ARTIFACT_COUNT;
+
+enum class ThorVisualAssetKind : std::uint8_t
+{
+	CREATURE = 1,
+	ARTIFACT = 2
+};
+
+/// Stable typed visual key. Artifact keys are made from the artifact type ID, never its instance ID.
+inline constexpr std::uint64_t thorVisualAssetKey(ThorVisualAssetKind kind, int typeId)
+{
+	return typeId < 0 ? 0 : (static_cast<std::uint64_t>(kind) << 56) | (static_cast<std::uint64_t>(typeId) + 1);
+}
+
+inline constexpr std::uint64_t thorCreatureVisualAssetKey(int creatureId)
+{
+	return thorVisualAssetKey(ThorVisualAssetKind::CREATURE, creatureId);
+}
+
+inline constexpr std::uint64_t thorArtifactVisualAssetKey(int artifactTypeId)
+{
+	return thorVisualAssetKey(ThorVisualAssetKind::ARTIFACT, artifactTypeId);
+}
+
+inline constexpr bool isThorVisualAssetKey(std::uint64_t key)
+{
+	const auto kind = static_cast<std::uint8_t>(key >> 56);
+	const auto typeId = key & 0xffffffffULL;
+	const auto reserved = (key >> 32) & 0xffffffULL;
+	return (kind == static_cast<std::uint8_t>(ThorVisualAssetKind::CREATURE)
+		|| kind == static_cast<std::uint8_t>(ThorVisualAssetKind::ARTIFACT))
+		&& typeId != 0 && typeId <= static_cast<std::uint64_t>(std::numeric_limits<int>::max()) + 1 && reserved == 0;
+}
+
 struct DLL_LINKAGE ThorHeroEntry
 {
 	int id = -1;
@@ -122,6 +158,7 @@ struct DLL_LINKAGE ThorHeroMeetingSlot
 	int creatureId = -1;
 	std::string creatureName;
 	int count = 0;
+	std::uint64_t visualAssetKey = 0;
 	bool operator==(const ThorHeroMeetingSlot &) const = default;
 };
 
@@ -149,6 +186,8 @@ struct DLL_LINKAGE ThorHeroMeetingArtifact
 	bool locked = false;
 	std::string name;
 	int instanceId = -1;
+	int artifactTypeId = -1;
+	std::uint64_t visualAssetKey = 0;
 	bool operator==(const ThorHeroMeetingArtifact &) const = default;
 };
 

@@ -88,12 +88,14 @@ jobs:
             -I"$boost_include" \
             lib/thor/ThorAction.cpp \
             lib/thor/ThorContext.cpp \
+            lib/thor/ThorVisualAssetCache.cpp \
             test/thor/ThorContextTest.cpp \
             test/thor/ThorActionTest.cpp \
+            test/thor/ThorVisualAssetTest.cpp \
             test/googletest/googletest/src/gtest-all.cc \
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
-          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*'
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorVisualAsset*'
 
   arm64-candidate:
     name: Thor ARM64 candidate
@@ -252,6 +254,8 @@ jobs:
               --tests eu.vcmi.vcmi.ThorHeroMeetingRedistributionStateTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactsTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactCacheTest \
+              --tests eu.vcmi.vcmi.ThorHeroMeetingVisualAssetTest \
+              --tests eu.vcmi.vcmi.ThorVisualAssetCacheTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingModeStateTest
 
       - name: Verify and checksum APK

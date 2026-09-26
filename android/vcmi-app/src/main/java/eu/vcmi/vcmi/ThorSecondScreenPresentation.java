@@ -2,6 +2,7 @@ package eu.vcmi.vcmi;
 
 import android.app.Presentation;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -21,10 +22,13 @@ final class ThorSecondScreenPresentation extends Presentation
     private static final float REFERENCE_WIDTH = 1080f;
     private static final float REFERENCE_HEIGHT = 1240f;
     private ThorFoundationView foundationView;
+    private final ThorVisualAssetCache<Bitmap> visualAssets;
 
-    ThorSecondScreenPresentation(final Context context, final Display display)
+    ThorSecondScreenPresentation(final Context context, final Display display,
+                                 final ThorVisualAssetCache<Bitmap> visualAssets)
     {
         super(context, display);
+        this.visualAssets = visualAssets;
     }
 
     @Override
@@ -44,7 +48,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         }
 
-        foundationView = new ThorFoundationView(getContext());
+        foundationView = new ThorFoundationView(getContext(), visualAssets);
         foundationView.setContentDescription(getContext().getString(R.string.thor_deck_title));
         setContentView(foundationView);
     }
@@ -81,6 +85,18 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateHeroMeetingArtifacts(artifacts);
     }
 
+    void invalidateVisualAssets()
+    {
+        if (foundationView != null)
+            foundationView.invalidate();
+    }
+
+    void clearTransientState()
+    {
+        if (foundationView != null)
+            foundationView.clearTransientState();
+    }
+
     int getAdventureTab()
     {
         return foundationView == null ? 0 : foundationView.adventureTab;
@@ -103,6 +119,8 @@ final class ThorSecondScreenPresentation extends Presentation
         private static final int TEXT = Color.rgb(244, 229, 184);
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final ThorVisualAssetCache<Bitmap> visualAssets;
         private String title;
         private String status;
         private long revision;
@@ -150,15 +168,29 @@ final class ThorSecondScreenPresentation extends Presentation
             }
         };
 
-        ThorFoundationView(final Context context)
+        ThorFoundationView(final Context context, final ThorVisualAssetCache<Bitmap> visualAssets)
         {
             super(context);
+            this.visualAssets = visualAssets;
             title = context.getString(R.string.thor_deck_title);
             status = context.getString(R.string.thor_deck_status);
             touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
             setBackgroundColor(BACKGROUND);
             setClickable(true);
             setFocusable(false);
+        }
+
+        void clearTransientState()
+        {
+            heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+            heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
+            selectedArtifact = -1;
+            selectedMeetingSlot = -1;
+            pendingMeetingAction = false;
+            heroMeetingSplit.cancel();
+            heroMeetingRedistribution.cancel();
+            cancelHeroMeetingGesture();
+            invalidate();
         }
 
         void updateContext(final long revision, final String contextId, final String publishedTitle,
@@ -734,8 +766,20 @@ final class ThorSecondScreenPresentation extends Presentation
                         value = planned > 0
                                 ? getContext().getString(R.string.thor_redistribution_empty_planned, planned)
                                 : getContext().getString(R.string.thor_army_empty);
-                    drawEllipsizedText(canvas, value, row.centerX(), row.centerY(), row.width() * 0.88f,
-                            Math.min(22f * density, row.height() * 0.55f));
+                    if (occupied)
+                    {
+                        final float iconSize = Math.min(row.height() * 0.78f, row.width() * 0.1f);
+                        final float left = row.left + Math.max(bevel * 0.55f, 5f);
+                        final RectF iconBounds = new RectF(left, row.centerY() - iconSize * 0.5f,
+                                left + iconSize, row.centerY() + iconSize * 0.5f);
+                        drawVisualAsset(canvas, heroMeetingArmies.visualAssetKeys[index], iconBounds);
+                        final float textLeft = iconBounds.right + Math.max(bevel * 0.7f, 7f);
+                        drawEllipsizedText(canvas, value, (textLeft + row.right) * 0.5f, row.centerY(),
+                                (row.right - textLeft) * 0.94f, Math.min(22f * density, row.height() * 0.55f));
+                    }
+                    else
+                        drawEllipsizedText(canvas, value, row.centerX(), row.centerY(), row.width() * 0.88f,
+                                Math.min(22f * density, row.height() * 0.55f));
                 }
             }
             if (heroMeetingSplit.stage() != ThorHeroMeetingSplitState.Stage.NONE)
@@ -838,8 +882,20 @@ final class ThorSecondScreenPresentation extends Presentation
                     final String value = prefix + " " + (occupied ? heroMeetingArtifacts.names[index]
                             : getContext().getString(R.string.thor_army_empty))
                             + (locked ? " " + getContext().getString(R.string.thor_artifact_locked) : "");
-                    drawEllipsizedText(canvas, value, bounds.centerX(), bounds.centerY(), bounds.width() * 0.9f,
-                            Math.min(20f * density, bounds.height() * 0.5f));
+                    if (occupied)
+                    {
+                        final float iconSize = Math.min(bounds.height() * 0.72f, bounds.width() * 0.08f);
+                        final float left = bounds.left + Math.max(bevel * 0.55f, 5f);
+                        final RectF iconBounds = new RectF(left, bounds.centerY() - iconSize * 0.5f,
+                                left + iconSize, bounds.centerY() + iconSize * 0.5f);
+                        drawVisualAsset(canvas, heroMeetingArtifacts.visualAssetKeys[index], iconBounds);
+                        final float textLeft = iconBounds.right + Math.max(bevel * 0.7f, 7f);
+                        drawEllipsizedText(canvas, value, (textLeft + bounds.right) * 0.5f, bounds.centerY(),
+                                (bounds.right - textLeft) * 0.95f, Math.min(20f * density, bounds.height() * 0.5f));
+                    }
+                    else
+                        drawEllipsizedText(canvas, value, bounds.centerX(), bounds.centerY(), bounds.width() * 0.9f,
+                                Math.min(20f * density, bounds.height() * 0.5f));
                 }
             }
             final String page = (artifactPage + 1) + " / 4";
@@ -1330,6 +1386,8 @@ final class ThorSecondScreenPresentation extends Presentation
         protected void onDetachedFromWindow()
         {
             removeCallbacks(heroMeetingLongPress);
+            heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+            heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
             heroMeetingGesture.cancel();
             artifactGesture.cancel();
             selectedArtifact = -1;
@@ -2332,6 +2390,21 @@ final class ThorSecondScreenPresentation extends Presentation
                     + getContext().getString(R.string.thor_action_quest_log) + ", "
                     + getContext().getString(R.string.thor_action_puzzle_map) + ", "
                     + getContext().getString(R.string.thor_action_save_game);
+        }
+
+        private void drawVisualAsset(final Canvas canvas, final long key, final RectF area)
+        {
+            final Bitmap bitmap = visualAssets.get(key);
+            if (bitmap == null || bitmap.isRecycled() || !ThorVisualAssetKey.isValid(key))
+                return;
+            final float scale = Math.min(area.width() / bitmap.getWidth(), area.height() / bitmap.getHeight());
+            if (!(scale > 0f) || !Float.isFinite(scale))
+                return;
+            final float width = bitmap.getWidth() * scale;
+            final float height = bitmap.getHeight() * scale;
+            final RectF destination = new RectF(area.centerX() - width * 0.5f, area.centerY() - height * 0.5f,
+                    area.centerX() + width * 0.5f, area.centerY() + height * 0.5f);
+            canvas.drawBitmap(bitmap, null, destination, iconPaint);
         }
 
         private void drawFittedText(final Canvas canvas, final String text, final float centerX, final float baseline,

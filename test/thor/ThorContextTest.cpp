@@ -283,6 +283,7 @@ TEST(ThorContextStoreTest, HeroMeetingArmySnapshotIsRevisionBoundAndClearsOutsid
 	EXPECT_EQ(first.revision, unchanged.revision);
 	EXPECT_EQ(first.heroMeetingArmies->leftHeroName.size(), 128);
 	EXPECT_EQ(first.heroMeetingArmies->leftSlots[0].creatureName.size(), 128);
+	EXPECT_EQ(first.heroMeetingArmies->leftSlots[0].visualAssetKey, thorCreatureVisualAssetKey(4));
 	context.heroMeetingArmies->leftSlots[0].count = 16;
 	const auto changedCount = store.publishNext(context);
 	EXPECT_GT(changedCount.revision, first.revision);
@@ -290,6 +291,7 @@ TEST(ThorContextStoreTest, HeroMeetingArmySnapshotIsRevisionBoundAndClearsOutsid
 	context.heroMeetingArmies->rightSlots[1] = {12, 1, true, 4, "Pikemen", 16};
 	const auto movedStack = store.publishNext(context);
 	EXPECT_GT(movedStack.revision, changedCount.revision);
+	EXPECT_EQ(movedStack.heroMeetingArmies->rightSlots[1].visualAssetKey, thorCreatureVisualAssetKey(4));
 	context.contextId = ThorContextIds::UNKNOWN;
 	const auto cleared = store.publishNext(context);
 	EXPECT_FALSE(cleared.heroMeetingArmies.has_value());
@@ -314,18 +316,26 @@ TEST(ThorContextStoreTest, HeroMeetingArtifactSnapshotIsBoundedRevisionBoundAndC
 	}
 	artifacts.artifactSlots[1].occupied = true;
 	artifacts.artifactSlots[1].instanceId = 42;
+	artifacts.artifactSlots[1].artifactTypeId = 8;
+	artifacts.artifactSlots[1].visualAssetKey = thorCreatureVisualAssetKey(123); // Store canonicalizes decorative identity.
 	artifacts.artifactSlots[1].name = std::string(128, 'A') + "x";
 	context.heroMeetingArtifacts = artifacts;
 	const auto first = store.publishNext(context);
 	ASSERT_TRUE(first.heroMeetingArtifacts);
 	EXPECT_EQ(first.heroMeetingArtifacts->artifactSlots.size(), THOR_HERO_MEETING_ARTIFACT_COUNT);
 	EXPECT_EQ(first.heroMeetingArtifacts->artifactSlots[1].name.size(), 128);
+	EXPECT_EQ(first.heroMeetingArtifacts->artifactSlots[1].visualAssetKey, thorArtifactVisualAssetKey(8));
 	EXPECT_EQ(store.publishNext(context).revision, first.revision);
 	context.heroMeetingArtifacts->artifactSlots[1].instanceId = 43;
 	const auto replaced = store.publishNext(context);
 	EXPECT_EQ(replaced.revision, first.revision + 1);
+	EXPECT_EQ(replaced.heroMeetingArtifacts->artifactSlots[1].visualAssetKey, first.heroMeetingArtifacts->artifactSlots[1].visualAssetKey);
+	context.heroMeetingArtifacts->artifactSlots[1].artifactTypeId = 9;
+	const auto differentType = store.publishNext(context);
+	EXPECT_NE(differentType.heroMeetingArtifacts->artifactSlots[1].visualAssetKey,
+		first.heroMeetingArtifacts->artifactSlots[1].visualAssetKey);
 	context.heroMeetingArtifacts->artifactSlots[1].name = "Changed";
-	EXPECT_EQ(store.publishNext(context).revision, replaced.revision + 1);
+	EXPECT_EQ(store.publishNext(context).revision, differentType.revision + 1);
 	context.contextId = ThorContextIds::UNKNOWN;
 	EXPECT_FALSE(store.publishNext(context).heroMeetingArtifacts);
 }

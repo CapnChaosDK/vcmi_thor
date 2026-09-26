@@ -1,6 +1,8 @@
 package eu.vcmi.vcmi;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.hardware.display.DisplayManager;
 import android.os.Handler;
 import android.os.Looper;
@@ -27,6 +29,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
     private final ThorHeroMeetingArtifactCache heroMeetingArtifactCache = new ThorHeroMeetingArtifactCache();
+    private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
     private int adventureTab;
     private boolean started;
     private boolean resumed;
@@ -156,6 +159,60 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             presentation.updateHeroMeetingArtifacts(artifacts);
     }
 
+    boolean hasVisualAsset(final long key)
+    {
+        return ThorVisualAssetKey.isValid(key) && visualAssets.knows(key);
+    }
+
+    void publishVisualAsset(final long revision, final long key, final int width, final int height,
+                            final byte[] encoded)
+    {
+        if (!referencesVisualAsset(revision, key))
+            return;
+        visualAssets.accept(key, width, height, encoded, this::decodeVisualAsset);
+        if (presentation != null)
+            presentation.invalidateVisualAssets();
+    }
+
+    private boolean referencesVisualAsset(final long revision, final long key)
+    {
+        if (revision != contextRevision || !ThorContextIds.HERO_MEETING.equals(contextId)
+                || !ThorVisualAssetKey.isValid(key))
+            return false;
+        for (final long referenced : heroMeetingArmies.visualAssetKeys)
+            if (referenced == key)
+                return true;
+        for (final long referenced : heroMeetingArtifactCache.snapshot().visualAssetKeys)
+            if (referenced == key)
+                return true;
+        return false;
+    }
+
+    private Bitmap decodeVisualAsset(final int width, final int height, final byte[] encoded)
+    {
+        final BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(encoded, 0, encoded.length, bounds);
+        if (bounds.outWidth != width || bounds.outHeight != height
+                || bounds.outWidth <= 0 || bounds.outHeight <= 0
+                || bounds.outWidth > ThorVisualAssetPayload.MAX_DIMENSION
+                || bounds.outHeight > ThorVisualAssetPayload.MAX_DIMENSION)
+            return null;
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        options.inScaled = false;
+        final Bitmap bitmap = BitmapFactory.decodeByteArray(encoded, 0, encoded.length, options);
+        if (bitmap == null || bitmap.getWidth() != width || bitmap.getHeight() != height
+                || bitmap.getAllocationByteCount() > ThorVisualAssetPayload.MAX_DIMENSION
+                        * ThorVisualAssetPayload.MAX_DIMENSION * 4)
+        {
+            if (bitmap != null)
+                bitmap.recycle();
+            return null;
+        }
+        return bitmap;
+    }
+
     @Override
     public void onDisplayAdded(final int displayId)
     {
@@ -195,11 +252,13 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
 
         dismissPresentation();
 
-        final ThorSecondScreenPresentation newPresentation = new ThorSecondScreenPresentation(activity, targetDisplay);
+        final ThorSecondScreenPresentation newPresentation = new ThorSecondScreenPresentation(activity, targetDisplay,
+                visualAssets);
         newPresentation.setOnDismissListener(dialog ->
         {
             if (presentation == dialog)
                 presentation = null;
+            newPresentation.clearTransientState();
         });
 
         try
@@ -253,6 +312,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         adventureTab = ThorContextIds.ADVENTURE_MAP.equals(contextId) ? oldPresentation.getAdventureTab() : 0;
         presentation = null;
         NativeMethods.clearThorActions();
+        oldPresentation.clearTransientState();
         try
         {
             oldPresentation.dismiss();

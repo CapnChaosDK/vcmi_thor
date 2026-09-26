@@ -314,6 +314,7 @@ set(lib_MAIN_SRCS
 	CAndroidVMHelper.cpp
 	thor/ThorAction.cpp
 	thor/ThorContext.cpp
+	thor/ThorVisualAssetCache.cpp
 	CBonusTypeHandler.cpp
 	CCreatureHandler.cpp
 	ConditionalWait.cpp
@@ -806,6 +807,7 @@ set(lib_MAIN_HEADERS
 	CAndroidVMHelper.h
 	thor/ThorAction.h
 	thor/ThorContext.h
+	thor/ThorVisualAssetCache.h
 	CBonusTypeHandler.h
 	CCreatureHandler.h
 	ConditionalWait.h
