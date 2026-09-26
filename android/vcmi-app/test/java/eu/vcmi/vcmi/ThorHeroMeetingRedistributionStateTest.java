@@ -66,7 +66,7 @@ public class ThorHeroMeetingRedistributionStateTest
         final ThorHeroMeetingRedistributionState state = new ThorHeroMeetingRedistributionState();
         final ThorHeroMeetingArmies armies = armies();
         assertFalse(state.begin(0, 0, armies));
-        assertFalse(state.begin(22, 2, armies));
+        assertFalse(state.begin(22, 3, armies)); // Empty source slot.
         assertTrue(state.begin(22, 0, armies));
         assertFalse(state.selectDestination(23, 1, armies));
         assertTrue(state.selectDestination(22, 1, armies));
