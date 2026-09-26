@@ -33,7 +33,7 @@ final class ThorActionIds
 
     static int maskFor(final int actionId)
     {
-        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= HERO_MEETING_TRANSFER_ARTIFACT
+        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= HERO_MEETING_REDISTRIBUTE_STACK
                 ? 1 << (actionId - 1) : 0;
     }
 }
