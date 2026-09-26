@@ -54,6 +54,15 @@ public class NativeMethods
     public static native void clearThorActions();
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static boolean hasThorVisualAsset(final long key)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD || !ThorVisualAssetKey.isValid(key))
+            return false;
+        final Context ctx = context();
+        return ctx instanceof VcmiSDLActivity && ((VcmiSDLActivity) ctx).hasThorVisualAsset(key);
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorContext(final long revision, final String contextId,
                                           final String title, final String status,
                                           final String detailLine1, final String detailLine2,
@@ -115,7 +124,7 @@ public class NativeMethods
     public static void publishThorHeroMeetingArmies(final long revision, final int leftHeroId, final int rightHeroId,
                                                     final String[] heroNames, final int[] armyIds, final int[] creatureIds,
                                                     final int[] counts, final String[] creatureNames, final int[] flags,
-                                                    final int locallyControllable)
+                                                    final int locallyControllable, final long[] visualAssetKeys)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -123,14 +132,15 @@ public class NativeMethods
         if (!(ctx instanceof VcmiSDLActivity))
             return;
         final ThorHeroMeetingArmies armies = ThorHeroMeetingArmies.copyOf(leftHeroId, rightHeroId, heroNames, armyIds,
-                creatureIds, counts, creatureNames, flags, locallyControllable);
+                creatureIds, counts, creatureNames, flags, locallyControllable, visualAssetKeys);
         ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorHeroMeetingArmies(revision, armies));
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorHeroMeetingArtifacts(final long revision, final int leftHeroId, final int rightHeroId,
                                                        final String[] heroNames, final int[] positions,
-                                                       final int[] flags, final String[] names)
+                                                       final int[] flags, final String[] names,
+                                                       final long[] visualAssetKeys)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -138,9 +148,23 @@ public class NativeMethods
         if (!(ctx instanceof VcmiSDLActivity))
             return;
         final ThorHeroMeetingArtifacts artifacts = ThorHeroMeetingArtifacts.copyOf(leftHeroId, rightHeroId,
-                heroNames, positions, flags, names);
+                heroNames, positions, flags, names, visualAssetKeys);
         ((VcmiSDLActivity) ctx).runOnUiThread(() ->
                 ((VcmiSDLActivity) ctx).publishThorHeroMeetingArtifacts(revision, artifacts));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorVisualAsset(final long revision, final long key, final int width, final int height,
+                                              final byte[] encoded)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity) || encoded == null || encoded.length > ThorVisualAssetPayload.MAX_BYTES)
+            return;
+        final byte[] copiedBytes = encoded.clone();
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorVisualAsset(revision, key, width, height, copiedBytes));
     }
 
     public static void setupMsg(final Messenger msg)

@@ -116,6 +116,18 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishHeroMeetingArtifacts(revision, artifacts);
     }
 
+    boolean hasThorVisualAsset(final long key)
+    {
+        return mThorSecondScreenController != null && mThorSecondScreenController.hasVisualAsset(key);
+    }
+
+    void publishThorVisualAsset(final long revision, final long key, final int width, final int height,
+                                final byte[] encoded)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.publishVisualAsset(revision, key, width, height, encoded);
+    }
+
     @Override
     public void loadLibraries()
     {

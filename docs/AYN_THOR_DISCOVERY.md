@@ -51,6 +51,13 @@ VCMI combines Qt and SDL in one Android package:
 - `VcmiSDLActivity` already repairs input focus after resume/window-focus changes. The presentation must be non-focus-stealing and must not interfere with this logic.
 - The presentation controller should register display callbacks only while its activity is alive/visible, dismiss before the existing `onDestroy()` process exit, and ignore late callbacks after teardown.
 
+### Player-installed Hero Meeting images
+
+- Hero Meeting visual keys are decorative fields beside the revision-bound Army and Artifact snapshots. Creature keys use CreatureID; artifact keys use artifact type ID, never artifact instance ID. Android may draw an image only for a key in the currently accepted snapshot.
+- Native image lookup uses the existing render handler and player-installed `CPRSMALL` creature and `Artifact` icon frames. The bounded PNG payload is at most 64×64 pixels and 32 KiB; at most 62 distinct keys are referenced by one Hero Meeting snapshot.
+- The native and Android caches are small LRU stores with at most 64 entries and 1 MiB each. Native checks the Android cache before sending an asset, so semantic revisions do not retransmit resident images. Android rejects stale/unreferenced keys and retains the existing text/name/count/lock presentation if an asset is missing or fails decoding.
+- Context or revision changes clear rendered slot references and transient gestures. Presentation dismissal clears its old rendered references while the activity-owned bounded cache may survive display recreation and pause/resume. This path is separate from SDL frame publication and adds no gameplay action or hit target.
+
 ## Existing multi-display support
 
 A repository-wide Android/client search found no use of `DisplayManager`, `Presentation`, display-listener callbacks, virtual displays, or secondary Android surfaces. VCMI currently has no Android multi-display support.

@@ -18,6 +18,7 @@
 #include <string>
 
 #include "thor/ThorContext.h"
+#include "thor/ThorVisualAssetCache.h"
 
 /// helper class that allows access to java vm to communicate with java code from native
 class DLL_LINKAGE CAndroidVMHelper
@@ -52,6 +53,8 @@ public:
 	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);
 	void publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies);
 	void publishThorHeroMeetingArtifacts(std::uint64_t revision, const ThorHeroMeetingArtifacts & artifacts);
+	bool hasThorVisualAsset(std::uint64_t key);
+	void publishThorVisualAsset(std::uint64_t revision, const ThorVisualAssetPayload & payload);
 
 	static void cacheVM(JNIEnv * env);
 

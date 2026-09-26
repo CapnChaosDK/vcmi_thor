@@ -192,7 +192,7 @@ void CAndroidVMHelper::publishThorTowns(std::uint64_t revision, const std::vecto
 void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArmies",
-		"(JII[Ljava/lang/String;[I[I[I[Ljava/lang/String;[II)V",
+		"(JII[Ljava/lang/String;[I[I[I[Ljava/lang/String;[II[J)V",
 		[revision, &armies](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
 			constexpr auto size = static_cast<jsize>(THOR_HERO_MEETING_ARMY_SIZE);
@@ -200,12 +200,14 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 			jintArray creatureIds = env->NewIntArray(size * 2);
 			jintArray counts = env->NewIntArray(size * 2);
 			jintArray flags = env->NewIntArray(size * 2);
+			jlongArray visualKeys = env->NewLongArray(size * 2);
 			jclass stringClass = env->FindClass("java/lang/String");
 			jobjectArray heroNames = env->NewObjectArray(2, stringClass, nullptr);
 			jobjectArray creatureNames = env->NewObjectArray(size * 2, stringClass, nullptr);
 			const std::array armyIdValues = {static_cast<jint>(armies.leftArmyId), static_cast<jint>(armies.rightArmyId)};
 			env->SetIntArrayRegion(armyIds, 0, 2, armyIdValues.data());
 			const std::array heroNameValues = {armies.leftHeroName, armies.rightHeroName};
+			std::array<jlong, size * 2> visualKeyValues{};
 			for(jsize side = 0; side < 2; ++side)
 			{
 				jstring name = env->NewStringUTF(heroNameValues[side].c_str());
@@ -217,6 +219,7 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 					const auto & slot = slots[index];
 					const jsize output = side * size + index;
 					const jint creatureId = slot.creatureId, count = slot.count, occupied = slot.occupied ? 1 : 0;
+					visualKeyValues[static_cast<std::size_t>(output)] = static_cast<jlong>(slot.visualAssetKey);
 					env->SetIntArrayRegion(creatureIds, output, 1, &creatureId);
 					env->SetIntArrayRegion(counts, output, 1, &count);
 					env->SetIntArrayRegion(flags, output, 1, &occupied);
@@ -225,15 +228,17 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 					env->DeleteLocalRef(creatureName);
 				}
 			}
+			env->SetLongArrayRegion(visualKeys, 0, size * 2, visualKeyValues.data());
 			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(armies.leftHeroId),
 				static_cast<jint>(armies.rightHeroId), heroNames, armyIds, creatureIds, counts, creatureNames, flags,
-				static_cast<jint>(armies.locallyControllable ? 1 : 0));
+				static_cast<jint>(armies.locallyControllable ? 1 : 0), visualKeys);
 			env->DeleteLocalRef(armyIds);
 			env->DeleteLocalRef(creatureIds);
 			env->DeleteLocalRef(counts);
 			env->DeleteLocalRef(flags);
 			env->DeleteLocalRef(heroNames);
 			env->DeleteLocalRef(creatureNames);
+			env->DeleteLocalRef(visualKeys);
 			env->DeleteLocalRef(stringClass);
 		}, true);
 }
@@ -241,7 +246,7 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, const ThorHeroMeetingArtifacts & artifacts)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArtifacts",
-		"(JII[Ljava/lang/String;[I[I[Ljava/lang/String;)V",
+		"(JII[Ljava/lang/String;[I[I[Ljava/lang/String;[J)V",
 		[revision, &artifacts](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
 			const auto size = static_cast<jsize>(artifacts.artifactSlots.size());
@@ -250,6 +255,8 @@ void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, c
 			jclass stringClass = env->FindClass("java/lang/String");
 			jobjectArray heroNames = env->NewObjectArray(2, stringClass, nullptr);
 			jobjectArray names = env->NewObjectArray(size, stringClass, nullptr);
+			jlongArray visualKeys = env->NewLongArray(size);
+			std::vector<jlong> visualKeyValues(static_cast<std::size_t>(size));
 			const std::array heroNameValues = {artifacts.leftHeroName, artifacts.rightHeroName};
 			for(jsize side = 0; side < 2; ++side)
 			{
@@ -261,6 +268,7 @@ void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, c
 			{
 				const auto & slot = artifacts.artifactSlots[index];
 				const jint position = slot.position;
+				visualKeyValues[static_cast<std::size_t>(index)] = static_cast<jlong>(slot.visualAssetKey);
 				const jint state = (slot.occupied ? 1 : 0) | (slot.locked ? 2 : 0) | (slot.backpack ? 4 : 0);
 				env->SetIntArrayRegion(positions, index, 1, &position);
 				env->SetIntArrayRegion(flags, index, 1, &state);
@@ -268,13 +276,44 @@ void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, c
 				env->SetObjectArrayElement(names, index, name);
 				env->DeleteLocalRef(name);
 			}
+			if(size > 0)
+				env->SetLongArrayRegion(visualKeys, 0, size, visualKeyValues.data());
 			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(artifacts.leftHeroId),
-				static_cast<jint>(artifacts.rightHeroId), heroNames, positions, flags, names);
+				static_cast<jint>(artifacts.rightHeroId), heroNames, positions, flags, names, visualKeys);
 			env->DeleteLocalRef(positions);
 			env->DeleteLocalRef(flags);
 			env->DeleteLocalRef(heroNames);
 			env->DeleteLocalRef(names);
+			env->DeleteLocalRef(visualKeys);
 			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
+bool CAndroidVMHelper::hasThorVisualAsset(std::uint64_t key)
+{
+	bool cached = false;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "hasThorVisualAsset", "(J)Z",
+		[key, &cached](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			cached = env->CallStaticBooleanMethod(cls, methodId, static_cast<jlong>(key)) == JNI_TRUE;
+		}, true);
+	return cached;
+}
+
+void CAndroidVMHelper::publishThorVisualAsset(std::uint64_t revision, const ThorVisualAssetPayload & payload)
+{
+	if(!isThorVisualAssetPayloadValid(payload))
+		return;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorVisualAsset", "(JJII[B)V",
+		[revision, &payload](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto size = static_cast<jsize>(payload.pngBytes.size());
+			jbyteArray bytes = env->NewByteArray(size);
+			if(size > 0)
+				env->SetByteArrayRegion(bytes, 0, size, reinterpret_cast<const jbyte *>(payload.pngBytes.data()));
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jlong>(payload.key),
+				static_cast<jint>(payload.width), static_cast<jint>(payload.height), bytes);
+			env->DeleteLocalRef(bytes);
 		}, true);
 }
 
