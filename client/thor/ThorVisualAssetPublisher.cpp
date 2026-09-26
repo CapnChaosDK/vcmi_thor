@@ -14,6 +14,7 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 
 #include "GameEngine.h"
+#include "render/IRenderHandler.h"
 #include "render/Canvas.h"
 #include "render/CanvasImage.h"
 #include "../render/Colors.h"
