@@ -38,7 +38,10 @@ enum class ThorAction : std::uint8_t
 	HERO_MEETING_SWAP_ARMIES = 19,
 	HERO_MEETING_SPLIT_STACK = 20,
 	HERO_MEETING_TRANSFER_ARTIFACT = 21,
-	HERO_MEETING_REDISTRIBUTE_STACK = 22
+	HERO_MEETING_REDISTRIBUTE_STACK = 22,
+	HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT = 23,
+	HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT = 24,
+	HERO_MEETING_SWAP_ARTIFACTS = 25
 };
 
 constexpr std::uint32_t thorActionMask(ThorAction action)
@@ -49,6 +52,13 @@ constexpr std::uint32_t thorActionMask(ThorAction action)
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
+
+enum class ThorBulkArtifactOperation : std::uint8_t { LEFT_TO_RIGHT, RIGHT_TO_LEFT, SWAP };
+DLL_LINKAGE std::optional<ThorBulkArtifactOperation> thorBulkArtifactOperation(ThorAction action);
+DLL_LINKAGE bool canExecuteThorBulkArtifactAction(const ThorContextRecord & context,
+	const ThorHeroMeetingArtifacts & currentArtifacts, bool makingTurn, bool pickedArtifact,
+	int leftOwner, int rightOwner, int playerId);
+DLL_LINKAGE bool shouldRestoreThorBulkArtifactActions(bool serverSuccess, std::uint32_t enabledActionMask);
 
 struct DLL_LINKAGE ThorActionRequest
 {

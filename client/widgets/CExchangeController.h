@@ -31,8 +31,8 @@ public:
 	int redistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
 		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations);
 	void moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget);
-	void swapArtifacts(bool equipped, bool baclpack);
-	void moveArtifacts(bool leftToRight, bool equipped, bool baclpack);
+	int swapArtifacts(bool equipped, bool baclpack);
+	int moveArtifacts(bool leftToRight, bool equipped, bool baclpack);
 
 private:
 	const CGHeroInstance * left;

@@ -193,10 +193,10 @@ void CCallback::assembleArtifacts(const ObjectInstanceID & heroID, ArtifactPosit
 	sendRequest(aa);
 }
 
-void CCallback::bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped, bool backpack)
+int CCallback::bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped, bool backpack)
 {
 	BulkExchangeArtifacts bma(srcHero, dstHero, swap, equipped, backpack);
-	sendRequest(bma);
+	return sendRequest(bma);
 }
 
 void CCallback::scrollBackpackArtifacts(ObjectInstanceID hero, bool left)

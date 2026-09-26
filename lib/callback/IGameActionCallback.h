@@ -89,5 +89,5 @@ public:
 
 
 	// Moves all artifacts from one hero to another
-	virtual void bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped, bool backpack) = 0;
+	virtual int bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped, bool backpack) = 0;
 };

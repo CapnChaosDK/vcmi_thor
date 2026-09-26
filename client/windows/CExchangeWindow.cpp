@@ -506,8 +506,13 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES)
 			| thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
-		if(context.heroMeetingArtifacts && getPickedArtifact() == nullptr && GAME->interface()->makingTurn)
-			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT);
+		if(context.heroMeetingArtifacts
+			&& context.heroMeetingArtifacts->artifactSlots.size() == THOR_HERO_MEETING_ARTIFACT_COUNT
+			&& getPickedArtifact() == nullptr && GAME->interface()->makingTurn)
+			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT)
+				| thorActionMask(ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT)
+				| thorActionMask(ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT)
+				| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARTIFACTS);
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, true))
 			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT);
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, false))
@@ -520,7 +525,8 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 		return;
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
 	CAndroidVMHelper().publishThorHeroMeetingArmies(context.revision, *context.heroMeetingArmies);
-	CAndroidVMHelper().publishThorHeroMeetingArtifacts(context.revision, *context.heroMeetingArtifacts);
+	CAndroidVMHelper().publishThorHeroMeetingArtifacts(context.revision,
+		context.heroMeetingArtifacts.value_or(ThorHeroMeetingArtifacts{}));
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 }
 
@@ -548,6 +554,12 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		return false;
 	};
 	if(!context.heroMeetingArmies->locallyControllable || thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies)
+		return rejectWithoutCallback();
+	if(thorBulkArtifactOperation(request.action)
+		&& !canExecuteThorBulkArtifactAction(context, thorHeroMeetingArtifacts(heroInst, artifs),
+			GAME->interface()->makingTurn, getPickedArtifact() != nullptr,
+			heroInst[0]->getOwner().getNum(), heroInst[1]->getOwner().getNum(),
+			GAME->interface()->playerID.getNum()))
 		return rejectWithoutCallback();
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK
 		&& !controller.canMoveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
@@ -658,6 +670,23 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		}
 		break;
 	}
+	case ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT:
+	case ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT:
+	case ThorAction::HERO_MEETING_SWAP_ARTIFACTS:
+	{
+		const auto operation = thorBulkArtifactOperation(request.action);
+		const int requestId = operation == ThorBulkArtifactOperation::SWAP
+			? controller.swapArtifacts(true, true)
+			: controller.moveArtifacts(operation == ThorBulkArtifactOperation::LEFT_TO_RIGHT, true, true);
+		if(requestId >= 0)
+		{
+			pendingThorBulkArtifactRequestIds.push_back(requestId);
+			executed = true;
+		}
+		else
+			return rejectWithoutCallback();
+		break;
+	}
 	default:
 		break;
 	}
@@ -718,6 +747,24 @@ void CExchangeWindow::onThorRedistributionResult(int requestId, bool success)
 	else
 	{
 		// A rejected server request has no garrison update to publish a replacement revision.
+		updateThorActionState(true);
+		updateThorActionState();
+	}
+}
+
+void CExchangeWindow::onThorBulkArtifactResult(int requestId, bool success)
+{
+	const auto pending = std::find(pendingThorBulkArtifactRequestIds.begin(),
+		pendingThorBulkArtifactRequestIds.end(), requestId);
+	if(pending == pendingThorBulkArtifactRequestIds.end())
+		return;
+	pendingThorBulkArtifactRequestIds.erase(pending);
+	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this)
+		return;
+	// The server may accept an empty operation or reject it without an artifact refresh.
+	// In either case, restore a new revision after the response if the deck is still consumed.
+	if(shouldRestoreThorBulkArtifactActions(success, thorContextStore().snapshot().enabledActionMask))
+	{
 		updateThorActionState(true);
 		updateThorActionState();
 	}
