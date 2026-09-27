@@ -69,7 +69,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         }
 
-        foundationView = new ThorFoundationView(getContext(), visualAssets, hapticsEnabled, hapticsChangeListener);
+        foundationView = new ThorFoundationView(getContext(), visualAssets, hapticsEnabled,
+                hapticsChangeListener, presentationSessionId, sessionValidity);
         foundationView.setContentDescription(getContext().getString(R.string.thor_deck_title));
         setContentView(foundationView);
     }
@@ -153,6 +154,8 @@ final class ThorSecondScreenPresentation extends Presentation
         private static final int TEXT = Color.rgb(244, 229, 184);
 
         private final HapticsChangeListener hapticsChangeListener;
+        private final long presentationSessionId;
+        private final SessionValidity sessionValidity;
         private boolean hapticsEnabled;
         private final ThorHapticsToggleGesture hapticsToggleGesture = new ThorHapticsToggleGesture();
 
@@ -214,12 +217,15 @@ final class ThorSecondScreenPresentation extends Presentation
         };
 
         ThorFoundationView(final Context context, final ThorVisualAssetCache<Bitmap> visualAssets,
-                           final boolean hapticsEnabled, final HapticsChangeListener hapticsChangeListener)
+                           final boolean hapticsEnabled, final HapticsChangeListener hapticsChangeListener,
+                           final long presentationSessionId, final SessionValidity sessionValidity)
         {
             super(context);
             this.visualAssets = visualAssets;
             this.hapticsEnabled = hapticsEnabled;
             this.hapticsChangeListener = hapticsChangeListener;
+            this.presentationSessionId = presentationSessionId;
+            this.sessionValidity = sessionValidity;
             title = context.getString(R.string.thor_deck_title);
             status = context.getString(R.string.thor_deck_status);
             touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
