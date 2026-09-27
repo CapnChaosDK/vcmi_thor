@@ -93,6 +93,31 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishActionState(revision, enabledActionMask, activeActionMask);
     }
 
+    void registerThorActionSubmission(final long revision, final int actionId)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.registerActionSubmission(revision, actionId);
+    }
+
+    void cancelThorActionSubmission(final long revision, final int actionId)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.cancelActionSubmission(revision, actionId);
+    }
+
+    long peekThorActionSubmissionToken(final long revision, final int actionId)
+    {
+        return mThorSecondScreenController == null ? 0
+                : mThorSecondScreenController.peekActionSubmissionToken(revision, actionId);
+    }
+
+    void acknowledgeThorAction(final long revision, final long submittedRevision, final int actionId,
+                               final long callbackToken)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.acknowledgeAction(revision, submittedRevision, actionId, callbackToken);
+    }
+
     void publishThorHeroes(final long revision, final ThorHeroRoster roster)
     {
         if (mThorSecondScreenController != null)

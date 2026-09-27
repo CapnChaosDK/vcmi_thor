@@ -44,6 +44,8 @@
 #include "../../lib/texts/TextOperations.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include <unordered_set>
+
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
 #include "../thor/ThorVisualAssetPublisher.h"
@@ -51,6 +53,16 @@
 #endif
 
 static const std::string QUICK_EXCHANGE_BG = "quick-exchange/TRADEQE";
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+namespace
+{
+	std::unordered_set<int> pendingThorArtifactRequestIds;
+	std::atomic_bool thorArtifactRequestPending = false;
+	ThorHeroMeetingArtifacts thorHeroMeetingArtifacts(const std::array<const CGHeroInstance *, 2> & heroes,
+		const std::array<std::shared_ptr<CArtifactsOfHeroMain>, 2> & widgets);
+}
+#endif
 
 static bool isQuickExchangeLayoutAvailable()
 {
@@ -61,6 +73,18 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 	: CWindowObject(PLAYER_COLORED | BORDERED, ImagePath::builtin(isQuickExchangeLayoutAvailable() ? QUICK_EXCHANGE_BG : (ENGINE->isRoeData() ? "TRADE" : "TRADE2"))),
 	controller(hero1, hero2)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	setArtifactSwapRequestCallback([this](int requestId)
+	{
+		trackThorArtifactRequest(requestId, std::nullopt);
+	});
+	const auto windowAlive = thorWindowAlive;
+	setArtifactRequestAllowedCallback([windowAlive]
+	{
+		return windowAlive->load() && CExchangeWindow::areThorArtifactRequestsAllowed();
+	});
+#endif
+
 	const bool qeLayout = isQuickExchangeLayoutAvailable();
 
 	OBJECT_CONSTRUCTION;
@@ -111,14 +135,38 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 	}
 
 	artifs[0] = std::make_shared<CArtifactsOfHeroMain>(Point(-334, 151));
-	artifs[0]->clickPressedCallback = [this, hero = heroInst[0]](const CArtPlace & artPlace, const Point & cursorPosition){clickPressedOnArtPlace(hero, artPlace.slot, true, false, false, cursorPosition);};
-	artifs[0]->showPopupCallback = [this, heroArts = artifs[0]](CArtPlace & artPlace, const Point & cursorPosition){showArtifactPopup(*heroArts, artPlace, cursorPosition);};
-	artifs[0]->gestureCallback = [this, hero = heroInst[0]](const CArtPlace & artPlace, const Point & cursorPosition){showQuickBackpackWindow(hero, artPlace.slot, cursorPosition);};
+	artifs[0]->clickPressedCallback = [this, hero = heroInst[0]](const CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		if(artifactInputEnabled())
+			clickPressedOnArtPlace(hero, artPlace.slot, true, false, false, cursorPosition);
+	};
+	artifs[0]->showPopupCallback = [this, heroArts = artifs[0]](CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		if(artifactInputEnabled())
+			showArtifactPopup(*heroArts, artPlace, cursorPosition);
+	};
+	artifs[0]->gestureCallback = [this, hero = heroInst[0]](const CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		if(artifactInputEnabled())
+			showQuickBackpackWindow(hero, artPlace.slot, cursorPosition);
+	};
 	artifs[0]->setHero(heroInst[0]);
 	artifs[1] = std::make_shared<CArtifactsOfHeroMain>(Point(98, 151));
-	artifs[1]->clickPressedCallback = [this, hero = heroInst[1]](const CArtPlace & artPlace, const Point & cursorPosition){clickPressedOnArtPlace(hero, artPlace.slot, true, false, false, cursorPosition);};
-	artifs[1]->showPopupCallback = [this, heroArts = artifs[1]](CArtPlace & artPlace, const Point & cursorPosition){showArtifactPopup(*heroArts, artPlace, cursorPosition);};
-	artifs[1]->gestureCallback = [this, hero = heroInst[1]](const CArtPlace & artPlace, const Point & cursorPosition){showQuickBackpackWindow(hero, artPlace.slot, cursorPosition);};
+	artifs[1]->clickPressedCallback = [this, hero = heroInst[1]](const CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		if(artifactInputEnabled())
+			clickPressedOnArtPlace(hero, artPlace.slot, true, false, false, cursorPosition);
+	};
+	artifs[1]->showPopupCallback = [this, heroArts = artifs[1]](CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		if(artifactInputEnabled())
+			showArtifactPopup(*heroArts, artPlace, cursorPosition);
+	};
+	artifs[1]->gestureCallback = [this, hero = heroInst[1]](const CArtPlace & artPlace, const Point & cursorPosition)
+	{
+		if(artifactInputEnabled())
+			showQuickBackpackWindow(hero, artPlace.slot, cursorPosition);
+	};
 	artifs[1]->setHero(heroInst[1]);
 
 
@@ -149,7 +197,7 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 		heroAreas[b] = std::make_shared<CHeroArea>(257 + 228 * b + (qeLayout ? 1 : 0), qeLayout ? 10 : 13, hero);
 		heroAreas[b]->addClickCallback([this, hero]() -> void
 									   {
-										   if(getPickedArtifact() == nullptr)
+										   if(artifactInputEnabled() && getPickedArtifact() == nullptr)
 											   GAME->interface()->openHeroWindow(hero);
 									   });
 
@@ -180,9 +228,16 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 		luck[b] = std::make_shared<MoraleLuckBox>(false,  Rect(Point(212 + 490 * b, 39), Point(32, 32)), true);
 	}
 
-	quit = std::make_shared<CButton>(Point(732, 567), AnimationPath::builtin("IOKAY.DEF"), LIBRARY->generaltexth->zelp[600], std::bind(&CExchangeWindow::close, this), EShortcut::GLOBAL_ACCEPT);
-	if(queryID.getNum() > 0)
-		quit->addCallback([=](){ GAME->interface()->cb->selectionMade(0, queryID); });
+	quit = std::make_shared<CButton>(Point(732, 567), AnimationPath::builtin("IOKAY.DEF"), LIBRARY->generaltexth->zelp[600],
+		[this, queryID]()
+		{
+			if(!artifactInputEnabled())
+				return;
+			close();
+			if(queryID.getNum() > 0)
+				GAME->interface()->cb->selectionMade(0, queryID);
+		}, EShortcut::GLOBAL_ACCEPT);
+	quit->block(!artifactInputEnabled());
 
 	questlogButton[0] = std::make_shared<CButton>(Point( qeLayout ? 8 : 10, qeLayout ? 39 : 44), AnimationPath::builtin("hsbtns4.def"), CButton::tooltip(LIBRARY->generaltexth->translate("core.heroscrn.0")), std::bind(&CExchangeWindow::questLogShortcut, this));
 	questlogButton[1] = std::make_shared<CButton>(Point(740, qeLayout ? 39 : 44), AnimationPath::builtin("hsbtns4.def"), CButton::tooltip(LIBRARY->generaltexth->translate("core.heroscrn.0")), std::bind(&CExchangeWindow::questLogShortcut, this));
@@ -287,6 +342,13 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 	CExchangeWindow::updateArtifacts();
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+CExchangeWindow::~CExchangeWindow()
+{
+	thorWindowAlive->store(false);
+}
+#endif
+
 void CExchangeWindow::activate()
 {
 	if(isActive())
@@ -328,17 +390,80 @@ void CExchangeWindow::creatureArrowButtonCallback(bool leftToRight, SlotID slotI
 
 void CExchangeWindow::moveArtifactsCallback(bool leftToRight)
 {
+	if(!artifactInputEnabled())
+		return;
 	bool moveEquipped = !ENGINE->isKeyboardShiftDown();
 	bool moveBackpack = !ENGINE->isKeyboardCmdDown();
-	controller.moveArtifacts(leftToRight, moveEquipped, moveBackpack);
+	moveArtifactsOperation(leftToRight, moveEquipped, moveBackpack);
 };
 
 void CExchangeWindow::swapArtifactsCallback()
 {
+	if(!artifactInputEnabled())
+		return;
 	bool moveEquipped = !ENGINE->isKeyboardShiftDown();
 	bool moveBackpack = !ENGINE->isKeyboardCmdDown();
-	controller.swapArtifacts(moveEquipped, moveBackpack);
+	swapArtifactsOperation(moveEquipped, moveBackpack);
 }
+
+void CExchangeWindow::moveArtifactsOperation(bool leftToRight, bool equipped, bool backpack)
+{
+	const auto requestId = controller.moveArtifacts(leftToRight, equipped, backpack);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(requestId > 0)
+		trackThorArtifactRequest(requestId, std::nullopt);
+#endif
+}
+
+void CExchangeWindow::swapArtifactsOperation(bool equipped, bool backpack)
+{
+	const auto requestId = controller.swapArtifacts(equipped, backpack);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(requestId > 0)
+		trackThorArtifactRequest(requestId, std::nullopt);
+#endif
+}
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CExchangeWindow::trackThorArtifactRequest(int requestId,
+	std::optional<ThorActionAcceptance> acceptance)
+{
+	if(requestId <= 0)
+		return;
+	pendingThorArtifactRequests.push_back({requestId, std::move(acceptance), thorHeroMeetingArtifacts(heroInst, artifs)});
+	pendingThorArtifactRequestIds.insert(requestId);
+	thorArtifactRequestPending.store(true);
+	quit->block(true);
+}
+#endif
+
+bool CExchangeWindow::artifactInputEnabled() const
+{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	return areThorArtifactRequestsAllowed();
+#else
+	return true;
+#endif
+}
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CExchangeWindow::completeThorArtifactRequest(int requestId)
+{
+	pendingThorArtifactRequestIds.erase(requestId);
+	thorArtifactRequestPending.store(!pendingThorArtifactRequestIds.empty());
+}
+
+void CExchangeWindow::resetThorArtifactRequests()
+{
+	pendingThorArtifactRequestIds.clear();
+	thorArtifactRequestPending.store(false);
+}
+
+bool CExchangeWindow::areThorArtifactRequestsAllowed()
+{
+	return !thorArtifactRequestPending.load();
+}
+#endif
 
 void CExchangeWindow::moveUnitsShortcut(bool leftToRight)
 {
@@ -350,6 +475,8 @@ void CExchangeWindow::moveUnitsShortcut(bool leftToRight)
 
 void CExchangeWindow::backpackShortcut(bool leftHero)
 {
+	if(!artifactInputEnabled())
+		return;
 	ENGINE->windows().createAndPushWindow<CHeroBackpackWindow>(heroInst[leftHero ? 0 : 1], artSets);
 };
 
@@ -367,31 +494,40 @@ void CExchangeWindow::keyPressed(EShortcut key)
 			controller.swapArmy();
 		break;
 		case EShortcut::EXCHANGE_ARTIFACTS_TO_LEFT:
-			controller.moveArtifacts(false, true, true);
+			if(artifactInputEnabled())
+				moveArtifactsOperation(false, true, true);
 		break;
 		case EShortcut::EXCHANGE_ARTIFACTS_TO_RIGHT:
-			controller.moveArtifacts(true, true, true);
+			if(artifactInputEnabled())
+				moveArtifactsOperation(true, true, true);
 		break;
 		case EShortcut::EXCHANGE_ARTIFACTS_SWAP:
-			controller.swapArtifacts(true, true);
+			if(artifactInputEnabled())
+				swapArtifactsOperation(true, true);
 		break;
 		case EShortcut::EXCHANGE_EQUIPPED_TO_LEFT:
-			controller.moveArtifacts(false, true, false);
+			if(artifactInputEnabled())
+				moveArtifactsOperation(false, true, false);
 		break;
 		case EShortcut::EXCHANGE_EQUIPPED_TO_RIGHT:
-			controller.moveArtifacts(true, true, false);
+			if(artifactInputEnabled())
+				moveArtifactsOperation(true, true, false);
 		break;
 		case EShortcut::EXCHANGE_EQUIPPED_SWAP:
-			controller.swapArtifacts(true, false);
+			if(artifactInputEnabled())
+				swapArtifactsOperation(true, false);
 		break;
 		case EShortcut::EXCHANGE_BACKPACK_TO_LEFT:
-			controller.moveArtifacts(false, false, true);
+			if(artifactInputEnabled())
+				moveArtifactsOperation(false, false, true);
 		break;
 		case EShortcut::EXCHANGE_BACKPACK_TO_RIGHT:
-			controller.moveArtifacts(true, false, true);
+			if(artifactInputEnabled())
+				moveArtifactsOperation(true, false, true);
 		break;
 		case EShortcut::EXCHANGE_BACKPACK_SWAP:
-			controller.swapArtifacts(false, true);
+			if(artifactInputEnabled())
+				swapArtifactsOperation(false, true);
 		break;
 		case EShortcut::EXCHANGE_BACKPACK_LEFT:
 			backpackShortcut(true);
@@ -562,6 +698,8 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		updateThorActionState();
 		return false;
 	};
+	if(isThorActionArtifactMutation(request.action) && !artifactInputEnabled())
+		return rejectWithoutCallback();
 	if(!context.heroMeetingArmies->locallyControllable || thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies)
 		return rejectWithoutCallback();
 	if(thorBulkArtifactOperation(request.action)
@@ -656,8 +794,7 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		executed = true;
 		break;
 	case ThorAction::HERO_MEETING_SWAP_ARMIES:
-		controller.swapArmy();
-		executed = true;
+		executed = controller.swapArmy();
 		break;
 	case ThorAction::HERO_MEETING_SPLIT_STACK:
 	{
@@ -673,9 +810,15 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		{
 			const auto & slots = context.heroMeetingArtifacts->artifactSlots;
 			constexpr int perHero = static_cast<int>(THOR_HERO_MEETING_ARTIFACT_COUNT / 2);
-			executed = GAME->interface()->cb->swapArtifacts(
+			const auto requestId = GAME->interface()->cb->swapArtifactsRequest(
 				ArtifactLocation(heroInst[pair->first / perHero]->id, ArtifactPosition(slots[pair->first].position)),
 				ArtifactLocation(heroInst[pair->second / perHero]->id, ArtifactPosition(slots[pair->second].position)));
+			if(requestId > 0)
+			{
+				trackThorArtifactRequest(requestId,
+					ThorActionAcceptance{request.revision, request.action});
+				executed = true;
+			}
 		}
 		break;
 	}
@@ -687,9 +830,10 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		const int requestId = operation == ThorBulkArtifactOperation::SWAP
 			? controller.swapArtifacts(true, true)
 			: controller.moveArtifacts(operation == ThorBulkArtifactOperation::LEFT_TO_RIGHT, true, true);
-		if(requestId >= 0)
+		if(requestId > 0)
 		{
-			pendingThorBulkArtifactRequestIds.push_back(requestId);
+			trackThorArtifactRequest(requestId,
+				ThorActionAcceptance{request.revision, request.action});
 			executed = true;
 		}
 		else
@@ -736,23 +880,33 @@ bool CExchangeWindow::executeThorRedistribution(const ThorHeroMeetingRedistribut
 	updateThorActionState(true);
 	const auto requestId = controller.redistributeStack(ObjectInstanceID(request.sourceArmyId),
 		SlotID(request.sourceSlot), CreatureID(request.sourceCreatureId), request.sourceCount, destinations);
-	if(requestId < 0)
+	if(requestId <= 0)
 		return rejectWithoutCallback();
-	pendingThorRedistributionRequestIds.push_back(requestId);
+	pendingThorRedistributionRequests.emplace_back(requestId,
+		ThorActionAcceptance{request.revision, ThorAction::HERO_MEETING_REDISTRIBUTE_STACK});
 	return true;
 }
 
 void CExchangeWindow::onThorRedistributionResult(int requestId, bool success)
 {
-	const auto pending = std::find(pendingThorRedistributionRequestIds.begin(),
-		pendingThorRedistributionRequestIds.end(), requestId);
-	if(pending == pendingThorRedistributionRequestIds.end())
+	const auto pending = std::find_if(pendingThorRedistributionRequests.begin(),
+		pendingThorRedistributionRequests.end(), [requestId](const auto & entry) { return entry.first == requestId; });
+	if(pending == pendingThorRedistributionRequests.end())
 		return;
-	pendingThorRedistributionRequestIds.erase(pending);
-	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this)
+	const auto acceptance = pending->second;
+	pendingThorRedistributionRequests.erase(pending);
+	const auto context = thorContextStore().snapshot();
+	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this || !matchesThorContext(context))
 		return;
 	if(success)
+	{
+		// The server package may publish one or more same-context revisions before this result arrives.
+		if(const auto accepted = thorActionAcceptance(
+			ThorActionRequest{.revision = context.revision, .action = acceptance.action},
+			ThorActionValidation::VALID, true))
+			CAndroidVMHelper().acknowledgeThorAction(accepted->revision, accepted->action, acceptance.revision);
 		updateThorActionState();
+	}
 	else
 	{
 		// A rejected server request has no garrison update to publish a replacement revision.
@@ -761,15 +915,34 @@ void CExchangeWindow::onThorRedistributionResult(int requestId, bool success)
 	}
 }
 
-void CExchangeWindow::onThorBulkArtifactResult(int requestId, bool success)
+void CExchangeWindow::onThorArtifactRequestResult(int requestId, bool success)
 {
-	const auto pending = std::find(pendingThorBulkArtifactRequestIds.begin(),
-		pendingThorBulkArtifactRequestIds.end(), requestId);
-	if(pending == pendingThorBulkArtifactRequestIds.end())
+	const auto pending = std::find_if(pendingThorArtifactRequests.begin(),
+		pendingThorArtifactRequests.end(), [requestId](const auto & entry) { return entry.requestId == requestId; });
+	if(pending == pendingThorArtifactRequests.end())
+	{
+		completeThorArtifactRequest(requestId);
+		quit->block(!artifactInputEnabled());
 		return;
-	pendingThorBulkArtifactRequestIds.erase(pending);
-	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this)
+	}
+	const auto acceptance = pending->acceptance;
+	const auto artifactsBefore = pending->artifactsBefore;
+	pendingThorArtifactRequests.erase(pending);
+	completeThorArtifactRequest(requestId);
+	quit->block(!artifactInputEnabled());
+	const auto context = thorContextStore().snapshot();
+	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this || !matchesThorContext(context))
 		return;
+	const auto artifactsAfter = thorHeroMeetingArtifacts(heroInst, artifs);
+	if(success && acceptance && thorHeroMeetingArtifactsChanged(artifactsBefore, artifactsAfter))
+	{
+		// The request ID ties this result to its original action; use the latest same-context revision
+		// after server artifact refreshes so the Android acknowledgement is not stale on arrival.
+		if(const auto accepted = thorActionAcceptance(
+			ThorActionRequest{.revision = context.revision, .action = acceptance->action},
+			ThorActionValidation::VALID, true))
+			CAndroidVMHelper().acknowledgeThorAction(accepted->revision, accepted->action, acceptance->revision);
+	}
 	// The server may accept an empty operation or reject it without an artifact refresh.
 	// In either case, restore a new revision after the response if the deck is still consumed.
 	if(shouldRestoreThorBulkArtifactActions(success, thorContextStore().snapshot().enabledActionMask))

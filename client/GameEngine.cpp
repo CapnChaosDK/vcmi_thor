@@ -42,6 +42,7 @@
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../lib/CAndroidVMHelper.h"
 #include "../lib/thor/ThorAction.h"
 #include "../lib/thor/ThorContext.h"
 #endif
@@ -294,6 +295,11 @@ void GameEngine::updateFrame()
 		{
 			logGlobal->debug("Thor action rejected: availability changed");
 			continue;
+		}
+		if(!isThorActionHapticDeferredUntilServerResult(request->action))
+		{
+			if(const auto acceptance = thorActionAcceptance(*request, ThorActionValidation::VALID, executed))
+				CAndroidVMHelper().acknowledgeThorAction(acceptance->revision, acceptance->action);
 		}
 
 		logGlobal->debug("Thor action executed: %d", static_cast<int>(request->action));

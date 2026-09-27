@@ -40,6 +40,8 @@
     <string name="thor_tab_actions">Actions</string>
     <string name="thor_tab_heroes">Heroes</string>
     <string name="thor_tab_towns">Towns</string>
+    <string name="thor_haptics_on">Haptics: On</string>
+    <string name="thor_haptics_off">Haptics: Off</string>
     <string name="thor_no_heroes">No heroes</string>
     <string name="thor_no_towns">No towns</string>
     <string name="thor_town_previous">Previous</string>

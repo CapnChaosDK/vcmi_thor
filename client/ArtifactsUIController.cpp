@@ -31,7 +31,8 @@ ArtifactsUIController::ArtifactsUIController()
 	numOfArtsAskAssembleSession = 0;
 }
 
-bool ArtifactsUIController::askToAssemble(const ArtifactLocation & al, const bool onlyEquipped, const bool checkIgnored)
+bool ArtifactsUIController::askToAssemble(const ArtifactLocation & al, const bool onlyEquipped, const bool checkIgnored,
+	std::function<void(int)> requestCallback, std::function<bool()> requestAllowedCallback)
 {
 	if(auto hero = GAME->interface()->cb->getHero(al.artHolder))
 	{
@@ -40,13 +41,15 @@ bool ArtifactsUIController::askToAssemble(const ArtifactLocation & al, const boo
 			logGlobal->error("artifact location %d points to nothing", al.slot.num);
 			return false;
 		}
-		return askToAssemble(hero, al.slot, onlyEquipped, checkIgnored);
+		return askToAssemble(hero, al.slot, onlyEquipped, checkIgnored,
+			std::move(requestCallback), std::move(requestAllowedCallback));
 	}
 	return false;
 }
 
 bool ArtifactsUIController::askToAssemble(const CGHeroInstance * hero, const ArtifactPosition & slot,
-	const bool onlyEquipped, const bool checkIgnored)
+	const bool onlyEquipped, const bool checkIgnored, std::function<void(int)> requestCallback,
+	std::function<bool()> requestAllowedCallback)
 {
 	assert(hero);
 	const auto art = hero->getArt(slot);
@@ -63,7 +66,9 @@ bool ArtifactsUIController::askToAssemble(const CGHeroInstance * hero, const Art
 	auto assemblyPossibilities = ArtifactUtils::assemblyPossibilities(hero, art->getTypeId(), onlyEquipped);
 	if(!assemblyPossibilities.empty())
 	{
-		auto askThread = new std::thread([this, hero, slot, assemblyPossibilities, checkIgnored]() -> void
+		auto askThread = new std::thread([this, hero, slot, assemblyPossibilities, checkIgnored,
+			requestCallback = std::move(requestCallback),
+			requestAllowedCallback = std::move(requestAllowedCallback)]() -> void
 			{
 				std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
 				for(const auto combinedArt : assemblyPossibilities)
@@ -84,10 +89,16 @@ bool ArtifactsUIController::askToAssemble(const CGHeroInstance * hero, const Art
 					else
 						message.appendTextID("core.genrltxt.732"); // You possess all of the components needed to assemble the
 					message.replaceName(ArtifactID(combinedArt->getId()));
-					GAME->interface()->showYesNoDialog(message.toString(&GAME->translator()), [&assembleConfirmed, hero, slot, combinedArt]()
+					GAME->interface()->showYesNoDialog(message.toString(&GAME->translator()),
+						[&assembleConfirmed, hero, slot, combinedArt, requestCallback, requestAllowedCallback]()
 						{
 							assembleConfirmed = true;
-							GAME->interface()->cb->assembleArtifacts(hero->id, slot, true, combinedArt->getId());
+							if(requestAllowedCallback && !requestAllowedCallback())
+								return;
+							const auto requestId = GAME->interface()->cb->assembleArtifactsRequest(
+								hero->id, slot, true, combinedArt->getId());
+							if(requestId > 0 && requestCallback)
+								requestCallback(requestId);
 						}, nullptr, {std::make_shared<CComponent>(ComponentType::ARTIFACT, combinedArt->getId())});
 
 					GAME->interface()->waitWhileDialog();
@@ -101,7 +112,8 @@ bool ArtifactsUIController::askToAssemble(const CGHeroInstance * hero, const Art
 	return false;
 }
 
-bool ArtifactsUIController::askToDisassemble(const CGHeroInstance * hero, const ArtifactPosition & slot)
+bool ArtifactsUIController::askToDisassemble(const CGHeroInstance * hero, const ArtifactPosition & slot,
+	std::function<void(int)> requestCallback, std::function<bool()> requestAllowedCallback)
 {
 	assert(hero);
 	const auto art = hero->getArt(slot);
@@ -122,9 +134,15 @@ bool ArtifactsUIController::askToDisassemble(const CGHeroInstance * hero, const 
 		message.appendEOL();
 		message.appendEOL();
 		message.appendTextID("core.genrltxt.733"); // Do you wish to disassemble this artifact?
-		GAME->interface()->showYesNoDialog(message.toString(&GAME->translator()), [hero, slot]()
+		GAME->interface()->showYesNoDialog(message.toString(&GAME->translator()),
+			[hero, slot, requestCallback = std::move(requestCallback),
+				requestAllowedCallback = std::move(requestAllowedCallback)]()
 			{
-				GAME->interface()->cb->assembleArtifacts(hero->id, slot, false, ArtifactID());
+				if(requestAllowedCallback && !requestAllowedCallback())
+					return;
+				const auto requestId = GAME->interface()->cb->assembleArtifactsRequest(hero->id, slot, false, ArtifactID());
+				if(requestId > 0 && requestCallback)
+					requestCallback(requestId);
 			}, nullptr);
 		return true;
 	}

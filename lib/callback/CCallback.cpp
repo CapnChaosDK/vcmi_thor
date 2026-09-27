@@ -172,11 +172,16 @@ bool CCallback::dismissHero(const CGHeroInstance *hero)
 
 bool CCallback::swapArtifacts(const ArtifactLocation &l1, const ArtifactLocation &l2)
 {
+	swapArtifactsRequest(l1, l2);
+	return true;
+}
+
+int CCallback::swapArtifactsRequest(const ArtifactLocation &l1, const ArtifactLocation &l2)
+{
 	ExchangeArtifacts ea;
 	ea.src = l1;
 	ea.dst = l2;
-	sendRequest(ea);
-	return true;
+	return sendRequest(ea);
 }
 
 /**
@@ -189,8 +194,13 @@ bool CCallback::swapArtifacts(const ArtifactLocation &l1, const ArtifactLocation
  */
 void CCallback::assembleArtifacts(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo)
 {
+	assembleArtifactsRequest(heroID, artifactSlot, assemble, assembleTo);
+}
+
+int CCallback::assembleArtifactsRequest(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo)
+{
 	AssembleArtifacts aa(heroID, artifactSlot, assemble, assembleTo);
-	sendRequest(aa);
+	return sendRequest(aa);
 }
 
 int CCallback::bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped, bool backpack)

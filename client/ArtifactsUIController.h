@@ -12,6 +12,8 @@
 #include "../lib/constants/EntityIdentifiers.h"
 #include "../lib/networkPacks/ArtifactLocation.h"
 
+#include <functional>
+
 class CGHeroInstance;
 
 class ArtifactsUIController
@@ -22,10 +24,13 @@ class ArtifactsUIController
 
 public:
 	ArtifactsUIController();
-	bool askToAssemble(const ArtifactLocation & al, const bool onlyEquipped = false, const bool checkIgnored = false);
+	bool askToAssemble(const ArtifactLocation & al, const bool onlyEquipped = false, const bool checkIgnored = false,
+		std::function<void(int)> requestCallback = {}, std::function<bool()> requestAllowedCallback = {});
 	bool askToAssemble(const CGHeroInstance * hero, const ArtifactPosition & slot, const bool onlyEquipped = false,
-		const bool checkIgnored = false);
-	bool askToDisassemble(const CGHeroInstance * hero, const ArtifactPosition & slot);
+		const bool checkIgnored = false, std::function<void(int)> requestCallback = {},
+		std::function<bool()> requestAllowedCallback = {});
+	bool askToDisassemble(const CGHeroInstance * hero, const ArtifactPosition & slot,
+		std::function<void(int)> requestCallback = {}, std::function<bool()> requestAllowedCallback = {});
 
 	void artifactRemoved();
 	void artifactMoved();

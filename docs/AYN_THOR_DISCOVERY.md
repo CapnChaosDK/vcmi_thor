@@ -40,8 +40,9 @@ VCMI combines Qt and SDL in one Android package:
 - `VcmiSDLActivity.java` extends `org.libsdl.app.SDLActivity`. It loads the VCMI client shared library, moves SDL's `mSurface` into `activity_game.xml`, starts background services, restores immersive mode and SDL focus after resume, and shuts the game process down in `onDestroy()`.
 - `ActivityMapEditor.java` extends Qt's `QtActivity`; `AndroidManifest.xml` assigns it to `:editor`, and launcher startup selects the editor through `VCMI_LAUNCH_MAP_EDITOR`. It does not share the SDL game process or its static native state.
 - `ServerService` also runs in its own process (`eu.vcmi.vcmi.srv`) and communicates with the game activity via Android `Messenger` while the native client/server layer handles game requests.
-- `lib/CAndroidVMHelper.*` already supports native-to-Java static calls and caches the Android VM/class loader. It is suitable infrastructure for later bounded state notification, but no generic Java-to-native Thor action entry point exists yet.
-- `NativeMethods.java` is the current Java helper surface for paths, services, progress display, and haptics. Thor methods should live in a separate narrowly named bridge class or a clearly isolated section, guarded from standard builds.
+- `lib/CAndroidVMHelper.*` supports native-to-Java static calls and caches the Android VM/class loader. Thor context publication, bounded lower-action submission, and the success-only action acknowledgement use this established bridge.
+- `NativeMethods.java` also contains the Thor Java-to-native action queue entry points and the native-to-Java accepted-action callback, guarded by the Thor build flag. The callback reports only the originating revision and action after native semantic execution succeeds; Java does not decide gameplay success.
+- Lower-deck haptics belong to the active Android `Presentation` view and use `View.performHapticFeedback` with default flags, so Android's system touch-feedback preference remains authoritative. The existing general `NativeMethods.hapticFeedback()` path is separate.
 - The validated main-menu slices show that `CMenuScreen` already publishes configured tab names. Map only exact approved names (`main`, `new`, `load`, `campaign`, and `credits`) to stable context IDs; every other name, including malformed and mod-added names, must publish `UNKNOWN`. Android must render known IDs from bounded local resources rather than from arbitrary native title/status text.
 
 ### Rendering lifecycle
@@ -99,8 +100,9 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 4. Publish action availability from the owning screen/controller after its native state checks. Do not let Android infer availability from labels or visible widgets.
 5. Use `CPlayerSpecificInfoCallback` and battle callbacks for visible state. Bind entries to stable VCMI object IDs plus a revision; never expose raw pointers.
 6. Consume one pending Android request in `GameEngine::updateFrame()` on `MainGUI`, re-resolve the current top context and IDs, and call existing UI/controller or `CCallback` request paths.
-7. Let the server perform its existing final gameplay validation. Client-side revalidation is still required to reject stale/incorrect lower-screen requests before a packet is issued.
-8. Use `CAndroidVMHelper` only for bounded transfer/notification. Define hard limits before adding text arrays or pixels. Do not poll or stream full SDL frames.
+7. After an existing semantic execution path returns success, acknowledge the originating revision/action to Android; emit no acknowledgement on validation failure or no-op execution. Android may provide feedback but does not decide whether execution succeeded.
+8. Let the server perform its existing final gameplay validation. Client-side revalidation is still required to reject stale/incorrect lower-screen requests before a packet is issued.
+9. Use `CAndroidVMHelper` only for bounded transfer/notification. Define hard limits before adding text arrays or pixels. Do not poll or stream full SDL frames.
 
 ## Build, test, packaging, CI, and release
 

@@ -13,6 +13,7 @@
 #include "../widgets/CExchangeController.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include <atomic>
 #include "../../lib/thor/ThorAction.h"
 #endif
 
@@ -65,6 +66,12 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 	void creatureArrowButtonCallback(bool leftToRight, SlotID slotID);
 	void moveArtifactsCallback(bool leftToRight);
 	void swapArtifactsCallback();
+	void moveArtifactsOperation(bool leftToRight, bool equipped, bool backpack);
+	void swapArtifactsOperation(bool equipped, bool backpack);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void trackThorArtifactRequest(int requestId, std::optional<ThorActionAcceptance> acceptance);
+#endif
+	bool artifactInputEnabled() const;
 	void moveUnitsShortcut(bool leftToRight);
 	void backpackShortcut(bool leftHero);
 	void questLogShortcut();
@@ -72,14 +79,24 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 	std::array<const CGHeroInstance *, 2> heroInst;
 	std::array<std::shared_ptr<CArtifactsOfHeroMain>, 2> artifs;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	std::vector<int> pendingThorRedistributionRequestIds;
-	std::vector<int> pendingThorBulkArtifactRequestIds;
+	struct PendingThorArtifactRequest
+	{
+		int requestId = -1;
+		std::optional<ThorActionAcceptance> acceptance;
+		ThorHeroMeetingArtifacts artifactsBefore;
+	};
+	std::vector<std::pair<int, ThorActionAcceptance>> pendingThorRedistributionRequests;
+	std::vector<PendingThorArtifactRequest> pendingThorArtifactRequests;
+	std::shared_ptr<std::atomic_bool> thorWindowAlive = std::make_shared<std::atomic_bool>(true);
 #endif
 
 	const CGarrisonSlot * getSelectedSlotID() const;
 
 public:
 	CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID queryID);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	~CExchangeWindow() override;
+#endif
 
 	void activate() override;
 	void deactivate() override;
@@ -97,7 +114,10 @@ public:
 	bool executeThorAction(const ThorActionRequest & request);
 	bool executeThorRedistribution(const ThorHeroMeetingRedistributionRequest & request);
 	void onThorRedistributionResult(int requestId, bool success);
-	void onThorBulkArtifactResult(int requestId, bool success);
+	void onThorArtifactRequestResult(int requestId, bool success);
+	static void completeThorArtifactRequest(int requestId);
+	static void resetThorArtifactRequests();
+	static bool areThorArtifactRequestsAllowed();
 #endif
 
 };

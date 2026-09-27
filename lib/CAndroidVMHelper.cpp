@@ -125,6 +125,19 @@ void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint3
 		}, true);
 }
 
+void CAndroidVMHelper::acknowledgeThorAction(std::uint64_t revision, ThorAction action, std::uint64_t submittedRevision)
+{
+	if(submittedRevision == 0)
+		submittedRevision = revision;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "acknowledgeThorAction", "(JJI)V",
+		[revision, submittedRevision, action](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision),
+				static_cast<jlong>(submittedRevision),
+				static_cast<jint>(action));
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroes", "(J[I[Ljava/lang/String;[I[I[I)V",
