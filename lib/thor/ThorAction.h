@@ -53,6 +53,10 @@ DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
 DLL_LINKAGE bool isThorActionHapticEligible(ThorAction action);
+DLL_LINKAGE bool isThorActionHapticDeferredUntilServerResult(ThorAction action);
+DLL_LINKAGE bool isThorActionArtifactMutation(ThorAction action);
+DLL_LINKAGE bool thorHeroMeetingArtifactsChanged(
+	const ThorHeroMeetingArtifacts & before, const ThorHeroMeetingArtifacts & after);
 
 enum class ThorBulkArtifactOperation : std::uint8_t { LEFT_TO_RIGHT, RIGHT_TO_LEFT, SWAP };
 DLL_LINKAGE std::optional<ThorBulkArtifactOperation> thorBulkArtifactOperation(ThorAction action);

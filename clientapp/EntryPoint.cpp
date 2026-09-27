@@ -76,7 +76,7 @@
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorAction(JNIEnv *, jclass, jlong revision, jint actionId, jint targetId)
+extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActionNative(JNIEnv *, jclass, jlong revision, jint actionId, jint targetId)
 {
 	if(revision <= 0)
 	{
@@ -100,7 +100,7 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActi
 	logGlobal->debug("Thor action queued: revision %llu action %d", static_cast<unsigned long long>(revision), actionId);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingRedistribution(
+extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingRedistributionNative(
 	JNIEnv * env, jclass, jlong revision, jint leftHeroId, jint rightHeroId, jint sourceArmyId, jint sourceSlot,
 	jint sourceCreatureId, jint sourceCount, jintArray destinationArmyIds, jintArray destinationSlots, jintArray amounts)
 {
@@ -155,13 +155,13 @@ extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThor
 	return JNI_TRUE;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingSplit(JNIEnv *, jclass,
+extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingSplitNative(JNIEnv *, jclass,
 	jlong revision, jint sourceArmyId, jint sourceSlot, jint destinationArmyId, jint destinationSlot, jint amount)
 {
 	if(revision <= 0 || sourceArmyId < 0 || destinationArmyId < 0)
 	{
 		logGlobal->debug("Thor split rejected: malformed request");
-		return;
+		return JNI_FALSE;
 	}
 	ThorActionRequest request;
 	request.revision = static_cast<std::uint64_t>(revision);
@@ -172,7 +172,11 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHero
 	request.destinationSlot = destinationSlot;
 	request.amount = amount;
 	if(!thorActionQueue().submit(request))
+	{
 		logGlobal->debug("Thor split rejected: queue full");
+		return JNI_FALSE;
+	}
+	return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_clearThorActions(JNIEnv *, jclass)

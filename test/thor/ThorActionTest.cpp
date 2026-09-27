@@ -60,6 +60,13 @@ TEST(ThorActionTest, HapticAcceptanceRequiresValidSuccessfullyExecutedSemanticAc
 	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
 	request.action = ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
 	EXPECT_TRUE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	EXPECT_TRUE(isThorActionHapticDeferredUntilServerResult(request.action));
+	EXPECT_TRUE(isThorActionHapticDeferredUntilServerResult(ThorAction::HERO_MEETING_SWAP_ARTIFACTS));
+	EXPECT_TRUE(isThorActionHapticDeferredUntilServerResult(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT));
+	EXPECT_FALSE(isThorActionHapticDeferredUntilServerResult(ThorAction::BATTLE_WAIT));
+	EXPECT_TRUE(isThorActionArtifactMutation(ThorAction::HERO_MEETING_TRANSFER_ARTIFACT));
+	EXPECT_TRUE(isThorActionArtifactMutation(ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT));
+	EXPECT_FALSE(isThorActionArtifactMutation(ThorAction::HERO_MEETING_SPLIT_STACK));
 	request.revision = 0;
 	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
 }
@@ -821,6 +828,28 @@ TEST(ThorActionTest, BulkArtifactResponseRestoresConsumedOrRejectedActionEpoch)
 	EXPECT_TRUE(shouldRestoreThorBulkArtifactActions(false, 0));
 	EXPECT_TRUE(shouldRestoreThorBulkArtifactActions(false, thorActionMask(ThorAction::HERO_MEETING_SWAP_ARTIFACTS)));
 	EXPECT_FALSE(shouldRestoreThorBulkArtifactActions(true, thorActionMask(ThorAction::HERO_MEETING_SWAP_ARTIFACTS)));
+}
+
+TEST(ThorActionTest, BulkArtifactHapticsRequireAnActualSlotChange)
+{
+	ThorHeroMeetingArtifacts before;
+	before.leftHeroId = 1;
+	before.rightHeroId = 2;
+	before.artifactSlots = {
+		ThorHeroMeetingArtifact{.heroId = 1, .position = 0, .occupied = true, .instanceId = 50},
+		ThorHeroMeetingArtifact{.heroId = 2, .position = 0}};
+	auto after = before;
+	EXPECT_FALSE(thorHeroMeetingArtifactsChanged(before, after));
+
+	after.artifactSlots[0].occupied = false;
+	after.artifactSlots[0].instanceId = -1;
+	after.artifactSlots[1].occupied = true;
+	after.artifactSlots[1].instanceId = 50;
+	EXPECT_TRUE(thorHeroMeetingArtifactsChanged(before, after));
+
+	const auto moved = after;
+	after.artifactSlots[1].name = "updated display text";
+	EXPECT_FALSE(thorHeroMeetingArtifactsChanged(moved, after));
 }
 
 TEST(ThorActionQueueTest, KeepsRequestsBoundedAndOrdered)

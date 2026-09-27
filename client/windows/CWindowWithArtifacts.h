@@ -16,12 +16,16 @@
 #include "../widgets/CArtifactsOfHeroBackpack.h"
 #include "CWindowObject.h"
 
+#include <functional>
+
 class CWindowWithArtifacts : virtual public CWindowObject, public IArtifactsHolder
 {
 public:
 	using CArtifactsOfHeroPtr = std::shared_ptr<CArtifactsOfHeroBase>;
 
 	std::vector<CArtifactsOfHeroPtr> artSets;
+	void setArtifactSwapRequestCallback(std::function<void(int)> callback);
+	void setArtifactRequestAllowedCallback(std::function<bool()> callback);
 
 	explicit CWindowWithArtifacts(const std::vector<CArtifactsOfHeroPtr> * artSets = nullptr);
 	void addSet(const std::shared_ptr<CArtifactsOfHeroBase> & newArtSet);
@@ -39,6 +43,10 @@ public:
 	void updateArtifacts() override;
 
 protected:
+	std::function<void(int)> artifactSwapRequestCallback;
+	std::function<bool()> artifactRequestAllowedCallback;
+	int requestArtifactSwap(const ArtifactLocation & source, const ArtifactLocation & destination) const;
+	bool artifactRequestAllowed() const;
 	void markPossibleSlots() const;
 	bool checkSpecialArts(const CArtifactInstance & artInst, const CGHeroInstance & hero, bool isTrade) const;
 	void setCursorAnimation(const CArtifactInstance & artInst) const;

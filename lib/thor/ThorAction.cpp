@@ -265,6 +265,36 @@ bool isThorActionHapticEligible(ThorAction action)
 		&& action != ThorAction::SELECT_TOWN;
 }
 
+bool isThorActionHapticDeferredUntilServerResult(ThorAction action)
+{
+	return action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK
+		|| action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT
+		|| thorBulkArtifactOperation(action).has_value();
+}
+
+bool isThorActionArtifactMutation(ThorAction action)
+{
+	return action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT
+		|| thorBulkArtifactOperation(action).has_value();
+}
+
+bool thorHeroMeetingArtifactsChanged(const ThorHeroMeetingArtifacts & before,
+	const ThorHeroMeetingArtifacts & after)
+{
+	if(before.leftHeroId != after.leftHeroId || before.rightHeroId != after.rightHeroId
+		|| before.artifactSlots.size() != after.artifactSlots.size())
+		return true;
+	for(std::size_t index = 0; index < before.artifactSlots.size(); ++index)
+	{
+		const auto & oldSlot = before.artifactSlots[index];
+		const auto & newSlot = after.artifactSlots[index];
+		if(oldSlot.heroId != newSlot.heroId || oldSlot.position != newSlot.position
+			|| oldSlot.occupied != newSlot.occupied || oldSlot.instanceId != newSlot.instanceId)
+			return true;
+	}
+	return false;
+}
+
 std::optional<ThorActionAcceptance> thorActionAcceptance(
 	const ThorActionRequest & request, ThorActionValidation validation, bool executed)
 {

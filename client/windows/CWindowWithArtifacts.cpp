@@ -109,8 +109,33 @@ void CWindowWithArtifacts::clickPressedOnArtPlace(const CGHeroInstance * hero, c
 void CWindowWithArtifacts::swapArtifactAndClose(const CArtifactsOfHeroBase & artsInst, const ArtifactPosition & slot,
 	const ArtifactLocation & dstLoc)
 {
-	GAME->interface()->cb->swapArtifacts(ArtifactLocation(artsInst.getHero()->id, slot), dstLoc);
+	requestArtifactSwap(ArtifactLocation(artsInst.getHero()->id, slot), dstLoc);
 	close();
+}
+
+void CWindowWithArtifacts::setArtifactSwapRequestCallback(std::function<void(int)> callback)
+{
+	artifactSwapRequestCallback = std::move(callback);
+}
+
+void CWindowWithArtifacts::setArtifactRequestAllowedCallback(std::function<bool()> callback)
+{
+	artifactRequestAllowedCallback = std::move(callback);
+}
+
+int CWindowWithArtifacts::requestArtifactSwap(const ArtifactLocation & source, const ArtifactLocation & destination) const
+{
+	if(!artifactRequestAllowed())
+		return -1;
+	const auto requestId = GAME->interface()->cb->swapArtifactsRequest(source, destination);
+	if(requestId >= 0 && artifactSwapRequestCallback)
+		artifactSwapRequestCallback(requestId);
+	return requestId;
+}
+
+bool CWindowWithArtifacts::artifactRequestAllowed() const
+{
+	return !artifactRequestAllowedCallback || artifactRequestAllowedCallback();
 }
 
 void CWindowWithArtifacts::showArtifactPopup(const CArtifactsOfHeroBase & artsInst, CArtPlace & artPlace,
@@ -118,16 +143,21 @@ void CWindowWithArtifacts::showArtifactPopup(const CArtifactsOfHeroBase & artsIn
 {
 	if(artsInst.getArt(artPlace.slot))
 	{
-		if(GAME->interface()->artifactController->askToDisassemble(artsInst.getHero(), artPlace.slot))
+		if(GAME->interface()->artifactController->askToDisassemble(artsInst.getHero(), artPlace.slot,
+			artifactSwapRequestCallback, artifactRequestAllowedCallback))
 			return;
 		if(!artPlace.text.empty())
 		{
 			artPlace.LRClickableAreaWTextComp::showPopupWindow(cursorPosition);
-			artPlace.setClosePopupWindowCallback([hero = artsInst.getHero(), artPlacePtr = &artPlace]()
+			artPlace.setClosePopupWindowCallback(
+				[hero = artsInst.getHero(), artPlacePtr = &artPlace, requestCallback = artifactSwapRequestCallback,
+					requestAllowedCallback = artifactRequestAllowedCallback]()
 			{
-				GAME->interface()->artifactController->askToAssemble(hero, artPlacePtr->slot);
+				if(!requestAllowedCallback || requestAllowedCallback())
+					GAME->interface()->artifactController->askToAssemble(hero, artPlacePtr->slot,
+						false, false, requestCallback, requestAllowedCallback);
 				artPlacePtr->setClosePopupWindowCallback([](){});
-			});
+				});
 		}
 	}
 }
@@ -271,7 +301,7 @@ void CWindowWithArtifacts::putPickedArtifact(const CGHeroInstance & curHero, con
 		else
 		{
 			if(ArtifactUtils::isBackpackFreeSlots(heroArtOwner))
-				GAME->interface()->cb->swapArtifacts(srcLoc, dstLoc);
+				requestArtifactSwap(srcLoc, dstLoc);
 			else
 				GAME->interface()->showInfoDialog(LIBRARY->generaltexth->translate("core.genrltxt.152"));
 		}
@@ -279,7 +309,7 @@ void CWindowWithArtifacts::putPickedArtifact(const CGHeroInstance & curHero, con
 	// Check if artifact transfer is possible
 	else if(pickedArt->canBePutAt(&curHero, dstLoc.slot, true) && (!curHero.getArt(targetSlot) || curHero.tempOwner == GAME->interface()->playerID))
 	{
-		GAME->interface()->cb->swapArtifacts(srcLoc, dstLoc);
+		requestArtifactSwap(srcLoc, dstLoc);
 	}
 }
 
@@ -320,5 +350,5 @@ void CWindowWithArtifacts::onClickPressedCommonArtifact(const CGHeroInstance & c
 		close();
 	}
 	if(dstLoc.slot != ArtifactPosition::PRE_FIRST)
-		GAME->interface()->cb->swapArtifacts(srcLoc, dstLoc);
+		requestArtifactSwap(srcLoc, dstLoc);
 }

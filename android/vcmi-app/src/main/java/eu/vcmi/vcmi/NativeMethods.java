@@ -43,18 +43,56 @@ public class NativeMethods
     public static native void initClassloader();
     public static native void heroesDataUpdate();
 
-    public static native void submitThorAction(long revision, int actionId, int targetId);
-    public static native void submitThorHeroMeetingSplit(long revision, int sourceArmyId, int sourceSlot,
-                                                         int destinationArmyId, int destinationSlot, int amount);
-    public static native boolean submitThorHeroMeetingRedistribution(long revision, int leftHeroId, int rightHeroId,
-                                                                     int sourceArmyId, int sourceSlot,
-                                                                     int sourceCreatureId, int sourceCount,
-                                                                     int[] destinationArmyIds, int[] destinationSlots,
-                                                                     int[] amounts);
+    public static void submitThorAction(final long revision, final int actionId, final int targetId)
+    {
+        if (BuildConfig.AYN_THOR_BUILD)
+        {
+            final Context ctx = context();
+            if (ctx instanceof VcmiSDLActivity)
+                ((VcmiSDLActivity) ctx).registerThorActionSubmission(revision, actionId);
+        }
+        submitThorActionNative(revision, actionId, targetId);
+    }
+
+    private static native void submitThorActionNative(long revision, int actionId, int targetId);
+    public static boolean submitThorHeroMeetingSplit(final long revision, final int sourceArmyId,
+            final int sourceSlot, final int destinationArmyId, final int destinationSlot, final int amount)
+    {
+        final Context ctx = context();
+        final VcmiSDLActivity activity = ctx instanceof VcmiSDLActivity ? (VcmiSDLActivity) ctx : null;
+        if (BuildConfig.AYN_THOR_BUILD && activity != null)
+            activity.registerThorActionSubmission(revision, ThorActionIds.HERO_MEETING_SPLIT_STACK);
+        final boolean submitted = submitThorHeroMeetingSplitNative(revision, sourceArmyId, sourceSlot,
+                destinationArmyId, destinationSlot, amount);
+        if (!submitted && BuildConfig.AYN_THOR_BUILD && activity != null)
+            activity.cancelThorActionSubmission(revision, ThorActionIds.HERO_MEETING_SPLIT_STACK);
+        return submitted;
+    }
+
+    private static native boolean submitThorHeroMeetingSplitNative(long revision, int sourceArmyId, int sourceSlot,
+            int destinationArmyId, int destinationSlot, int amount);
+    public static boolean submitThorHeroMeetingRedistribution(final long revision, final int leftHeroId,
+            final int rightHeroId, final int sourceArmyId, final int sourceSlot, final int sourceCreatureId,
+            final int sourceCount, final int[] destinationArmyIds, final int[] destinationSlots, final int[] amounts)
+    {
+        final Context ctx = context();
+        final VcmiSDLActivity activity = ctx instanceof VcmiSDLActivity ? (VcmiSDLActivity) ctx : null;
+        if (BuildConfig.AYN_THOR_BUILD && activity != null)
+            activity.registerThorActionSubmission(revision, ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
+        final boolean submitted = submitThorHeroMeetingRedistributionNative(revision, leftHeroId, rightHeroId,
+                sourceArmyId, sourceSlot, sourceCreatureId, sourceCount, destinationArmyIds, destinationSlots, amounts);
+        if (!submitted && BuildConfig.AYN_THOR_BUILD && activity != null)
+            activity.cancelThorActionSubmission(revision, ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
+        return submitted;
+    }
+
+    private static native boolean submitThorHeroMeetingRedistributionNative(long revision, int leftHeroId,
+            int rightHeroId, int sourceArmyId, int sourceSlot, int sourceCreatureId, int sourceCount,
+            int[] destinationArmyIds, int[] destinationSlots, int[] amounts);
     public static native void clearThorActions();
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
-    public static void acknowledgeThorAction(final long revision, final int actionId)
+    public static void acknowledgeThorAction(final long revision, final long submittedRevision, final int actionId)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -64,8 +102,12 @@ public class NativeMethods
             return;
 
         final VcmiSDLActivity activity = (VcmiSDLActivity) ctx;
-        final long callbackToken = activity.captureThorHapticCallbackToken();
-        activity.runOnUiThread(() -> activity.acknowledgeThorAction(revision, actionId, callbackToken));
+        activity.runOnUiThread(() ->
+        {
+            final long callbackToken = activity.peekThorActionSubmissionToken(submittedRevision, actionId);
+            if (callbackToken > 0)
+                activity.acknowledgeThorAction(revision, submittedRevision, actionId, callbackToken);
+        });
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

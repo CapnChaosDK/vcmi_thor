@@ -51,7 +51,9 @@ public:
 	int bulkMergeStacks(ObjectInstanceID armyId, SlotID srcSlot) override;
 	bool dismissHero(const CGHeroInstance * hero) override;
 	bool swapArtifacts(const ArtifactLocation &l1, const ArtifactLocation &l2) override;
+	int swapArtifactsRequest(const ArtifactLocation &l1, const ArtifactLocation &l2);
 	void assembleArtifacts(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo) override;
+	int assembleArtifactsRequest(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo);
 	int bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped = true, bool backpack = true) override;
 	void scrollBackpackArtifacts(ObjectInstanceID hero, bool left) override;
 	void sortBackpackArtifactsBySlot(const ObjectInstanceID hero) override;

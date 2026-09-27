@@ -154,6 +154,9 @@ CPlayerInterface::CPlayerInterface(PlayerColor Player):
 CPlayerInterface::~CPlayerInterface()
 {
 	logGlobal->trace("\tHuman player interface for player %s being destructed", playerID.toString());
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	CExchangeWindow::resetThorArtifactRequests();
+#endif
 	delete showingDialog;
 	delete cingconsole;
 	if (GAME->interface() == this)
@@ -1350,16 +1353,26 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 		movementController->onMoveHeroApplied();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	const auto notifyExchangeWindow = [](int requestId, bool success, bool redistribution)
+	{
+		if(!redistribution)
+			CExchangeWindow::completeThorArtifactRequest(requestId);
+		for(const auto & exchangeWindow : ENGINE->windows().findWindows<CExchangeWindow>())
+		{
+			if(redistribution)
+				exchangeWindow->onThorRedistributionResult(requestId, success);
+			else
+				exchangeWindow->onThorArtifactRequestResult(requestId, success);
+		}
+	};
 	if(pa->packType == CTypeList::getInstance().getTypeID<RedistributeArmyStack>(nullptr))
-	{
-		if(auto exchangeWindow = ENGINE->windows().topWindow<CExchangeWindow>())
-			exchangeWindow->onThorRedistributionResult(static_cast<int>(pa->requestID), pa->result);
-	}
+		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, true);
 	if(pa->packType == CTypeList::getInstance().getTypeID<BulkExchangeArtifacts>(nullptr))
-	{
-		if(auto exchangeWindow = ENGINE->windows().topWindow<CExchangeWindow>())
-			exchangeWindow->onThorBulkArtifactResult(static_cast<int>(pa->requestID), pa->result);
-	}
+		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
+	if(pa->packType == CTypeList::getInstance().getTypeID<ExchangeArtifacts>(nullptr))
+		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
+	if(pa->packType == CTypeList::getInstance().getTypeID<AssembleArtifacts>(nullptr))
+		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
 #endif
 
 	if(pa->packType == CTypeList::getInstance().getTypeID<QueryReply>(nullptr))

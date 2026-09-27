@@ -144,7 +144,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private final HapticsChangeListener hapticsChangeListener;
         private boolean hapticsEnabled;
-        private boolean hapticsTogglePressed;
+        private final ThorHapticsToggleGesture hapticsToggleGesture = new ThorHapticsToggleGesture();
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -610,17 +610,15 @@ final class ThorSecondScreenPresentation extends Presentation
         public boolean onTouchEvent(final android.view.MotionEvent event)
         {
             final int action = event.getActionMasked();
-            if (action == MotionEvent.ACTION_DOWN && hapticsToggleBounds().contains(event.getX(), event.getY()))
-            {
-                hapticsTogglePressed = true;
+            if (action == MotionEvent.ACTION_DOWN
+                    && hapticsToggleGesture.begin(hapticsToggleBounds().contains(event.getX(), event.getY())))
                 return true;
-            }
-            if (hapticsTogglePressed)
+            if (hapticsToggleGesture.isActive())
             {
                 if (action == MotionEvent.ACTION_UP)
                 {
-                    final boolean toggle = hapticsToggleBounds().contains(event.getX(), event.getY());
-                    hapticsTogglePressed = false;
+                    final boolean toggle = hapticsToggleGesture.finish(
+                            hapticsToggleBounds().contains(event.getX(), event.getY()));
                     if (toggle)
                     {
                         hapticsEnabled = !hapticsEnabled;
@@ -629,8 +627,10 @@ final class ThorSecondScreenPresentation extends Presentation
                         performClick();
                     }
                 }
-                else if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_POINTER_DOWN)
-                    hapticsTogglePressed = false;
+                else if (action == MotionEvent.ACTION_CANCEL)
+                    hapticsToggleGesture.cancel();
+                else if (action == MotionEvent.ACTION_POINTER_DOWN)
+                    hapticsToggleGesture.pointerAdded();
                 return true;
             }
             if (heroMeetingTouchSequence && action == MotionEvent.ACTION_DOWN)

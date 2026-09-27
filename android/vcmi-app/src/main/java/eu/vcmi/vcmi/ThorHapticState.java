@@ -1,18 +1,18 @@
 package eu.vcmi.vcmi;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Set;
 
 /** Small policy boundary for accepted lower-deck feedback. */
 final class ThorHapticState
 {
-    private static final long MAX_ACK_REVISION_AGE = 1;
-
     private boolean enabled;
     private long revision;
     private String contextId = ThorContextIds.UNKNOWN;
     private long callbackToken = 1;
     private final Set<AcceptedAction> acceptedActions = new HashSet<>();
+    private final LinkedHashMap<AcceptedAction, Long> submittedActionTokens = new LinkedHashMap<>();
 
     ThorHapticState(final boolean enabled)
     {
@@ -46,6 +46,7 @@ final class ThorHapticState
         {
             ++callbackToken;
             acceptedActions.clear();
+            submittedActionTokens.clear();
         }
         revision = nextRevision;
         contextId = normalized;
@@ -55,21 +56,47 @@ final class ThorHapticState
     {
         ++callbackToken;
         acceptedActions.clear();
+        submittedActionTokens.clear();
     }
 
-    boolean accept(final long acceptedRevision, final int actionId, final long capturedToken,
-                   final boolean presentationReady)
+    void registerSubmission(final long submittedRevision, final int actionId)
     {
-        if (!enabled || !presentationReady || capturedToken != callbackToken
-                || acceptedRevision <= 0 || acceptedRevision > revision
-                || revision - acceptedRevision > MAX_ACK_REVISION_AGE
+        if (!enabled || submittedRevision <= 0 || submittedRevision != revision
+                || !isEligible(contextId, actionId))
+            return;
+
+        final AcceptedAction action = new AcceptedAction(submittedRevision, actionId);
+        submittedActionTokens.put(action, callbackToken);
+        while (submittedActionTokens.size() > 32)
+            submittedActionTokens.remove(submittedActionTokens.keySet().iterator().next());
+    }
+
+    long peekSubmissionToken(final long submittedRevision, final int actionId)
+    {
+        final Long token = submittedActionTokens.get(new AcceptedAction(submittedRevision, actionId));
+        return token == null ? 0 : token;
+    }
+
+    void cancelSubmission(final long submittedRevision, final int actionId)
+    {
+        submittedActionTokens.remove(new AcceptedAction(submittedRevision, actionId));
+    }
+
+    boolean accept(final long deliveryRevision, final long submittedRevision, final int actionId,
+                   final long capturedToken, final boolean presentationReady)
+    {
+        final AcceptedAction submittedAction = new AcceptedAction(submittedRevision, actionId);
+        final Long registeredToken = submittedActionTokens.remove(submittedAction);
+        if (!enabled || !presentationReady || capturedToken <= 0 || capturedToken != callbackToken
+                || registeredToken == null || registeredToken != capturedToken
+                || submittedRevision <= 0 || deliveryRevision <= 0 || deliveryRevision > revision
                 || !isEligible(contextId, actionId)
-                || acceptedActions.contains(new AcceptedAction(acceptedRevision, actionId)))
+                || acceptedActions.contains(submittedAction))
             return false;
 
         if (acceptedActions.size() >= 32)
             acceptedActions.remove(acceptedActions.iterator().next());
-        acceptedActions.add(new AcceptedAction(acceptedRevision, actionId));
+        acceptedActions.add(submittedAction);
         return true;
     }
 
