@@ -464,6 +464,76 @@ TEST(ThorContextStoreTest, HeroDetailsChangeRevisionExactlyOnceWithoutChurn)
 	EXPECT_EQ(changed.revision, initial.revision + 1);
 }
 
+TEST(ThorContextStoreTest, SelectedAdventureAndActiveWindowPortraitsAreRevisionBound)
+{
+	ThorContextStore store;
+	ThorContextRecord adventure;
+	adventure.contextId = ThorContextIds::ADVENTURE_MAP;
+	adventure.selectedHeroId = 41;
+	adventure.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(7);
+	const auto selected = store.publishNext(adventure);
+	EXPECT_EQ(store.publishNext(adventure).revision, selected.revision);
+
+	adventure.selectedHeroId = 42;
+	adventure.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(8);
+	const auto changedHero = store.publishNext(adventure);
+	EXPECT_EQ(changedHero.revision, selected.revision + 1);
+	EXPECT_EQ(changedHero.heroPortraitAssetKey, thorHeroPortraitVisualAssetKey(8));
+	adventure.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(9);
+	const auto changedPortraitSource = store.publishNext(adventure);
+	EXPECT_EQ(changedPortraitSource.revision, changedHero.revision + 1);
+	EXPECT_EQ(changedPortraitSource.heroPortraitAssetKey, thorHeroPortraitVisualAssetKey(9));
+
+	ThorContextRecord heroWindow;
+	heroWindow.contextId = ThorContextIds::HERO_WINDOW;
+	heroWindow.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(12);
+	const auto activeWindowHero = store.publishNext(heroWindow);
+	EXPECT_EQ(activeWindowHero.revision, changedPortraitSource.revision + 1);
+	EXPECT_EQ(activeWindowHero.heroPortraitAssetKey, thorHeroPortraitVisualAssetKey(12));
+	heroWindow.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(13);
+	const auto changedWindowHero = store.publishNext(heroWindow);
+	EXPECT_EQ(changedWindowHero.revision, activeWindowHero.revision + 1);
+	EXPECT_EQ(changedWindowHero.heroPortraitAssetKey, thorHeroPortraitVisualAssetKey(13));
+
+	ThorContextRecord unknown;
+	unknown.contextId = ThorContextIds::UNKNOWN;
+	unknown.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(12);
+	const auto cleared = store.publishNext(unknown);
+	EXPECT_GT(cleared.revision, changedWindowHero.revision);
+	EXPECT_EQ(cleared.heroPortraitAssetKey, 0);
+}
+
+TEST(ThorContextStoreTest, HeroMeetingPortraitKeysRetainOrderedHeroAssociation)
+{
+	ThorContextStore store;
+	ThorContextRecord meeting;
+	meeting.contextId = ThorContextIds::HERO_MEETING;
+	ThorHeroMeetingArmies armies;
+	armies.leftHeroId = 10;
+	armies.rightHeroId = 11;
+	armies.leftArmyId = 10;
+	armies.rightArmyId = 11;
+	armies.heroPortraitAssetKeys = {thorHeroPortraitVisualAssetKey(30), thorHeroPortraitVisualAssetKey(31)};
+	for(std::size_t slot = 0; slot < THOR_HERO_MEETING_ARMY_SIZE; ++slot)
+	{
+		armies.leftSlots[slot].armyId = 10;
+		armies.leftSlots[slot].slot = static_cast<int>(slot);
+		armies.rightSlots[slot].armyId = 11;
+		armies.rightSlots[slot].slot = static_cast<int>(slot);
+	}
+	meeting.heroMeetingArmies = armies;
+	const auto published = store.publishNext(meeting);
+	ASSERT_TRUE(published.heroMeetingArmies);
+	EXPECT_EQ(published.heroMeetingArmies->heroPortraitAssetKeys[0], thorHeroPortraitVisualAssetKey(30));
+	EXPECT_EQ(published.heroMeetingArmies->heroPortraitAssetKeys[1], thorHeroPortraitVisualAssetKey(31));
+
+	meeting.heroMeetingArmies->heroPortraitAssetKeys[0] = thorCreatureVisualAssetKey(30);
+	const auto sanitized = store.publishNext(meeting);
+	ASSERT_TRUE(sanitized.heroMeetingArmies);
+	EXPECT_EQ(sanitized.heroMeetingArmies->heroPortraitAssetKeys[0], 0);
+	EXPECT_EQ(sanitized.heroMeetingArmies->heroPortraitAssetKeys[1], thorHeroPortraitVisualAssetKey(31));
+}
+
 TEST(ThorContextStoreTest, ReplacingHeroSnapshotAndClearingCannotRetainDetails)
 {
 	ThorContextStore store;

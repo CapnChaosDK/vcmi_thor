@@ -90,13 +90,13 @@ void CAndroidVMHelper::callCustomMethod(const std::string & cls, const std::stri
 }
 
 void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::string & contextId,
-										 const std::string & title, const std::string & status,
-										 const ThorContextDetails & details)
+	const std::string & title, const std::string & status,
+	const ThorContextDetails & details, std::uint64_t heroPortraitAssetKey)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorContext",
 		"(JLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-		"Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
-		[revision, &contextId, &title, &status, &details](JNIEnv * env, jclass cls, jmethodID methodId)
+		"Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V",
+		[revision, &contextId, &title, &status, &details, heroPortraitAssetKey](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
 			jstring javaContextId = env->NewStringUTF(contextId.c_str());
 			jstring javaTitle = env->NewStringUTF(title.c_str());
@@ -105,7 +105,7 @@ void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::str
 			for(std::size_t index = 0; index < details.size(); ++index)
 				javaDetails[index] = env->NewStringUTF(details[index].c_str());
 			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), javaContextId, javaTitle, javaStatus,
-				javaDetails[0], javaDetails[1], javaDetails[2], javaDetails[3]);
+				javaDetails[0], javaDetails[1], javaDetails[2], javaDetails[3], static_cast<jlong>(heroPortraitAssetKey));
 			env->DeleteLocalRef(javaContextId);
 			env->DeleteLocalRef(javaTitle);
 			env->DeleteLocalRef(javaStatus);
@@ -192,7 +192,7 @@ void CAndroidVMHelper::publishThorTowns(std::uint64_t revision, const std::vecto
 void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArmies",
-		"(JII[Ljava/lang/String;[I[I[I[Ljava/lang/String;[II[J)V",
+		"(JII[Ljava/lang/String;[I[I[I[Ljava/lang/String;[II[J[J)V",
 		[revision, &armies](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
 			constexpr auto size = static_cast<jsize>(THOR_HERO_MEETING_ARMY_SIZE);
@@ -201,12 +201,15 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 			jintArray counts = env->NewIntArray(size * 2);
 			jintArray flags = env->NewIntArray(size * 2);
 			jlongArray visualKeys = env->NewLongArray(size * 2);
+			jlongArray heroPortraitKeys = env->NewLongArray(2);
 			jclass stringClass = env->FindClass("java/lang/String");
 			jobjectArray heroNames = env->NewObjectArray(2, stringClass, nullptr);
 			jobjectArray creatureNames = env->NewObjectArray(size * 2, stringClass, nullptr);
 			const std::array armyIdValues = {static_cast<jint>(armies.leftArmyId), static_cast<jint>(armies.rightArmyId)};
 			env->SetIntArrayRegion(armyIds, 0, 2, armyIdValues.data());
 			const std::array heroNameValues = {armies.leftHeroName, armies.rightHeroName};
+			const std::array<jlong, 2> heroPortraitKeyValues = {
+				static_cast<jlong>(armies.heroPortraitAssetKeys[0]), static_cast<jlong>(armies.heroPortraitAssetKeys[1])};
 			std::array<jlong, size * 2> visualKeyValues{};
 			for(jsize side = 0; side < 2; ++side)
 			{
@@ -229,9 +232,10 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 				}
 			}
 			env->SetLongArrayRegion(visualKeys, 0, size * 2, visualKeyValues.data());
+			env->SetLongArrayRegion(heroPortraitKeys, 0, 2, heroPortraitKeyValues.data());
 			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(armies.leftHeroId),
 				static_cast<jint>(armies.rightHeroId), heroNames, armyIds, creatureIds, counts, creatureNames, flags,
-				static_cast<jint>(armies.locallyControllable ? 1 : 0), visualKeys);
+				static_cast<jint>(armies.locallyControllable ? 1 : 0), visualKeys, heroPortraitKeys);
 			env->DeleteLocalRef(armyIds);
 			env->DeleteLocalRef(creatureIds);
 			env->DeleteLocalRef(counts);
@@ -239,6 +243,7 @@ void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, cons
 			env->DeleteLocalRef(heroNames);
 			env->DeleteLocalRef(creatureNames);
 			env->DeleteLocalRef(visualKeys);
+			env->DeleteLocalRef(heroPortraitKeys);
 			env->DeleteLocalRef(stringClass);
 		}, true);
 }

@@ -39,7 +39,7 @@ final class ThorVisualAssetPayload
 
     static boolean isBoundedKeyList(final long[] keys)
     {
-        if (keys == null || keys.length > ThorVisualAssetKey.MAX_HERO_MEETING_KEYS)
+        if (keys == null || keys.length > ThorVisualAssetKey.MAX_VISUAL_KEYS)
             return false;
         for (final long key : keys)
             if (key != 0L && !ThorVisualAssetKey.isValid(key))

@@ -51,12 +51,12 @@ VCMI combines Qt and SDL in one Android package:
 - `VcmiSDLActivity` already repairs input focus after resume/window-focus changes. The presentation must be non-focus-stealing and must not interfere with this logic.
 - The presentation controller should register display callbacks only while its activity is alive/visible, dismiss before the existing `onDestroy()` process exit, and ignore late callbacks after teardown.
 
-### Player-installed Hero Meeting images
+### Player-installed visual assets in hero-centric Thor contexts
 
-- Hero Meeting visual keys are decorative fields beside the revision-bound Army and Artifact snapshots. Creature keys use CreatureID; artifact keys use artifact type ID, never artifact instance ID. Android may draw an image only for a key in the currently accepted snapshot.
-- Native image lookup uses the existing render handler and player-installed `CPRSMALL` creature and `Artifact` icon frames. The bounded PNG payload is at most 64×64 pixels and 32 KiB; at most 62 distinct keys are referenced by one Hero Meeting snapshot.
-- The native and Android caches are small LRU stores with at most 64 entries and 1 MiB each. Native checks the Android cache before sending an asset, so semantic revisions do not retransmit resident images. Android rejects stale/unreferenced keys and retains the existing text/name/count/lock presentation if an asset is missing or fails decoding.
-- Context or revision changes clear rendered slot references and transient gestures. Presentation dismissal clears its old rendered references while the activity-owned bounded cache may survive display recreation and pause/resume. This path is separate from SDL frame publication and adds no gameplay action or hit target.
+- Visual keys are decorative and revision-bound. Creature keys use CreatureID, artifact keys use artifact type ID (never artifact instance ID), and HERO keys use the stable portrait-source HeroTypeID returned by `CGHeroInstance::getPortraitSource()` (never a hero instance ID or pointer). Adventure and Hero Window carry the exact selected/active portrait key in their context; Hero Meeting carries ordered left/right keys beside its Army and Artifact snapshots.
+- Native lookup uses the existing render handler and player-installed `CPRSMALL`, `Artifact`, and `PortraitsSmall` frames. The `PortraitsSmall` path matches the portrait resource used by VCMI's Adventure hero list and honors map-specific portrait sources. Images are transported only when referenced by the current semantic context.
+- A Hero Meeting context may reference at most 64 distinct assets: 14 creature rows, 48 artifact slots, and two hero portraits. Each PNG is at most 64×64 pixels and 32 KiB. Native and Android caches retain at most 64 entries and 1 MiB each. Native checks the Android cache before sending; Android rejects stale/unreferenced keys and preserves existing text and interaction behavior if a resource is unavailable or fails decoding.
+- Context/revision changes replace rendered references and clear transient gestures. The bounded activity-owned image cache may reuse type assets across revisions and presentation recreation. This path stays separate from SDL frame publication and adds no gameplay action, hit target, or game-state mutation.
 
 ## Existing multi-display support
 

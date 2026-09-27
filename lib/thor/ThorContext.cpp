@@ -13,6 +13,7 @@ namespace
 			&& lhs.enabledActionMask == rhs.enabledActionMask
 			&& lhs.activeActionMask == rhs.activeActionMask
 			&& lhs.selectedHeroId == rhs.selectedHeroId
+			&& lhs.heroPortraitAssetKey == rhs.heroPortraitAssetKey
 			&& lhs.actionSubjectId == rhs.actionSubjectId
 			&& lhs.actionEpoch == rhs.actionEpoch
 			&& lhs.heroes == rhs.heroes
@@ -37,6 +38,9 @@ namespace
 			context.heroes.clear();
 		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.towns.size() > THOR_MAX_TOWNS)
 			context.towns.clear();
+		if((context.contextId != ThorContextIds::ADVENTURE_MAP && context.contextId != ThorContextIds::HERO_WINDOW)
+			|| !isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))
+			context.heroPortraitAssetKey = 0;
 		if(context.contextId != ThorContextIds::HERO_MEETING)
 		{
 			context.heroMeetingArmies.reset();
@@ -59,6 +63,9 @@ namespace
 			}
 			armies.leftHeroName = thorBoundedText(std::move(armies.leftHeroName));
 			armies.rightHeroName = thorBoundedText(std::move(armies.rightHeroName));
+			for(auto & key : armies.heroPortraitAssetKeys)
+				if(key != 0 && !isThorHeroPortraitVisualAssetKey(key))
+					key = 0;
 			auto normalizeSlots = [](auto & slots, int armyId)
 			{
 				for(std::size_t index = 0; index < slots.size(); ++index)

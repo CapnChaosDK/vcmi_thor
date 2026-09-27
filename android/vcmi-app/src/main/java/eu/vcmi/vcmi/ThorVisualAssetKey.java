@@ -5,7 +5,8 @@ final class ThorVisualAssetKey
 {
     static final int CREATURE_KIND = 1;
     static final int ARTIFACT_KIND = 2;
-    static final int MAX_HERO_MEETING_KEYS = 62;
+    static final int HERO_KIND = 3;
+    static final int MAX_VISUAL_KEYS = 64;
 
     private ThorVisualAssetKey()
     {
@@ -21,6 +22,11 @@ final class ThorVisualAssetKey
         return encode(ARTIFACT_KIND, artifactTypeId);
     }
 
+    static long forHeroPortrait(final int portraitSourceHeroTypeId)
+    {
+        return encode(HERO_KIND, portraitSourceHeroTypeId);
+    }
+
     private static long encode(final int kind, final int typeId)
     {
         return typeId < 0 ? 0L : (((long) kind) << 56) | ((long) typeId + 1L);
@@ -31,7 +37,7 @@ final class ThorVisualAssetKey
         final int kind = (int) (key >>> 56);
         final long typeIdPlusOne = key & 0xffffffffL;
         final long reserved = (key >>> 32) & 0xffffffL;
-        return (kind == CREATURE_KIND || kind == ARTIFACT_KIND)
+        return (kind == CREATURE_KIND || kind == ARTIFACT_KIND || kind == HERO_KIND)
                 && typeIdPlusOne > 0 && typeIdPlusOne <= ((long) Integer.MAX_VALUE + 1L) && reserved == 0;
     }
 
@@ -43,6 +49,11 @@ final class ThorVisualAssetKey
     static boolean isArtifact(final long key)
     {
         return isValid(key) && (int) (key >>> 56) == ARTIFACT_KIND;
+    }
+
+    static boolean isHeroPortrait(final long key)
+    {
+        return isValid(key) && (int) (key >>> 56) == HERO_KIND;
     }
 
     static int typeId(final long key)

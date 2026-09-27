@@ -54,10 +54,11 @@ final class ThorSecondScreenPresentation extends Presentation
     }
 
     void updateContext(final long revision, final String contextId, final String title, final String status,
-                       final String[] detailLines, final int enabledActionMask, final int activeActionMask)
+                       final long heroPortraitAssetKey, final String[] detailLines,
+                       final int enabledActionMask, final int activeActionMask)
     {
         if (foundationView != null)
-            foundationView.updateContext(revision, contextId, title, status, detailLines,
+            foundationView.updateContext(revision, contextId, title, status, heroPortraitAssetKey, detailLines,
                     enabledActionMask, activeActionMask);
     }
 
@@ -124,6 +125,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private String title;
         private String status;
         private long revision;
+        private long heroPortraitAssetKey;
         private String contextId = ThorContextIds.UNKNOWN;
         private final String[] detailLines = new String[ThorContextDetails.COUNT];
         private int enabledActionMask;
@@ -184,6 +186,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
             heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
+            heroPortraitAssetKey = 0L;
             selectedArtifact = -1;
             selectedMeetingSlot = -1;
             pendingMeetingAction = false;
@@ -194,7 +197,8 @@ final class ThorSecondScreenPresentation extends Presentation
         }
 
         void updateContext(final long revision, final String contextId, final String publishedTitle,
-                           final String publishedStatus, final String[] publishedDetails,
+                           final String publishedStatus, final long publishedHeroPortraitAssetKey,
+                           final String[] publishedDetails,
                            final int enabledActionMask, final int activeActionMask)
         {
             final boolean retainMeetingArmies = ThorHeroMeetingGesture.retainsArmies(
@@ -216,6 +220,7 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             this.revision = revision;
             this.contextId = contextId;
+            heroPortraitAssetKey = publishedHeroPortraitAssetKey;
             heroMeetingMode.update(revision, ThorContextIds.HERO_MEETING.equals(contextId));
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
@@ -517,9 +522,27 @@ final class ThorSecondScreenPresentation extends Presentation
                 paint.setTextAlign(Paint.Align.CENTER);
                 paint.setFakeBoldText(true);
                 paint.setColor(TEXT);
-                drawFittedText(canvas, title, getWidth() * 0.5f,
-                        frame.top + contentHeight * (adventure ? ThorAdventureLayout.TITLE : 0.18f), contentWidth * 0.82f,
-                        Math.min(42f * density, contentHeight * 0.09f));
+                final float titleY = frame.top + contentHeight * (adventure ? ThorAdventureLayout.TITLE : 0.18f);
+                boolean portraitDrawn = false;
+                float portraitTextLeft = 0f;
+                if (adventure && ThorVisualAssetKey.isHeroPortrait(heroPortraitAssetKey))
+                {
+                    final float iconSize = Math.min(52f * density, frame.height() * 0.12f);
+                    final RectF icon = new RectF(frame.left + bevel * 3f, titleY - iconSize * 0.5f,
+                            frame.left + bevel * 3f + iconSize, titleY + iconSize * 0.5f);
+                    portraitDrawn = drawVisualAsset(canvas, heroPortraitAssetKey, icon);
+                    if (portraitDrawn)
+                        portraitTextLeft = icon.right + bevel;
+                }
+                if (portraitDrawn)
+                {
+                    drawFittedText(canvas, title, (portraitTextLeft + frame.right - bevel * 3f) * 0.5f,
+                            titleY, frame.right - bevel * 3f - portraitTextLeft,
+                            Math.min(42f * density, contentHeight * 0.09f));
+                }
+                else
+                    drawFittedText(canvas, title, getWidth() * 0.5f, titleY, contentWidth * 0.82f,
+                            Math.min(42f * density, contentHeight * 0.09f));
 
                 paint.setFakeBoldText(false);
                 paint.setColor(adventure ? TEXT : PARCHMENT_DARK);
@@ -730,11 +753,8 @@ final class ThorSecondScreenPresentation extends Presentation
             for (int side = 0; side < 2; ++side)
             {
                 final RectF heading = heroMeetingHeadingBounds(side, frame, bevel);
-                paint.setColor(PARCHMENT_DARK);
-                paint.setFakeBoldText(true);
-                drawEllipsizedText(canvas, names[side], heading.centerX(), heading.centerY(), heading.width() * 0.9f,
-                        Math.min(26f * density, heading.height() * 0.6f));
-                paint.setFakeBoldText(false);
+                drawHeroMeetingHeading(canvas, heading, names[side],
+                        heroMeetingArmies.heroPortraitAssetKeys[side], bevel, density);
                 for (int slot = 0; slot < 7; ++slot)
                 {
                     final int index = side * 7 + slot;
@@ -850,11 +870,9 @@ final class ThorSecondScreenPresentation extends Presentation
             for (int side = 0; side < 2; ++side)
             {
                 final RectF heading = heroMeetingHeadingBounds(side, frame, bevel);
-                paint.setColor(PARCHMENT_DARK);
-                paint.setFakeBoldText(true);
-                drawEllipsizedText(canvas, heroMeetingArtifacts.heroNames[side], heading.centerX(), heading.centerY(),
-                        heading.width() * 0.9f, Math.min(26f * density, heading.height() * 0.6f));
-                paint.setFakeBoldText(false);
+                final long portraitKey = heroMeetingArmies.complete()
+                        ? heroMeetingArmies.heroPortraitAssetKeys[side] : 0L;
+                drawHeroMeetingHeading(canvas, heading, heroMeetingArtifacts.heroNames[side], portraitKey, bevel, density);
                 for (int row = 0; row < 6; ++row)
                 {
                     final int local = artifactPage * 6 + row;
@@ -1018,6 +1036,25 @@ final class ThorSecondScreenPresentation extends Presentation
             final float left = frame.left + bevel * 3f + side * (width + gap);
             final float top = frame.top + frame.height() * 0.16f;
             return new RectF(left, top, left + width, top + frame.height() * 0.05f);
+        }
+
+        private void drawHeroMeetingHeading(final Canvas canvas, final RectF heading, final String heroName,
+                                           final long portraitKey, final float bevel, final float density)
+        {
+            float textLeft = heading.left;
+            if (ThorVisualAssetKey.isHeroPortrait(portraitKey))
+            {
+                final float iconSize = Math.min(heading.height() * 0.9f, heading.width() * 0.14f);
+                final RectF icon = new RectF(heading.left, heading.centerY() - iconSize * 0.5f,
+                        heading.left + iconSize, heading.centerY() + iconSize * 0.5f);
+                if (drawVisualAsset(canvas, portraitKey, icon))
+                    textLeft = icon.right + bevel * 0.5f;
+            }
+            paint.setColor(PARCHMENT_DARK);
+            paint.setFakeBoldText(true);
+            drawEllipsizedText(canvas, heroName, (textLeft + heading.right) * 0.5f, heading.centerY(),
+                    (heading.right - textLeft) * 0.94f, Math.min(26f * density, heading.height() * 0.6f));
+            paint.setFakeBoldText(false);
         }
 
         private RectF heroMeetingSlotBounds(final int index, final RectF frame, final float bevel)
@@ -1704,8 +1741,26 @@ final class ThorSecondScreenPresentation extends Presentation
             drawFittedText(canvas, getContext().getString(R.string.thor_context_hero), frame.centerX(),
                     frame.top + contentHeight * 0.09f, frame.width() * 0.8f,
                     Math.min(24f * density, contentHeight * 0.045f));
-            drawFittedText(canvas, title, frame.centerX(), frame.top + contentHeight * 0.20f,
-                    frame.width() * 0.82f, Math.min(42f * density, contentHeight * 0.075f));
+            final float titleY = frame.top + contentHeight * 0.20f;
+            boolean portraitDrawn = false;
+            float portraitTextLeft = 0f;
+            if (ThorVisualAssetKey.isHeroPortrait(heroPortraitAssetKey))
+            {
+                final float iconSize = Math.min(76f * density, contentHeight * 0.16f);
+                final RectF icon = new RectF(frame.left + bevel * 3f, titleY - iconSize * 0.5f,
+                        frame.left + bevel * 3f + iconSize, titleY + iconSize * 0.5f);
+                portraitDrawn = drawVisualAsset(canvas, heroPortraitAssetKey, icon);
+                if (portraitDrawn)
+                    portraitTextLeft = icon.right + bevel;
+            }
+            if (portraitDrawn)
+            {
+                drawFittedText(canvas, title, (portraitTextLeft + frame.right - bevel * 3f) * 0.5f, titleY,
+                        frame.right - bevel * 3f - portraitTextLeft, Math.min(42f * density, contentHeight * 0.075f));
+            }
+            else
+                drawFittedText(canvas, title, frame.centerX(), titleY,
+                        frame.width() * 0.82f, Math.min(42f * density, contentHeight * 0.075f));
 
             paint.setFakeBoldText(false);
             paint.setColor(TEXT);
@@ -2392,19 +2447,20 @@ final class ThorSecondScreenPresentation extends Presentation
                     + getContext().getString(R.string.thor_action_save_game);
         }
 
-        private void drawVisualAsset(final Canvas canvas, final long key, final RectF area)
+        private boolean drawVisualAsset(final Canvas canvas, final long key, final RectF area)
         {
             final Bitmap bitmap = visualAssets.get(key);
             if (bitmap == null || bitmap.isRecycled() || !ThorVisualAssetKey.isValid(key))
-                return;
+                return false;
             final float scale = Math.min(area.width() / bitmap.getWidth(), area.height() / bitmap.getHeight());
             if (!(scale > 0f) || !Float.isFinite(scale))
-                return;
+                return false;
             final float width = bitmap.getWidth() * scale;
             final float height = bitmap.getHeight() * scale;
             final RectF destination = new RectF(area.centerX() - width * 0.5f, area.centerY() - height * 0.5f,
                     area.centerX() + width * 0.5f, area.centerY() + height * 0.5f);
             canvas.drawBitmap(bitmap, null, destination, iconPaint);
+            return true;
         }
 
         private void drawFittedText(final Canvas canvas, final String text, final float centerX, final float baseline,

@@ -57,12 +57,14 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
+#include "../thor/ThorVisualAssetPublisher.h"
 
 namespace
 {
 	void publishThorInGameContext(ThorInGameContext inGameContext, std::uint32_t enabledActionMask = 0,
 		std::uint32_t activeActionMask = 0, int selectedHeroId = -1, std::string title = {}, std::string status = {},
-		std::vector<ThorHeroEntry> heroes = {}, std::vector<ThorTownEntry> towns = {})
+		std::vector<ThorHeroEntry> heroes = {}, std::vector<ThorTownEntry> towns = {},
+		std::uint64_t heroPortraitAssetKey = 0)
 	{
 		ThorContextRecord context;
 		context.contextId = thorContextIdForInGameContext(inGameContext);
@@ -71,13 +73,16 @@ namespace
 		context.enabledActionMask = enabledActionMask;
 		context.activeActionMask = activeActionMask;
 		context.selectedHeroId = selectedHeroId;
+		context.heroPortraitAssetKey = heroPortraitAssetKey;
 		context.heroes = std::move(heroes);
 		context.towns = std::move(towns);
 		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status, {},
+			context.heroPortraitAssetKey);
 		CAndroidVMHelper().publishThorHeroes(context.revision, context.heroes);
 		CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 		CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+		publishThorVisualAssets(context);
 	}
 }
 #endif
@@ -189,7 +194,8 @@ void AdventureMapInterface::activate()
 			shortcuts->getThorActionMask(), shortcuts->getThorActiveActionMask(), shortcuts->getThorSelectedHeroId(),
 			hero ? hero->getObjectName().toString(&GAME->translator()) : std::string{},
 			hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{},
-			shortcuts->getThorHeroes(), shortcuts->getThorTowns());
+			shortcuts->getThorHeroes(), shortcuts->getThorTowns(),
+			hero ? thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum()) : 0);
 	}
 #endif
 }
@@ -204,13 +210,14 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	if(previous.contextId != ThorContextIds::ADVENTURE_MAP)
 		return;
 
+	const auto * hero = GAME->interface()->localState->getCurrentHero();
 	ThorContextRecord context = previous;
 	context.enabledActionMask = shortcuts->getThorActionMask();
 	context.activeActionMask = shortcuts->getThorActiveActionMask();
 	context.selectedHeroId = shortcuts->getThorSelectedHeroId();
+	context.heroPortraitAssetKey = hero ? thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum()) : 0;
 	context.heroes = shortcuts->getThorHeroes();
 	context.towns = shortcuts->getThorTowns();
-	const auto * hero = GAME->interface()->localState->getCurrentHero();
 	context.title = thorBoundedText(hero ? hero->getObjectName().toString(&GAME->translator()) : std::string{});
 	context.status = hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{};
 	if(invalidateActions)
@@ -219,10 +226,12 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	if(context.revision == previous.revision)
 		return;
 
-	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status, {},
+		context.heroPortraitAssetKey);
 	CAndroidVMHelper().publishThorHeroes(context.revision, context.heroes);
 	CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	publishThorVisualAssets(context);
 #else
 	(void)invalidateActions;
 #endif

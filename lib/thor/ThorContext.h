@@ -96,15 +96,17 @@ inline constexpr std::size_t THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT = 5;
 inline constexpr std::size_t THOR_HERO_MEETING_ARTIFACT_COUNT =
 	(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT) * 2;
 inline constexpr std::size_t THOR_MAX_HERO_MEETING_VISUAL_ASSETS = THOR_HERO_MEETING_ARMY_SIZE * 2
-	+ THOR_HERO_MEETING_ARTIFACT_COUNT;
+	+ THOR_HERO_MEETING_ARTIFACT_COUNT + 2; // Two hero portraits may accompany all row assets.
+inline constexpr std::size_t THOR_MAX_VISUAL_ASSET_KEYS = THOR_MAX_HERO_MEETING_VISUAL_ASSETS;
 
 enum class ThorVisualAssetKind : std::uint8_t
 {
 	CREATURE = 1,
-	ARTIFACT = 2
+	ARTIFACT = 2,
+	HERO = 3
 };
 
-/// Stable typed visual key. Artifact keys are made from the artifact type ID, never its instance ID.
+/// Stable typed visual key. Artifact keys use artifact type IDs; hero keys use portrait-source HeroTypeIDs.
 inline constexpr std::uint64_t thorVisualAssetKey(ThorVisualAssetKind kind, int typeId)
 {
 	return typeId < 0 ? 0 : (static_cast<std::uint64_t>(kind) << 56) | (static_cast<std::uint64_t>(typeId) + 1);
@@ -120,14 +122,26 @@ inline constexpr std::uint64_t thorArtifactVisualAssetKey(int artifactTypeId)
 	return thorVisualAssetKey(ThorVisualAssetKind::ARTIFACT, artifactTypeId);
 }
 
+inline constexpr std::uint64_t thorHeroPortraitVisualAssetKey(int portraitSourceHeroTypeId)
+{
+	return thorVisualAssetKey(ThorVisualAssetKind::HERO, portraitSourceHeroTypeId);
+}
+
 inline constexpr bool isThorVisualAssetKey(std::uint64_t key)
 {
 	const auto kind = static_cast<std::uint8_t>(key >> 56);
 	const auto typeId = key & 0xffffffffULL;
 	const auto reserved = (key >> 32) & 0xffffffULL;
 	return (kind == static_cast<std::uint8_t>(ThorVisualAssetKind::CREATURE)
-		|| kind == static_cast<std::uint8_t>(ThorVisualAssetKind::ARTIFACT))
+		|| kind == static_cast<std::uint8_t>(ThorVisualAssetKind::ARTIFACT)
+		|| kind == static_cast<std::uint8_t>(ThorVisualAssetKind::HERO))
 		&& typeId != 0 && typeId <= static_cast<std::uint64_t>(std::numeric_limits<int>::max()) + 1 && reserved == 0;
+}
+
+inline constexpr bool isThorHeroPortraitVisualAssetKey(std::uint64_t key)
+{
+	return isThorVisualAssetKey(key) && static_cast<std::uint8_t>(key >> 56)
+		== static_cast<std::uint8_t>(ThorVisualAssetKind::HERO);
 }
 
 struct DLL_LINKAGE ThorHeroEntry
@@ -174,6 +188,7 @@ struct DLL_LINKAGE ThorHeroMeetingArmies
 	bool locallyControllable = false;
 	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> leftSlots;
 	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> rightSlots;
+	std::array<std::uint64_t, 2> heroPortraitAssetKeys{};
 	bool operator==(const ThorHeroMeetingArmies &) const = default;
 };
 
@@ -219,6 +234,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::vector<ThorTownEntry> towns;
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
+	std::uint64_t heroPortraitAssetKey = 0;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

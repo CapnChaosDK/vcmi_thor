@@ -45,6 +45,7 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
+#include "../thor/ThorVisualAssetPublisher.h"
 
 namespace
 {
@@ -53,7 +54,8 @@ namespace
 		ThorContextRecord context;
 		context.contextId = thorContextIdForInGameContext(inGameContext);
 		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status, {},
+			context.heroPortraitAssetKey);
 	}
 
 	std::string thorHeroSkillLine(const CGHeroInstance * hero, PrimarySkill first, PrimarySkill second)
@@ -77,6 +79,7 @@ namespace
 
 		ThorContextRecord context;
 		context.contextId = ThorContextIds::HERO_WINDOW;
+		context.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum());
 		context.title = GAME->translator().translate(hero->getNameTextID());
 		context.status = levelAndClass.toString(&GAME->translator());
 		context.details[0] = thorHeroSkillLine(hero, PrimarySkill::ATTACK, PrimarySkill::DEFENSE);
@@ -88,8 +91,11 @@ namespace
 		const auto previous = thorContextStore().snapshot();
 		context = thorContextStore().publishNext(std::move(context));
 		if(context.revision != previous.revision)
+		{
 			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
-				context.details);
+				context.details, context.heroPortraitAssetKey);
+			publishThorVisualAssets(context);
+		}
 	}
 }
 #endif

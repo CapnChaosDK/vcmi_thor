@@ -66,7 +66,8 @@ public class NativeMethods
     public static void publishThorContext(final long revision, final String contextId,
                                           final String title, final String status,
                                           final String detailLine1, final String detailLine2,
-                                          final String detailLine3, final String detailLine4)
+                                          final String detailLine3, final String detailLine4,
+                                          final long heroPortraitAssetKey)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -77,7 +78,7 @@ public class NativeMethods
 
         ((VcmiSDLActivity) ctx).runOnUiThread(() ->
                 ((VcmiSDLActivity) ctx).publishThorContext(revision, contextId, title, status,
-                        detailLine1, detailLine2, detailLine3, detailLine4));
+                        detailLine1, detailLine2, detailLine3, detailLine4, heroPortraitAssetKey));
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
@@ -124,7 +125,8 @@ public class NativeMethods
     public static void publishThorHeroMeetingArmies(final long revision, final int leftHeroId, final int rightHeroId,
                                                     final String[] heroNames, final int[] armyIds, final int[] creatureIds,
                                                     final int[] counts, final String[] creatureNames, final int[] flags,
-                                                    final int locallyControllable, final long[] visualAssetKeys)
+                                                    final int locallyControllable, final long[] visualAssetKeys,
+                                                    final long[] heroPortraitAssetKeys)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -132,7 +134,7 @@ public class NativeMethods
         if (!(ctx instanceof VcmiSDLActivity))
             return;
         final ThorHeroMeetingArmies armies = ThorHeroMeetingArmies.copyOf(leftHeroId, rightHeroId, heroNames, armyIds,
-                creatureIds, counts, creatureNames, flags, locallyControllable, visualAssetKeys);
+                creatureIds, counts, creatureNames, flags, locallyControllable, visualAssetKeys, heroPortraitAssetKeys);
         ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorHeroMeetingArmies(revision, armies));
     }
 

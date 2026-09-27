@@ -5,6 +5,7 @@
 #include <list>
 #include <mutex>
 #include <optional>
+#include <string_view>
 #include <unordered_map>
 
 inline constexpr std::size_t THOR_VISUAL_ASSET_MAX_DIMENSION = 64;
@@ -23,8 +24,10 @@ struct DLL_LINKAGE ThorVisualAssetPayload
 };
 
 DLL_LINKAGE bool isThorVisualAssetPayloadValid(const ThorVisualAssetPayload & payload);
+DLL_LINKAGE std::string_view thorVisualAssetAnimationName(ThorVisualAssetKind kind);
 DLL_LINKAGE std::vector<std::uint64_t> collectThorHeroMeetingVisualAssetKeys(
 	const ThorHeroMeetingArmies & armies, const ThorHeroMeetingArtifacts & artifacts);
+DLL_LINKAGE std::vector<std::uint64_t> collectThorContextVisualAssetKeys(const ThorContextRecord & context);
 
 /// Small process-local LRU for encoded player assets. Empty payloads cache a failed lookup.
 class DLL_LINKAGE ThorVisualAssetCache final
