@@ -59,6 +59,8 @@ namespace
 {
 	std::unordered_set<int> pendingThorArtifactRequestIds;
 	std::atomic_bool thorArtifactRequestPending = false;
+	ThorHeroMeetingArtifacts thorHeroMeetingArtifacts(const std::array<const CGHeroInstance *, 2> & heroes,
+		const std::array<std::shared_ptr<CArtifactsOfHeroMain>, 2> & widgets);
 }
 #endif
 
