@@ -139,8 +139,8 @@ public class NativeMethods
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
-    public static void publishThorActionState(final long revision, final int enabledActionMask,
-                                              final int activeActionMask)
+    public static void publishThorActionState(final long revision, final long enabledActionMask,
+                                              final long activeActionMask)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;

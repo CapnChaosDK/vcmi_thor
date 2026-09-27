@@ -87,6 +87,20 @@ TEST(ThorContextStoreTest, AssignsNewRevisionWhenClearingToUnknown)
 	EXPECT_EQ(unknown.contextId, ThorContextIds::UNKNOWN);
 }
 
+TEST(ThorContextStoreTest, ActionMasksRetainAll64Bits)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.enabledActionMask = (std::uint64_t{1} << 7) | (std::uint64_t{1} << 40);
+	context.activeActionMask = std::uint64_t{1} << 63;
+	const auto published = store.publishNext(context);
+	const auto snapshot = store.snapshot();
+	EXPECT_EQ(snapshot.enabledActionMask, published.enabledActionMask);
+	EXPECT_EQ(snapshot.enabledActionMask, (std::uint64_t{1} << 7) | (std::uint64_t{1} << 40));
+	EXPECT_EQ(snapshot.activeActionMask, std::uint64_t{1} << 63);
+}
+
 TEST(ThorContextMappingTest, MapsApprovedMainMenuTabs)
 {
 	EXPECT_EQ(thorContextIdForMainMenuTab("main"), ThorContextIds::MAIN_MENU);

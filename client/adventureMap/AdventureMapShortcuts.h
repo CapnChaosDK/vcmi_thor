@@ -116,8 +116,8 @@ public:
 	bool optionCanDisembark();
 	bool optionDisembarking();
 
-	std::uint32_t getThorActionMask();
-	std::uint32_t getThorActiveActionMask();
+	std::uint64_t getThorActionMask();
+	std::uint64_t getThorActiveActionMask();
 	int getThorSelectedHeroId();
 	std::vector<ThorHeroEntry> getThorHeroes();
 	std::vector<ThorTownEntry> getThorTowns();

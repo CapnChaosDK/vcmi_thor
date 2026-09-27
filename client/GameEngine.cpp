@@ -39,6 +39,7 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "windows/CExchangeWindow.h"
+#include "lobby/CLobbyScreen.h"
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -272,6 +273,22 @@ void GameEngine::updateFrame()
 				continue;
 			}
 			executed = exchangeWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
+		{
+			auto lobbyWindow = windows().topWindow<CLobbyScreen>();
+			if(!lobbyWindow || !lobbyWindow->matchesThorContext(context))
+			{
+				logGlobal->debug("Thor action rejected: inactive New Game scenario lobby");
+				continue;
+			}
+			lobbyWindow->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: lobby scenario state changed");
+				continue;
+			}
+			executed = lobbyWindow->executeThorAction(*request);
 		}
 		else
 		{

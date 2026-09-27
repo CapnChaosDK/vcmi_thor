@@ -25,6 +25,7 @@
 #include "../GameChatHandler.h"
 #include "../GameInstance.h"
 #include "../gui/Shortcut.h"
+#include "../gui/WindowHandler.h"
 #include "../widgets/Buttons.h"
 #include "../widgets/GraphicalPrimitiveCanvas.h"
 #include "../widgets/Images.h"
@@ -34,6 +35,7 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorAction.h"
 #include "../../lib/thor/ThorContext.h"
 #endif
 #include "../../lib/CConfigHandler.h"
@@ -81,16 +83,15 @@ namespace
 		return ThorLobbyTab::UNKNOWN;
 	}
 
-	void publishThorLobbyContext(const CLobbyScreen & lobby)
+	void publishThorLobbyContext(CLobbyScreen & lobby)
 	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForLobby(thorLobbyModeFor(lobby.screenType), thorLobbyTabFor(lobby));
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		lobby.publishThorContext();
 	}
 
 	void clearThorLobbyContext()
 	{
+		thorActionQueue().clear();
+		thorHeroMeetingRedistributionQueue().clear();
 		ThorContextRecord context;
 		context = thorContextStore().publishNext(std::move(context));
 		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
@@ -112,6 +113,9 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType, bool hideScreen)
 			GAME->server().setMapInfo(mapInfo, nullptr);
 			if(curTab != tabBattleOnlyMode)
 				updateStartButtonState();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+			publishThorLobbyContext(*this);
+#endif
 		};
 
 		buttonSelect = std::make_shared<CButton>(Point(411, 80), AnimationPath::builtin("GSPBUTT.DEF"), LIBRARY->generaltexth->zelp[45], 0, EShortcut::LOBBY_SELECT_SCENARIO);
@@ -119,7 +123,12 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType, bool hideScreen)
 		{
 			toggleTab(tabSel);
 			if (getMapInfo() && getMapInfo()->isRandomMap)
+			{
 				GAME->server().setMapInfo(tabSel->getSelectedMapInfo());
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+				publishThorLobbyContext(*this);
+#endif
+			}
 		});
 
 		buttonOptions = std::make_shared<CButton>(Point(411, 510), AnimationPath::builtin("GSPBUTT.DEF"), LIBRARY->generaltexth->zelp[46], std::bind(&CLobbyScreen::toggleTab, this, tabOpt), EShortcut::LOBBY_ADDITIONAL_OPTIONS);
@@ -186,12 +195,7 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType, bool hideScreen)
 
 	buttonBack = std::make_shared<CButton>(Point(581, 535), AnimationPath::builtin("SCNRBACK.DEF"), LIBRARY->generaltexth->zelp[105], [&]()
 	{
-		bool wasInLobbyRoom = GAME->server().inLobbyRoom();
-		GAME->server().sendClientDisconnecting();
-		close();
-
-		if (wasInLobbyRoom)
-			GAME->server().getGlobalLobby().activateInterface();
+		leaveLobby();
 	}, EShortcut::GLOBAL_CANCEL);
 
 	// Make sure scenario selection is centered
@@ -236,6 +240,8 @@ void CLobbyScreen::activate()
 	CSelectionBase::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorActionQueue().clear();
+	thorHeroMeetingRedistributionQueue().clear();
 	publishThorLobbyContext(*this);
 #endif
 }
@@ -269,6 +275,118 @@ bool CLobbyScreen::canStartLobbyGame() const
 
 	return true;
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CLobbyScreen::thorScenarioMapAvailable()
+{
+	const auto selectedMap = tabSel ? tabSel->getSelectedMapInfo() : nullptr;
+	const auto * currentMap = getMapInfo();
+	return screenType == ESelectionScreen::newGame && selectedMap && selectedMap->mapHeader
+		&& currentMap && currentMap->mapHeader && getStartInfo()
+		&& selectedMap->fileURI == currentMap->fileURI;
+}
+
+bool CLobbyScreen::thorDifficultyAuthorityAvailable() const
+{
+	return !GAME->server().isGuest()
+		&& (!isMultiplayerNetworkLobby() || GAME->server().isHost());
+}
+
+void CLobbyScreen::publishThorContext()
+{
+	if(!isActive() || ENGINE->windows().topWindow<CLobbyScreen>().get() != this)
+		return;
+
+	ThorContextRecord context;
+	context.contextId = thorContextIdForLobby(thorLobbyModeFor(screenType), thorLobbyTabFor(*this));
+	if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
+	{
+		const bool mapAvailable = thorScenarioMapAvailable();
+		const auto * mapInfo = mapAvailable ? getMapInfo() : nullptr;
+		const auto * startInfo = mapAvailable ? getStartInfo() : nullptr;
+		if(mapInfo && mapInfo->mapHeader && startInfo)
+		{
+			context.title = mapInfo->getNameTranslated(&GAME->translator());
+			const auto & header = *mapInfo->mapHeader;
+			context.details[0] = std::to_string(header.width) + "x" + std::to_string(header.height);
+			if(header.levels() > 1)
+				context.details[0] += "x" + std::to_string(header.levels());
+			context.details[1] = std::to_string(mapInfo->amountOfPlayersOnMap) + "/"
+				+ std::to_string(mapInfo->amountOfHumanControllablePlayers);
+			if(startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
+				context.details[2] = std::to_string(startInfo->difficulty);
+
+			context.enabledActionMask = thorActionMask(ThorAction::LOBBY_BACK);
+			if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending
+				&& startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
+				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY);
+			if(!thorDifficultyChangePending && canStartLobbyGame() && buttonStart && !buttonStart->isBlocked())
+				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_START_GAME);
+		}
+		else
+			context.enabledActionMask = thorActionMask(ThorAction::LOBBY_BACK);
+	}
+
+	const auto previous = thorContextStore().snapshot();
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision != previous.revision)
+	{
+		thorActionQueue().clear();
+		thorHeroMeetingRedistributionQueue().clear();
+	}
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
+		context.details);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CLobbyScreen::matchesThorContext(const ThorContextRecord & context) const
+{
+	const auto current = thorContextStore().snapshot();
+	return isActive() && ENGINE->windows().topWindow<CLobbyScreen>().get() == this
+		&& screenType == ESelectionScreen::newGame && curTab == tabSel
+		&& context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO
+		&& context.revision == current.revision && context.contextId == current.contextId;
+}
+
+bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
+{
+	publishThorContext();
+	const auto context = thorContextStore().snapshot();
+	const bool exactTopOwner = isActive() && ENGINE->windows().topWindow<CLobbyScreen>().get() == this;
+	const bool scenarioTabActive = screenType == ESelectionScreen::newGame && curTab == tabSel;
+	const bool mapAvailable = thorScenarioMapAvailable();
+	const bool startAvailable = mapAvailable && !thorDifficultyChangePending && canStartLobbyGame()
+		&& buttonStart && !buttonStart->isBlocked();
+	if(validateThorLobbyActionRequest(request, context, exactTopOwner, scenarioTabActive,
+		thorDifficultyAuthorityAvailable(), mapAvailable, startAvailable) != ThorActionValidation::VALID)
+		return false;
+
+	switch(request.action)
+	{
+	case ThorAction::LOBBY_SET_DIFFICULTY:
+		if(!getStartInfo() || request.targetId == getStartInfo()->difficulty)
+			return false;
+		thorDifficultyChangePending = true;
+		GAME->server().setDifficulty(request.targetId);
+		publishThorContext();
+		return true;
+	case ThorAction::LOBBY_START_GAME:
+		start(false);
+		return buttonStart && buttonStart->isBlocked();
+	case ThorAction::LOBBY_BACK:
+		leaveLobby();
+		return true;
+	default:
+		return false;
+	}
+}
+
+void CLobbyScreen::onThorLobbyAvailabilityChanged()
+{
+	thorDifficultyChangePending = false;
+	publishThorContext();
+}
+#endif
 
 bool CLobbyScreen::isLanOrOnlineMultiplayerHost() const
 {
@@ -313,11 +431,24 @@ void CLobbyScreen::updateStartButtonState()
 	buttonStart->block(!canStartLobbyGame());
 }
 
+void CLobbyScreen::leaveLobby()
+{
+	const bool wasInLobbyRoom = GAME->server().inLobbyRoom();
+	GAME->server().sendClientDisconnecting();
+	close();
+
+	if(wasInLobbyRoom)
+		GAME->server().getGlobalLobby().activateInterface();
+}
+
 void CLobbyScreen::onRemoteClientLobbyStateChanged()
 {
 	if(!isLanOrOnlineMultiplayerHost())
 	{
 		updateHostLobbyChatState();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		publishThorLobbyContext(*this);
+#endif
 		return;
 	}
 
@@ -336,6 +467,9 @@ void CLobbyScreen::onRemoteClientLobbyStateChanged()
 	}
 
 	updateHostLobbyChatState();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorLobbyContext(*this);
+#endif
 }
 
 void CLobbyScreen::toggleTab(std::shared_ptr<CIntObject> tab)
@@ -420,6 +554,9 @@ void CLobbyScreen::startScenario(bool allowOnlyAI)
 	{
 		GAME->server().sendStartGame(allowOnlyAI);
 		buttonStart->block(true);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		publishThorLobbyContext(*this);
+#endif
 	}
 }
 
@@ -464,6 +601,9 @@ void CLobbyScreen::toggleMode(bool host)
 	}
 
 	updateStartButtonState();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorLobbyContext(*this);
+#endif
 }
 
 void CLobbyScreen::toggleChat()
@@ -552,6 +692,10 @@ void CLobbyScreen::updateAfterStateChange()
 	
 	if(curTab && curTab == tabRand && GAME->server().si->mapGenOptions)
 		tabRand->setMapGenOptions(GAME->server().si->mapGenOptions);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorDifficultyChangePending = false;
+	publishThorLobbyContext(*this);
+#endif
 }
 
 const StartInfo * CLobbyScreen::getStartInfo()

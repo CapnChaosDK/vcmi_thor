@@ -263,6 +263,9 @@ void ApplyOnLobbyScreenNetPackVisitor::visitLobbyShowMessage(LobbyShowMessage & 
 		return;
 	
 	lobby->buttonStart->block(false);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	lobby->onThorLobbyAvailabilityChanged();
+#endif
 	handler.showServerError(pack.message.toString(&GAME->translator()));
 }
 

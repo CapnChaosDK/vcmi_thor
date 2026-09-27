@@ -806,9 +806,9 @@ bool AdventureMapShortcuts::optionQuickSaveLoad()
 	return optionIsLocal() && GAME->interface()->hasQuickSave;
 }
 
-std::uint32_t AdventureMapShortcuts::getThorActionMask()
+std::uint64_t AdventureMapShortcuts::getThorActionMask()
 {
-	std::uint32_t result = 0;
+	std::uint64_t result = 0;
 	if(optionInMapView())
 	{
 		result |= thorActionMask(ThorAction::OPEN_KINGDOM_OVERVIEW);
@@ -836,7 +836,7 @@ std::uint32_t AdventureMapShortcuts::getThorActionMask()
 	return result;
 }
 
-std::uint32_t AdventureMapShortcuts::getThorActiveActionMask()
+std::uint64_t AdventureMapShortcuts::getThorActiveActionMask()
 {
 	return optionHeroSleeping() ? thorActionMask(ThorAction::TOGGLE_HERO_SLEEP) : 0;
 }

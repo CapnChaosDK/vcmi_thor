@@ -18,6 +18,17 @@
     <string name="thor_context_battle_mode">Battle-only mode</string>
     <string name="thor_context_lobby_new_game_status">Choose a setup panel</string>
     <string name="thor_context_lobby_new_game_scenario_status">Select a scenario</string>
+    <string name="thor_lobby_no_scenario">No scenario selected</string>
+    <string name="thor_lobby_map_size">Map size</string>
+    <string name="thor_lobby_players">Players</string>
+    <string name="thor_lobby_difficulty">Difficulty</string>
+    <string name="thor_lobby_start">Start</string>
+    <string name="thor_lobby_back">Back</string>
+    <string name="thor_lobby_difficulty_easy">Easy</string>
+    <string name="thor_lobby_difficulty_normal">Normal</string>
+    <string name="thor_lobby_difficulty_hard">Hard</string>
+    <string name="thor_lobby_difficulty_expert">Expert</string>
+    <string name="thor_lobby_difficulty_impossible">Impossible</string>
     <string name="thor_context_lobby_new_game_options_status">Configure game options</string>
     <string name="thor_context_lobby_random_map_status">Configure random map options</string>
     <string name="thor_context_lobby_new_game_turn_options_status">Configure turn settings</string>

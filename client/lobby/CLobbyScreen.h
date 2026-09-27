@@ -14,6 +14,11 @@
 class CBonusSelection;
 class GraphicalPrimitiveCanvas;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+struct ThorActionRequest;
+struct ThorContextRecord;
+#endif
+
 class CLobbyScreen final : public CSelectionBase
 {
 public:
@@ -34,6 +39,13 @@ public:
 	const CMapInfo * getMapInfo() final;
 	const StartInfo * getStartInfo() final;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(const ThorActionRequest & request);
+	void onThorLobbyAvailabilityChanged();
+#endif
+
 	std::shared_ptr<CBonusSelection> bonusSel;
 
 private:
@@ -42,6 +54,9 @@ private:
 
 	bool waitingForPlayersMessageShown = false;
 	bool compatibilityFilterInitialized = false;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool thorDifficultyChangePending = false;
+#endif
 	size_t lastRequiredHumanPlayers = 0;
 	std::string lastCompatibilityNotice;
 
@@ -52,4 +67,9 @@ private:
 	void updateCompatibilityNotice(size_t requiredHumanPlayers);
 	void updateHostLobbyChatState();
 	void updateStartButtonState();
+	void leaveLobby();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool thorScenarioMapAvailable();
+	bool thorDifficultyAuthorityAvailable() const;
+#endif
 };

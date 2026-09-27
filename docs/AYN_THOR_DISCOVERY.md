@@ -31,6 +31,13 @@ VCMI is not a single-process game-state engine like fheroes2. Its architecture s
 
 `GameEngine::mainLoop()` and `GameEngine::updateFrame()` are the only safe consumer location for one-shot Android requests that affect gameplay UI or issue client/server requests. The bridge should enqueue bounded plain data from the Android main thread and consume it under the normal `MainGUI` frame path. Direct JNI calls from a lower-screen touch handler into gameplay code would violate thread ownership.
 
+### New Game scenario companion
+
+- The active `CLobbyScreen` owns the New Game scenario snapshot and republishes it after map selection, tab changes, lobby readiness changes, and server state updates. The lower display receives only the translated selected-map name, dimensions, player counts, difficulty index, and enabled controls; it does not receive a map path or game-state object.
+- Scenario requests carry the originating context revision and a stable action ID through the existing bounded action queue. `GameEngine::updateFrame()` resolves the active top `CLobbyScreen`; the lobby rechecks its owner, selected scenario tab, current selected/server map match, host authority for difficulty changes, and native Start availability before using `setDifficulty`, the existing `start(false)` path, or the shared Back callback.
+- Thor action masks are unsigned 64-bit native values and Java `long` values with identical bit patterns across JNI. IDs remain 1-based; ID 64 occupies the sign bit in Java, so consumers must use bitwise masks and must not treat a negative `long` as invalid. New action IDs must remain within 1–64 and be added to both native and Java stable-ID contracts.
+- Scenario taps are accepted only when pointer-down and pointer-up hit the same control at the same context revision and presentation session. Context changes, cancellation, additional pointers, or display recreation discard the pending tap. The panel supplements the upper SDL lobby and does not change its touch, keyboard, or controller paths.
+
 ## Android application architecture
 
 VCMI combines Qt and SDL in one Android package:

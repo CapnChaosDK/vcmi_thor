@@ -190,6 +190,12 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT;
 	case static_cast<int>(ThorAction::HERO_MEETING_SWAP_ARTIFACTS):
 		return ThorAction::HERO_MEETING_SWAP_ARTIFACTS;
+	case static_cast<int>(ThorAction::LOBBY_SET_DIFFICULTY):
+		return ThorAction::LOBBY_SET_DIFFICULTY;
+	case static_cast<int>(ThorAction::LOBBY_START_GAME):
+		return ThorAction::LOBBY_START_GAME;
+	case static_cast<int>(ThorAction::LOBBY_BACK):
+		return ThorAction::LOBBY_BACK;
 	default:
 		return std::nullopt;
 	}
@@ -212,6 +218,9 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT
 			|| action == ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT
 			|| action == ThorAction::HERO_MEETING_SWAP_ARTIFACTS;
+	if(contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
+		return action == ThorAction::LOBBY_SET_DIFFICULTY || action == ThorAction::LOBBY_START_GAME
+			|| action == ThorAction::LOBBY_BACK;
 	return false;
 }
 
@@ -253,7 +262,7 @@ bool canExecuteThorBulkArtifactAction(const ThorContextRecord & context,
 		&& leftOwner == playerId && rightOwner == playerId;
 }
 
-bool shouldRestoreThorBulkArtifactActions(bool serverSuccess, std::uint32_t enabledActionMask)
+bool shouldRestoreThorBulkArtifactActions(bool serverSuccess, std::uint64_t enabledActionMask)
 {
 	return !serverSuccess || enabledActionMask == 0;
 }
@@ -314,6 +323,18 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::WRONG_CONTEXT;
 	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
 		return ThorActionValidation::UNAVAILABLE;
+	if(request.action == ThorAction::LOBBY_SET_DIFFICULTY)
+	{
+		if(request.targetId < 0 || request.targetId > 4 || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(request.action == ThorAction::LOBBY_START_GAME || request.action == ThorAction::LOBBY_BACK)
+	{
+		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+	}
 	if(request.action == ThorAction::SELECT_HERO || request.action == ThorAction::SELECT_TOWN)
 	{
 		if(request.targetId < 0)
@@ -398,6 +419,22 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		|| request.action == ThorAction::HERO_MEETING_SWAP_ARMIES)
 		&& (!context.heroMeetingArmies || !context.heroMeetingArmies->locallyControllable))
 		return ThorActionValidation::INVALID_TARGET;
+	return ThorActionValidation::VALID;
+}
+
+ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & request,
+	const ThorContextRecord & context, bool exactTopOwner, bool scenarioTabActive, bool authoritative,
+	bool mapAvailable, bool startAvailable)
+{
+	const auto requestValidation = validateThorActionRequest(request, context);
+	if(requestValidation != ThorActionValidation::VALID)
+		return requestValidation;
+	if(!exactTopOwner || !scenarioTabActive)
+		return ThorActionValidation::WRONG_CONTEXT;
+	if(request.action == ThorAction::LOBBY_SET_DIFFICULTY && (!authoritative || !mapAvailable))
+		return ThorActionValidation::UNAVAILABLE;
+	if(request.action == ThorAction::LOBBY_START_GAME && (!mapAvailable || !startAvailable))
+		return ThorActionValidation::UNAVAILABLE;
 	return ThorActionValidation::VALID;
 }
 

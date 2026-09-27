@@ -87,7 +87,7 @@ public class VcmiSDLActivity extends SDLActivity
                     detailLine1, detailLine2, detailLine3, detailLine4, heroPortraitAssetKey);
     }
 
-    void publishThorActionState(final long revision, final int enabledActionMask, final int activeActionMask)
+    void publishThorActionState(final long revision, final long enabledActionMask, final long activeActionMask)
     {
         if (mThorSecondScreenController != null)
             mThorSecondScreenController.publishActionState(revision, enabledActionMask, activeActionMask);
