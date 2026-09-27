@@ -12,6 +12,7 @@ namespace
 			&& lhs.details == rhs.details
 			&& lhs.enabledActionMask == rhs.enabledActionMask
 			&& lhs.activeActionMask == rhs.activeActionMask
+			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.selectedHeroId == rhs.selectedHeroId
 			&& lhs.heroPortraitAssetKey == rhs.heroPortraitAssetKey
 			&& lhs.actionSubjectId == rhs.actionSubjectId

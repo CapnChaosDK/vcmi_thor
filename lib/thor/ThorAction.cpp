@@ -196,6 +196,10 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::LOBBY_START_GAME;
 	case static_cast<int>(ThorAction::LOBBY_BACK):
 		return ThorAction::LOBBY_BACK;
+	case static_cast<int>(ThorAction::LOBBY_PREVIOUS_SCENARIO):
+		return ThorAction::LOBBY_PREVIOUS_SCENARIO;
+	case static_cast<int>(ThorAction::LOBBY_NEXT_SCENARIO):
+		return ThorAction::LOBBY_NEXT_SCENARIO;
 	default:
 		return std::nullopt;
 	}
@@ -220,8 +224,33 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::HERO_MEETING_SWAP_ARTIFACTS;
 	if(contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
 		return action == ThorAction::LOBBY_SET_DIFFICULTY || action == ThorAction::LOBBY_START_GAME
-			|| action == ThorAction::LOBBY_BACK;
+			|| action == ThorAction::LOBBY_BACK || action == ThorAction::LOBBY_PREVIOUS_SCENARIO
+			|| action == ThorAction::LOBBY_NEXT_SCENARIO;
 	return false;
+}
+
+std::optional<std::size_t> thorAdjacentScenarioPosition(
+	std::span<const std::uint8_t> selectableEntries, std::size_t currentPosition, ThorAction action)
+{
+	if(currentPosition >= selectableEntries.size() || selectableEntries[currentPosition] == 0
+		|| (action != ThorAction::LOBBY_PREVIOUS_SCENARIO && action != ThorAction::LOBBY_NEXT_SCENARIO))
+		return std::nullopt;
+
+	if(action == ThorAction::LOBBY_PREVIOUS_SCENARIO)
+	{
+		for(std::size_t position = currentPosition; position > 0;)
+		{
+			--position;
+			if(selectableEntries[position] != 0)
+				return position;
+		}
+		return std::nullopt;
+	}
+
+	for(std::size_t position = currentPosition + 1; position < selectableEntries.size(); ++position)
+		if(selectableEntries[position] != 0)
+			return position;
+	return std::nullopt;
 }
 
 bool isThorActionAllowedInAdventureMap(ThorAction action)
@@ -329,7 +358,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
 			return ThorActionValidation::INVALID_TARGET;
 	}
-	else if(request.action == ThorAction::LOBBY_START_GAME || request.action == ThorAction::LOBBY_BACK)
+	else if(request.action == ThorAction::LOBBY_START_GAME || request.action == ThorAction::LOBBY_BACK
+		|| request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO || request.action == ThorAction::LOBBY_NEXT_SCENARIO)
 	{
 		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
@@ -424,7 +454,7 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 
 ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & request,
 	const ThorContextRecord & context, bool exactTopOwner, bool scenarioTabActive, bool authoritative,
-	bool mapAvailable, bool startAvailable)
+	bool mapAvailable, bool startAvailable, bool scenarioNavigationAvailable)
 {
 	const auto requestValidation = validateThorActionRequest(request, context);
 	if(requestValidation != ThorActionValidation::VALID)
@@ -434,6 +464,9 @@ ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & re
 	if(request.action == ThorAction::LOBBY_SET_DIFFICULTY && (!authoritative || !mapAvailable))
 		return ThorActionValidation::UNAVAILABLE;
 	if(request.action == ThorAction::LOBBY_START_GAME && (!mapAvailable || !startAvailable))
+		return ThorActionValidation::UNAVAILABLE;
+	if((request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO || request.action == ThorAction::LOBBY_NEXT_SCENARIO)
+		&& (!authoritative || !mapAvailable || !scenarioNavigationAvailable))
 		return ThorActionValidation::UNAVAILABLE;
 	return ThorActionValidation::VALID;
 }

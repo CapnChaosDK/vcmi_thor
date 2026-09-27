@@ -45,10 +45,12 @@ enum class ThorAction : std::uint8_t
 	HERO_MEETING_SWAP_ARTIFACTS = 25,
 	LOBBY_SET_DIFFICULTY = 26,
 	LOBBY_START_GAME = 27,
-	LOBBY_BACK = 28
+	LOBBY_BACK = 28,
+	LOBBY_PREVIOUS_SCENARIO = 29,
+	LOBBY_NEXT_SCENARIO = 30
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::LOBBY_BACK);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::LOBBY_NEXT_SCENARIO);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -62,6 +64,8 @@ constexpr std::uint64_t thorActionMask(ThorAction action)
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
+DLL_LINKAGE std::optional<std::size_t> thorAdjacentScenarioPosition(
+	std::span<const std::uint8_t> selectableEntries, std::size_t currentPosition, ThorAction action);
 DLL_LINKAGE bool isThorActionHapticEligible(ThorAction action);
 DLL_LINKAGE bool isThorActionHapticDeferredUntilServerResult(ThorAction action);
 DLL_LINKAGE bool isThorActionArtifactMutation(ThorAction action);
@@ -159,7 +163,7 @@ enum class ThorActionValidation
 
 DLL_LINKAGE ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & request,
 	const ThorContextRecord & context, bool exactTopOwner, bool scenarioTabActive, bool authoritative,
-	bool mapAvailable, bool startAvailable);
+	bool mapAvailable, bool startAvailable, bool scenarioNavigationAvailable);
 
 struct DLL_LINKAGE ThorActionAcceptance
 {

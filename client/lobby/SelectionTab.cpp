@@ -388,6 +388,9 @@ SelectionTab::SelectionTab(ESelectionScreen Type)
 
 void SelectionTab::toggleMode()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	advanceThorScenarioSelectionRevision();
+#endif
 	allItems.clear();
 	curItems.clear();
 	resourceFiles.clear();
@@ -662,6 +665,9 @@ void SelectionTab::filter(int size, size_t requiredHumanPlayersCount, bool selec
 
 void SelectionTab::filter(int size, bool selectFirst)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	advanceThorScenarioSelectionRevision();
+#endif
 	if(size == -1)
 		size = currentMapSizeFilter;
 	currentMapSizeFilter = size;
@@ -739,6 +745,9 @@ void SelectionTab::sortBy(int criteria)
 
 void SelectionTab::sort()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	advanceThorScenarioSelectionRevision();
+#endif
 	if(sortingBy != generalSortingBy)
 		std::stable_sort(curItems.begin(), curItems.end(), mapSorter(generalSortingBy));
 	std::stable_sort(curItems.begin(), curItems.end(), mapSorter(sortingBy));
@@ -771,6 +780,10 @@ void SelectionTab::select(int position)
 	vstd::amax(py, 0);
 	vstd::amin(py, curItems.size() - 1);
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(selectionPos != static_cast<std::size_t>(py))
+		advanceThorScenarioSelectionRevision();
+#endif
 	selectionPos = py;
 
 	if(position < 0)
@@ -960,6 +973,10 @@ void SelectionTab::selectNewestFile(bool skipAutosaves)
 
 	if(newestFile.empty())
 	{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		if(selectionPos != curItems.size())
+			advanceThorScenarioSelectionRevision();
+#endif
 		selectionPos = curItems.size();
 		if(callOnSelect)
 			callOnSelect(nullptr);
@@ -1064,6 +1081,10 @@ void SelectionTab::restoreLastSave()
 		}
 	}
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(selectionPos != curItems.size())
+		advanceThorScenarioSelectionRevision();
+#endif
 	selectionPos = curItems.size();
 	if(callOnSelect)
 		callOnSelect(nullptr);
@@ -1073,6 +1094,15 @@ std::shared_ptr<ElementInfo> SelectionTab::getSelectedMapInfo() const
 {
 	return selectionPos >= curItems.size() || curItems[selectionPos]->isFolder ? nullptr : curItems[selectionPos];
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void SelectionTab::advanceThorScenarioSelectionRevision()
+{
+	++thorScenarioSelectionRevision;
+	if(thorScenarioSelectionRevision == 0)
+		++thorScenarioSelectionRevision;
+}
+#endif
 
 void SelectionTab::rememberCurrentSelection()
 {

@@ -10,6 +10,7 @@
 #include "StdInc.h"
 #include "CLobbyScreen.h"
 
+#include <limits>
 #include <utility>
 
 #include "CBonusSelection.h"
@@ -81,6 +82,15 @@ namespace
 		if(lobby.curTab == lobby.tabBattleOnlyMode)
 			return ThorLobbyTab::BATTLE_MODE;
 		return ThorLobbyTab::UNKNOWN;
+	}
+
+	std::optional<std::size_t> adjacentThorScenarioPosition(const SelectionTab & tab, ThorAction action)
+	{
+		std::vector<std::uint8_t> selectableEntries;
+		selectableEntries.reserve(tab.curItems.size());
+		for(const auto & item : tab.curItems)
+			selectableEntries.push_back(item && !item->isFolder && item->mapHeader ? 1 : 0);
+		return thorAdjacentScenarioPosition(selectableEntries, tab.selectionPos, action);
 	}
 
 	void publishThorLobbyContext(CLobbyScreen & lobby)
@@ -306,6 +316,7 @@ void CLobbyScreen::publishThorContext()
 		const auto * startInfo = mapAvailable ? getStartInfo() : nullptr;
 		if(mapInfo && mapInfo->mapHeader && startInfo)
 		{
+			context.scenarioSelectionRevision = tabSel->getThorScenarioSelectionRevision();
 			context.title = mapInfo->getNameTranslated(&GAME->translator());
 			const auto & header = *mapInfo->mapHeader;
 			context.details[0] = std::to_string(header.width) + "x" + std::to_string(header.height);
@@ -317,6 +328,13 @@ void CLobbyScreen::publishThorContext()
 				context.details[2] = std::to_string(startInfo->difficulty);
 
 			context.enabledActionMask = thorActionMask(ThorAction::LOBBY_BACK);
+			if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending)
+			{
+				if(adjacentThorScenarioPosition(*tabSel, ThorAction::LOBBY_PREVIOUS_SCENARIO))
+					context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_PREVIOUS_SCENARIO);
+				if(adjacentThorScenarioPosition(*tabSel, ThorAction::LOBBY_NEXT_SCENARIO))
+					context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO);
+			}
 			if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending
 				&& startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY);
@@ -357,8 +375,12 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 	const bool mapAvailable = thorScenarioMapAvailable();
 	const bool startAvailable = mapAvailable && !thorDifficultyChangePending && canStartLobbyGame()
 		&& buttonStart && !buttonStart->isBlocked();
+	const auto adjacentPosition = (tabSel && (request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO
+		|| request.action == ThorAction::LOBBY_NEXT_SCENARIO)
+		? adjacentThorScenarioPosition(*tabSel, request.action) : std::optional<std::size_t>{});
 	if(validateThorLobbyActionRequest(request, context, exactTopOwner, scenarioTabActive,
-		thorDifficultyAuthorityAvailable(), mapAvailable, startAvailable) != ThorActionValidation::VALID)
+		thorDifficultyAuthorityAvailable(), mapAvailable, startAvailable, adjacentPosition.has_value())
+		!= ThorActionValidation::VALID)
 		return false;
 
 	switch(request.action)
@@ -376,6 +398,14 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 	case ThorAction::LOBBY_BACK:
 		leaveLobby();
 		return true;
+	case ThorAction::LOBBY_PREVIOUS_SCENARIO:
+	case ThorAction::LOBBY_NEXT_SCENARIO:
+		if(!adjacentPosition || *adjacentPosition >= tabSel->curItems.size()
+			|| *adjacentPosition > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+			return false;
+		tabSel->selectAbs(static_cast<int>(*adjacentPosition));
+		return tabSel->selectionPos == *adjacentPosition && tabSel->getSelectedMapInfo()
+			&& tabSel->getSelectedMapInfo()->mapHeader;
 	default:
 		return false;
 	}

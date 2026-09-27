@@ -9,6 +9,8 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #include "CSelectionBase.h"
 #include "../Translator.h"
 #include "../../lib/mapping/CMapInfo.h"
@@ -53,6 +55,11 @@ public:
 
 class SelectionTab : public CIntObject
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::uint64_t thorScenarioSelectionRevision = 1;
+	void advanceThorScenarioSelectionRevision();
+#endif
+
 	struct ListItem : public CIntObject
 	{
 		std::shared_ptr<CLabel> labelAmountOfPlayers;
@@ -124,6 +131,9 @@ public:
 	bool selectFileName(std::string fname);
 	void selectNewestFile(bool skipAutosaves = false);
 	std::shared_ptr<ElementInfo> getSelectedMapInfo() const;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::uint64_t getThorScenarioSelectionRevision() const { return thorScenarioSelectionRevision; }
+#endif
 	void setRequiredHumanPlayers(size_t players);
 	void rememberSave(const std::string & savePath) const;
 	void rememberCurrentSelection();

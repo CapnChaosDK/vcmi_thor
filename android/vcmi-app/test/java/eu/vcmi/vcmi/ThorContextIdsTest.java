@@ -137,16 +137,21 @@ public class ThorContextIdsTest
 		assertEquals(26, ThorActionIds.LOBBY_SET_DIFFICULTY);
 		assertEquals(27, ThorActionIds.LOBBY_START_GAME);
 		assertEquals(28, ThorActionIds.LOBBY_BACK);
+		assertEquals(29, ThorActionIds.LOBBY_PREVIOUS_SCENARIO);
+		assertEquals(30, ThorActionIds.LOBBY_NEXT_SCENARIO);
+		assertEquals(30, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(1L << 24, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SWAP_ARTIFACTS));
 		assertEquals(1L << 25, ThorActionIds.maskFor(ThorActionIds.LOBBY_SET_DIFFICULTY));
 		assertEquals(1L << 26, ThorActionIds.maskFor(ThorActionIds.LOBBY_START_GAME));
 		assertEquals(1L << 27, ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK));
-        assertEquals(Long.MIN_VALUE, ThorActionIds.bitForActionId(64));
-        assertEquals(0L, ThorActionIds.maskFor(29));
-        assertEquals(0L, ThorActionIds.bitForActionId(65));
+		assertEquals(1L << 28, ThorActionIds.maskFor(ThorActionIds.LOBBY_PREVIOUS_SCENARIO));
+		assertEquals(1L << 29, ThorActionIds.maskFor(ThorActionIds.LOBBY_NEXT_SCENARIO));
+		assertEquals(Long.MIN_VALUE, ThorActionIds.bitForActionId(64));
+		assertEquals(0L, ThorActionIds.maskFor(31));
+		assertEquals(0L, ThorActionIds.bitForActionId(65));
 		assertEquals(0, ThorActionIds.maskFor(99));
-        for (int id = 1; id <= 25; ++id)
-            assertEquals(1L << (id - 1), ThorActionIds.maskFor(id));
+		for (int id = 1; id <= 30; ++id)
+			assertEquals(1L << (id - 1), ThorActionIds.maskFor(id));
     }
 
     @Test
@@ -190,7 +195,13 @@ public class ThorContextIdsTest
                 ThorActionIds.LOBBY_START_GAME));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.LOBBY_NEW_GAME_SCENARIO,
                 ThorActionIds.LOBBY_BACK));
+        assertFalse(ThorHapticState.isEligible(ThorContextIds.LOBBY_NEW_GAME_SCENARIO,
+                ThorActionIds.LOBBY_PREVIOUS_SCENARIO));
+        assertFalse(ThorHapticState.isEligible(ThorContextIds.LOBBY_NEW_GAME_SCENARIO,
+                ThorActionIds.LOBBY_NEXT_SCENARIO));
         assertEquals(1L << 25, ThorActionIds.maskFor(ThorActionIds.LOBBY_SET_DIFFICULTY));
+        assertEquals(1L << 28, ThorActionIds.maskFor(ThorActionIds.LOBBY_PREVIOUS_SCENARIO));
+        assertEquals(1L << 29, ThorActionIds.maskFor(ThorActionIds.LOBBY_NEXT_SCENARIO));
         for (int difficulty = 0; difficulty <= 4; ++difficulty)
             assertEquals(difficulty, ThorLobbyScenarioState.difficultyTargetForIndex(difficulty));
         assertEquals(-1, ThorLobbyScenarioState.difficultyTargetForIndex(5));
@@ -203,6 +214,8 @@ public class ThorContextIdsTest
         assertNotEquals(0, R.string.thor_lobby_map_size);
         assertNotEquals(0, R.string.thor_lobby_players);
         assertNotEquals(0, R.string.thor_lobby_difficulty);
+        assertNotEquals(0, R.string.thor_lobby_previous_scenario);
+        assertNotEquals(0, R.string.thor_lobby_next_scenario);
         assertNotEquals(0, R.string.thor_lobby_start);
         assertNotEquals(0, R.string.thor_lobby_back);
         assertNotEquals(0, R.string.thor_lobby_difficulty_easy);
@@ -237,7 +250,7 @@ public class ThorContextIdsTest
         final float width = 1000f;
         final float height = 1160f;
         final float divider = 0.48f * height;
-        for (int control = ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST;
+        for (int control = ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO;
              control <= ThorLobbyScenarioState.CONTROL_BACK; ++control)
         {
             final float[] bounds = ThorLobbyScenarioState.boundsForControl(control, width, height, divider);
@@ -253,6 +266,10 @@ public class ThorContextIdsTest
 
         assertEquals(ThorActionIds.LOBBY_SET_DIFFICULTY,
                 ThorLobbyScenarioState.actionForControl(ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + 2));
+        assertEquals(ThorActionIds.LOBBY_PREVIOUS_SCENARIO,
+                ThorLobbyScenarioState.actionForControl(ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO));
+        assertEquals(ThorActionIds.LOBBY_NEXT_SCENARIO,
+                ThorLobbyScenarioState.actionForControl(ThorLobbyScenarioState.CONTROL_NEXT_SCENARIO));
         assertEquals(2, ThorLobbyScenarioState.difficultyTargetForControl(
                 ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + 2));
         assertEquals(ThorActionIds.LOBBY_START_GAME,
@@ -260,21 +277,71 @@ public class ThorContextIdsTest
         assertEquals(ThorActionIds.LOBBY_BACK,
                 ThorLobbyScenarioState.actionForControl(ThorLobbyScenarioState.CONTROL_BACK));
         assertFalse(ThorLobbyScenarioState.isActionEnabled(0L, ThorActionIds.LOBBY_START_GAME));
+        assertFalse(ThorLobbyScenarioState.isActionEnabled(0L, ThorActionIds.LOBBY_PREVIOUS_SCENARIO));
+        assertFalse(ThorLobbyScenarioState.isActionEnabled(0L, ThorActionIds.LOBBY_NEXT_SCENARIO));
         assertTrue(ThorLobbyScenarioState.isActionEnabled(
                 ThorActionIds.maskFor(ThorActionIds.LOBBY_START_GAME), ThorActionIds.LOBBY_START_GAME));
+        assertTrue(ThorLobbyScenarioState.isActionEnabled(
+                ThorActionIds.maskFor(ThorActionIds.LOBBY_PREVIOUS_SCENARIO), ThorActionIds.LOBBY_PREVIOUS_SCENARIO));
+        assertTrue(ThorLobbyScenarioState.isActionEnabled(
+                ThorActionIds.maskFor(ThorActionIds.LOBBY_NEXT_SCENARIO), ThorActionIds.LOBBY_NEXT_SCENARIO));
+
+        final float[] previous = ThorLobbyScenarioState.boundsForControl(
+                ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO, width, height, divider);
+        final float[] next = ThorLobbyScenarioState.boundsForControl(
+                ThorLobbyScenarioState.CONTROL_NEXT_SCENARIO, width, height, divider);
+        assertFalse(overlaps(previous, next));
+        for (int control = ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST;
+             control <= ThorLobbyScenarioState.CONTROL_BACK; ++control)
+        {
+            assertFalse(overlaps(previous, ThorLobbyScenarioState.boundsForControl(control, width, height, divider)));
+            assertFalse(overlaps(next, ThorLobbyScenarioState.boundsForControl(control, width, height, divider)));
+        }
+        assertTrue(previous[1] > divider);
     }
 
     @Test
-    public void lobbyScenarioTapCannotCrossRevisionOrPresentationRecreation()
+    public void lobbyScenarioGestureRejectsDisabledOutsideStaleAndMultiPointerTaps()
     {
-        final int start = ThorLobbyScenarioState.CONTROL_START;
-        assertTrue(ThorLobbyScenarioState.canCompleteTap(start, start, 12, 12, 4, 4, true, true));
-        assertFalse(ThorLobbyScenarioState.canCompleteTap(start, start, 12, 13, 4, 4, true, true));
-        assertFalse(ThorLobbyScenarioState.canCompleteTap(start, start, 12, 12, 4, 5, true, true));
-        assertFalse(ThorLobbyScenarioState.canCompleteTap(start, ThorLobbyScenarioState.CONTROL_BACK,
-                12, 12, 4, 4, true, true));
-        assertFalse(ThorLobbyScenarioState.canCompleteTap(start, start, 12, 12, 4, 4, false, true));
-        assertFalse(ThorLobbyScenarioState.canCompleteTap(start, start, 12, 12, 4, 4, true, false));
+        final int previous = ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO;
+        ThorLobbyScenarioGesture gesture = new ThorLobbyScenarioGesture();
+        gesture.begin(previous, 12, 4, 0, true);
+        assertTrue(gesture.finish(previous, 1, 0, 12, 4, true, true));
+        for (int control : new int[]{ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST,
+                ThorLobbyScenarioState.CONTROL_START, ThorLobbyScenarioState.CONTROL_BACK})
+        {
+            gesture.begin(control, 12, 4, 0, true);
+            assertTrue(gesture.finish(control, 1, 0, 12, 4, true, true));
+        }
+
+        gesture.begin(previous, 12, 4, 0, false);
+        assertFalse(gesture.finish(previous, 1, 0, 12, 4, true, true));
+        gesture.begin(previous, 12, 4, 0, true);
+        assertFalse(gesture.finish(previous, 1, 0, 12, 4, false, true));
+        gesture.begin(ThorLobbyScenarioState.CONTROL_NONE, 12, 4, 0, true);
+        assertFalse(gesture.finish(ThorLobbyScenarioState.CONTROL_NONE, 1, 0, 12, 4, true, true));
+        gesture.begin(previous, 12, 4, 0, true);
+        assertFalse(gesture.finish(ThorLobbyScenarioState.CONTROL_NEXT_SCENARIO, 1, 0, 12, 4, true, true));
+        gesture.begin(previous, 12, 4, 0, true);
+        assertFalse(gesture.finish(previous, 1, 0, 13, 4, true, true));
+        gesture.begin(previous, 12, 4, 0, true);
+        assertFalse(gesture.finish(previous, 1, 0, 12, 5, true, true));
+        gesture.begin(previous, 12, 4, 0, true);
+        assertFalse(gesture.finish(previous, 1, 0, 12, 4, true, false));
+        gesture.begin(previous, 12, 4, 0, true);
+        assertFalse(gesture.finish(previous, 2, 0, 12, 4, true, true));
+        gesture.begin(previous, 12, 4, 0, true);
+        assertFalse(gesture.finish(previous, 1, 1, 12, 4, true, true));
+        gesture.begin(previous, 12, 4, 0, true);
+        gesture.cancel();
+        assertFalse(gesture.isActive());
+        assertFalse(gesture.finish(previous, 1, 0, 12, 4, true, true));
+    }
+
+    private static boolean overlaps(final float[] first, final float[] second)
+    {
+        return first[0] < second[2] && first[2] > second[0]
+                && first[1] < second[3] && first[3] > second[1];
     }
 
     @Test

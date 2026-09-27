@@ -235,6 +235,8 @@ struct DLL_LINKAGE ThorContextRecord
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
 	std::uint64_t heroPortraitAssetKey = 0;
+	/// Native-only SelectionTab state token. Never passed through JNI.
+	std::uint64_t scenarioSelectionRevision = 0;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.
