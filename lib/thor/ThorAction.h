@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <span>
@@ -41,12 +42,21 @@ enum class ThorAction : std::uint8_t
 	HERO_MEETING_REDISTRIBUTE_STACK = 22,
 	HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT = 23,
 	HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT = 24,
-	HERO_MEETING_SWAP_ARTIFACTS = 25
+	HERO_MEETING_SWAP_ARTIFACTS = 25,
+	LOBBY_SET_DIFFICULTY = 26,
+	LOBBY_START_GAME = 27,
+	LOBBY_BACK = 28
 };
 
-constexpr std::uint32_t thorActionMask(ThorAction action)
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::LOBBY_BACK);
+static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
+	"Thor action IDs must fit in the 64-bit action-mask contract");
+
+constexpr std::uint64_t thorActionMask(ThorAction action)
 {
-	return action == ThorAction::NONE ? 0 : 1U << (static_cast<std::uint8_t>(action) - 1U);
+	const auto actionId = static_cast<std::uint8_t>(action);
+	return actionId == 0 || actionId > std::numeric_limits<std::uint64_t>::digits
+		? 0 : std::uint64_t{1} << (actionId - 1U);
 }
 
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
@@ -63,7 +73,7 @@ DLL_LINKAGE std::optional<ThorBulkArtifactOperation> thorBulkArtifactOperation(T
 DLL_LINKAGE bool canExecuteThorBulkArtifactAction(const ThorContextRecord & context,
 	const ThorHeroMeetingArtifacts & currentArtifacts, bool makingTurn, bool pickedArtifact,
 	int leftOwner, int rightOwner, int playerId);
-DLL_LINKAGE bool shouldRestoreThorBulkArtifactActions(bool serverSuccess, std::uint32_t enabledActionMask);
+DLL_LINKAGE bool shouldRestoreThorBulkArtifactActions(bool serverSuccess, std::uint64_t enabledActionMask);
 
 struct DLL_LINKAGE ThorActionRequest
 {
@@ -146,6 +156,10 @@ enum class ThorActionValidation
 	UNAVAILABLE,
 	INVALID_TARGET
 };
+
+DLL_LINKAGE ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & request,
+	const ThorContextRecord & context, bool exactTopOwner, bool scenarioTabActive, bool authoritative,
+	bool mapAvailable, bool startAvailable);
 
 struct DLL_LINKAGE ThorActionAcceptance
 {

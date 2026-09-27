@@ -48,8 +48,8 @@ public:
 	void publishThorContext(std::uint64_t revision, const std::string & contextId,
 							const std::string & title, const std::string & status,
 							const ThorContextDetails & details = {}, std::uint64_t heroPortraitAssetKey = 0);
-	void publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask,
-		std::uint32_t activeActionMask);
+	void publishThorActionState(std::uint64_t revision, std::uint64_t enabledActionMask,
+		std::uint64_t activeActionMask);
 	void acknowledgeThorAction(std::uint64_t revision, ThorAction action, std::uint64_t submittedRevision = 0);
 	void publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes);
 	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);

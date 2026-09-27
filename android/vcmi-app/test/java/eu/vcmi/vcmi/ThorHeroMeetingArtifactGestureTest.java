@@ -73,7 +73,10 @@ public class ThorHeroMeetingArtifactGestureTest
         assertEquals(24, ThorActionIds.artifactBulkActionForButton(2));
         assertEquals(ThorActionIds.NONE, ThorActionIds.artifactBulkActionForButton(3));
         for (int action = 1; action <= 25; ++action)
-            assertEquals(1 << (action - 1), ThorActionIds.maskFor(action));
-        assertEquals(0, ThorActionIds.maskFor(26));
+            assertEquals(1L << (action - 1), ThorActionIds.maskFor(action));
+        assertEquals(1L << 25, ThorActionIds.maskFor(26));
+        assertEquals(1L << 26, ThorActionIds.maskFor(27));
+        assertEquals(1L << 27, ThorActionIds.maskFor(28));
+        assertEquals(0L, ThorActionIds.maskFor(29));
     }
 }

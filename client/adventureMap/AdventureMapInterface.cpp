@@ -61,8 +61,8 @@
 
 namespace
 {
-	void publishThorInGameContext(ThorInGameContext inGameContext, std::uint32_t enabledActionMask = 0,
-		std::uint32_t activeActionMask = 0, int selectedHeroId = -1, std::string title = {}, std::string status = {},
+	void publishThorInGameContext(ThorInGameContext inGameContext, std::uint64_t enabledActionMask = 0,
+		std::uint64_t activeActionMask = 0, int selectedHeroId = -1, std::string title = {}, std::string status = {},
 		std::vector<ThorHeroEntry> heroes = {}, std::vector<ThorTownEntry> towns = {},
 		std::uint64_t heroPortraitAssetKey = 0)
 	{

@@ -21,14 +21,15 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private final ThorHapticState hapticState;
 
     private ThorSecondScreenPresentation presentation;
+    private long presentationSessionId;
     private long contextRevision;
     private String contextId = ThorContextIds.UNKNOWN;
     private String contextTitle = "";
     private String contextStatus = "";
     private long heroPortraitAssetKey;
     private final String[] contextDetails = new String[ThorContextDetails.COUNT];
-    private int enabledActionMask;
-    private int activeActionMask;
+    private long enabledActionMask;
+    private long activeActionMask;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
@@ -165,7 +166,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     enabledActionMask, activeActionMask);
     }
 
-    void publishActionState(final long revision, final int actionMask, final int activeMask)
+    void publishActionState(final long revision, final long actionMask, final long activeMask)
     {
         if (revision != contextRevision)
             return;
@@ -301,11 +302,15 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         hapticState.resetTransientState();
 
         final ThorSecondScreenPresentation newPresentation = new ThorSecondScreenPresentation(activity, targetDisplay,
-                visualAssets, hapticState.isEnabled(), this::setHapticsEnabled);
+                visualAssets, hapticState.isEnabled(), this::setHapticsEnabled,
+                ++presentationSessionId, this::isCurrentPresentationSession);
         newPresentation.setOnDismissListener(dialog ->
         {
             if (presentation == dialog)
+            {
                 presentation = null;
+                ++presentationSessionId;
+            }
             newPresentation.clearTransientState();
         });
 
@@ -360,6 +365,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         final ThorSecondScreenPresentation oldPresentation = presentation;
         adventureTab = ThorContextIds.ADVENTURE_MAP.equals(contextId) ? oldPresentation.getAdventureTab() : 0;
         presentation = null;
+        ++presentationSessionId;
         hapticState.resetTransientState();
         NativeMethods.clearThorActions();
         oldPresentation.clearTransientState();
@@ -371,6 +377,11 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         {
             Log.w(LOG_TAG, "Unable to dismiss companion presentation cleanly", exception);
         }
+    }
+
+    private boolean isCurrentPresentationSession(final long sessionId)
+    {
+        return presentation != null && presentationSessionId == sessionId;
     }
 
     private void setHapticsEnabled(final boolean enabled)

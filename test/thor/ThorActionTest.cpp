@@ -33,7 +33,10 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(23), ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT);
 	EXPECT_EQ(thorActionFromId(24), ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT);
 	EXPECT_EQ(thorActionFromId(25), ThorAction::HERO_MEETING_SWAP_ARTIFACTS);
-	EXPECT_EQ(thorActionFromId(26), std::nullopt);
+	EXPECT_EQ(thorActionFromId(26), ThorAction::LOBBY_SET_DIFFICULTY);
+	EXPECT_EQ(thorActionFromId(27), ThorAction::LOBBY_START_GAME);
+	EXPECT_EQ(thorActionFromId(28), ThorAction::LOBBY_BACK);
+	EXPECT_EQ(thorActionFromId(29), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -179,6 +182,12 @@ TEST(ThorActionTest, AllowsOnlyActionsForTheirExactContext)
 
 TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 {
+	for(int id = 1; id <= 25; ++id)
+	{
+		const auto action = thorActionFromId(id);
+		ASSERT_TRUE(action);
+		EXPECT_EQ(thorActionMask(*action), std::uint64_t{1} << (id - 1));
+	}
 	EXPECT_EQ(thorActionMask(ThorAction::NEXT_HERO), 16);
 	EXPECT_EQ(thorActionMask(ThorAction::MOVE_HERO), 32);
 	EXPECT_EQ(thorActionMask(ThorAction::TOGGLE_HERO_SLEEP), 64);
@@ -200,6 +209,75 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT), 4194304);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT), 8388608);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_MEETING_SWAP_ARTIFACTS), 16777216);
+	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY), std::uint64_t{1} << 25);
+	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_START_GAME), std::uint64_t{1} << 26);
+	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_BACK), std::uint64_t{1} << 27);
+	EXPECT_EQ(thorActionMask(static_cast<ThorAction>(64)), std::uint64_t{1} << 63);
+	EXPECT_EQ(thorActionMask(static_cast<ThorAction>(65)), 0);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 28);
+}
+
+TEST(ThorActionTest, LobbyActionsAreScopedAndValidateDifficultyTargets)
+{
+	ThorContextRecord context;
+	context.revision = 17;
+	context.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
+	context.enabledActionMask = thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY)
+		| thorActionMask(ThorAction::LOBBY_START_GAME) | thorActionMask(ThorAction::LOBBY_BACK);
+
+	for(int difficulty = 0; difficulty <= 4; ++difficulty)
+	{
+		ThorActionRequest request{.revision = 17, .action = ThorAction::LOBBY_SET_DIFFICULTY, .targetId = difficulty};
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	}
+	for(const int invalid : {-1, 5})
+	{
+		ThorActionRequest request{.revision = 17, .action = ThorAction::LOBBY_SET_DIFFICULTY, .targetId = invalid};
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	}
+
+	ThorActionRequest stale{.revision = 16, .action = ThorAction::LOBBY_BACK};
+	EXPECT_EQ(validateThorActionRequest(stale, context), ThorActionValidation::STALE_REVISION);
+	ThorActionRequest unavailable{.revision = 17, .action = ThorAction::LOBBY_START_GAME};
+	context.enabledActionMask &= ~thorActionMask(ThorAction::LOBBY_START_GAME);
+	EXPECT_EQ(validateThorActionRequest(unavailable, context), ThorActionValidation::UNAVAILABLE);
+	context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_START_GAME);
+
+	for(const auto action : {ThorAction::LOBBY_SET_DIFFICULTY, ThorAction::LOBBY_START_GAME, ThorAction::LOBBY_BACK})
+	{
+		EXPECT_TRUE(isThorActionAllowedInContext(action, ThorContextIds::LOBBY_NEW_GAME_SCENARIO));
+		EXPECT_FALSE(isThorActionAllowedInContext(action, ThorContextIds::LOBBY_NEW_GAME_OPTIONS));
+		EXPECT_FALSE(isThorActionAllowedInContext(action, ThorContextIds::ADVENTURE_MAP));
+		EXPECT_FALSE(thorActionAcceptance(ThorActionRequest{.revision = 17, .action = action},
+			ThorActionValidation::VALID, true));
+	}
+}
+
+TEST(ThorActionTest, LobbyExecutionRequiresLiveOwnerTabAuthorityAndStartAvailability)
+{
+	ThorContextRecord context;
+	context.revision = 8;
+	context.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
+	context.enabledActionMask = thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY)
+		| thorActionMask(ThorAction::LOBBY_START_GAME) | thorActionMask(ThorAction::LOBBY_BACK);
+	ThorActionRequest difficulty{.revision = 8, .action = ThorAction::LOBBY_SET_DIFFICULTY, .targetId = 3};
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, false, true, true, true, true),
+		ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, false, true, true, true),
+		ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, true, false, true, true),
+		ThorActionValidation::UNAVAILABLE);
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, true, true, false, true),
+		ThorActionValidation::UNAVAILABLE);
+
+	ThorActionRequest start{.revision = 8, .action = ThorAction::LOBBY_START_GAME};
+	EXPECT_EQ(validateThorLobbyActionRequest(start, context, true, true, true, true, false),
+		ThorActionValidation::UNAVAILABLE);
+	EXPECT_EQ(validateThorLobbyActionRequest(start, context, true, true, true, false, true),
+		ThorActionValidation::UNAVAILABLE);
+	ThorActionRequest back{.revision = 8, .action = ThorAction::LOBBY_BACK};
+	EXPECT_EQ(validateThorLobbyActionRequest(back, context, true, true, false, false, false),
+		ThorActionValidation::VALID);
 }
 
 TEST(ThorActionTest, HeroMeetingRedistributionDecodingIsBoundedAndRejectsMalformedPlans)

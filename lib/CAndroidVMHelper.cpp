@@ -9,6 +9,8 @@
  */
 #include "CAndroidVMHelper.h"
 
+#include <bit>
+
 #ifdef VCMI_ANDROID
 static JavaVM * vmCache = nullptr;
 
@@ -114,14 +116,15 @@ void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::str
 		}, true);
 }
 
-void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask,
-	std::uint32_t activeActionMask)
+void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint64_t enabledActionMask,
+	std::uint64_t activeActionMask)
 {
-	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorActionState", "(JII)V",
+	static_assert(sizeof(jlong) == sizeof(std::uint64_t));
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorActionState", "(JJJ)V",
 		[revision, enabledActionMask, activeActionMask](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
-			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(enabledActionMask),
-				static_cast<jint>(activeActionMask));
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), std::bit_cast<jlong>(enabledActionMask),
+				std::bit_cast<jlong>(activeActionMask));
 		}, true);
 }
 
