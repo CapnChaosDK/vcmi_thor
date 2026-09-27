@@ -260,9 +260,14 @@ public class ThorContextIdsTest
         }
         assertEquals(ThorLobbyScenarioState.CONTROL_NONE,
                 ThorLobbyScenarioState.controlAt(0f, 0f, width, height, divider));
+        final float[] firstDifficulty = ThorLobbyScenarioState.boundsForControl(
+                ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST, width, height, divider);
+        final float[] start = ThorLobbyScenarioState.boundsForControl(
+                ThorLobbyScenarioState.CONTROL_START, width, height, divider);
+        assertTrue(firstDifficulty[3] < start[1]);
         assertEquals(ThorLobbyScenarioState.CONTROL_NONE,
-                ThorLobbyScenarioState.controlAt(width / 2f, divider + 0.53f * (height - divider),
-                        width, height, divider));
+                ThorLobbyScenarioState.controlAt((firstDifficulty[0] + firstDifficulty[2]) / 2f,
+                        (firstDifficulty[3] + start[1]) / 2f, width, height, divider));
 
         assertEquals(ThorActionIds.LOBBY_SET_DIFFICULTY,
                 ThorLobbyScenarioState.actionForControl(ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + 2));

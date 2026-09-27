@@ -77,6 +77,8 @@ public class ThorHeroMeetingArtifactGestureTest
         assertEquals(1L << 25, ThorActionIds.maskFor(26));
         assertEquals(1L << 26, ThorActionIds.maskFor(27));
         assertEquals(1L << 27, ThorActionIds.maskFor(28));
-        assertEquals(0L, ThorActionIds.maskFor(29));
+        assertEquals(1L << 28, ThorActionIds.maskFor(29));
+        assertEquals(1L << 29, ThorActionIds.maskFor(30));
+        assertEquals(0L, ThorActionIds.maskFor(31));
     }
 }
