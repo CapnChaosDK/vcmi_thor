@@ -59,9 +59,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Phase: Slices 1 through 27 are promoted. Slice 25 PR #11 merged as `b5b9f664e`, Slice 26 PR #12 is merged, and Slice 27 PR #13 merged as product commit `9645eeac4f90c1d9e021fdc4854822478a2ad492` on 2026-09-26.
-- Status: Slices 1 through 28 have passed hardware validation on their exact candidates. Slice 27 candidate `950e8aaf7760641b0dedb28dd9878cb0d6c675f2` passed Thor CI and its full checksum-specific device checklist before PR #13 was merged. Slice 28 has passed its exact-candidate hardware checklist; PR #15 remains open pending product-tree promotion.
-- Current work: Slice 28 adds player-installed hero portraits to the Adventure, Hero Window, and Hero Meeting decks. Implementation PR #15 is open. Candidate `c5bc6062b6a04b8617eeaaf5d61894af99d57c13` passed Thor CI run [`36268779478`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36268779478), including focused native and Android tests, ARM64 APK build, package verification, and checksum verification. Artifact [`thor-candidate-arm64-36268779478`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36268779478/artifacts/10914986971) upload digest is `a186e92f5bf6a2dfe9fc02779949e3b9912c99a3c2f74b3015328ab0ba780682`; its receipt records package `is.xyz.vcmi.thor`, ABI `arm64-v8a`, and APK SHA-256 `63e6227d2ea40fab2f1ad78f4a78b700c943e051cedbb73d40af94b555f43d7d`. On 2026-09-27, this checksum-verified APK was installed in place on an AYN Thor with `adb install -r -d`; the installed `base.apk` SHA-256 matched the receipt and the package launch smoke check passed. The user confirmed all ten hardware checklist items passed on this exact installed APK and checksum. Product-tree promotion remains pending. Slice 27's implementation, CI/device receipt, and Slice 26/25 validation history are recorded below.
+- Phase: Slices 1 through 28 are promoted. Slice 25 PR #11 merged as `b5b9f664e`, Slice 26 PR #12 is merged, Slice 27 PR #13 merged as product commit `9645eeac4f90c1d9e021fdc4854822478a2ad492`, and Slice 28 PR #15 is merged after its exact-candidate hardware validation.
+- Status: Slices 1 through 28 have passed hardware validation on their exact candidates. Slice 27 candidate `950e8aaf7760641b0dedb28dd9878cb0d6c675f2` passed Thor CI and its full checksum-specific device checklist before PR #13 was merged. Slice 28 passed its exact-candidate hardware checklist and PR #15 has been merged into the product branch.
+- Current work: Slice 29 adds system-respecting haptics for accepted lower-deck semantic actions. Slice 28 candidate `c5bc6062b6a04b8617eeaaf5d61894af99d57c13` passed Thor CI run [`36268779478`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36268779478), including focused native and Android tests, ARM64 APK build, package verification, and checksum verification. Artifact [`thor-candidate-arm64-36268779478`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36268779478/artifacts/10914986971) upload digest is `a186e92f5bf6a2dfe9fc02779949e3b9912c99a3c2f74b3015328ab0ba780682`; its receipt records package `is.xyz.vcmi.thor`, ABI `arm64-v8a`, and APK SHA-256 `63e6227d2ea40fab2f1ad78f4a78b700c943e051cedbb73d40af94b555f43d7d`. On 2026-09-27, this checksum-verified APK was installed in place on an AYN Thor with `adb install -r -d`; the installed `base.apk` SHA-256 matched the receipt and the package launch smoke check passed. The user confirmed all ten hardware checklist items passed on this exact installed APK and checksum. Slice 27's implementation, CI/device receipt, and Slice 26/25 validation history are recorded below.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
@@ -342,9 +342,10 @@ Approved by the user on 2026-09-13. This slice adds one new read-only context, `
 
 ### Milestone 12: haptics
 
-- Persistent setting that respects Android system touch feedback.
-- Exactly one tick for an accepted lower-screen semantic action or approved local transition; no feedback for invalid, stale, cancelled, selection-only, inspection, navigation gestures, or non-lower-screen inputs.
-- Test duplicate suppression across Android acceptance and native completion.
+- Persistent Thor-local setting, enabled by default, that respects Android system touch feedback.
+- Exactly one tick follows native acceptance of an eligible lower-deck semantic action. Selection, inspection, navigation, gesture setup/edit/cancel, stale/rejected input, and all upper-screen input stay silent.
+- Turning the setting on may play one system-respecting preview; turning it off is immediately silent.
+- Correlate native acceptance with the originating revision/action and suppress duplicate or stale delivery across context and presentation lifecycle changes.
 
 ## Cross-cutting automated contract backlog
 
@@ -1310,3 +1311,30 @@ Status: `hardware validated`
 8. Test missing or unsupported player/mod portrait art; verify existing text remains clear and interactive.
 9. Recheck upper touch, mouse/keyboard, and controller input; confirm portraits do not steal focus or intercept SDL actions.
 10. Check standard single-display behavior and confirm no new display or portrait work affects the normal VCMI presentation.
+
+## Slice 29 — Lower-deck haptic feedback
+
+- Status: `awaiting CI`.
+- User-visible behavior: a short Android View haptic tick follows successful native execution of an eligible lower-deck Adventure, Battle, or Hero Meeting semantic command. `Haptics: On/Off` appears in the lower deck's Android-only header chrome. The preference defaults to On and persists in Thor app-private `SharedPreferences`.
+- Acceptance boundary: after current-context/revision/availability/identity validation and existing semantic execution return success, `GameEngine::updateFrame()` emits a bounded acknowledgement containing the originating revision and action ID through `CAndroidVMHelper` → `NativeMethods` → `VcmiSDLActivity` → `ThorSecondScreenController`. Rejected, stale, invalid, unavailable, and failed/no-op execution paths emit nothing. Hero Meeting redistribution uses its dedicated accepted execution branch and action ID 22. Selection action IDs 13 and 14 are never acknowledged for haptics.
+- Android responsibility: a small pure-Java policy checks enabled preference, accepted revision/action correlation, context eligibility, duplicate delivery, and a presentation callback token. The active lower Presentation view uses `performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)` with default flags, respecting Android's system touch-feedback preference. Lifecycle dismissal, pause, replacement, and context changes invalidate the transient callback token. Turning Off stores the preference before suppressing future feedback; turning On stores it before one preview tick.
+- Silent interactions: Hero/Town selection, including Next Hero; opening inspection cards; row selection; tabs and pages; army/artifact mode; drag arming; split destination selection and amount editing; redistribution destination/allocation editing; cancellation; and other local navigation/inspection gestures. Upper-display touch, mouse, keyboard, and controller input never enters this acknowledgement path.
+- Automated acceptance: native tests cover success-only acknowledgement policy, stale/unavailable/failure rejection, selection/inspection silence, and redistribution eligibility. Android JVM tests cover enabled/disabled state, one tick per accepted acknowledgement, duplicate and stale/context/presentation rejection, Adventure/Battle/Hero Meeting eligibility, local-operation silence, and preference default/reconstruction persistence contract. Thor CI registers both suites.
+- Regression risks: acknowledgements delivered after a same-context revision refresh; delayed callbacks crossing context or presentation lifetime; preference toggle overlapping an existing touch region; Android system feedback being bypassed; accidental haptics on selected rows or upper controls; and JNI/class-loader threading.
+- Validation state: six Android haptic policy tests passed through the local Java test harness; Android string resources parsed and `git diff --check` passed. The checked-in Gradle/JUnit Android test task and native Thor test binary could not run locally because this checkout has no generated Android build tree/JUnit runtime or configured native dependency toolchain. The permanent Thor workflow is the next authoritative native, Android, and ARM64 package gate. Physical AYN Thor checks remain required before this slice is hardware validated.
+
+### Required AYN Thor hardware checklist
+
+1. Haptics defaults On while Android system touch feedback is enabled.
+2. One successful Adventure semantic action gives exactly one tick.
+3. One successful Battle action gives exactly one tick.
+4. A successful Hero Meeting transfer, split, redistribution, bulk move, or swap gives exactly one tick.
+5. Hero/town selection, row selection, paging, amount editing, inspection/navigation, and cancelled gestures stay silent.
+6. Rapid, stale, rejected, or invalid lower input never gives delayed or duplicate feedback.
+7. Haptics Off persists through presentation toggle/reconnect, background/resume, and app restart.
+8. Haptics On persists and produces one system-respecting preview tick after storing the setting.
+9. Disable Android system touch feedback and confirm Thor stays silent with its own preference On.
+10. Upper touch, keyboard/mouse, and physical controller input never use the Thor haptic path.
+11. Recheck existing Adventure, Battle, and Hero Meeting interaction/focus behavior.
+
+Hardware status remains `awaiting hardware validation` until the checksum-verified CI APK passes this checklist on a physical AYN Thor.

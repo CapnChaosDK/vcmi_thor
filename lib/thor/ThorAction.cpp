@@ -258,6 +258,22 @@ bool shouldRestoreThorBulkArtifactActions(bool serverSuccess, std::uint32_t enab
 	return !serverSuccess || enabledActionMask == 0;
 }
 
+bool isThorActionHapticEligible(ThorAction action)
+{
+	return action >= ThorAction::MOVE_HERO && action <= ThorAction::HERO_MEETING_SWAP_ARTIFACTS
+		&& action != ThorAction::NEXT_HERO && action != ThorAction::SELECT_HERO
+		&& action != ThorAction::SELECT_TOWN;
+}
+
+std::optional<ThorActionAcceptance> thorActionAcceptance(
+	const ThorActionRequest & request, ThorActionValidation validation, bool executed)
+{
+	if(validation != ThorActionValidation::VALID || !executed || request.revision == 0
+		|| !isThorActionHapticEligible(request.action))
+		return std::nullopt;
+	return ThorActionAcceptance{request.revision, request.action};
+}
+
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)
 {
 	if(!thorActionFromId(static_cast<int>(request.action)))

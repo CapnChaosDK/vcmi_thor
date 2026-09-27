@@ -18,6 +18,7 @@
 #include <string>
 
 #include "thor/ThorContext.h"
+#include "thor/ThorAction.h"
 #include "thor/ThorVisualAssetCache.h"
 
 /// helper class that allows access to java vm to communicate with java code from native
@@ -49,6 +50,7 @@ public:
 							const ThorContextDetails & details = {}, std::uint64_t heroPortraitAssetKey = 0);
 	void publishThorActionState(std::uint64_t revision, std::uint32_t enabledActionMask,
 		std::uint32_t activeActionMask);
+	void acknowledgeThorAction(std::uint64_t revision, ThorAction action);
 	void publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes);
 	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);
 	void publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies);

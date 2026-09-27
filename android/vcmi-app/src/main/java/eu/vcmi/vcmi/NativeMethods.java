@@ -54,6 +54,21 @@ public class NativeMethods
     public static native void clearThorActions();
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void acknowledgeThorAction(final long revision, final int actionId)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+
+        final VcmiSDLActivity activity = (VcmiSDLActivity) ctx;
+        final long callbackToken = activity.captureThorHapticCallbackToken();
+        activity.runOnUiThread(() -> activity.acknowledgeThorAction(revision, actionId, callbackToken));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static boolean hasThorVisualAsset(final long key)
     {
         if (!BuildConfig.AYN_THOR_BUILD || !ThorVisualAssetKey.isValid(key))

@@ -37,6 +37,33 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
+TEST(ThorActionTest, HapticAcceptanceRequiresValidSuccessfullyExecutedSemanticAction)
+{
+	ThorActionRequest request;
+	request.revision = 42;
+	request.action = ThorAction::BATTLE_WAIT;
+	const auto accepted = thorActionAcceptance(request, ThorActionValidation::VALID, true);
+	ASSERT_TRUE(accepted);
+	EXPECT_EQ(accepted->revision, 42);
+	EXPECT_EQ(accepted->action, ThorAction::BATTLE_WAIT);
+
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::STALE_REVISION, true));
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::UNAVAILABLE, true));
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, false));
+	request.action = ThorAction::NEXT_HERO;
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	request.action = ThorAction::SELECT_HERO;
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	request.action = ThorAction::SELECT_TOWN;
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	request.action = ThorAction::OPEN_QUEST_LOG;
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	request.action = ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
+	EXPECT_TRUE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	request.revision = 0;
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+}
+
 TEST(ThorActionTest, HeroMeetingPairEncodingCoversEveryCrossArmySlotPair)
 {
 	for(int source = 0; source < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE * 2); ++source)

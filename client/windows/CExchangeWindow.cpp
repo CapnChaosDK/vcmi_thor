@@ -656,8 +656,7 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		executed = true;
 		break;
 	case ThorAction::HERO_MEETING_SWAP_ARMIES:
-		controller.swapArmy();
-		executed = true;
+		executed = controller.swapArmy();
 		break;
 	case ThorAction::HERO_MEETING_SPLIT_STACK:
 	{

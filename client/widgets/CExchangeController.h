@@ -16,7 +16,7 @@ class CExchangeController
 {
 public:
 	CExchangeController(ObjectInstanceID hero1, ObjectInstanceID hero2);
-	void swapArmy();
+	bool swapArmy();
 	void moveArmy(bool leftToRight, std::optional<SlotID> heldSlot);
 	void moveStack(bool leftToRight, SlotID sourceSlot);
 	bool canMoveStack(bool leftToRight, SlotID sourceSlot) const;

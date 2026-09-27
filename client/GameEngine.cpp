@@ -42,6 +42,7 @@
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../lib/CAndroidVMHelper.h"
 #include "../lib/thor/ThorAction.h"
 #include "../lib/thor/ThorContext.h"
 #endif
@@ -190,6 +191,10 @@ void GameEngine::updateFrame()
 		}
 		if(exchangeWindow->executeThorRedistribution(*request))
 		{
+			const ThorActionRequest acceptedRequest{.revision = request->revision,
+				.action = ThorAction::HERO_MEETING_REDISTRIBUTE_STACK};
+			if(const auto acceptance = thorActionAcceptance(acceptedRequest, ThorActionValidation::VALID, true))
+				CAndroidVMHelper().acknowledgeThorAction(acceptance->revision, acceptance->action);
 			thorActionQueue().clear();
 			thorHeroMeetingRedistributionQueue().clear();
 			thorActionExecuted = true;
@@ -295,6 +300,8 @@ void GameEngine::updateFrame()
 			logGlobal->debug("Thor action rejected: availability changed");
 			continue;
 		}
+		if(const auto acceptance = thorActionAcceptance(*request, ThorActionValidation::VALID, executed))
+			CAndroidVMHelper().acknowledgeThorAction(acceptance->revision, acceptance->action);
 
 		logGlobal->debug("Thor action executed: %d", static_cast<int>(request->action));
 		thorActionQueue().clear();

@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.view.Display;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -17,18 +18,28 @@ import android.view.WindowManager;
 
 final class ThorSecondScreenPresentation extends Presentation
 {
+    interface HapticsChangeListener
+    {
+        void onHapticsChanged(boolean enabled);
+    }
+
     // Measured AYN Thor lower panel reference: 1080 x 1240 px at approximately 369 dpi.
     // The shell scales from these proportions and remains safe on other presentation displays.
     private static final float REFERENCE_WIDTH = 1080f;
     private static final float REFERENCE_HEIGHT = 1240f;
     private ThorFoundationView foundationView;
     private final ThorVisualAssetCache<Bitmap> visualAssets;
+    private final HapticsChangeListener hapticsChangeListener;
+    private final boolean hapticsEnabled;
 
     ThorSecondScreenPresentation(final Context context, final Display display,
-                                 final ThorVisualAssetCache<Bitmap> visualAssets)
+                                 final ThorVisualAssetCache<Bitmap> visualAssets,
+                                 final boolean hapticsEnabled, final HapticsChangeListener hapticsChangeListener)
     {
         super(context, display);
         this.visualAssets = visualAssets;
+        this.hapticsEnabled = hapticsEnabled;
+        this.hapticsChangeListener = hapticsChangeListener;
     }
 
     @Override
@@ -48,7 +59,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         }
 
-        foundationView = new ThorFoundationView(getContext(), visualAssets);
+        foundationView = new ThorFoundationView(getContext(), visualAssets, hapticsEnabled, hapticsChangeListener);
         foundationView.setContentDescription(getContext().getString(R.string.thor_deck_title));
         setContentView(foundationView);
     }
@@ -98,6 +109,18 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.clearTransientState();
     }
 
+    void setHapticsEnabled(final boolean enabled, final boolean preview)
+    {
+        if (foundationView != null)
+            foundationView.setHapticsEnabled(enabled, preview);
+    }
+
+    void performAcceptedHaptic()
+    {
+        if (foundationView != null)
+            foundationView.performAcceptedHaptic();
+    }
+
     int getAdventureTab()
     {
         return foundationView == null ? 0 : foundationView.adventureTab;
@@ -118,6 +141,10 @@ final class ThorSecondScreenPresentation extends Presentation
         private static final int PARCHMENT_DARK = Color.rgb(91, 69, 42);
         private static final int GOLD = Color.rgb(205, 166, 66);
         private static final int TEXT = Color.rgb(244, 229, 184);
+
+        private final HapticsChangeListener hapticsChangeListener;
+        private boolean hapticsEnabled;
+        private boolean hapticsTogglePressed;
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint iconPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -170,16 +197,20 @@ final class ThorSecondScreenPresentation extends Presentation
             }
         };
 
-        ThorFoundationView(final Context context, final ThorVisualAssetCache<Bitmap> visualAssets)
+        ThorFoundationView(final Context context, final ThorVisualAssetCache<Bitmap> visualAssets,
+                           final boolean hapticsEnabled, final HapticsChangeListener hapticsChangeListener)
         {
             super(context);
             this.visualAssets = visualAssets;
+            this.hapticsEnabled = hapticsEnabled;
+            this.hapticsChangeListener = hapticsChangeListener;
             title = context.getString(R.string.thor_deck_title);
             status = context.getString(R.string.thor_deck_status);
             touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
             setBackgroundColor(BACKGROUND);
             setClickable(true);
             setFocusable(false);
+            setHapticFeedbackEnabled(true);
         }
 
         void clearTransientState()
@@ -534,7 +565,15 @@ final class ThorSecondScreenPresentation extends Presentation
                     if (portraitDrawn)
                         portraitTextLeft = icon.right + bevel;
                 }
-                if (portraitDrawn)
+                if (adventure)
+                {
+                    final float titleLeft = portraitDrawn ? portraitTextLeft : frame.left + bevel * 3f;
+                    final float titleRight = Math.min(frame.right - bevel * 3f,
+                            hapticsToggleBounds().left - bevel);
+                    drawFittedText(canvas, title, (titleLeft + titleRight) * 0.5f, titleY,
+                            Math.max(0f, titleRight - titleLeft), Math.min(42f * density, contentHeight * 0.09f));
+                }
+                else if (portraitDrawn)
                 {
                     drawFittedText(canvas, title, (portraitTextLeft + frame.right - bevel * 3f) * 0.5f,
                             titleY, frame.right - bevel * 3f - portraitTextLeft,
@@ -564,12 +603,36 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.BATTLE_TACTICS.equals(contextId))
                 drawBattleActions(canvas, frame, dividerY, bevel, density);
+            drawHapticsToggle(canvas, density);
         }
 
         @Override
         public boolean onTouchEvent(final android.view.MotionEvent event)
         {
             final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN && hapticsToggleBounds().contains(event.getX(), event.getY()))
+            {
+                hapticsTogglePressed = true;
+                return true;
+            }
+            if (hapticsTogglePressed)
+            {
+                if (action == MotionEvent.ACTION_UP)
+                {
+                    final boolean toggle = hapticsToggleBounds().contains(event.getX(), event.getY());
+                    hapticsTogglePressed = false;
+                    if (toggle)
+                    {
+                        hapticsEnabled = !hapticsEnabled;
+                        hapticsChangeListener.onHapticsChanged(hapticsEnabled);
+                        invalidate();
+                        performClick();
+                    }
+                }
+                else if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_POINTER_DOWN)
+                    hapticsTogglePressed = false;
+                return true;
+            }
             if (heroMeetingTouchSequence && action == MotionEvent.ACTION_DOWN)
             {
                 cancelHeroMeetingGesture();
@@ -726,6 +789,52 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             super.performClick();
             return true;
+        }
+
+        void setHapticsEnabled(final boolean enabled, final boolean preview)
+        {
+            hapticsEnabled = enabled;
+            invalidate();
+            if (preview)
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+        }
+
+        void performAcceptedHaptic()
+        {
+            if (hapticsEnabled)
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+        }
+
+        private RectF hapticsToggleBounds()
+        {
+            final RectF frame = adventureFrame();
+            final float density = getResources().getDisplayMetrics().density;
+            final float bevel = adventureBevel();
+            final float width = Math.min(138f * density, frame.width() * 0.36f);
+            final float height = 36f * density;
+            return new RectF(frame.right - bevel * 3f - width, frame.top + bevel * 2f,
+                    frame.right - bevel * 3f, frame.top + bevel * 2f + height);
+        }
+
+        private void drawHapticsToggle(final Canvas canvas, final float density)
+        {
+            final RectF button = hapticsToggleBounds();
+            final float bevel = adventureBevel();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(hapticsEnabled ? STONE_DARK : PARCHMENT_DARK);
+            canvas.drawRoundRect(button, bevel, bevel, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(Math.max(1f, bevel * 0.35f));
+            paint.setColor(GOLD);
+            canvas.drawRoundRect(button, bevel, bevel, paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            paint.setTextAlign(Paint.Align.CENTER);
+            drawFittedText(canvas, getContext().getString(hapticsEnabled
+                    ? R.string.thor_haptics_on : R.string.thor_haptics_off), button.centerX(), button.centerY(),
+                    button.width() * 0.9f, Math.min(16f * density, button.height() * 0.48f));
+            paint.setFakeBoldText(false);
         }
 
         private void drawHeroMeeting(final Canvas canvas, final RectF frame, final float bevel, final float density)

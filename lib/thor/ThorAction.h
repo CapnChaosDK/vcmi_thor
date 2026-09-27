@@ -52,6 +52,7 @@ constexpr std::uint32_t thorActionMask(ThorAction action)
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
+DLL_LINKAGE bool isThorActionHapticEligible(ThorAction action);
 
 enum class ThorBulkArtifactOperation : std::uint8_t { LEFT_TO_RIGHT, RIGHT_TO_LEFT, SWAP };
 DLL_LINKAGE std::optional<ThorBulkArtifactOperation> thorBulkArtifactOperation(ThorAction action);
@@ -141,6 +142,15 @@ enum class ThorActionValidation
 	UNAVAILABLE,
 	INVALID_TARGET
 };
+
+struct DLL_LINKAGE ThorActionAcceptance
+{
+	std::uint64_t revision = 0;
+	ThorAction action = ThorAction::NONE;
+};
+
+DLL_LINKAGE std::optional<ThorActionAcceptance> thorActionAcceptance(
+	const ThorActionRequest & request, ThorActionValidation validation, bool executed);
 
 DLL_LINKAGE ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context);
 DLL_LINKAGE ThorActionValidation validateThorHeroMeetingRedistributionRequest(

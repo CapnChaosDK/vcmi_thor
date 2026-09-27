@@ -25,10 +25,11 @@ CExchangeController::CExchangeController(ObjectInstanceID hero1, ObjectInstanceI
 {
 }
 
-void CExchangeController::swapArmy()
+bool CExchangeController::swapArmy()
 {
 	const auto & leftSlots = left->Slots();
 	const auto & rightSlots = right->Slots();
+	bool submittedChange = false;
 
 	auto leftIt = leftSlots.begin();
 	auto rightIt = rightSlots.begin();
@@ -38,7 +39,10 @@ void CExchangeController::swapArmy()
 	for (SlotID slotID(0); slotID < GameConstants::ARMY_SIZE; ++slotID)
 	{
 		if (left->hasStackAtSlot(slotID) && right->hasStackAtSlot(slotID))
+		{
 			GAME->interface()->cb->swapCreatures(left, right, slotID, slotID);
+			submittedChange = true;
+		}
 	}
 
 	// Swap pairs of stacks in different slots and correct their positions
@@ -60,6 +64,7 @@ void CExchangeController::swapArmy()
 
 		GAME->interface()->cb->swapCreatures(left, left, leftIt->first, rightIt->first);
 		GAME->interface()->cb->swapCreatures(right, right, rightIt->first, leftIt->first);
+		submittedChange = true;
 
 		leftIt++;
 		rightIt++;
@@ -69,11 +74,18 @@ void CExchangeController::swapArmy()
 	// [A] [ ] => [ ] [A]
 	for(; leftIt != leftSlots.end(); leftIt++)
 		if (!right->hasStackAtSlot(leftIt->first))
+		{
 			GAME->interface()->cb->swapCreatures(left, right, leftIt->first, leftIt->first);
+			submittedChange = true;
+		}
 
 	for(; rightIt != rightSlots.end(); rightIt++)
 		if (!left->hasStackAtSlot(rightIt->first))
+		{
 			GAME->interface()->cb->swapCreatures(left, right, rightIt->first, rightIt->first);
+			submittedChange = true;
+		}
+	return submittedChange;
 }
 
 void CExchangeController::moveArmy(bool leftToRight, std::optional<SlotID> heldSlot)
