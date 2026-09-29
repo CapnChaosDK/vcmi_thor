@@ -22,6 +22,8 @@
     <string name="thor_lobby_map_size">Map size</string>
     <string name="thor_lobby_players">Players</string>
     <string name="thor_lobby_difficulty">Difficulty</string>
+    <string name="thor_lobby_previous_scenario">Previous scenario</string>
+    <string name="thor_lobby_next_scenario">Next scenario</string>
     <string name="thor_lobby_start">Start</string>
     <string name="thor_lobby_back">Back</string>
     <string name="thor_lobby_difficulty_easy">Easy</string>

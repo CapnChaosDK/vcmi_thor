@@ -36,7 +36,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(26), ThorAction::LOBBY_SET_DIFFICULTY);
 	EXPECT_EQ(thorActionFromId(27), ThorAction::LOBBY_START_GAME);
 	EXPECT_EQ(thorActionFromId(28), ThorAction::LOBBY_BACK);
-	EXPECT_EQ(thorActionFromId(29), std::nullopt);
+	EXPECT_EQ(thorActionFromId(29), ThorAction::LOBBY_PREVIOUS_SCENARIO);
+	EXPECT_EQ(thorActionFromId(30), ThorAction::LOBBY_NEXT_SCENARIO);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -58,6 +59,12 @@ TEST(ThorActionTest, HapticAcceptanceRequiresValidSuccessfullyExecutedSemanticAc
 	request.action = ThorAction::SELECT_HERO;
 	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
 	request.action = ThorAction::SELECT_TOWN;
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	request.action = ThorAction::LOBBY_PREVIOUS_SCENARIO;
+	EXPECT_FALSE(isThorActionHapticEligible(request.action));
+	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	request.action = ThorAction::LOBBY_NEXT_SCENARIO;
+	EXPECT_FALSE(isThorActionHapticEligible(request.action));
 	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
 	request.action = ThorAction::OPEN_QUEST_LOG;
 	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
@@ -170,6 +177,10 @@ TEST(ThorActionTest, AllowsOnlyActionsForTheirExactContext)
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_TRANSFER_STACK, ThorContextIds::HERO_MEETING));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_SPLIT_STACK, ThorContextIds::HERO_MEETING));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK, ThorContextIds::HERO_MEETING));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorContextIds::LOBBY_NEW_GAME_SCENARIO));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_NEXT_SCENARIO, ThorContextIds::LOBBY_NEW_GAME_SCENARIO));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorContextIds::LOBBY_NEW_GAME_OPTIONS));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::LOBBY_NEXT_SCENARIO, ThorContextIds::ADVENTURE_MAP));
 	for(const auto action : {ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT,
 		ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT, ThorAction::HERO_MEETING_SWAP_ARTIFACTS})
 	{
@@ -212,9 +223,25 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY), std::uint64_t{1} << 25);
 	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_START_GAME), std::uint64_t{1} << 26);
 	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_BACK), std::uint64_t{1} << 27);
+	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_PREVIOUS_SCENARIO), std::uint64_t{1} << 28);
+	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO), std::uint64_t{1} << 29);
 	EXPECT_EQ(thorActionMask(static_cast<ThorAction>(64)), std::uint64_t{1} << 63);
 	EXPECT_EQ(thorActionMask(static_cast<ThorAction>(65)), 0);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 28);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 30);
+}
+
+TEST(ThorActionTest, ScenarioNavigationUsesTheFilteredSortedSelectableOrderAndSkipsFolders)
+{
+	// These flags represent the current upper SelectionTab::curItems order after filtering and sorting.
+	const std::array<std::uint8_t, 6> selectableEntries{0, 1, 0, 1, 1, 0};
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 1, ThorAction::LOBBY_NEXT_SCENARIO), 3);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 3, ThorAction::LOBBY_PREVIOUS_SCENARIO), 1);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 3, ThorAction::LOBBY_NEXT_SCENARIO), 4);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 1, ThorAction::LOBBY_PREVIOUS_SCENARIO), std::nullopt);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 4, ThorAction::LOBBY_NEXT_SCENARIO), std::nullopt);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 0, ThorAction::LOBBY_NEXT_SCENARIO), std::nullopt);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 6, ThorAction::LOBBY_PREVIOUS_SCENARIO), std::nullopt);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 1, ThorAction::LOBBY_BACK), std::nullopt);
 }
 
 TEST(ThorActionTest, LobbyActionsAreScopedAndValidateDifficultyTargets)
@@ -223,7 +250,8 @@ TEST(ThorActionTest, LobbyActionsAreScopedAndValidateDifficultyTargets)
 	context.revision = 17;
 	context.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
 	context.enabledActionMask = thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY)
-		| thorActionMask(ThorAction::LOBBY_START_GAME) | thorActionMask(ThorAction::LOBBY_BACK);
+		| thorActionMask(ThorAction::LOBBY_START_GAME) | thorActionMask(ThorAction::LOBBY_BACK)
+		| thorActionMask(ThorAction::LOBBY_PREVIOUS_SCENARIO) | thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO);
 
 	for(int difficulty = 0; difficulty <= 4; ++difficulty)
 	{
@@ -242,8 +270,16 @@ TEST(ThorActionTest, LobbyActionsAreScopedAndValidateDifficultyTargets)
 	context.enabledActionMask &= ~thorActionMask(ThorAction::LOBBY_START_GAME);
 	EXPECT_EQ(validateThorActionRequest(unavailable, context), ThorActionValidation::UNAVAILABLE);
 	context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_START_GAME);
+	for(const auto action : {ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorAction::LOBBY_NEXT_SCENARIO})
+	{
+		ThorActionRequest request{.revision = 17, .action = action};
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+		request.targetId = 0;
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	}
 
-	for(const auto action : {ThorAction::LOBBY_SET_DIFFICULTY, ThorAction::LOBBY_START_GAME, ThorAction::LOBBY_BACK})
+	for(const auto action : {ThorAction::LOBBY_SET_DIFFICULTY, ThorAction::LOBBY_START_GAME,
+		ThorAction::LOBBY_BACK, ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorAction::LOBBY_NEXT_SCENARIO})
 	{
 		EXPECT_TRUE(isThorActionAllowedInContext(action, ThorContextIds::LOBBY_NEW_GAME_SCENARIO));
 		EXPECT_FALSE(isThorActionAllowedInContext(action, ThorContextIds::LOBBY_NEW_GAME_OPTIONS));
@@ -259,25 +295,41 @@ TEST(ThorActionTest, LobbyExecutionRequiresLiveOwnerTabAuthorityAndStartAvailabi
 	context.revision = 8;
 	context.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
 	context.enabledActionMask = thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY)
-		| thorActionMask(ThorAction::LOBBY_START_GAME) | thorActionMask(ThorAction::LOBBY_BACK);
+		| thorActionMask(ThorAction::LOBBY_START_GAME) | thorActionMask(ThorAction::LOBBY_BACK)
+		| thorActionMask(ThorAction::LOBBY_PREVIOUS_SCENARIO) | thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO);
 	ThorActionRequest difficulty{.revision = 8, .action = ThorAction::LOBBY_SET_DIFFICULTY, .targetId = 3};
-	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, false, true, true, true, true),
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, false, true, true, true, true, true),
 		ThorActionValidation::WRONG_CONTEXT);
-	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, false, true, true, true),
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, false, true, true, true, true),
 		ThorActionValidation::WRONG_CONTEXT);
-	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, true, false, true, true),
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, true, false, true, true, true),
 		ThorActionValidation::UNAVAILABLE);
-	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, true, true, false, true),
+	EXPECT_EQ(validateThorLobbyActionRequest(difficulty, context, true, true, true, false, true, true),
 		ThorActionValidation::UNAVAILABLE);
 
 	ThorActionRequest start{.revision = 8, .action = ThorAction::LOBBY_START_GAME};
-	EXPECT_EQ(validateThorLobbyActionRequest(start, context, true, true, true, true, false),
+	EXPECT_EQ(validateThorLobbyActionRequest(start, context, true, true, true, true, false, false),
 		ThorActionValidation::UNAVAILABLE);
-	EXPECT_EQ(validateThorLobbyActionRequest(start, context, true, true, true, false, true),
+	EXPECT_EQ(validateThorLobbyActionRequest(start, context, true, true, true, false, true, false),
 		ThorActionValidation::UNAVAILABLE);
 	ThorActionRequest back{.revision = 8, .action = ThorAction::LOBBY_BACK};
-	EXPECT_EQ(validateThorLobbyActionRequest(back, context, true, true, false, false, false),
+	EXPECT_EQ(validateThorLobbyActionRequest(back, context, true, true, false, false, false, false),
 		ThorActionValidation::VALID);
+
+	for(const auto action : {ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorAction::LOBBY_NEXT_SCENARIO})
+	{
+		ThorActionRequest request{.revision = 8, .action = action};
+		EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, false, true, true, true),
+			ThorActionValidation::UNAVAILABLE); // A guest cannot select a scenario.
+		EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, false, true, true),
+			ThorActionValidation::UNAVAILABLE); // The currently selected map no longer matches the server map.
+		EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, true, false),
+			ThorActionValidation::UNAVAILABLE); // No adjacent valid scenario remains.
+		EXPECT_EQ(validateThorLobbyActionRequest(request, context, false, true, true, true, true, true),
+			ThorActionValidation::WRONG_CONTEXT);
+		EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, false, true, true, true, true),
+			ThorActionValidation::WRONG_CONTEXT);
+	}
 }
 
 TEST(ThorActionTest, HeroMeetingRedistributionDecodingIsBoundedAndRejectsMalformedPlans)

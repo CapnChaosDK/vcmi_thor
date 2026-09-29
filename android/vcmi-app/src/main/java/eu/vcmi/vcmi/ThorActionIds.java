@@ -31,7 +31,9 @@ final class ThorActionIds
     static final int LOBBY_SET_DIFFICULTY = 26;
     static final int LOBBY_START_GAME = 27;
     static final int LOBBY_BACK = 28;
-    static final int MAX_ACTION_ID = LOBBY_BACK;
+    static final int LOBBY_PREVIOUS_SCENARIO = 29;
+    static final int LOBBY_NEXT_SCENARIO = 30;
+    static final int MAX_ACTION_ID = LOBBY_NEXT_SCENARIO;
     static final int NO_TARGET = -1;
 
     static

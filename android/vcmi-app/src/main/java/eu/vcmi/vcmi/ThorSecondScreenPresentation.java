@@ -194,12 +194,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private float artifactTouchDownX;
         private float artifactTouchDownY;
         private boolean artifactTouchMovedWithoutSource;
-        private boolean lobbyScenarioTouchActive;
-        private boolean lobbyScenarioTouchActionEnabled;
-        private long lobbyScenarioTouchRevision;
-        private long lobbyScenarioTouchSession;
-        private int lobbyScenarioTouchPointer = -1;
-        private int lobbyScenarioTouchControl = ThorLobbyScenarioState.CONTROL_NONE;
+        private final ThorLobbyScenarioGesture lobbyScenarioGesture = new ThorLobbyScenarioGesture();
         private final Runnable heroMeetingLongPress = () ->
         {
             if (!heroMeetingRedistribution.isActive()
@@ -1567,6 +1562,7 @@ final class ThorSecondScreenPresentation extends Presentation
         protected void onDetachedFromWindow()
         {
             removeCallbacks(heroMeetingLongPress);
+            cancelLobbyScenarioTouch();
             heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
             heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
             heroMeetingGesture.cancel();
@@ -1587,6 +1583,7 @@ final class ThorSecondScreenPresentation extends Presentation
             super.onWindowVisibilityChanged(visibility);
             if (visibility != View.VISIBLE)
             {
+                cancelLobbyScenarioTouch();
                 cancelHeroMeetingGesture();
             }
         }
@@ -1919,8 +1916,17 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setFakeBoldText(true);
             paint.setColor(PARCHMENT_DARK);
             drawFittedText(canvas, getContext().getString(R.string.thor_lobby_difficulty), frame.centerX(),
-                    dividerY + (frame.bottom - dividerY) * 0.12f, frame.width() * 0.76f,
+                    dividerY + (frame.bottom - dividerY) * 0.255f, frame.width() * 0.76f,
                     Math.min(25f * density, (frame.bottom - dividerY) * 0.055f));
+
+            drawLobbyScenarioButton(canvas,
+                    lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO, frame, dividerY),
+                    getContext().getString(R.string.thor_lobby_previous_scenario),
+                    isActionEnabled(ThorActionIds.LOBBY_PREVIOUS_SCENARIO), false, density);
+            drawLobbyScenarioButton(canvas,
+                    lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_NEXT_SCENARIO, frame, dividerY),
+                    getContext().getString(R.string.thor_lobby_next_scenario),
+                    isActionEnabled(ThorActionIds.LOBBY_NEXT_SCENARIO), false, density);
 
             final int difficulty = ThorLobbyScenarioState.difficultyIndex(detailLines);
             final int[] difficultyLabels = {
@@ -2526,12 +2532,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void cancelLobbyScenarioTouch()
         {
-            lobbyScenarioTouchActive = false;
-            lobbyScenarioTouchActionEnabled = false;
-            lobbyScenarioTouchRevision = 0L;
-            lobbyScenarioTouchSession = 0L;
-            lobbyScenarioTouchPointer = -1;
-            lobbyScenarioTouchControl = ThorLobbyScenarioState.CONTROL_NONE;
+            lobbyScenarioGesture.cancel();
         }
 
         private boolean handleLobbyScenarioTouch(final MotionEvent event)
@@ -2539,18 +2540,15 @@ final class ThorSecondScreenPresentation extends Presentation
             final int action = event.getActionMasked();
             if (action == MotionEvent.ACTION_DOWN)
             {
-                lobbyScenarioTouchActive = true;
-                lobbyScenarioTouchRevision = revision;
-                lobbyScenarioTouchSession = presentationSessionId;
-                lobbyScenarioTouchPointer = event.getPointerId(0);
-                lobbyScenarioTouchControl = lobbyScenarioControlAt(event.getX(), event.getY());
-                final int actionId = ThorLobbyScenarioState.actionForControl(lobbyScenarioTouchControl);
-                lobbyScenarioTouchActionEnabled = actionId != ThorActionIds.NONE && isActionEnabled(actionId);
+                final int control = lobbyScenarioControlAt(event.getX(), event.getY());
+                final int actionId = ThorLobbyScenarioState.actionForControl(control);
+                lobbyScenarioGesture.begin(control, revision, presentationSessionId, event.getPointerId(0),
+                        actionId != ThorActionIds.NONE && isActionEnabled(actionId));
                 return true;
             }
-            if (!lobbyScenarioTouchActive)
+            if (!lobbyScenarioGesture.isActive())
                 return true;
-            if (event.getPointerCount() != 1 || event.getPointerId(0) != lobbyScenarioTouchPointer
+            if (event.getPointerCount() != 1 || event.getPointerId(0) != lobbyScenarioGesture.pointerId()
                     || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP)
             {
                 cancelLobbyScenarioTouch();
@@ -2566,17 +2564,15 @@ final class ThorSecondScreenPresentation extends Presentation
             if (action != MotionEvent.ACTION_UP)
                 return true;
 
-            final int control = lobbyScenarioTouchControl;
+            final int control = lobbyScenarioGesture.control();
             final int releasedControl = lobbyScenarioControlAt(event.getX(), event.getY());
-            final long submittedRevision = lobbyScenarioTouchRevision;
-            final long submittedSession = lobbyScenarioTouchSession;
-            final boolean actionEnabledAtDown = lobbyScenarioTouchActionEnabled;
+            final long submittedRevision = lobbyScenarioGesture.revision();
+            final long submittedSession = lobbyScenarioGesture.session();
             final int actionId = ThorLobbyScenarioState.actionForControl(control);
             final boolean actionEnabledAtUp = actionId != ThorActionIds.NONE && isActionEnabled(actionId);
-            cancelLobbyScenarioTouch();
-            if (!ThorLobbyScenarioState.canCompleteTap(control, releasedControl, submittedRevision, revision,
-                    submittedSession, presentationSessionId, actionEnabledAtDown, actionEnabledAtUp)
-                    || sessionValidity == null || !sessionValidity.isCurrent(submittedSession))
+            final boolean sessionIsCurrent = sessionValidity != null && sessionValidity.isCurrent(submittedSession);
+            if (!lobbyScenarioGesture.finish(releasedControl, event.getPointerCount(), event.getPointerId(0),
+                    revision, presentationSessionId, actionEnabledAtUp, sessionIsCurrent))
                 return true;
 
             final int targetId = ThorLobbyScenarioState.difficultyTargetForControl(control);
@@ -2675,7 +2671,9 @@ final class ThorSecondScreenPresentation extends Presentation
                 return title + ". " + status + ". " + getContext().getString(R.string.thor_lobby_map_size)
                         + " " + detailLines[0] + ". " + getContext().getString(R.string.thor_lobby_players)
                         + " " + detailLines[1] + ". " + getContext().getString(R.string.thor_lobby_difficulty)
-                        + " " + difficulty + ". " + getContext().getString(R.string.thor_lobby_start) + ", "
+                        + " " + difficulty + ". " + getContext().getString(R.string.thor_lobby_previous_scenario)
+                        + ", " + getContext().getString(R.string.thor_lobby_next_scenario) + ", "
+                        + getContext().getString(R.string.thor_lobby_start) + ", "
                         + getContext().getString(R.string.thor_lobby_back);
             }
 

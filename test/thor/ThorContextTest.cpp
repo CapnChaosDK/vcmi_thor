@@ -191,6 +191,26 @@ TEST(ThorContextStoreTest, ActionAvailabilityIsRevisionBoundWithoutChurn)
 	EXPECT_EQ(changed.enabledActionMask, 3);
 }
 
+TEST(ThorContextStoreTest, NativeScenarioSelectionChangesInvalidateRenderedRequests)
+{
+	ThorContextStore store;
+	ThorContextRecord scenario;
+	scenario.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
+	scenario.enabledActionMask = thorActionMask(ThorAction::LOBBY_PREVIOUS_SCENARIO)
+		| thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO);
+	scenario.scenarioSelectionRevision = 10;
+	const auto rendered = store.publishNext(scenario);
+	const ThorActionRequest renderedTap{.revision = rendered.revision, .action = ThorAction::LOBBY_NEXT_SCENARIO};
+	EXPECT_EQ(store.publishNext(scenario).revision, rendered.revision);
+
+	scenario.scenarioSelectionRevision = 11;
+	const auto changed = store.publishNext(scenario);
+	EXPECT_GT(changed.revision, rendered.revision);
+	EXPECT_EQ(changed.enabledActionMask, rendered.enabledActionMask);
+	EXPECT_EQ(changed.scenarioSelectionRevision, 11);
+	EXPECT_EQ(validateThorActionRequest(renderedTap, changed), ThorActionValidation::STALE_REVISION);
+}
+
 TEST(ThorContextStoreTest, HeroMeetingRedistributionConsumptionAndRestoreAreSemanticRevisions)
 {
 	ThorContextStore store;

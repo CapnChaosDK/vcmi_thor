@@ -5,20 +5,12 @@ final class ThorLobbyScenarioState
 {
     static final int DIFFICULTY_COUNT = 5;
     static final int CONTROL_NONE = 0;
-    static final int CONTROL_DIFFICULTY_FIRST = 1;
+    static final int CONTROL_PREVIOUS_SCENARIO = 1;
+    static final int CONTROL_NEXT_SCENARIO = 2;
+    static final int CONTROL_DIFFICULTY_FIRST = 3;
     static final int CONTROL_DIFFICULTY_LAST = CONTROL_DIFFICULTY_FIRST + DIFFICULTY_COUNT - 1;
-    static final int CONTROL_START = 6;
-    static final int CONTROL_BACK = 7;
-
-    static boolean canCompleteTap(final int capturedControl, final int releasedControl,
-                                  final long capturedRevision, final long currentRevision,
-                                  final long capturedSession, final long currentSession,
-                                  final boolean actionEnabledAtDown, final boolean actionEnabledAtUp)
-    {
-        return capturedControl != CONTROL_NONE && capturedControl == releasedControl
-                && capturedRevision == currentRevision && capturedSession > 0L
-                && capturedSession == currentSession && actionEnabledAtDown && actionEnabledAtUp;
-    }
+    static final int CONTROL_START = 8;
+    static final int CONTROL_BACK = 9;
 
     private ThorLobbyScenarioState()
     {
@@ -64,13 +56,21 @@ final class ThorLobbyScenarioState
         final float lowerHeight = height - dividerY;
         final float side = width * 0.055f;
         final float gap = width * 0.012f;
+        if (control == CONTROL_PREVIOUS_SCENARIO || control == CONTROL_NEXT_SCENARIO)
+        {
+            final float actionGap = width * 0.025f;
+            final float actionWidth = (width - side * 2f - actionGap) / 2f;
+            final float left = control == CONTROL_PREVIOUS_SCENARIO ? side : side + actionWidth + actionGap;
+            return new float[]{left, dividerY + lowerHeight * 0.045f,
+                    left + actionWidth, dividerY + lowerHeight * 0.18f};
+        }
         if (control >= CONTROL_DIFFICULTY_FIRST && control <= CONTROL_DIFFICULTY_LAST)
         {
             final float tileWidth = (width - side * 2f - gap * (DIFFICULTY_COUNT - 1)) / DIFFICULTY_COUNT;
             final int index = control - CONTROL_DIFFICULTY_FIRST;
             final float left = side + index * (tileWidth + gap);
-            return new float[]{left, dividerY + lowerHeight * 0.20f,
-                    left + tileWidth, dividerY + lowerHeight * 0.47f};
+            return new float[]{left, dividerY + lowerHeight * 0.305f,
+                    left + tileWidth, dividerY + lowerHeight * 0.535f};
         }
 
         if (control == CONTROL_START || control == CONTROL_BACK)
@@ -78,8 +78,8 @@ final class ThorLobbyScenarioState
             final float actionGap = width * 0.025f;
             final float actionWidth = (width - side * 2f - actionGap) / 2f;
             final float left = control == CONTROL_START ? side : side + actionWidth + actionGap;
-            return new float[]{left, dividerY + lowerHeight * 0.61f,
-                    left + actionWidth, dividerY + lowerHeight * 0.94f};
+            return new float[]{left, dividerY + lowerHeight * 0.66f,
+                    left + actionWidth, dividerY + lowerHeight * 0.95f};
         }
         return new float[]{0f, 0f, 0f, 0f};
     }
@@ -87,7 +87,7 @@ final class ThorLobbyScenarioState
     static int controlAt(final float x, final float y, final float width, final float height,
                          final float dividerY)
     {
-        for (int control = CONTROL_DIFFICULTY_FIRST; control <= CONTROL_BACK; ++control)
+        for (int control = CONTROL_PREVIOUS_SCENARIO; control <= CONTROL_BACK; ++control)
         {
             final float[] bounds = boundsForControl(control, width, height, dividerY);
             if (x >= bounds[0] && y >= bounds[1] && x <= bounds[2] && y <= bounds[3])
@@ -98,6 +98,10 @@ final class ThorLobbyScenarioState
 
     static int actionForControl(final int control)
     {
+        if (control == CONTROL_PREVIOUS_SCENARIO)
+            return ThorActionIds.LOBBY_PREVIOUS_SCENARIO;
+        if (control == CONTROL_NEXT_SCENARIO)
+            return ThorActionIds.LOBBY_NEXT_SCENARIO;
         if (control >= CONTROL_DIFFICULTY_FIRST && control <= CONTROL_DIFFICULTY_LAST)
             return ThorActionIds.LOBBY_SET_DIFFICULTY;
         if (control == CONTROL_START)
