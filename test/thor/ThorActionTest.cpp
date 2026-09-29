@@ -38,6 +38,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(28), ThorAction::LOBBY_BACK);
 	EXPECT_EQ(thorActionFromId(29), ThorAction::LOBBY_PREVIOUS_SCENARIO);
 	EXPECT_EQ(thorActionFromId(30), ThorAction::LOBBY_NEXT_SCENARIO);
+	for(int id = 31; id <= 35; ++id)
+		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -66,6 +68,12 @@ TEST(ThorActionTest, HapticAcceptanceRequiresValidSuccessfullyExecutedSemanticAc
 	request.action = ThorAction::LOBBY_NEXT_SCENARIO;
 	EXPECT_FALSE(isThorActionHapticEligible(request.action));
 	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	for(int id = 31; id <= 35; ++id)
+	{
+		request.action = static_cast<ThorAction>(id);
+		EXPECT_FALSE(isThorActionHapticEligible(request.action));
+		EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
+	}
 	request.action = ThorAction::OPEN_QUEST_LOG;
 	EXPECT_FALSE(thorActionAcceptance(request, ThorActionValidation::VALID, true));
 	request.action = ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
@@ -227,7 +235,101 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO), std::uint64_t{1} << 29);
 	EXPECT_EQ(thorActionMask(static_cast<ThorAction>(64)), std::uint64_t{1} << 63);
 	EXPECT_EQ(thorActionMask(static_cast<ThorAction>(65)), 0);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 30);
+	for(int id = 31; id <= 35; ++id)
+		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 35);
+}
+
+TEST(ThorActionTest, MainMenuChoicesRequireExactContextSlotAndBuiltInCommand)
+{
+	using namespace ThorContextIds;
+	const std::array<std::string, 5> contexts{MAIN_MENU, MAIN_MENU_NEW_GAME,
+		MAIN_MENU_LOAD_GAME, MAIN_MENU_CAMPAIGN, MAIN_MENU_CREDITS};
+	const std::array<std::array<std::string_view, 5>, 5> commands{{
+		{{"to new", "to load", "highscores", "to credits", "exit"}},
+		{{"start single", "start multi", "to campaign", "start tutorial", "to main"}},
+		{{"load single", "load multi", "load campaign", "load tutorial", "to main"}},
+		{{"campaigns sod", "campaigns roe", "campaigns ab", "start campaign", "to new"}},
+		{{"credits back", "", "", "", ""}}
+	}};
+	for(std::size_t contextIndex = 0; contextIndex < contexts.size(); ++contextIndex)
+	{
+		for(int choiceIndex = 0; choiceIndex < 5; ++choiceIndex)
+		{
+			const auto action = static_cast<ThorAction>(31 + choiceIndex);
+			const auto choice = thorMainMenuChoice(contexts[contextIndex], action);
+			if(contextIndex == 4 && choiceIndex != 0)
+			{
+				EXPECT_FALSE(choice);
+				continue;
+			}
+			ASSERT_TRUE(choice);
+			EXPECT_EQ(choice->index, contextIndex == 4 ? 0 : choiceIndex);
+			EXPECT_EQ(choice->command, commands[contextIndex][choiceIndex]);
+			EXPECT_TRUE(thorMainMenuChoiceMatches(*choice, choice->index, choice->command));
+			EXPECT_FALSE(thorMainMenuChoiceMatches(*choice, choice->index + 1, choice->command));
+			EXPECT_FALSE(thorMainMenuChoiceMatches(*choice, choice->index, "wiki"));
+			EXPECT_TRUE(isThorActionAllowedInContext(action, contexts[contextIndex]));
+		}
+	}
+	EXPECT_FALSE(thorMainMenuChoice(UNKNOWN, ThorAction::MAIN_MENU_CHOICE_1));
+	EXPECT_FALSE(thorMainMenuChoice(MAIN_MENU, ThorAction::LOBBY_BACK));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::MAIN_MENU_CHOICE_1, UNKNOWN));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::MAIN_MENU_CHOICE_5, MAIN_MENU_CREDITS));
+	const auto campaignChoice = thorMainMenuChoice(MAIN_MENU_CAMPAIGN, ThorAction::MAIN_MENU_CHOICE_2);
+	ASSERT_TRUE(campaignChoice);
+	const std::array<ThorMainMenuButtonState, 4> surviving{{
+		{0, "campaigns sod", true}, {2, "campaigns ab", true},
+		{3, "start campaign", true}, {4, "to new", true}
+	}};
+	EXPECT_FALSE(thorMainMenuChoiceAvailable(*campaignChoice, surviving)); // Missing campaign file removed the native button.
+	const std::array<ThorMainMenuButtonState, 1> reordered{{{2, "campaigns roe", true}}};
+	EXPECT_FALSE(thorMainMenuChoiceAvailable(*campaignChoice, reordered));
+	const std::array<ThorMainMenuButtonState, 1> changed{{{1, "wiki", true}}};
+	EXPECT_FALSE(thorMainMenuChoiceAvailable(*campaignChoice, changed));
+	const std::array<ThorMainMenuButtonState, 1> blocked{{{1, "campaigns roe", false}}};
+	EXPECT_FALSE(thorMainMenuChoiceAvailable(*campaignChoice, blocked));
+	const std::array<ThorMainMenuButtonState, 1> available{{{1, "campaigns roe", true}}};
+	EXPECT_TRUE(thorMainMenuChoiceAvailable(*campaignChoice, available));
+	ThorContextRecord context;
+	context.contextId = MAIN_MENU;
+	context.revision = 7;
+	context.enabledActionMask = thorActionMask(ThorAction::MAIN_MENU_CHOICE_1);
+	ThorActionRequest request;
+	request.action = ThorAction::MAIN_MENU_CHOICE_1;
+	request.revision = 7;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.revision = 6;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision = 7;
+	request.targetId = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.targetId = -1;
+	context.contextId = MAIN_MENU_NEW_GAME;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	context.enabledActionMask = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+}
+
+TEST(ThorActionTest, MainMenuNavigationTargetsRequireCanonicalUniqueTabs)
+{
+	const std::array<std::string, 5> builtIn{"main", "new", "load", "campaign", "credits"};
+	EXPECT_TRUE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU, 0, builtIn, 4));
+	EXPECT_TRUE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_NEW_GAME, 1, builtIn, 4));
+	EXPECT_TRUE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_LOAD_GAME, 2, builtIn, 4));
+	EXPECT_TRUE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_CAMPAIGN, 3, builtIn, 4));
+	EXPECT_TRUE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_CREDITS, 4, builtIn, 4));
+	EXPECT_EQ(thorMainMenuNavigationTarget("to credits"), ThorContextIds::MAIN_MENU_CREDITS);
+	EXPECT_EQ(thorMainMenuNavigationTarget("exit"), "");
+	EXPECT_FALSE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_NEW_GAME, 2, builtIn, 4));
+	const std::array<std::string, 5> reordered{"main", "load", "new", "campaign", "credits"};
+	EXPECT_FALSE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_NEW_GAME, 1, reordered, 4));
+	const std::array<std::string, 6> duplicateCredits{"main", "new", "load", "campaign", "credits", "credits"};
+	EXPECT_FALSE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_CREDITS, 5, duplicateCredits, 5));
+	const std::array<std::string, 1> missingMain{"credits"};
+	EXPECT_FALSE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_CREDITS, 0, missingMain, 0));
+	const std::array<std::string, 5> renamed{"main", "new", "modded", "campaign", "credits"};
+	EXPECT_FALSE(thorMainMenuTabMatches(ThorContextIds::MAIN_MENU_LOAD_GAME, 2, renamed, 4));
 }
 
 TEST(ThorActionTest, ScenarioNavigationUsesTheFilteredSortedSelectableOrderAndSkipsFolders)

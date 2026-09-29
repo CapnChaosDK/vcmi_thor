@@ -195,6 +195,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private float artifactTouchDownY;
         private boolean artifactTouchMovedWithoutSource;
         private final ThorLobbyScenarioGesture lobbyScenarioGesture = new ThorLobbyScenarioGesture();
+        private final ThorMainMenuGesture mainMenuGesture = new ThorMainMenuGesture();
         private final Runnable heroMeetingLongPress = () ->
         {
             if (!heroMeetingRedistribution.isActive()
@@ -242,6 +243,7 @@ final class ThorSecondScreenPresentation extends Presentation
             heroMeetingRedistribution.cancel();
             cancelHeroMeetingGesture();
             cancelLobbyScenarioTouch();
+            cancelMainMenuTouch();
             invalidate();
         }
 
@@ -255,6 +257,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 cancelLobbyScenarioTouch();
+                cancelMainMenuTouch();
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
@@ -271,6 +274,9 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     && this.enabledActionMask != enabledActionMask)
                 cancelLobbyScenarioTouch();
+            else if (ThorMainMenuState.choiceCount(contextId) > 0
+                    && this.enabledActionMask != enabledActionMask)
+                cancelMainMenuTouch();
             this.revision = revision;
             this.contextId = contextId;
             heroPortraitAssetKey = publishedHeroPortraitAssetKey;
@@ -563,6 +569,10 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 drawLobbyScenarioDashboard(canvas, frame, dividerY, bevel, density);
             }
+            else if (ThorMainMenuState.choiceCount(contextId) > 0)
+            {
+                drawMainMenuDashboard(canvas, frame, dividerY, density);
+            }
             else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {
                 drawHeroDashboard(canvas, frame, dividerY, bevel, density);
@@ -663,6 +673,8 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId))
                 return handleLobbyScenarioTouch(event);
+            if (ThorMainMenuState.choiceCount(contextId) > 0)
+                return handleMainMenuTouch(event);
             if (heroMeetingTouchSequence && action == MotionEvent.ACTION_DOWN)
             {
                 cancelHeroMeetingGesture();
@@ -1563,6 +1575,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             removeCallbacks(heroMeetingLongPress);
             cancelLobbyScenarioTouch();
+            cancelMainMenuTouch();
             heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
             heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
             heroMeetingGesture.cancel();
@@ -1584,6 +1597,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (visibility != View.VISIBLE)
             {
                 cancelLobbyScenarioTouch();
+                cancelMainMenuTouch();
                 cancelHeroMeetingGesture();
             }
         }
@@ -1869,6 +1883,33 @@ final class ThorSecondScreenPresentation extends Presentation
             performClick();
             setContentDescription(commandDeckDescription());
             invalidate();
+        }
+
+        private void drawMainMenuDashboard(final Canvas canvas, final RectF frame, final float dividerY,
+                                           final float density)
+        {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.16f,
+                    frame.width() * 0.78f, Math.min(42f * density, frame.height() * 0.09f));
+            paint.setFakeBoldText(false);
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, status, frame.centerX(), frame.top + frame.height() * 0.27f,
+                    frame.width() * 0.78f, Math.min(27f * density, frame.height() * 0.055f));
+
+            for (int control = 1; control <= ThorMainMenuState.choiceCount(contextId); ++control)
+            {
+                final int actionId = ThorMainMenuState.actionForControl(contextId, control);
+                final float[] bounds = ThorMainMenuState.boundsForControl(contextId, control,
+                        frame.width(), frame.height(), dividerY - frame.top);
+                final RectF button = new RectF(frame.left + bounds[0], frame.top + bounds[1],
+                        frame.left + bounds[2], frame.top + bounds[3]);
+                drawLobbyScenarioButton(canvas, button,
+                        getContext().getString(ThorMainMenuState.labelForControl(contextId, control)),
+                        isActionEnabled(actionId), false, density);
+            }
         }
 
         private void drawLobbyScenarioDashboard(final Canvas canvas, final RectF frame, final float dividerY,
@@ -2530,6 +2571,64 @@ final class ThorSecondScreenPresentation extends Presentation
                     frame.width(), frame.height(), dividerY - frame.top);
         }
 
+        private int mainMenuControlAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            final float dividerY = frame.height() * 0.34f;
+            return ThorMainMenuState.controlAt(contextId, x - frame.left, y - frame.top,
+                    frame.width(), frame.height(), dividerY);
+        }
+
+        private void cancelMainMenuTouch()
+        {
+            mainMenuGesture.cancel();
+        }
+
+        private boolean handleMainMenuTouch(final MotionEvent event)
+        {
+            final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN)
+            {
+                final int control = mainMenuControlAt(event.getX(), event.getY());
+                final int actionId = ThorMainMenuState.actionForControl(contextId, control);
+                mainMenuGesture.begin(contextId, control, revision, presentationSessionId,
+                        event.getPointerId(0), actionId != ThorActionIds.NONE && isActionEnabled(actionId));
+                return true;
+            }
+            if (!mainMenuGesture.isActive())
+                return true;
+            if (event.getPointerCount() != 1 || event.getPointerId(0) != mainMenuGesture.pointerId()
+                    || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP)
+            {
+                cancelMainMenuTouch();
+                return true;
+            }
+            if (action == MotionEvent.ACTION_MOVE)
+                return true;
+            if (action == MotionEvent.ACTION_CANCEL)
+            {
+                cancelMainMenuTouch();
+                return true;
+            }
+            if (action != MotionEvent.ACTION_UP)
+                return true;
+
+            final int control = mainMenuGesture.control();
+            final int releasedControl = mainMenuControlAt(event.getX(), event.getY());
+            final long submittedRevision = mainMenuGesture.revision();
+            final long submittedSession = mainMenuGesture.session();
+            final int actionId = ThorMainMenuState.actionForControl(contextId, control);
+            final boolean enabledAtUp = actionId != ThorActionIds.NONE && isActionEnabled(actionId);
+            final boolean sessionIsCurrent = sessionValidity != null && sessionValidity.isCurrent(submittedSession);
+            if (mainMenuGesture.finish(contextId, releasedControl, event.getPointerCount(), event.getPointerId(0),
+                    revision, presentationSessionId, enabledAtUp, sessionIsCurrent))
+            {
+                performClick();
+                NativeMethods.submitThorAction(submittedRevision, actionId, ThorActionIds.NO_TARGET);
+            }
+            return true;
+        }
+
         private void cancelLobbyScenarioTouch()
         {
             lobbyScenarioGesture.cancel();
@@ -2665,6 +2764,18 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private String commandDeckDescription()
         {
+            if (ThorMainMenuState.choiceCount(contextId) > 0)
+            {
+                final StringBuilder description = new StringBuilder(title).append(". ").append(status);
+                for (int control = 1; control <= ThorMainMenuState.choiceCount(contextId); ++control)
+                {
+                    final int actionId = ThorMainMenuState.actionForControl(contextId, control);
+                    if (isActionEnabled(actionId))
+                        description.append(". ").append(getContext().getString(
+                                ThorMainMenuState.labelForControl(contextId, control)));
+                }
+                return description.toString();
+            }
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId))
             {
                 final String difficulty = difficultyLabel(ThorLobbyScenarioState.difficultyIndex(detailLines));

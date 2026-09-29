@@ -33,7 +33,12 @@ final class ThorActionIds
     static final int LOBBY_BACK = 28;
     static final int LOBBY_PREVIOUS_SCENARIO = 29;
     static final int LOBBY_NEXT_SCENARIO = 30;
-    static final int MAX_ACTION_ID = LOBBY_NEXT_SCENARIO;
+    static final int MAIN_MENU_CHOICE_1 = 31;
+    static final int MAIN_MENU_CHOICE_2 = 32;
+    static final int MAIN_MENU_CHOICE_3 = 33;
+    static final int MAIN_MENU_CHOICE_4 = 34;
+    static final int MAIN_MENU_CHOICE_5 = 35;
+    static final int MAX_ACTION_ID = MAIN_MENU_CHOICE_5;
     static final int NO_TARGET = -1;
 
     static

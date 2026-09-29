@@ -13,6 +13,9 @@
 #include "../../lib/json/JsonNode.h"
 #include "../../lib/LoadProgress.h"
 #include "../../lib/network/NetworkInterface.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#endif
 
 class CampaignState;
 
@@ -55,12 +58,18 @@ public:
 	CMenuScreen(const JsonNode & configNode);
 
 	void activate() override;
+	void deactivate() override;
 	void show(Canvas & to) override;
 	void keyPressed(EShortcut key) override;
 
 	void switchToTab(size_t index);
 	void switchToTab(std::string name);
 	size_t getActiveTab() const;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context);
+	bool executeThorAction(ThorAction action);
+#endif
 };
 
 class CMenuEntry : public CIntObject
@@ -68,10 +77,25 @@ class CMenuEntry : public CIntObject
 	std::vector<std::shared_ptr<CPicture>> images;
 	std::vector<std::shared_ptr<CButton>> buttons;
 
-	std::shared_ptr<CButton> createButton(CMenuScreen * parent, const JsonNode & button);
+	std::shared_ptr<CButton> createButton(CMenuScreen * parent, const JsonNode & button, std::function<void()> command);
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	struct ThorButton
+	{
+		std::size_t configuredIndex;
+		std::string command;
+		std::function<void()> callback;
+		std::shared_ptr<CButton> button;
+	};
+	std::vector<ThorButton> thorButtons;
+#endif
 
 public:
 	CMenuEntry(CMenuScreen * parent, const JsonNode & config);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool hasThorChoice(const ThorMainMenuChoice & choice) const;
+	bool executeThorChoice(const ThorMainMenuChoice & choice);
+#endif
 };
 
 /// Multiplayer mode

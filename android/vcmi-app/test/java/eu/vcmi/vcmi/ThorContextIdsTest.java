@@ -139,7 +139,7 @@ public class ThorContextIdsTest
 		assertEquals(28, ThorActionIds.LOBBY_BACK);
 		assertEquals(29, ThorActionIds.LOBBY_PREVIOUS_SCENARIO);
 		assertEquals(30, ThorActionIds.LOBBY_NEXT_SCENARIO);
-		assertEquals(30, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(35, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(1L << 24, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SWAP_ARTIFACTS));
 		assertEquals(1L << 25, ThorActionIds.maskFor(ThorActionIds.LOBBY_SET_DIFFICULTY));
 		assertEquals(1L << 26, ThorActionIds.maskFor(ThorActionIds.LOBBY_START_GAME));
@@ -147,7 +147,7 @@ public class ThorContextIdsTest
 		assertEquals(1L << 28, ThorActionIds.maskFor(ThorActionIds.LOBBY_PREVIOUS_SCENARIO));
 		assertEquals(1L << 29, ThorActionIds.maskFor(ThorActionIds.LOBBY_NEXT_SCENARIO));
 		assertEquals(Long.MIN_VALUE, ThorActionIds.bitForActionId(64));
-		assertEquals(0L, ThorActionIds.maskFor(31));
+		assertEquals(1L << 30, ThorActionIds.maskFor(31));
 		assertEquals(0L, ThorActionIds.bitForActionId(65));
 		assertEquals(0, ThorActionIds.maskFor(99));
 		for (int id = 1; id <= 30; ++id)
