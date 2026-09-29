@@ -212,7 +212,7 @@ void CMenuScreen::publishThorContext()
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 }
 
-bool CMenuScreen::matchesThorContext(const ThorContextRecord & context) const
+bool CMenuScreen::matchesThorContext(const ThorContextRecord & context)
 {
 	if(!ENGINE->windows().isTopWindow(this) || !isActive())
 		return false;

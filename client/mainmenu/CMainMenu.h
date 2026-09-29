@@ -67,7 +67,7 @@ public:
 	size_t getActiveTab() const;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	void publishThorContext();
-	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool matchesThorContext(const ThorContextRecord & context);
 	bool executeThorAction(ThorAction action);
 #endif
 };
