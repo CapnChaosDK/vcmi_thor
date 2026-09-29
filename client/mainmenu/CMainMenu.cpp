@@ -68,19 +68,6 @@
 #include "../../lib/GameLibrary.h"
 #include "../../lib/json/JsonUtils.h"
 
-#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-namespace
-{
-	void publishThorMainMenuContext(const std::vector<std::string> & menuNames, size_t index)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForMainMenuTab(index < menuNames.size() ? menuNames[index] : "");
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
-#endif
-
 ISelectionScreenInfo * SEL = nullptr;
 
 CMenuScreen::CMenuScreen(const JsonNode & configNode)
@@ -144,7 +131,18 @@ void CMenuScreen::activate()
 	CIntObject::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorMainMenuContext(menuNameToEntry, getActiveTab());
+	publishThorContext();
+#endif
+}
+
+void CMenuScreen::deactivate()
+{
+	CWindowObject::deactivate();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorActionQueue().clear();
+	auto context = thorContextStore().publishNext({});
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, 0, 0);
 #endif
 }
 
@@ -152,7 +150,8 @@ void CMenuScreen::switchToTab(size_t index)
 {
 	tabs->setActive(index);
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorMainMenuContext(menuNameToEntry, index);
+	if(ENGINE->windows().isTopWindow(this))
+		publishThorContext();
 #endif
 }
 
@@ -165,6 +164,83 @@ size_t CMenuScreen::getActiveTab() const
 {
 	return tabs->getActive();
 }
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CMenuScreen::publishThorContext()
+{
+	if(!ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	const auto index = getActiveTab();
+	context.contextId = thorContextIdForMainMenuTab(index < menuNameToEntry.size() ? menuNameToEntry[index] : "");
+	if(context.contextId != ThorContextIds::UNKNOWN
+		&& !thorMainMenuTabMatches(context.contextId, index, menuNameToEntry, config["items"].Vector().size()))
+		context.contextId = ThorContextIds::UNKNOWN;
+	const auto entry = std::dynamic_pointer_cast<CMenuEntry>(tabs->getItem());
+	const auto credits = std::dynamic_pointer_cast<CreditsScreen>(tabs->getItem());
+	if(context.contextId == ThorContextIds::MAIN_MENU_CREDITS)
+	{
+		if(!credits || index != config["items"].Vector().size())
+			context.contextId = ThorContextIds::UNKNOWN;
+		else
+			context.enabledActionMask = thorActionMask(ThorAction::MAIN_MENU_CHOICE_1);
+	}
+	else if(context.contextId != ThorContextIds::UNKNOWN)
+	{
+		if(!entry)
+			context.contextId = ThorContextIds::UNKNOWN;
+		else
+			for(int choice = 0; choice < 5; ++choice)
+			{
+				const auto action = static_cast<ThorAction>(static_cast<int>(ThorAction::MAIN_MENU_CHOICE_1) + choice);
+				const auto expected = thorMainMenuChoice(context.contextId, action);
+				if(expected && entry->hasThorChoice(*expected))
+				{
+					const auto target = thorMainMenuNavigationTarget(expected->command);
+					if(!target.empty())
+					{
+						const auto targetIndex = thorMainMenuTabIndex(std::string(target), config["items"].Vector().size());
+						if(!targetIndex || !thorMainMenuTabMatches(std::string(target), *targetIndex,
+							menuNameToEntry, config["items"].Vector().size()))
+							continue;
+					}
+					context.enabledActionMask |= thorActionMask(action);
+				}
+			}
+	}
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CMenuScreen::matchesThorContext(const ThorContextRecord & context) const
+{
+	if(!ENGINE->windows().isTopWindow(this) || !isActive())
+		return false;
+	const auto index = getActiveTab();
+	return context.contextId == thorContextIdForMainMenuTab(index < menuNameToEntry.size() ? menuNameToEntry[index] : "")
+		&& thorMainMenuTabMatches(context.contextId, index, menuNameToEntry, config["items"].Vector().size());
+}
+
+bool CMenuScreen::executeThorAction(ThorAction action)
+{
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context))
+		return false;
+	const auto choice = thorMainMenuChoice(context.contextId, action);
+	if(!choice || !(context.enabledActionMask & thorActionMask(action)))
+		return false;
+	if(context.contextId == ThorContextIds::MAIN_MENU_CREDITS)
+	{
+		if(getActiveTab() != config["items"].Vector().size()
+			|| !std::dynamic_pointer_cast<CreditsScreen>(tabs->getItem()))
+			return false;
+		switchToTab(0);
+		return true;
+	}
+	const auto entry = std::dynamic_pointer_cast<CMenuEntry>(tabs->getItem());
+	return entry && entry->executeThorChoice(*choice);
+}
+#endif
 void CMenuScreen::keyPressed(EShortcut key)
 {
 	if(key == EShortcut::ADVENTURE_OPEN_WIKI)
@@ -253,10 +329,8 @@ static std::function<void()> genCommand(CMenuScreen * menu, std::vector<std::str
 	return std::function<void()>();
 }
 
-std::shared_ptr<CButton> CMenuEntry::createButton(CMenuScreen * parent, const JsonNode & button)
+std::shared_ptr<CButton> CMenuEntry::createButton(CMenuScreen * parent, const JsonNode & button, std::function<void()> command)
 {
-	std::function<void()> command = genCommand(parent, parent->menuNameToEntry, button["command"].String());
-
 	std::pair<std::string, std::string> help;
 	if(!button["help"].isNull())
 	{
@@ -289,8 +363,14 @@ CMenuEntry::CMenuEntry(CMenuScreen * parent, const JsonNode & config)
 	for(const JsonNode & node : config["images"].Vector())
 		images.push_back(CMainMenu::createPicture(node));
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::size_t configuredIndex = 0;
+#endif
 	for (const JsonNode& node : config["buttons"].Vector())
 	{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		const auto currentIndex = configuredIndex++;
+#endif
 		auto tokens = node["command"].String().find(' ');
 		std::pair<std::string, std::string> commandParts = {
 			node["command"].String().substr(0, tokens),
@@ -326,11 +406,43 @@ CMenuEntry::CMenuEntry(CMenuScreen * parent, const JsonNode & config)
 			}
 		}
 
-		buttons.push_back(createButton(parent, node));
+		auto command = genCommand(parent, parent->menuNameToEntry, node["command"].String());
+		buttons.push_back(createButton(parent, node, command));
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		thorButtons.push_back({currentIndex, node["command"].String(), command, buttons.back()});
+#endif
 		buttons.back()->setHoverable(true);
 		buttons.back()->setRedrawParent(true);
 	}
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CMenuEntry::hasThorChoice(const ThorMainMenuChoice & choice) const
+{
+	const auto found = std::find_if(thorButtons.begin(), thorButtons.end(), [&](const auto & candidate)
+	{
+		return candidate.configuredIndex == choice.index;
+	});
+	if(found == thorButtons.end())
+		return false;
+	const ThorMainMenuButtonState state{found->configuredIndex, found->command,
+		static_cast<bool>(found->callback) && found->button && !found->button->isBlocked()};
+	return thorMainMenuChoiceAvailable(choice, std::span(&state, 1));
+}
+
+bool CMenuEntry::executeThorChoice(const ThorMainMenuChoice & choice)
+{
+	const auto found = std::find_if(thorButtons.begin(), thorButtons.end(), [&](const auto & candidate)
+	{
+		return candidate.configuredIndex == choice.index;
+	});
+	if(found == thorButtons.end() || !hasThorChoice(choice))
+		return false;
+	const auto callback = found->callback;
+	callback();
+	return true;
+}
+#endif
 
 CMainMenuConfig::CMainMenuConfig()
 	: campaignSets(JsonUtils::assembleFromFiles("config/campaignSets.json"))

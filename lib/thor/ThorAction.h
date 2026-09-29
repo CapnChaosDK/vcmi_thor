@@ -9,6 +9,7 @@
 #include <mutex>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <utility>
 
 #include "ThorContext.h"
@@ -47,10 +48,15 @@ enum class ThorAction : std::uint8_t
 	LOBBY_START_GAME = 27,
 	LOBBY_BACK = 28,
 	LOBBY_PREVIOUS_SCENARIO = 29,
-	LOBBY_NEXT_SCENARIO = 30
+	LOBBY_NEXT_SCENARIO = 30,
+	MAIN_MENU_CHOICE_1 = 31,
+	MAIN_MENU_CHOICE_2 = 32,
+	MAIN_MENU_CHOICE_3 = 33,
+	MAIN_MENU_CHOICE_4 = 34,
+	MAIN_MENU_CHOICE_5 = 35
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::LOBBY_NEXT_SCENARIO);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::MAIN_MENU_CHOICE_5);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -64,6 +70,27 @@ constexpr std::uint64_t thorActionMask(ThorAction action)
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
+struct DLL_LINKAGE ThorMainMenuChoice
+{
+	std::size_t index;
+	std::string_view command;
+};
+DLL_LINKAGE std::optional<ThorMainMenuChoice> thorMainMenuChoice(const std::string & contextId, ThorAction action);
+DLL_LINKAGE bool thorMainMenuChoiceMatches(const ThorMainMenuChoice & choice,
+	std::size_t configuredIndex, std::string_view command);
+struct DLL_LINKAGE ThorMainMenuButtonState
+{
+	std::size_t configuredIndex;
+	std::string_view command;
+	bool executable;
+};
+DLL_LINKAGE bool thorMainMenuChoiceAvailable(const ThorMainMenuChoice & choice,
+	std::span<const ThorMainMenuButtonState> buttons);
+DLL_LINKAGE bool thorMainMenuTabMatches(const std::string & contextId, std::size_t index,
+	std::span<const std::string> tabNames, std::size_t creditsIndex);
+DLL_LINKAGE std::optional<std::size_t> thorMainMenuTabIndex(const std::string & contextId,
+	std::size_t creditsIndex);
+DLL_LINKAGE std::string_view thorMainMenuNavigationTarget(std::string_view command);
 DLL_LINKAGE std::optional<std::size_t> thorAdjacentScenarioPosition(
 	std::span<const std::uint8_t> selectableEntries, std::size_t currentPosition, ThorAction action);
 DLL_LINKAGE bool isThorActionHapticEligible(ThorAction action);

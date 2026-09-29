@@ -97,7 +97,9 @@ void CreditsScreen::tick(uint32_t msPassed)
 
 void CreditsScreen::clickPressed(const Point & cursorPosition)
 {
-	CTabbedInt * menu = dynamic_cast<CTabbedInt *>(parent);
+	CTabbedInt * tabs = dynamic_cast<CTabbedInt *>(parent);
+	assert(tabs);
+	CMenuScreen * menu = dynamic_cast<CMenuScreen *>(tabs->parent);
 	assert(menu);
-	menu->setActive(0);
+	menu->switchToTab(0);
 }

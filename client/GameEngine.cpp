@@ -40,6 +40,7 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "windows/CExchangeWindow.h"
 #include "lobby/CLobbyScreen.h"
+#include "mainmenu/CMainMenu.h"
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -289,6 +290,22 @@ void GameEngine::updateFrame()
 				continue;
 			}
 			executed = lobbyWindow->executeThorAction(*request);
+		}
+		else if(thorMainMenuChoice(context.contextId, request->action))
+		{
+			auto menuWindow = windows().topWindow<CMenuScreen>();
+			if(!menuWindow || !menuWindow->matchesThorContext(context))
+			{
+				logGlobal->debug("Thor action rejected: inactive Main Menu");
+				continue;
+			}
+			menuWindow->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: Main Menu state changed");
+				continue;
+			}
+			executed = menuWindow->executeThorAction(request->action);
 		}
 		else
 		{

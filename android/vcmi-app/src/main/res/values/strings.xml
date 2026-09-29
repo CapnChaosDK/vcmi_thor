@@ -12,6 +12,15 @@
     <string name="thor_context_campaign_status">Choose a campaign</string>
     <string name="thor_context_credits">Credits</string>
     <string name="thor_context_credits_status">View contributors and acknowledgements</string>
+    <string name="thor_menu_high_scores">High Scores</string>
+    <string name="thor_menu_quit">Quit</string>
+    <string name="thor_menu_single_player">Single Player</string>
+    <string name="thor_menu_multiplayer">Multiplayer</string>
+    <string name="thor_menu_tutorial">Tutorial</string>
+    <string name="thor_menu_shadow_of_death">Shadow of Death</string>
+    <string name="thor_menu_restoration_of_erathia">Restoration of Erathia</string>
+    <string name="thor_menu_armageddons_blade">Armageddon\'s Blade</string>
+    <string name="thor_menu_custom_campaign">Custom Campaign</string>
     <string name="thor_context_random_map">Random map</string>
     <string name="thor_context_turn_options">Turn options</string>
     <string name="thor_context_extra_options">Extra options</string>

@@ -200,6 +200,16 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::LOBBY_PREVIOUS_SCENARIO;
 	case static_cast<int>(ThorAction::LOBBY_NEXT_SCENARIO):
 		return ThorAction::LOBBY_NEXT_SCENARIO;
+	case static_cast<int>(ThorAction::MAIN_MENU_CHOICE_1):
+		return ThorAction::MAIN_MENU_CHOICE_1;
+	case static_cast<int>(ThorAction::MAIN_MENU_CHOICE_2):
+		return ThorAction::MAIN_MENU_CHOICE_2;
+	case static_cast<int>(ThorAction::MAIN_MENU_CHOICE_3):
+		return ThorAction::MAIN_MENU_CHOICE_3;
+	case static_cast<int>(ThorAction::MAIN_MENU_CHOICE_4):
+		return ThorAction::MAIN_MENU_CHOICE_4;
+	case static_cast<int>(ThorAction::MAIN_MENU_CHOICE_5):
+		return ThorAction::MAIN_MENU_CHOICE_5;
 	default:
 		return std::nullopt;
 	}
@@ -207,6 +217,8 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 
 bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId)
 {
+	if(thorMainMenuChoice(contextId, action))
+		return true;
 	if(contextId == ThorContextIds::ADVENTURE_MAP)
 		return isThorActionAllowedInAdventureMap(action);
 	if(contextId == ThorContextIds::BATTLE)
@@ -227,6 +239,88 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::LOBBY_BACK || action == ThorAction::LOBBY_PREVIOUS_SCENARIO
 			|| action == ThorAction::LOBBY_NEXT_SCENARIO;
 	return false;
+}
+
+std::optional<ThorMainMenuChoice> thorMainMenuChoice(const std::string & contextId, ThorAction action)
+{
+	const int choice = static_cast<int>(action) - static_cast<int>(ThorAction::MAIN_MENU_CHOICE_1);
+	if(choice < 0 || choice > 4)
+		return std::nullopt;
+	if(contextId == ThorContextIds::MAIN_MENU_CREDITS)
+		return choice == 0 ? std::optional<ThorMainMenuChoice>{{0, "credits back"}} : std::nullopt;
+	constexpr std::array<std::string_view, 5> main{"to new", "to load", "highscores", "to credits", "exit"};
+	constexpr std::array<std::string_view, 5> newGame{"start single", "start multi", "to campaign", "start tutorial", "to main"};
+	constexpr std::array<std::string_view, 5> loadGame{"load single", "load multi", "load campaign", "load tutorial", "to main"};
+	constexpr std::array<std::string_view, 5> campaign{"campaigns sod", "campaigns roe", "campaigns ab", "start campaign", "to new"};
+	if(contextId == ThorContextIds::MAIN_MENU)
+		return ThorMainMenuChoice{static_cast<std::size_t>(choice), main[choice]};
+	if(contextId == ThorContextIds::MAIN_MENU_NEW_GAME)
+		return ThorMainMenuChoice{static_cast<std::size_t>(choice), newGame[choice]};
+	if(contextId == ThorContextIds::MAIN_MENU_LOAD_GAME)
+		return ThorMainMenuChoice{static_cast<std::size_t>(choice), loadGame[choice]};
+	if(contextId == ThorContextIds::MAIN_MENU_CAMPAIGN)
+		return ThorMainMenuChoice{static_cast<std::size_t>(choice), campaign[choice]};
+	return std::nullopt;
+}
+
+bool thorMainMenuChoiceMatches(const ThorMainMenuChoice & choice,
+	std::size_t configuredIndex, std::string_view command)
+{
+	return configuredIndex == choice.index && command == choice.command;
+}
+
+bool thorMainMenuChoiceAvailable(const ThorMainMenuChoice & choice,
+	std::span<const ThorMainMenuButtonState> buttons)
+{
+	const auto found = std::find_if(buttons.begin(), buttons.end(), [&](const auto & button)
+	{
+		return button.configuredIndex == choice.index;
+	});
+	return found != buttons.end() && found->executable
+		&& thorMainMenuChoiceMatches(choice, found->configuredIndex, found->command);
+}
+
+bool thorMainMenuTabMatches(const std::string & contextId, std::size_t index,
+	std::span<const std::string> tabNames, std::size_t creditsIndex)
+{
+	if(tabNames.size() != creditsIndex + 1 || tabNames.empty() || tabNames[0] != "main")
+		return false;
+	std::string_view expected;
+	if(contextId == ThorContextIds::MAIN_MENU)
+		expected = "main";
+	else if(contextId == ThorContextIds::MAIN_MENU_NEW_GAME)
+		expected = "new";
+	else if(contextId == ThorContextIds::MAIN_MENU_LOAD_GAME)
+		expected = "load";
+	else if(contextId == ThorContextIds::MAIN_MENU_CAMPAIGN)
+		expected = "campaign";
+	else if(contextId == ThorContextIds::MAIN_MENU_CREDITS)
+		expected = "credits";
+	else
+		return false;
+	const auto expectedIndex = thorMainMenuTabIndex(contextId, creditsIndex);
+	return expectedIndex && index == *expectedIndex && index < tabNames.size() && tabNames[index] == expected
+		&& std::count(tabNames.begin(), tabNames.end(), expected) == 1;
+}
+
+std::optional<std::size_t> thorMainMenuTabIndex(const std::string & contextId, std::size_t creditsIndex)
+{
+	if(contextId == ThorContextIds::MAIN_MENU) return 0;
+	if(contextId == ThorContextIds::MAIN_MENU_NEW_GAME) return 1;
+	if(contextId == ThorContextIds::MAIN_MENU_LOAD_GAME) return 2;
+	if(contextId == ThorContextIds::MAIN_MENU_CAMPAIGN) return 3;
+	if(contextId == ThorContextIds::MAIN_MENU_CREDITS) return creditsIndex;
+	return std::nullopt;
+}
+
+std::string_view thorMainMenuNavigationTarget(std::string_view command)
+{
+	if(command == "to main") return ThorContextIds::MAIN_MENU;
+	if(command == "to new") return ThorContextIds::MAIN_MENU_NEW_GAME;
+	if(command == "to load") return ThorContextIds::MAIN_MENU_LOAD_GAME;
+	if(command == "to campaign") return ThorContextIds::MAIN_MENU_CAMPAIGN;
+	if(command == "to credits") return ThorContextIds::MAIN_MENU_CREDITS;
+	return {};
 }
 
 std::optional<std::size_t> thorAdjacentScenarioPosition(
@@ -360,6 +454,12 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	}
 	else if(request.action == ThorAction::LOBBY_START_GAME || request.action == ThorAction::LOBBY_BACK
 		|| request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO || request.action == ThorAction::LOBBY_NEXT_SCENARIO)
+	{
+		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(thorMainMenuChoice(context.contextId, request.action))
 	{
 		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
