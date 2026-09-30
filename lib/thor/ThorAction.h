@@ -53,10 +53,17 @@ enum class ThorAction : std::uint8_t
 	MAIN_MENU_CHOICE_2 = 32,
 	MAIN_MENU_CHOICE_3 = 33,
 	MAIN_MENU_CHOICE_4 = 34,
-	MAIN_MENU_CHOICE_5 = 35
+	MAIN_MENU_CHOICE_5 = 35,
+	CAMPAIGN_PREVIOUS_SCENARIO = 36,
+	CAMPAIGN_NEXT_SCENARIO = 37,
+	CAMPAIGN_SELECT_BONUS_1 = 38,
+	CAMPAIGN_SELECT_BONUS_2 = 39,
+	CAMPAIGN_SELECT_BONUS_3 = 40,
+	CAMPAIGN_START = 41,
+	CAMPAIGN_BACK = 42
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::MAIN_MENU_CHOICE_5);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::CAMPAIGN_BACK);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 

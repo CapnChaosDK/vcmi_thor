@@ -38,7 +38,7 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(28), ThorAction::LOBBY_BACK);
 	EXPECT_EQ(thorActionFromId(29), ThorAction::LOBBY_PREVIOUS_SCENARIO);
 	EXPECT_EQ(thorActionFromId(30), ThorAction::LOBBY_NEXT_SCENARIO);
-	for(int id = 31; id <= 35; ++id)
+	for(int id = 31; id <= 42; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
@@ -187,6 +187,11 @@ TEST(ThorActionTest, AllowsOnlyActionsForTheirExactContext)
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK, ThorContextIds::HERO_MEETING));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorContextIds::LOBBY_NEW_GAME_SCENARIO));
 	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_NEXT_SCENARIO, ThorContextIds::LOBBY_NEW_GAME_SCENARIO));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorContextIds::LOBBY_LOAD_GAME_SCENARIO));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_NEXT_SCENARIO, ThorContextIds::LOBBY_LOAD_GAME_SCENARIO));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_START_GAME, ThorContextIds::LOBBY_LOAD_GAME_SCENARIO));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::LOBBY_BACK, ThorContextIds::LOBBY_LOAD_GAME_SCENARIO));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::LOBBY_SET_DIFFICULTY, ThorContextIds::LOBBY_LOAD_GAME_SCENARIO));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::LOBBY_PREVIOUS_SCENARIO, ThorContextIds::LOBBY_NEW_GAME_OPTIONS));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::LOBBY_NEXT_SCENARIO, ThorContextIds::ADVENTURE_MAP));
 	for(const auto action : {ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT,
@@ -237,7 +242,9 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(static_cast<ThorAction>(65)), 0);
 	for(int id = 31; id <= 35; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 35);
+	for(int id = 36; id <= 42; ++id)
+		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 42);
 }
 
 TEST(ThorActionTest, MainMenuChoicesRequireExactContextSlotAndBuiltInCommand)
@@ -344,6 +351,8 @@ TEST(ThorActionTest, ScenarioNavigationUsesTheFilteredSortedSelectableOrderAndSk
 	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 0, ThorAction::LOBBY_NEXT_SCENARIO), std::nullopt);
 	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 6, ThorAction::LOBBY_PREVIOUS_SCENARIO), std::nullopt);
 	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 1, ThorAction::LOBBY_BACK), std::nullopt);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 1, ThorAction::CAMPAIGN_NEXT_SCENARIO), 3);
+	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 3, ThorAction::CAMPAIGN_PREVIOUS_SCENARIO), 1);
 }
 
 TEST(ThorActionTest, LobbyActionsAreScopedAndValidateDifficultyTargets)
@@ -432,6 +441,30 @@ TEST(ThorActionTest, LobbyExecutionRequiresLiveOwnerTabAuthorityAndStartAvailabi
 		EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, false, true, true, true, true),
 			ThorActionValidation::WRONG_CONTEXT);
 	}
+}
+
+TEST(ThorActionTest, CampaignActionsAreRevisionBoundAndScopedToBonusSelection)
+{
+	ThorContextRecord context;
+	context.revision = 23;
+	context.contextId = ThorContextIds::CAMPAIGN_BONUS_SELECTION;
+	for(int id = static_cast<int>(ThorAction::CAMPAIGN_PREVIOUS_SCENARIO);
+		id <= static_cast<int>(ThorAction::CAMPAIGN_BACK); ++id)
+	{
+		const auto action = static_cast<ThorAction>(id);
+		context.enabledActionMask |= thorActionMask(action);
+		ThorActionRequest request{.revision = 23, .action = action};
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+		request.revision = 22;
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+		request.revision = 23;
+		request.targetId = 0;
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	}
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::LOBBY_START_GAME,
+		ThorContextIds::CAMPAIGN_BONUS_SELECTION));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::CAMPAIGN_START,
+		ThorContextIds::LOBBY_CAMPAIGN_LIST));
 }
 
 TEST(ThorActionTest, HeroMeetingRedistributionDecodingIsBoundedAndRejectsMalformedPlans)

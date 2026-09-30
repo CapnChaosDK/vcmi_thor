@@ -291,7 +291,8 @@ bool CLobbyScreen::thorScenarioMapAvailable()
 {
 	const auto selectedMap = tabSel ? tabSel->getSelectedMapInfo() : nullptr;
 	const auto * currentMap = getMapInfo();
-	return screenType == ESelectionScreen::newGame && selectedMap && selectedMap->mapHeader
+	return (screenType == ESelectionScreen::newGame || screenType == ESelectionScreen::loadGame)
+		&& selectedMap && selectedMap->mapHeader
 		&& currentMap && currentMap->mapHeader && getStartInfo()
 		&& selectedMap->fileURI == currentMap->fileURI;
 }
@@ -309,7 +310,8 @@ void CLobbyScreen::publishThorContext()
 
 	ThorContextRecord context;
 	context.contextId = thorContextIdForLobby(thorLobbyModeFor(screenType), thorLobbyTabFor(*this));
-	if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
+	if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO
+		|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
 	{
 		const bool mapAvailable = thorScenarioMapAvailable();
 		const auto * mapInfo = mapAvailable ? getMapInfo() : nullptr;
@@ -324,6 +326,8 @@ void CLobbyScreen::publishThorContext()
 				context.details[0] += "x" + std::to_string(header.levels());
 			context.details[1] = std::to_string(mapInfo->amountOfPlayersOnMap) + "/"
 				+ std::to_string(mapInfo->amountOfHumanControllablePlayers);
+			if(screenType == ESelectionScreen::loadGame)
+				context.details[3] = mapInfo->date;
 			if(startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
 				context.details[2] = std::to_string(startInfo->difficulty);
 
@@ -335,7 +339,7 @@ void CLobbyScreen::publishThorContext()
 				if(adjacentThorScenarioPosition(*tabSel, ThorAction::LOBBY_NEXT_SCENARIO))
 					context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO);
 			}
-			if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending
+			if(screenType == ESelectionScreen::newGame && thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending
 				&& startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY);
 			if(!thorDifficultyChangePending && canStartLobbyGame() && buttonStart && !buttonStart->isBlocked())
@@ -361,8 +365,8 @@ bool CLobbyScreen::matchesThorContext(const ThorContextRecord & context) const
 {
 	const auto current = thorContextStore().snapshot();
 	return isActive() && ENGINE->windows().topWindow<CLobbyScreen>().get() == this
-		&& screenType == ESelectionScreen::newGame && curTab == tabSel
-		&& context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO
+		&& (screenType == ESelectionScreen::newGame || screenType == ESelectionScreen::loadGame) && curTab == tabSel
+		&& context.contextId == thorContextIdForLobby(thorLobbyModeFor(screenType), ThorLobbyTab::SCENARIO)
 		&& context.revision == current.revision && context.contextId == current.contextId;
 }
 
@@ -371,7 +375,8 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 	publishThorContext();
 	const auto context = thorContextStore().snapshot();
 	const bool exactTopOwner = isActive() && ENGINE->windows().topWindow<CLobbyScreen>().get() == this;
-	const bool scenarioTabActive = screenType == ESelectionScreen::newGame && curTab == tabSel;
+	const bool scenarioTabActive = (screenType == ESelectionScreen::newGame
+		|| screenType == ESelectionScreen::loadGame) && curTab == tabSel;
 	const bool mapAvailable = thorScenarioMapAvailable();
 	const bool startAvailable = mapAvailable && !thorDifficultyChangePending && canStartLobbyGame()
 		&& buttonStart && !buttonStart->isBlocked();

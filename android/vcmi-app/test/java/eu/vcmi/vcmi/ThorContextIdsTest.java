@@ -27,6 +27,7 @@ public class ThorContextIdsTest
         assertEquals("LOBBY_NEW_GAME_BATTLE_MODE", ThorContextIds.LOBBY_NEW_GAME_BATTLE_MODE);
         assertEquals("LOBBY_LOAD_GAME", ThorContextIds.LOBBY_LOAD_GAME);
         assertEquals("LOBBY_LOAD_GAME_SCENARIO", ThorContextIds.LOBBY_LOAD_GAME_SCENARIO);
+        assertEquals("CAMPAIGN_BONUS_SELECTION", ThorContextIds.CAMPAIGN_BONUS_SELECTION);
         assertEquals("LOBBY_LOAD_GAME_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_OPTIONS);
         assertEquals("LOBBY_LOAD_GAME_TURN_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_TURN_OPTIONS);
         assertEquals("LOBBY_LOAD_GAME_EXTRA_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_EXTRA_OPTIONS);
@@ -139,7 +140,17 @@ public class ThorContextIdsTest
 		assertEquals(28, ThorActionIds.LOBBY_BACK);
 		assertEquals(29, ThorActionIds.LOBBY_PREVIOUS_SCENARIO);
 		assertEquals(30, ThorActionIds.LOBBY_NEXT_SCENARIO);
-		assertEquals(35, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(42, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
+		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
+		assertEquals(ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO, ThorCampaignState.actionForControl(
+				ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO));
+		assertEquals(ThorActionIds.CAMPAIGN_SELECT_BONUS_1 + 2, ThorCampaignState.actionForControl(
+				ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + 2));
+		assertEquals(ThorActionIds.NONE, ThorCampaignState.actionForControl(
+				ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + 3));
+		assertEquals(2, ThorCampaignState.bonusIndexForControl(
+				ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + 2));
 		assertEquals(1L << 24, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SWAP_ARTIFACTS));
 		assertEquals(1L << 25, ThorActionIds.maskFor(ThorActionIds.LOBBY_SET_DIFFICULTY));
 		assertEquals(1L << 26, ThorActionIds.maskFor(ThorActionIds.LOBBY_START_GAME));

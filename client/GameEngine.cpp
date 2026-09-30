@@ -40,6 +40,7 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "windows/CExchangeWindow.h"
 #include "lobby/CLobbyScreen.h"
+#include "lobby/CBonusSelection.h"
 #include "mainmenu/CMainMenu.h"
 #endif
 
@@ -275,12 +276,29 @@ void GameEngine::updateFrame()
 			}
 			executed = exchangeWindow->executeThorAction(*request);
 		}
-		else if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
+		else if(context.contextId == ThorContextIds::CAMPAIGN_BONUS_SELECTION)
+		{
+			auto bonusWindow = windows().topWindow<CBonusSelection>();
+			if(!bonusWindow || !bonusWindow->matchesThorContext(context))
+			{
+				logGlobal->debug("Thor action rejected: inactive campaign bonus selection");
+				continue;
+			}
+			bonusWindow->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: campaign selection state changed");
+				continue;
+			}
+			executed = bonusWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO
+			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
 		{
 			auto lobbyWindow = windows().topWindow<CLobbyScreen>();
 			if(!lobbyWindow || !lobbyWindow->matchesThorContext(context))
 			{
-				logGlobal->debug("Thor action rejected: inactive New Game scenario lobby");
+				logGlobal->debug("Thor action rejected: inactive scenario/load lobby");
 				continue;
 			}
 			lobbyWindow->publishThorContext();

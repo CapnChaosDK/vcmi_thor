@@ -210,6 +210,20 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::MAIN_MENU_CHOICE_4;
 	case static_cast<int>(ThorAction::MAIN_MENU_CHOICE_5):
 		return ThorAction::MAIN_MENU_CHOICE_5;
+	case static_cast<int>(ThorAction::CAMPAIGN_PREVIOUS_SCENARIO):
+		return ThorAction::CAMPAIGN_PREVIOUS_SCENARIO;
+	case static_cast<int>(ThorAction::CAMPAIGN_NEXT_SCENARIO):
+		return ThorAction::CAMPAIGN_NEXT_SCENARIO;
+	case static_cast<int>(ThorAction::CAMPAIGN_SELECT_BONUS_1):
+		return ThorAction::CAMPAIGN_SELECT_BONUS_1;
+	case static_cast<int>(ThorAction::CAMPAIGN_SELECT_BONUS_2):
+		return ThorAction::CAMPAIGN_SELECT_BONUS_2;
+	case static_cast<int>(ThorAction::CAMPAIGN_SELECT_BONUS_3):
+		return ThorAction::CAMPAIGN_SELECT_BONUS_3;
+	case static_cast<int>(ThorAction::CAMPAIGN_START):
+		return ThorAction::CAMPAIGN_START;
+	case static_cast<int>(ThorAction::CAMPAIGN_BACK):
+		return ThorAction::CAMPAIGN_BACK;
 	default:
 		return std::nullopt;
 	}
@@ -234,10 +248,13 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT
 			|| action == ThorAction::HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT
 			|| action == ThorAction::HERO_MEETING_SWAP_ARTIFACTS;
-	if(contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
-		return action == ThorAction::LOBBY_SET_DIFFICULTY || action == ThorAction::LOBBY_START_GAME
+	if(contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO || contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
+		return (contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO && action == ThorAction::LOBBY_SET_DIFFICULTY)
+			|| action == ThorAction::LOBBY_START_GAME
 			|| action == ThorAction::LOBBY_BACK || action == ThorAction::LOBBY_PREVIOUS_SCENARIO
 			|| action == ThorAction::LOBBY_NEXT_SCENARIO;
+	if(contextId == ThorContextIds::CAMPAIGN_BONUS_SELECTION)
+		return action >= ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && action <= ThorAction::CAMPAIGN_BACK;
 	return false;
 }
 
@@ -327,10 +344,11 @@ std::optional<std::size_t> thorAdjacentScenarioPosition(
 	std::span<const std::uint8_t> selectableEntries, std::size_t currentPosition, ThorAction action)
 {
 	if(currentPosition >= selectableEntries.size() || selectableEntries[currentPosition] == 0
-		|| (action != ThorAction::LOBBY_PREVIOUS_SCENARIO && action != ThorAction::LOBBY_NEXT_SCENARIO))
+		|| (action != ThorAction::LOBBY_PREVIOUS_SCENARIO && action != ThorAction::LOBBY_NEXT_SCENARIO
+			&& action != ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && action != ThorAction::CAMPAIGN_NEXT_SCENARIO))
 		return std::nullopt;
 
-	if(action == ThorAction::LOBBY_PREVIOUS_SCENARIO)
+	if(action == ThorAction::LOBBY_PREVIOUS_SCENARIO || action == ThorAction::CAMPAIGN_PREVIOUS_SCENARIO)
 	{
 		for(std::size_t position = currentPosition; position > 0;)
 		{
@@ -454,6 +472,12 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	}
 	else if(request.action == ThorAction::LOBBY_START_GAME || request.action == ThorAction::LOBBY_BACK
 		|| request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO || request.action == ThorAction::LOBBY_NEXT_SCENARIO)
+	{
+		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(request.action >= ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && request.action <= ThorAction::CAMPAIGN_BACK)
 	{
 		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)

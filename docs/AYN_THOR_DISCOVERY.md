@@ -41,6 +41,11 @@ VCMI is not a single-process game-state engine like fheroes2. Its architecture s
 - Thor action masks are unsigned 64-bit native values and Java `long` values with identical bit patterns across JNI. IDs remain 1-based; ID 64 occupies the sign bit in Java, so consumers must use bitwise masks and must not treat a negative `long` as invalid. New action IDs must remain within 1–64 and be added to both native and Java stable-ID contracts. Slice 31 assigns `LOBBY_PREVIOUS_SCENARIO = 29` and `LOBBY_NEXT_SCENARIO = 30`, retaining all existing IDs 0–28.
 - Scenario taps are accepted only when pointer-down and pointer-up hit the same control at the same context revision and presentation session. Context changes, cancellation, additional pointers, or display recreation discard the pending tap. The panel supplements the upper SDL lobby and does not change its touch, keyboard, or controller paths.
 
+### Load Game and campaign setup companions
+
+- Load Game reuses the `CLobbyScreen`/`SelectionTab` scenario contract for the currently selected compatible save. Native code publishes only the bounded translated name, map dimensions, player counts, and save date; navigation follows the current filtered native list, while Load and Back retain `start(false)` and `leaveLobby()` semantics. Paths and save contents never cross JNI.
+- Campaign scenario and starting-bonus interaction belongs to the exact non-gameplay `CBonusSelection`, not Android or the preceding configurable campaign-set grid. It publishes only bounded campaign/scenario names and at most three translated bonus descriptions. Revision-bound actions re-resolve accessible scenarios and bonus positions before using the existing server lobby calls, and videos, child windows, gameplay campaign information, or oversized bonus collections fail closed.
+
 ## Android application architecture
 
 VCMI combines Qt and SDL in one Android package:
