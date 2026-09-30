@@ -1,4 +1,5 @@
 #include "ThorContext.h"
+#include "ThorAction.h"
 
 #include <utility>
 
@@ -14,6 +15,10 @@ namespace
 			&& lhs.activeActionMask == rhs.activeActionMask
 			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.campaignSelectionRevision == rhs.campaignSelectionRevision
+			&& lhs.browserPage == rhs.browserPage
+			&& lhs.browserPageCount == rhs.browserPageCount
+			&& lhs.browserEntries == rhs.browserEntries
+			&& lhs.browserNativeKeys == rhs.browserNativeKeys
 			&& lhs.selectedHeroId == rhs.selectedHeroId
 			&& lhs.heroPortraitAssetKey == rhs.heroPortraitAssetKey
 			&& lhs.actionSubjectId == rhs.actionSubjectId
@@ -52,6 +57,27 @@ namespace
 			hero.name = thorBoundedText(std::move(hero.name));
 		for(auto & town : context.towns)
 			town.name = thorBoundedText(std::move(town.name));
+		if((context.contextId != ThorContextIds::CAMPAIGN_BROWSER
+				&& context.contextId != ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
+			|| context.browserEntries.size() > THOR_BROWSER_MAX_ROWS
+			|| context.browserNativeKeys.size() != context.browserEntries.size()
+			|| context.browserPage < 0 || context.browserPageCount < 0
+			|| (context.browserPageCount != 0 && context.browserPage >= context.browserPageCount)
+			|| (context.browserPageCount == 0 && !context.browserEntries.empty()))
+		{
+			context.enabledActionMask &= ~(thorActionMask(ThorAction::CAMPAIGN_BROWSER_SELECT)
+				| thorActionMask(ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE)
+				| thorActionMask(ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE)
+				| thorActionMask(ThorAction::LOAD_BROWSER_SELECT)
+				| thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+				| thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE));
+			context.browserEntries.clear();
+			context.browserNativeKeys.clear();
+			context.browserPage = 0;
+			context.browserPageCount = 0;
+		}
+		for(auto & entry : context.browserEntries)
+			entry.label = thorBoundedText(std::move(entry.label));
 		if(context.heroMeetingArmies)
 		{
 			auto & armies = *context.heroMeetingArmies;

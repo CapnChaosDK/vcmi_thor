@@ -41,6 +41,13 @@
     <string name="thor_campaign_choose_bonus">Choose a starting bonus</string>
     <string name="thor_campaign_previous_scenario">Previous scenario</string>
     <string name="thor_campaign_next_scenario">Next scenario</string>
+    <string name="thor_campaign_browser_title">Campaigns</string>
+    <string name="thor_campaign_browser_status">Choose a campaign</string>
+    <string name="thor_browser_page">Page %1$d of %2$d</string>
+    <string name="thor_browser_unavailable">Unavailable campaign</string>
+    <string name="thor_browser_completed">Completed</string>
+    <string name="thor_browser_previous_page">Previous page</string>
+    <string name="thor_browser_next_page">Next page</string>
     <string name="thor_lobby_difficulty_easy">Easy</string>
     <string name="thor_lobby_difficulty_normal">Normal</string>
     <string name="thor_lobby_difficulty_hard">Hard</string>

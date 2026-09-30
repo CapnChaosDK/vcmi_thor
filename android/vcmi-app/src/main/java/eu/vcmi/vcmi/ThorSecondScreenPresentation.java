@@ -96,6 +96,12 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateTowns(roster);
     }
 
+    void updateBrowser(final ThorBrowserState browser)
+    {
+        if (foundationView != null)
+            foundationView.updateBrowser(browser);
+    }
+
     void updateHeroMeetingArmies(final ThorHeroMeetingArmies armies)
     {
         if (foundationView != null)
@@ -172,6 +178,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private long activeActionMask;
         private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
         private ThorTownRoster towns = ThorTownRoster.EMPTY;
+        private ThorBrowserState browser = ThorBrowserState.EMPTY;
         private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
         private ThorHeroMeetingArtifacts heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
         private final ThorHeroMeetingModeState heroMeetingMode = new ThorHeroMeetingModeState();
@@ -196,6 +203,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private boolean artifactTouchMovedWithoutSource;
         private final ThorLobbyScenarioGesture lobbyScenarioGesture = new ThorLobbyScenarioGesture();
         private final ThorMainMenuGesture mainMenuGesture = new ThorMainMenuGesture();
+        private final ThorBrowserGesture browserGesture = new ThorBrowserGesture();
         private final Runnable heroMeetingLongPress = () ->
         {
             if (!heroMeetingRedistribution.isActive()
@@ -244,6 +252,7 @@ final class ThorSecondScreenPresentation extends Presentation
             cancelHeroMeetingGesture();
             cancelLobbyScenarioTouch();
             cancelMainMenuTouch();
+            browserGesture.cancel();
             invalidate();
         }
 
@@ -258,10 +267,12 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 cancelLobbyScenarioTouch();
                 cancelMainMenuTouch();
+                browserGesture.cancel();
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
                 heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
+                browser = ThorBrowserState.EMPTY;
                 artifactPage = 0;
                 selectedArtifact = -1;
                 townPage = 0;
@@ -271,14 +282,18 @@ final class ThorSecondScreenPresentation extends Presentation
                 heroMeetingRedistribution.cancel();
                 cancelHeroMeetingGesture();
             }
-            else if ((ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
+            if ((ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
                     && this.enabledActionMask != enabledActionMask)
                 cancelLobbyScenarioTouch();
-            else if (ThorMainMenuState.choiceCount(contextId) > 0
+            if (ThorMainMenuState.choiceCount(contextId) > 0
                     && this.enabledActionMask != enabledActionMask)
                 cancelMainMenuTouch();
+            if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
+                    && this.enabledActionMask != enabledActionMask)
+                browserGesture.cancel();
             this.revision = revision;
             this.contextId = contextId;
             heroPortraitAssetKey = publishedHeroPortraitAssetKey;
@@ -403,6 +418,11 @@ final class ThorSecondScreenPresentation extends Presentation
                 status = ThorLobbyScenarioState.scenarioName(publishedStatus,
                         getContext().getString(R.string.thor_context_campaign));
             }
+            else if (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_campaign_browser_title);
+                status = getContext().getString(R.string.thor_campaign_browser_status);
+            }
             else if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_adventure_map);
@@ -474,6 +494,13 @@ final class ThorSecondScreenPresentation extends Presentation
                 status = publishedStatus.isEmpty() ? getContext().getString(R.string.thor_deck_status) : publishedStatus;
             }
             setContentDescription(commandDeckDescription());
+            invalidate();
+        }
+
+        void updateBrowser(final ThorBrowserState publishedBrowser)
+        {
+            browserGesture.cancel();
+            browser = publishedBrowser == null ? ThorBrowserState.EMPTY : publishedBrowser;
             invalidate();
         }
 
@@ -560,8 +587,11 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean lobbyScenario = ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
             final boolean campaignBonus = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId);
+            final boolean browserContext = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
             final float dividerY = frame.top + contentHeight * (battleDashboard ? 0.55f
-                    : adventure ? ThorAdventureLayout.DIVIDER : lobbyScenario || campaignBonus ? 0.48f : 0.34f);
+                    : adventure ? ThorAdventureLayout.DIVIDER : browserContext ? 0.20f
+                    : lobbyScenario || campaignBonus ? 0.48f : 0.34f);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(PARCHMENT_DARK);
             canvas.drawRect(frame.left + bevel * 2f, frame.top + bevel * 2f, frame.right - bevel * 2f, dividerY - bevel, paint);
@@ -576,6 +606,10 @@ final class ThorSecondScreenPresentation extends Presentation
             if (battleDashboard)
             {
                 drawBattleDashboard(canvas, frame, dividerY, bevel, density);
+            }
+            else if (browserContext)
+            {
+                drawBrowserDashboard(canvas, frame, density);
             }
             else if (lobbyScenario)
             {
@@ -687,8 +721,10 @@ final class ThorSecondScreenPresentation extends Presentation
                     hapticsToggleGesture.pointerAdded();
                 return true;
             }
+            if (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
+                return handleBrowserTouch(event);
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
-                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
                 return handleLobbyScenarioTouch(event);
             if (ThorMainMenuState.choiceCount(contextId) > 0)
@@ -1594,6 +1630,7 @@ final class ThorSecondScreenPresentation extends Presentation
             removeCallbacks(heroMeetingLongPress);
             cancelLobbyScenarioTouch();
             cancelMainMenuTouch();
+            browserGesture.cancel();
             heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
             heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
             heroMeetingGesture.cancel();
@@ -1616,6 +1653,7 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 cancelLobbyScenarioTouch();
                 cancelMainMenuTouch();
+                browserGesture.cancel();
                 cancelHeroMeetingGesture();
             }
         }
@@ -1928,6 +1966,66 @@ final class ThorSecondScreenPresentation extends Presentation
                         getContext().getString(ThorMainMenuState.labelForControl(contextId, control)),
                         isActionEnabled(actionId), false, density);
             }
+        }
+
+        private RectF browserControlBounds(final int control, final RectF frame)
+        {
+            final float[] bounds = ThorBrowserState.boundsForControl(contextId, control,
+                    frame.width(), frame.height());
+            return new RectF(frame.left + bounds[0], frame.top + bounds[1],
+                    frame.left + bounds[2], frame.top + bounds[3]);
+        }
+
+        private void drawBrowserDashboard(final Canvas canvas, final RectF frame, final float density)
+        {
+            final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, campaign ? title : getContext().getString(R.string.thor_context_load_game),
+                    frame.centerX(), frame.top + frame.height() * 0.065f, frame.width() * 0.78f,
+                    Math.min(36f * density, frame.height() * 0.060f));
+            paint.setFakeBoldText(false);
+            drawFittedText(canvas, getContext().getString(R.string.thor_browser_page,
+                            browser.pageCount == 0 ? 0 : browser.page + 1, browser.pageCount),
+                    frame.centerX(), frame.top + frame.height() * 0.115f, frame.width() * 0.72f,
+                    Math.min(26f * density, frame.height() * 0.04f));
+            if (!campaign)
+            {
+                drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.157f,
+                        frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
+                drawFittedText(canvas, detailLines[0] + "   " + detailLines[1] + "   " + detailLines[3],
+                        frame.centerX(), frame.top + frame.height() * 0.19f,
+                        frame.width() * 0.84f, Math.min(22f * density, frame.height() * 0.035f));
+            }
+            for (int row = 0; row < browser.rowCount(); ++row)
+            {
+                String label = browser.labels[row];
+                if (label.isEmpty())
+                    label = getContext().getString(R.string.thor_browser_unavailable);
+                if (browser.completed(row))
+                    label += "  " + getContext().getString(R.string.thor_browser_completed);
+                drawLobbyScenarioButton(canvas,
+                        browserControlBounds(ThorBrowserState.CONTROL_FIRST_ROW + row, frame),
+                        label, browser.enabled(row) && isActionEnabled(campaign
+                                ? ThorActionIds.CAMPAIGN_BROWSER_SELECT : ThorActionIds.LOAD_BROWSER_SELECT),
+                        browser.selected(row), density);
+            }
+            drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_PREVIOUS, frame),
+                    getContext().getString(R.string.thor_browser_previous_page),
+                    browserControlEnabled(ThorBrowserState.CONTROL_PREVIOUS), false, density);
+            drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_NEXT, frame),
+                    getContext().getString(R.string.thor_browser_next_page),
+                    browserControlEnabled(ThorBrowserState.CONTROL_NEXT), false, density);
+            if (!campaign)
+                drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_PRIMARY, frame),
+                        getContext().getString(R.string.thor_lobby_load),
+                        isActionEnabled(ThorActionIds.LOBBY_START_GAME), false, density);
+            drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_BACK, frame),
+                    getContext().getString(R.string.thor_lobby_back),
+                    isActionEnabled(campaign ? ThorActionIds.CAMPAIGN_BROWSER_BACK : ThorActionIds.LOBBY_BACK),
+                    false, density);
         }
 
         private void drawLobbyScenarioDashboard(final Canvas canvas, final RectF frame, final float dividerY,
@@ -2638,6 +2736,79 @@ final class ThorSecondScreenPresentation extends Presentation
             final float dividerY = frame.top + frame.height() * 0.48f;
             return ThorLobbyScenarioState.controlAt(x - frame.left, y - frame.top,
                     frame.width(), frame.height(), dividerY - frame.top);
+        }
+
+        private int browserControlAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            return ThorBrowserState.controlAt(contextId, x - frame.left, y - frame.top,
+                    frame.width(), frame.height(), browser.rowCount());
+        }
+
+        private int browserTarget(final int control)
+        {
+            final int row = control - ThorBrowserState.CONTROL_FIRST_ROW;
+            return control >= ThorBrowserState.CONTROL_FIRST_ROW && row < browser.rowCount()
+                    ? browser.targets[row] : ThorActionIds.NO_TARGET;
+        }
+
+        private boolean browserControlEnabled(final int control)
+        {
+            final int actionId = ThorBrowserState.actionForControl(contextId, control);
+            if (actionId == ThorActionIds.NONE || !isActionEnabled(actionId))
+                return false;
+            if (control == ThorBrowserState.CONTROL_PREVIOUS)
+                return browser.pageCount > 0 && browser.page > 0;
+            if (control == ThorBrowserState.CONTROL_NEXT)
+                return browser.pageCount > 0 && browser.page + 1 < browser.pageCount;
+            if (control >= ThorBrowserState.CONTROL_FIRST_ROW
+                    && control < ThorBrowserState.CONTROL_FIRST_ROW + ThorBrowserState.MAX_ROWS)
+                return browser.enabled(control - ThorBrowserState.CONTROL_FIRST_ROW);
+            return true;
+        }
+
+        private boolean handleBrowserTouch(final MotionEvent event)
+        {
+            final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN)
+            {
+                final int control = browserControlAt(event.getX(), event.getY());
+                browserGesture.begin(contextId, control, browserTarget(control), revision,
+                        presentationSessionId, event.getPointerId(0), browserControlEnabled(control));
+                return true;
+            }
+            if (!browserGesture.isActive())
+                return true;
+            if (event.getPointerCount() != 1 || event.getPointerId(0) != browserGesture.pointerId()
+                    || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP)
+            {
+                browserGesture.cancel();
+                return true;
+            }
+            if (action == MotionEvent.ACTION_CANCEL)
+            {
+                browserGesture.cancel();
+                return true;
+            }
+            if (action != MotionEvent.ACTION_UP)
+                return true;
+            final int control = browserGesture.control();
+            final int actionId = ThorBrowserState.actionForControl(contextId, control);
+            final int target = browserGesture.target();
+            final long submittedRevision = browserGesture.revision();
+            final long submittedSession = browserGesture.session();
+            final boolean accepted = browserGesture.finish(contextId,
+                    browserControlAt(event.getX(), event.getY()),
+                    browserTarget(browserControlAt(event.getX(), event.getY())),
+                    event.getPointerCount(), event.getPointerId(0), revision, presentationSessionId,
+                    browserControlEnabled(control), sessionValidity != null
+                            && sessionValidity.isCurrent(submittedSession));
+            if (accepted)
+            {
+                performClick();
+                NativeMethods.submitThorAction(submittedRevision, actionId, target);
+            }
+            return true;
         }
 
         private int mainMenuControlAt(final float x, final float y)

@@ -224,6 +224,13 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 		return ThorAction::CAMPAIGN_START;
 	case static_cast<int>(ThorAction::CAMPAIGN_BACK):
 		return ThorAction::CAMPAIGN_BACK;
+	case static_cast<int>(ThorAction::CAMPAIGN_BROWSER_SELECT): return ThorAction::CAMPAIGN_BROWSER_SELECT;
+	case static_cast<int>(ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE): return ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE;
+	case static_cast<int>(ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE): return ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE;
+	case static_cast<int>(ThorAction::CAMPAIGN_BROWSER_BACK): return ThorAction::CAMPAIGN_BROWSER_BACK;
+	case static_cast<int>(ThorAction::LOAD_BROWSER_SELECT): return ThorAction::LOAD_BROWSER_SELECT;
+	case static_cast<int>(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE): return ThorAction::LOAD_BROWSER_PREVIOUS_PAGE;
+	case static_cast<int>(ThorAction::LOAD_BROWSER_NEXT_PAGE): return ThorAction::LOAD_BROWSER_NEXT_PAGE;
 	default:
 		return std::nullopt;
 	}
@@ -252,9 +259,13 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 		return (contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO && action == ThorAction::LOBBY_SET_DIFFICULTY)
 			|| action == ThorAction::LOBBY_START_GAME
 			|| action == ThorAction::LOBBY_BACK || action == ThorAction::LOBBY_PREVIOUS_SCENARIO
-			|| action == ThorAction::LOBBY_NEXT_SCENARIO;
+			|| action == ThorAction::LOBBY_NEXT_SCENARIO
+			|| (contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO
+				&& action >= ThorAction::LOAD_BROWSER_SELECT && action <= ThorAction::LOAD_BROWSER_NEXT_PAGE);
 	if(contextId == ThorContextIds::CAMPAIGN_BONUS_SELECTION)
 		return action >= ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && action <= ThorAction::CAMPAIGN_BACK;
+	if(contextId == ThorContextIds::CAMPAIGN_BROWSER)
+		return action >= ThorAction::CAMPAIGN_BROWSER_SELECT && action <= ThorAction::CAMPAIGN_BROWSER_BACK;
 	return false;
 }
 
@@ -363,6 +374,17 @@ std::optional<std::size_t> thorAdjacentScenarioPosition(
 		if(selectableEntries[position] != 0)
 			return position;
 	return std::nullopt;
+}
+
+std::vector<std::size_t> thorSelectableBrowserPositions(std::span<const std::uint8_t> selectableEntries)
+{
+	std::vector<std::size_t> positions;
+	if(selectableEntries.size() > 10000)
+		return positions;
+	for(std::size_t index = 0; index < selectableEntries.size(); ++index)
+		if(selectableEntries[index] != 0)
+			positions.push_back(index);
+	return positions;
 }
 
 bool isThorActionAllowedInAdventureMap(ThorAction action)
@@ -477,7 +499,19 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
 			return ThorActionValidation::INVALID_TARGET;
 	}
-	else if(request.action >= ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && request.action <= ThorAction::CAMPAIGN_BACK)
+	else if(request.action == ThorAction::CAMPAIGN_BROWSER_SELECT || request.action == ThorAction::LOAD_BROWSER_SELECT)
+	{
+		if(request.targetId < 0 || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1
+			|| std::none_of(context.browserEntries.begin(), context.browserEntries.end(), [&](const auto & entry)
+			{
+				return entry.target == request.targetId && entry.enabled;
+			}))
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if((request.action >= ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && request.action <= ThorAction::CAMPAIGN_BACK)
+		|| (request.action >= ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE && request.action <= ThorAction::CAMPAIGN_BROWSER_BACK)
+		|| request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE || request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
 	{
 		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)

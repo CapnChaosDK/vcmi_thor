@@ -32,6 +32,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private long activeActionMask;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
+    private ThorBrowserState browser = ThorBrowserState.EMPTY;
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
     private final ThorHeroMeetingArtifactCache heroMeetingArtifactCache = new ThorHeroMeetingArtifactCache();
     private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
@@ -150,6 +151,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             adventureTab = 0;
         heroes = ThorHeroRoster.EMPTY;
         towns = ThorTownRoster.EMPTY;
+        browser = ThorBrowserState.EMPTY;
         heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
         heroMeetingArtifactCache.reset(revision, contextId);
         contextTitle = title == null ? "" : title;
@@ -177,6 +179,16 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey,
                     contextDetails,
                     enabledActionMask, activeActionMask);
+    }
+
+    void publishBrowser(final long revision, final int page, final int pageCount,
+                        final int[] targets, final String[] labels, final int[] flags)
+    {
+        if (revision != contextRevision)
+            return;
+        browser = ThorBrowserState.copyOf(contextId, page, pageCount, targets, labels, flags);
+        if (presentation != null)
+            presentation.updateBrowser(browser);
     }
 
     void publishHeroes(final long revision, final ThorHeroRoster roster)
@@ -324,6 +336,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     enabledActionMask, activeActionMask);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
+            newPresentation.updateBrowser(browser);
             newPresentation.updateHeroMeetingArmies(heroMeetingArmies);
             newPresentation.updateHeroMeetingArtifacts(heroMeetingArtifactCache.snapshot());
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());

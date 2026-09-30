@@ -60,10 +60,17 @@ enum class ThorAction : std::uint8_t
 	CAMPAIGN_SELECT_BONUS_2 = 39,
 	CAMPAIGN_SELECT_BONUS_3 = 40,
 	CAMPAIGN_START = 41,
-	CAMPAIGN_BACK = 42
+	CAMPAIGN_BACK = 42,
+	CAMPAIGN_BROWSER_SELECT = 43,
+	CAMPAIGN_BROWSER_PREVIOUS_PAGE = 44,
+	CAMPAIGN_BROWSER_NEXT_PAGE = 45,
+	CAMPAIGN_BROWSER_BACK = 46,
+	LOAD_BROWSER_SELECT = 47,
+	LOAD_BROWSER_PREVIOUS_PAGE = 48,
+	LOAD_BROWSER_NEXT_PAGE = 49
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::CAMPAIGN_BACK);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::LOAD_BROWSER_NEXT_PAGE);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -100,6 +107,9 @@ DLL_LINKAGE std::optional<std::size_t> thorMainMenuTabIndex(const std::string & 
 DLL_LINKAGE std::string_view thorMainMenuNavigationTarget(std::string_view command);
 DLL_LINKAGE std::optional<std::size_t> thorAdjacentScenarioPosition(
 	std::span<const std::uint8_t> selectableEntries, std::size_t currentPosition, ThorAction action);
+/// Preserves the native filtered/sorted order while excluding folders and invalid saves.
+DLL_LINKAGE std::vector<std::size_t> thorSelectableBrowserPositions(
+	std::span<const std::uint8_t> selectableEntries);
 DLL_LINKAGE bool isThorActionHapticEligible(ThorAction action);
 DLL_LINKAGE bool isThorActionHapticDeferredUntilServerResult(ThorAction action);
 DLL_LINKAGE bool isThorActionArtifactMutation(ThorAction action);

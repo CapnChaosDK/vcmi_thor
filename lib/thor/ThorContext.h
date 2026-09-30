@@ -35,6 +35,7 @@ namespace ThorContextIds
 	inline constexpr char LOBBY_LOAD_GAME_EXTRA_OPTIONS[] = "LOBBY_LOAD_GAME_EXTRA_OPTIONS";
 	inline constexpr char LOBBY_CAMPAIGN_LIST[] = "LOBBY_CAMPAIGN_LIST";
 	inline constexpr char CAMPAIGN_BONUS_SELECTION[] = "CAMPAIGN_BONUS_SELECTION";
+	inline constexpr char CAMPAIGN_BROWSER[] = "CAMPAIGN_BROWSER";
 	inline constexpr char ADVENTURE_MAP[] = "ADVENTURE_MAP";
 	inline constexpr char HERO_WINDOW[] = "HERO_WINDOW";
 	inline constexpr char TOWN_WINDOW[] = "TOWN_WINDOW";
@@ -87,6 +88,8 @@ enum class ThorInGameContext
 };
 
 inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
+inline constexpr std::size_t THOR_BROWSER_MAX_ROWS = 8;
+inline constexpr std::size_t THOR_SAVE_BROWSER_PAGE_SIZE = 5;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
 inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;
 inline constexpr std::size_t THOR_MAX_TOWNS = 64;
@@ -164,6 +167,17 @@ struct DLL_LINKAGE ThorTownEntry
 	bool operator==(const ThorTownEntry &) const = default;
 };
 
+/// One visible browser row. target is a native list index, never a path or pointer.
+struct DLL_LINKAGE ThorBrowserEntry
+{
+	int target = -1;
+	std::string label;
+	bool enabled = false;
+	bool selected = false;
+	bool completed = false;
+	bool operator==(const ThorBrowserEntry &) const = default;
+};
+
 /// One fixed, addressable stack position in a Hero Meeting army.
 struct DLL_LINKAGE ThorHeroMeetingSlot
 {
@@ -233,6 +247,11 @@ struct DLL_LINKAGE ThorContextRecord
 	ThorContextDetails details;
 	std::vector<ThorHeroEntry> heroes;
 	std::vector<ThorTownEntry> towns;
+	int browserPage = 0;
+	int browserPageCount = 0;
+	std::vector<ThorBrowserEntry> browserEntries;
+	/// Native-only identity of the exact ordered list; never sent through JNI.
+	std::vector<std::string> browserNativeKeys;
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
 	std::uint64_t heroPortraitAssetKey = 0;

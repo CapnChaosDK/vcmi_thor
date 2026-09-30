@@ -28,6 +28,7 @@ public class ThorContextIdsTest
         assertEquals("LOBBY_LOAD_GAME", ThorContextIds.LOBBY_LOAD_GAME);
         assertEquals("LOBBY_LOAD_GAME_SCENARIO", ThorContextIds.LOBBY_LOAD_GAME_SCENARIO);
         assertEquals("CAMPAIGN_BONUS_SELECTION", ThorContextIds.CAMPAIGN_BONUS_SELECTION);
+        assertEquals("CAMPAIGN_BROWSER", ThorContextIds.CAMPAIGN_BROWSER);
         assertEquals("LOBBY_LOAD_GAME_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_OPTIONS);
         assertEquals("LOBBY_LOAD_GAME_TURN_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_TURN_OPTIONS);
         assertEquals("LOBBY_LOAD_GAME_EXTRA_OPTIONS", ThorContextIds.LOBBY_LOAD_GAME_EXTRA_OPTIONS);
@@ -140,9 +141,17 @@ public class ThorContextIdsTest
 		assertEquals(28, ThorActionIds.LOBBY_BACK);
 		assertEquals(29, ThorActionIds.LOBBY_PREVIOUS_SCENARIO);
 		assertEquals(30, ThorActionIds.LOBBY_NEXT_SCENARIO);
-		assertEquals(42, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(49, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
 		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
+		assertEquals(43, ThorActionIds.CAMPAIGN_BROWSER_SELECT);
+		assertEquals(44, ThorActionIds.CAMPAIGN_BROWSER_PREVIOUS_PAGE);
+		assertEquals(45, ThorActionIds.CAMPAIGN_BROWSER_NEXT_PAGE);
+		assertEquals(46, ThorActionIds.CAMPAIGN_BROWSER_BACK);
+		assertEquals(47, ThorActionIds.LOAD_BROWSER_SELECT);
+		assertEquals(48, ThorActionIds.LOAD_BROWSER_PREVIOUS_PAGE);
+		assertEquals(49, ThorActionIds.LOAD_BROWSER_NEXT_PAGE);
+		assertEquals(1L << 48, ThorActionIds.maskFor(ThorActionIds.LOAD_BROWSER_NEXT_PAGE));
 		assertEquals(ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO, ThorCampaignState.actionForControl(
 				ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO));
 		assertEquals(ThorActionIds.CAMPAIGN_SELECT_BONUS_1 + 2, ThorCampaignState.actionForControl(

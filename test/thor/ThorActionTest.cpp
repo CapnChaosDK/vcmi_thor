@@ -38,7 +38,7 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(28), ThorAction::LOBBY_BACK);
 	EXPECT_EQ(thorActionFromId(29), ThorAction::LOBBY_PREVIOUS_SCENARIO);
 	EXPECT_EQ(thorActionFromId(30), ThorAction::LOBBY_NEXT_SCENARIO);
-	for(int id = 31; id <= 42; ++id)
+	for(int id = 31; id <= 49; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
@@ -244,7 +244,9 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	for(int id = 36; id <= 42; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 42);
+	for(int id = 43; id <= 49; ++id)
+		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 49);
 }
 
 TEST(ThorActionTest, MainMenuChoicesRequireExactContextSlotAndBuiltInCommand)
@@ -353,6 +355,21 @@ TEST(ThorActionTest, ScenarioNavigationUsesTheFilteredSortedSelectableOrderAndSk
 	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 1, ThorAction::LOBBY_BACK), std::nullopt);
 	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 1, ThorAction::CAMPAIGN_NEXT_SCENARIO), 3);
 	EXPECT_EQ(thorAdjacentScenarioPosition(selectableEntries, 3, ThorAction::CAMPAIGN_PREVIOUS_SCENARIO), 1);
+}
+
+TEST(ThorActionTest, SaveBrowserKeepsNativeOrderAndFiveRowPageBoundaries)
+{
+	const std::array<std::uint8_t, 13> entries{0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1};
+	const auto positions = thorSelectableBrowserPositions(entries);
+	ASSERT_EQ(positions.size(), 10);
+	EXPECT_EQ((std::vector<std::size_t>(positions.begin(), positions.begin() + THOR_SAVE_BROWSER_PAGE_SIZE)),
+		(std::vector<std::size_t>{1, 2, 4, 5, 6}));
+	EXPECT_EQ((std::vector<std::size_t>(positions.begin() + THOR_SAVE_BROWSER_PAGE_SIZE, positions.end())),
+		(std::vector<std::size_t>{7, 9, 10, 11, 12}));
+	const std::array<std::uint8_t, 8> incomplete{0, 1, 1, 0, 1, 1, 1, 1};
+	EXPECT_EQ(thorSelectableBrowserPositions(incomplete).size(), 6);
+	std::vector<std::uint8_t> oversized(10001, 1);
+	EXPECT_TRUE(thorSelectableBrowserPositions(oversized).empty());
 }
 
 TEST(ThorActionTest, LobbyActionsAreScopedAndValidateDifficultyTargets)
@@ -465,6 +482,38 @@ TEST(ThorActionTest, CampaignActionsAreRevisionBoundAndScopedToBonusSelection)
 		ThorContextIds::CAMPAIGN_BONUS_SELECTION));
 	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::CAMPAIGN_START,
 		ThorContextIds::LOBBY_CAMPAIGN_LIST));
+}
+
+TEST(ThorActionTest, BrowserActionsRequireCurrentEnabledVisibleIdentityAndExactContext)
+{
+	ThorContextRecord campaign;
+	campaign.revision = 51;
+	campaign.contextId = ThorContextIds::CAMPAIGN_BROWSER;
+	campaign.browserPage = 1;
+	campaign.browserPageCount = 2;
+	campaign.browserEntries = {{8, "Complete", true, false, true}, {9, "Locked", false, false, false}};
+	campaign.enabledActionMask = thorActionMask(ThorAction::CAMPAIGN_BROWSER_SELECT)
+		| thorActionMask(ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE)
+		| thorActionMask(ThorAction::CAMPAIGN_BROWSER_BACK);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::CAMPAIGN_BROWSER_SELECT, 8}, campaign), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::CAMPAIGN_BROWSER_SELECT, 9}, campaign), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::CAMPAIGN_BROWSER_SELECT, 10}, campaign), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({50, ThorAction::CAMPAIGN_BROWSER_SELECT, 8}, campaign), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE}, campaign), ThorActionValidation::UNAVAILABLE);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::CAMPAIGN_BROWSER_BACK}, campaign), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::CAMPAIGN_START}, campaign), ThorActionValidation::WRONG_CONTEXT);
+
+	ThorContextRecord load = campaign;
+	load.contextId = ThorContextIds::LOBBY_LOAD_GAME_SCENARIO;
+	load.browserEntries = {{2, "Save A", true, true, false}};
+	load.enabledActionMask = thorActionMask(ThorAction::LOAD_BROWSER_SELECT)
+		| thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE) | thorActionMask(ThorAction::LOBBY_BACK);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::LOAD_BROWSER_SELECT, 2}, load), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::CAMPAIGN_BROWSER_SELECT, 2}, load), ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(validateThorLobbyActionRequest({51, ThorAction::LOAD_BROWSER_SELECT, 2}, load,
+		false, true, true, true, true, true), ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::LOAD_BROWSER_NEXT_PAGE}, load), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({51, ThorAction::LOBBY_BACK}, load), ThorActionValidation::VALID);
 }
 
 TEST(ThorActionTest, HeroMeetingRedistributionDecodingIsBoundedAndRejectsMalformedPlans)

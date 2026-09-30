@@ -93,6 +93,13 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishActionState(revision, enabledActionMask, activeActionMask);
     }
 
+    void publishThorBrowser(final long revision, final int page, final int pageCount,
+                            final int[] targets, final String[] labels, final int[] flags)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.publishBrowser(revision, page, pageCount, targets, labels, flags);
+    }
+
     void registerThorActionSubmission(final long revision, final int actionId)
     {
         if (mThorSecondScreenController != null)

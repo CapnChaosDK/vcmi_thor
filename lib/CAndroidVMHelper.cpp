@@ -128,6 +128,40 @@ void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint6
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorBrowser(std::uint64_t revision, int page, int pageCount,
+	const std::vector<ThorBrowserEntry> & entries)
+{
+	if(entries.size() > THOR_BROWSER_MAX_ROWS)
+		return;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorBrowser", "(JII[I[Ljava/lang/String;[I)V",
+		[revision, page, pageCount, &entries](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto size = static_cast<jsize>(entries.size());
+			jintArray targets = env->NewIntArray(size);
+			jintArray flags = env->NewIntArray(size);
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray labels = env->NewObjectArray(size, stringClass, nullptr);
+			for(jsize index = 0; index < size; ++index)
+			{
+				const auto & entry = entries[index];
+				const jint target = entry.target;
+				const jint state = (entry.enabled ? 1 : 0) | (entry.selected ? 2 : 0)
+					| (entry.completed ? 4 : 0);
+				env->SetIntArrayRegion(targets, index, 1, &target);
+				env->SetIntArrayRegion(flags, index, 1, &state);
+				jstring label = env->NewStringUTF(entry.label.c_str());
+				env->SetObjectArrayElement(labels, index, label);
+				env->DeleteLocalRef(label);
+			}
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision),
+				static_cast<jint>(page), static_cast<jint>(pageCount), targets, labels, flags);
+			env->DeleteLocalRef(targets);
+			env->DeleteLocalRef(flags);
+			env->DeleteLocalRef(labels);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 void CAndroidVMHelper::acknowledgeThorAction(std::uint64_t revision, ThorAction action, std::uint64_t submittedRevision)
 {
 	if(submittedRevision == 0)
