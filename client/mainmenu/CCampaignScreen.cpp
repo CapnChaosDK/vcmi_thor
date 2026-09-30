@@ -145,6 +145,8 @@ void CCampaignScreen::deactivate()
 {
 	CWindowObject::deactivate();
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	for(const auto & button : campButtons)
+		button->hover(false);
 	thorActionQueue().clear();
 	ThorContextRecord context;
 	context = thorContextStore().publishNext(std::move(context));
@@ -273,7 +275,10 @@ void CCampaignScreen::updateCampaignButtons(const JsonNode & parentConfig)
 		if(campaignId >= minId && campaignId <= maxId)
 			campButtons[i]->enable();
 		else
+		{
+			campButtons[i]->hover(false); // A disabled button cannot receive the hover-off event later.
 			campButtons[i]->disable();
+		}
 
 		if(!CResourceHandler::get()->existsResource(ResourcePath(campaigns[i]["file"].String(), EResType::CAMPAIGN)))
 		{
