@@ -38,7 +38,14 @@ final class ThorActionIds
     static final int MAIN_MENU_CHOICE_3 = 33;
     static final int MAIN_MENU_CHOICE_4 = 34;
     static final int MAIN_MENU_CHOICE_5 = 35;
-    static final int MAX_ACTION_ID = MAIN_MENU_CHOICE_5;
+    static final int CAMPAIGN_PREVIOUS_SCENARIO = 36;
+    static final int CAMPAIGN_NEXT_SCENARIO = 37;
+    static final int CAMPAIGN_SELECT_BONUS_1 = 38;
+    static final int CAMPAIGN_SELECT_BONUS_2 = 39;
+    static final int CAMPAIGN_SELECT_BONUS_3 = 40;
+    static final int CAMPAIGN_START = 41;
+    static final int CAMPAIGN_BACK = 42;
+    static final int MAX_ACTION_ID = CAMPAIGN_BACK;
     static final int NO_TARGET = -1;
 
     static

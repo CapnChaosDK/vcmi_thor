@@ -29,6 +29,11 @@ class VideoWidgetOnce;
 class CBonusSelection;
 class LRClickableArea;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+struct ThorActionRequest;
+struct ThorContextRecord;
+#endif
+
 
 /// Campaign screen where you can choose one out of three starting bonuses
 class CBonusSelection : public CWindowObject
@@ -36,6 +41,8 @@ class CBonusSelection : public CWindowObject
 public:
 	std::shared_ptr<CampaignState> getCampaign();
 	CBonusSelection();
+	void activate() override;
+	void deactivate() override;
 
 	class CRegion
 		: public CIntObject
@@ -72,6 +79,12 @@ public:
 	void increaseDifficulty();
 	void decreaseDifficulty();
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
+
 	std::shared_ptr<CPicture> panelBackground;
 	std::shared_ptr<CButton> buttonStart;
 	std::shared_ptr<CButton> buttonRestart;
@@ -89,6 +102,10 @@ public:
 	std::shared_ptr<CLabel> labelChooseBonus;
 	std::shared_ptr<CToggleGroup> groupBonuses;
 	std::vector<std::shared_ptr<CLabel>> groupBonusesLabels;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::vector<std::string> thorBonusDescriptions;
+	bool thorCampaignActionPending = false;
+#endif
 	std::shared_ptr<CLabel> labelDifficulty;
 	std::array<std::shared_ptr<CAnimImage>, 5> difficultyIcons;
 	std::array<std::shared_ptr<LRClickableArea>, 5> difficultyIconAreas;

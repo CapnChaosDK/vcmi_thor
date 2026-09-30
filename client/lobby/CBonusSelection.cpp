@@ -65,6 +65,12 @@
 #include "../../lib/texts/TextOperations.h"
 #include "mapping/MapFormatSettings.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorContext.h"
+#endif
+
 std::shared_ptr<CampaignState> CBonusSelection::getCampaign()
 {
 	return GAME->server().si->campState;
@@ -151,7 +157,13 @@ CBonusSelection::CBonusSelection()
 		tabExtraOptions->recActions = UPDATE | SHOWALL | LCLICK | RCLICK_POPUP;
 		tabExtraOptions->recreate(true);
 		tabExtraOptions->setEnabled(false);
-		buttonExtraOptions = std::make_shared<CButton>(Point(643, 431), AnimationPath::builtin("GSPBUT2.DEF"), LIBRARY->generaltexth->zelp[46], [this]{ tabExtraOptions->setEnabled(!tabExtraOptions->isActive()); ENGINE->windows().totalRedraw(); }, EShortcut::LOBBY_EXTRA_OPTIONS);
+		buttonExtraOptions = std::make_shared<CButton>(Point(643, 431), AnimationPath::builtin("GSPBUT2.DEF"), LIBRARY->generaltexth->zelp[46], [this]{
+			tabExtraOptions->setEnabled(!tabExtraOptions->isActive());
+			ENGINE->windows().totalRedraw();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+			publishThorContext();
+#endif
+		}, EShortcut::LOBBY_EXTRA_OPTIONS);
 		buttonExtraOptions->setTextOverlay(LIBRARY->generaltexth->translate("vcmi.optionsTab.extraOptions.hover"), FONT_SMALL, Colors::WHITE);
 	}
 
@@ -159,10 +171,33 @@ CBonusSelection::CBonusSelection()
 	GAME->server().setCampaignMap(GAME->server().campaignMap);
 }
 
+void CBonusSelection::activate()
+{
+	CWindowObject::activate();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorContext();
+#endif
+}
+
+void CBonusSelection::deactivate()
+{
+	CWindowObject::deactivate();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorActionQueue().clear();
+	ThorContextRecord context;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, 0, 0);
+#endif
+}
+
 void CBonusSelection::createBonusesIcons()
 {
 	OBJECT_CONSTRUCTION;
 	groupBonusesLabels.clear();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorBonusDescriptions.clear();
+#endif
 	const CampaignScenario & scenario = getCampaign()->scenario(GAME->server().campaignMap);
 	const std::vector<CampaignBonus> & bonDescs = scenario.travelOptions.bonusesToChoose;
 	groupBonuses = std::make_shared<CToggleGroup>(std::bind(&IServerAPI::setCampaignBonus, &GAME->server(), _1));
@@ -394,6 +429,9 @@ void CBonusSelection::createBonusesIcons()
 			 (bonusType == CampaignBonusType::HERO && bonus.getValue<CampaignBonusStartingHero>().hero != HeroTypeID::CAMP_RANDOM.getNum()));
 		
 		auto tooltip = useComponentPopup ? CButton::tooltip() : CButton::tooltip(desc.toString(&GAME->translator()), desc.toString(&GAME->translator()));
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		thorBonusDescriptions.push_back(thorBoundedText(desc.toString(&GAME->translator())));
+#endif
 
 		auto bonusButton = std::make_shared<CToggleButton>(Point(475 + i * 68, 455), AnimationPath::builtin("campaignBonusSelection"), tooltip, nullptr, EShortcut::NONE, false, [this](){
 			if(buttonStart->isActive() && !buttonStart->isBlocked())	
@@ -538,6 +576,9 @@ void CBonusSelection::createBonusesIcons()
 
 void CBonusSelection::updateAfterStateChange()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorCampaignActionPending = false;
+#endif
 	if(GAME->server().getState() != EClientState::GAMEPLAY)
 	{
 		buttonRestart->disable();
@@ -589,7 +630,164 @@ void CBonusSelection::updateAfterStateChange()
 	}
 	flagbox->recreate();
 	createBonusesIcons();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorContext();
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+namespace
+{
+	std::uint64_t thorCampaignSelectionToken(const CampaignState & campaign, CampaignScenarioID current,
+		int selectedBonus, std::size_t bonusCount)
+	{
+		std::uint64_t token = 1469598103934665603ULL;
+		auto mix = [&token](std::uint64_t value)
+		{
+			token ^= value;
+			token *= 1099511628211ULL;
+		};
+		for(const auto scenario : campaign.allScenarios())
+		{
+			mix(static_cast<std::uint64_t>(scenario.getNum()) + 1);
+			mix(campaign.isAvailable(scenario) ? 1 : 0);
+		}
+		mix(static_cast<std::uint64_t>(current.getNum()) + 1);
+		mix(static_cast<std::uint64_t>(selectedBonus + 2));
+		mix(bonusCount);
+		return token == 0 ? 1 : token;
+	}
+
+	std::optional<CampaignScenarioID> adjacentThorCampaignScenario(const CampaignState & campaign,
+		CampaignScenarioID current, bool next)
+	{
+		const auto scenarios = campaign.allScenarios();
+		auto currentIt = std::find(scenarios.begin(), scenarios.end(), current);
+		if(currentIt == scenarios.end())
+			return std::nullopt;
+		std::vector<CampaignScenarioID> ordered(scenarios.begin(), scenarios.end());
+		std::vector<std::uint8_t> available;
+		available.reserve(ordered.size());
+		for(const auto scenario : ordered)
+			available.push_back(campaign.isAvailable(scenario) ? 1 : 0);
+		const auto position = thorAdjacentScenarioPosition(available,
+			static_cast<std::size_t>(std::distance(scenarios.begin(), currentIt)), next
+				? ThorAction::CAMPAIGN_NEXT_SCENARIO : ThorAction::CAMPAIGN_PREVIOUS_SCENARIO);
+		return position ? std::optional<CampaignScenarioID>{ordered[*position]} : std::nullopt;
+	}
+}
+
+void CBonusSelection::publishThorContext()
+{
+	if(!isActive() || ENGINE->windows().topWindow<CBonusSelection>().get() != this)
+		return;
+	if(GAME->server().getState() == EClientState::GAMEPLAY || !GAME->server().si
+		|| !GAME->server().si->campState || !GAME->server().mi
+		|| (tabExtraOptions && tabExtraOptions->isActive()))
+	{
+		thorActionQueue().clear();
+		ThorContextRecord hidden;
+		hidden = thorContextStore().publishNext(std::move(hidden));
+		CAndroidVMHelper().publishThorContext(hidden.revision, hidden.contextId, hidden.title, hidden.status);
+		CAndroidVMHelper().publishThorActionState(hidden.revision, 0, 0);
+		return;
+	}
+
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::CAMPAIGN_BONUS_SELECTION;
+	context.title = thorBoundedText(GAME->server().mi->getNameTranslated(&GAME->translator()));
+	context.status = thorBoundedText(GAME->server().si->getCampaignName(&GAME->translator()));
+	const auto & campaign = *getCampaign();
+	context.campaignSelectionRevision = thorCampaignSelectionToken(campaign, GAME->server().campaignMap,
+		GAME->server().campaignBonus, thorBonusDescriptions.size());
+	if(!thorCampaignActionPending && adjacentThorCampaignScenario(campaign, GAME->server().campaignMap, false))
+		context.enabledActionMask |= thorActionMask(ThorAction::CAMPAIGN_PREVIOUS_SCENARIO);
+	if(!thorCampaignActionPending && adjacentThorCampaignScenario(campaign, GAME->server().campaignMap, true))
+		context.enabledActionMask |= thorActionMask(ThorAction::CAMPAIGN_NEXT_SCENARIO);
+	if(thorBonusDescriptions.size() <= 3)
+	{
+		constexpr std::array bonusActions = {ThorAction::CAMPAIGN_SELECT_BONUS_1,
+			ThorAction::CAMPAIGN_SELECT_BONUS_2, ThorAction::CAMPAIGN_SELECT_BONUS_3};
+		for(std::size_t index = 0; index < thorBonusDescriptions.size(); ++index)
+		{
+			context.details[index] = thorBonusDescriptions[index];
+			if(!thorCampaignActionPending)
+				context.enabledActionMask |= thorActionMask(bonusActions[index]);
+			if(GAME->server().campaignBonus == static_cast<int>(index))
+				context.activeActionMask |= thorActionMask(bonusActions[index]);
+		}
+		if(!thorCampaignActionPending && buttonStart && buttonStart->isActive() && !buttonStart->isBlocked())
+			context.enabledActionMask |= thorActionMask(ThorAction::CAMPAIGN_START);
+	}
+	if(buttonBack && buttonBack->isActive() && !buttonBack->isBlocked())
+		context.enabledActionMask |= thorActionMask(ThorAction::CAMPAIGN_BACK);
+
+	const auto previous = thorContextStore().snapshot();
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision != previous.revision)
+		thorActionQueue().clear();
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
+		context.details);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CBonusSelection::matchesThorContext(const ThorContextRecord & context) const
+{
+	const auto current = thorContextStore().snapshot();
+	return isActive() && ENGINE->windows().topWindow<CBonusSelection>().get() == this
+		&& GAME->server().getState() != EClientState::GAMEPLAY
+		&& (!tabExtraOptions || !tabExtraOptions->isActive())
+		&& context.contextId == ThorContextIds::CAMPAIGN_BONUS_SELECTION
+		&& context.revision == current.revision && context.contextId == current.contextId;
+}
+
+bool CBonusSelection::executeThorAction(const ThorActionRequest & request)
+{
+	publishThorContext();
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context) || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+
+	if(request.action == ThorAction::CAMPAIGN_PREVIOUS_SCENARIO
+		|| request.action == ThorAction::CAMPAIGN_NEXT_SCENARIO)
+	{
+		const auto target = adjacentThorCampaignScenario(*getCampaign(), GAME->server().campaignMap,
+			request.action == ThorAction::CAMPAIGN_NEXT_SCENARIO);
+		if(!target)
+			return false;
+		thorCampaignActionPending = true;
+		publishThorContext();
+		GAME->server().setCampaignMap(*target);
+		return true;
+	}
+	if(request.action >= ThorAction::CAMPAIGN_SELECT_BONUS_1
+		&& request.action <= ThorAction::CAMPAIGN_SELECT_BONUS_3)
+	{
+		const int index = static_cast<int>(request.action) - static_cast<int>(ThorAction::CAMPAIGN_SELECT_BONUS_1);
+		if(index < 0 || static_cast<std::size_t>(index) >= thorBonusDescriptions.size()
+			|| GAME->server().campaignBonus == index)
+			return false;
+		thorCampaignActionPending = true;
+		publishThorContext();
+		GAME->server().setCampaignBonus(index);
+		return true;
+	}
+	if(request.action == ThorAction::CAMPAIGN_START)
+	{
+		startMap();
+		const bool started = buttonStart && buttonStart->isBlocked();
+		if(started)
+			publishThorContext();
+		return started;
+	}
+	if(request.action == ThorAction::CAMPAIGN_BACK)
+	{
+		goBack();
+		return true;
+	}
+	return false;
+}
+#endif
 
 void CBonusSelection::goBack()
 {

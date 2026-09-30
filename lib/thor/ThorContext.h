@@ -34,6 +34,7 @@ namespace ThorContextIds
 	inline constexpr char LOBBY_LOAD_GAME_TURN_OPTIONS[] = "LOBBY_LOAD_GAME_TURN_OPTIONS";
 	inline constexpr char LOBBY_LOAD_GAME_EXTRA_OPTIONS[] = "LOBBY_LOAD_GAME_EXTRA_OPTIONS";
 	inline constexpr char LOBBY_CAMPAIGN_LIST[] = "LOBBY_CAMPAIGN_LIST";
+	inline constexpr char CAMPAIGN_BONUS_SELECTION[] = "CAMPAIGN_BONUS_SELECTION";
 	inline constexpr char ADVENTURE_MAP[] = "ADVENTURE_MAP";
 	inline constexpr char HERO_WINDOW[] = "HERO_WINDOW";
 	inline constexpr char TOWN_WINDOW[] = "TOWN_WINDOW";
@@ -237,6 +238,8 @@ struct DLL_LINKAGE ThorContextRecord
 	std::uint64_t heroPortraitAssetKey = 0;
 	/// Native-only SelectionTab state token. Never passed through JNI.
 	std::uint64_t scenarioSelectionRevision = 0;
+	/// Native-only campaign scenario/bonus state token. Never passed through JNI.
+	std::uint64_t campaignSelectionRevision = 0;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

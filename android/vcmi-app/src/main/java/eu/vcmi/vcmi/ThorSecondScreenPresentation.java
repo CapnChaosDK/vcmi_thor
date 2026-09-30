@@ -271,7 +271,9 @@ final class ThorSecondScreenPresentation extends Presentation
                 heroMeetingRedistribution.cancel();
                 cancelHeroMeetingGesture();
             }
-            else if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
+            else if ((ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
+                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                    || ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
                     && this.enabledActionMask != enabledActionMask)
                 cancelLobbyScenarioTouch();
             else if (ThorMainMenuState.choiceCount(contextId) > 0
@@ -370,7 +372,8 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
             {
-                title = getContext().getString(R.string.thor_context_load_game);
+                title = ThorLobbyScenarioState.scenarioName(publishedTitle,
+                        getContext().getString(R.string.thor_lobby_no_save));
                 status = getContext().getString(R.string.thor_context_lobby_load_game_scenario_status);
             }
             else if (ThorContextIds.LOBBY_LOAD_GAME_OPTIONS.equals(contextId))
@@ -392,6 +395,13 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 title = getContext().getString(R.string.thor_context_campaign);
                 status = getContext().getString(R.string.thor_context_lobby_campaign_list_status);
+            }
+            else if (ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
+            {
+                title = ThorLobbyScenarioState.scenarioName(publishedTitle,
+                        getContext().getString(R.string.thor_campaign_no_scenario));
+                status = ThorLobbyScenarioState.scenarioName(publishedStatus,
+                        getContext().getString(R.string.thor_context_campaign));
             }
             else if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
@@ -547,9 +557,11 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean battleDashboard = ThorContextIds.BATTLE.equals(contextId)
                     || ThorContextIds.BATTLE_TACTICS.equals(contextId);
             final boolean adventure = ThorContextIds.ADVENTURE_MAP.equals(contextId);
-            final boolean lobbyScenario = ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId);
+            final boolean lobbyScenario = ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
+                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
+            final boolean campaignBonus = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId);
             final float dividerY = frame.top + contentHeight * (battleDashboard ? 0.55f
-                    : adventure ? ThorAdventureLayout.DIVIDER : lobbyScenario ? 0.48f : 0.34f);
+                    : adventure ? ThorAdventureLayout.DIVIDER : lobbyScenario || campaignBonus ? 0.48f : 0.34f);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(PARCHMENT_DARK);
             canvas.drawRect(frame.left + bevel * 2f, frame.top + bevel * 2f, frame.right - bevel * 2f, dividerY - bevel, paint);
@@ -568,6 +580,10 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (lobbyScenario)
             {
                 drawLobbyScenarioDashboard(canvas, frame, dividerY, bevel, density);
+            }
+            else if (campaignBonus)
+            {
+                drawCampaignDashboard(canvas, frame, dividerY, bevel, density);
             }
             else if (ThorMainMenuState.choiceCount(contextId) > 0)
             {
@@ -671,7 +687,9 @@ final class ThorSecondScreenPresentation extends Presentation
                     hapticsToggleGesture.pointerAdded();
                 return true;
             }
-            if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId))
+            if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
+                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                    || ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
                 return handleLobbyScenarioTouch(event);
             if (ThorMainMenuState.choiceCount(contextId) > 0)
                 return handleMainMenuTouch(event);
@@ -1922,7 +1940,8 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(TEXT);
-            drawFittedText(canvas, getContext().getString(R.string.thor_context_new_game), frame.centerX(),
+            drawFittedText(canvas, getContext().getString(ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                            ? R.string.thor_context_load_game : R.string.thor_context_new_game), frame.centerX(),
                     frame.top + contentHeight * 0.09f, frame.width() * 0.78f,
                     Math.min(27f * density, contentHeight * 0.048f));
             drawFittedText(canvas, title, frame.centerX(), frame.top + contentHeight * 0.20f,
@@ -1956,9 +1975,15 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(PARCHMENT_DARK);
-            drawFittedText(canvas, getContext().getString(R.string.thor_lobby_difficulty), frame.centerX(),
-                    dividerY + (frame.bottom - dividerY) * 0.255f, frame.width() * 0.76f,
-                    Math.min(25f * density, (frame.bottom - dividerY) * 0.055f));
+            final boolean loadGame = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
+            if (loadGame)
+                drawFittedText(canvas, detailLines[3], frame.centerX(),
+                        dividerY + (frame.bottom - dividerY) * 0.40f, frame.width() * 0.76f,
+                        Math.min(25f * density, (frame.bottom - dividerY) * 0.055f));
+            else
+                drawFittedText(canvas, getContext().getString(R.string.thor_lobby_difficulty), frame.centerX(),
+                        dividerY + (frame.bottom - dividerY) * 0.255f, frame.width() * 0.76f,
+                        Math.min(25f * density, (frame.bottom - dividerY) * 0.055f));
 
             drawLobbyScenarioButton(canvas,
                     lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO, frame, dividerY),
@@ -1978,7 +2003,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     R.string.thor_lobby_difficulty_impossible
             };
             final boolean canSetDifficulty = isActionEnabled(ThorActionIds.LOBBY_SET_DIFFICULTY);
-            for (int index = 0; index < ThorLobbyScenarioState.DIFFICULTY_COUNT; ++index)
+            for (int index = 0; !loadGame && index < ThorLobbyScenarioState.DIFFICULTY_COUNT; ++index)
             {
                 final RectF bounds = lobbyScenarioControlBounds(
                         ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + index, frame, dividerY);
@@ -1987,7 +2012,7 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             drawLobbyScenarioButton(canvas,
                     lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_START, frame, dividerY),
-                    getContext().getString(R.string.thor_lobby_start),
+                    getContext().getString(loadGame ? R.string.thor_lobby_load : R.string.thor_lobby_start),
                     isActionEnabled(ThorActionIds.LOBBY_START_GAME), false, density);
             drawLobbyScenarioButton(canvas,
                     lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_BACK, frame, dividerY),
@@ -2001,6 +2026,50 @@ final class ThorSecondScreenPresentation extends Presentation
                     dividerY - frame.top);
             return new RectF(frame.left + bounds[0], frame.top + bounds[1],
                     frame.left + bounds[2], frame.top + bounds[3]);
+        }
+
+        private void drawCampaignDashboard(final Canvas canvas, final RectF frame, final float dividerY,
+                                           final float bevel, final float density)
+        {
+            final float contentHeight = frame.height();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, status, frame.centerX(), frame.top + contentHeight * 0.10f,
+                    frame.width() * 0.82f, Math.min(27f * density, contentHeight * 0.048f));
+            drawFittedText(canvas, title, frame.centerX(), frame.top + contentHeight * 0.22f,
+                    frame.width() * 0.86f, Math.min(43f * density, contentHeight * 0.078f));
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, getContext().getString(R.string.thor_campaign_choose_bonus), frame.centerX(),
+                    frame.top + contentHeight * 0.36f, frame.width() * 0.82f,
+                    Math.min(25f * density, contentHeight * 0.046f));
+
+            drawLobbyScenarioButton(canvas,
+                    lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_PREVIOUS_SCENARIO, frame, dividerY),
+                    getContext().getString(R.string.thor_campaign_previous_scenario),
+                    isActionEnabled(ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO), false, density);
+            drawLobbyScenarioButton(canvas,
+                    lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_NEXT_SCENARIO, frame, dividerY),
+                    getContext().getString(R.string.thor_campaign_next_scenario),
+                    isActionEnabled(ThorActionIds.CAMPAIGN_NEXT_SCENARIO), false, density);
+            for (int index = 0; index < 3; ++index)
+            {
+                final int control = ThorLobbyScenarioState.CONTROL_DIFFICULTY_FIRST + index;
+                final int action = ThorActionIds.CAMPAIGN_SELECT_BONUS_1 + index;
+                if (detailLines[index].isEmpty() && !isActionEnabled(action))
+                    continue;
+                drawLobbyScenarioButton(canvas, lobbyScenarioControlBounds(control, frame, dividerY),
+                        detailLines[index], isActionEnabled(action), isActionActive(action), density);
+            }
+            drawLobbyScenarioButton(canvas,
+                    lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_START, frame, dividerY),
+                    getContext().getString(R.string.thor_lobby_start),
+                    isActionEnabled(ThorActionIds.CAMPAIGN_START), false, density);
+            drawLobbyScenarioButton(canvas,
+                    lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_BACK, frame, dividerY),
+                    getContext().getString(R.string.thor_lobby_back),
+                    isActionEnabled(ThorActionIds.CAMPAIGN_BACK), false, density);
         }
 
         private void drawLobbyScenarioButton(final Canvas canvas, final RectF bounds, final String label,
@@ -2640,7 +2709,9 @@ final class ThorSecondScreenPresentation extends Presentation
             if (action == MotionEvent.ACTION_DOWN)
             {
                 final int control = lobbyScenarioControlAt(event.getX(), event.getY());
-                final int actionId = ThorLobbyScenarioState.actionForControl(control);
+                final int actionId = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId)
+                        ? ThorCampaignState.actionForControl(control)
+                        : ThorLobbyScenarioState.actionForControl(control);
                 lobbyScenarioGesture.begin(control, revision, presentationSessionId, event.getPointerId(0),
                         actionId != ThorActionIds.NONE && isActionEnabled(actionId));
                 return true;
@@ -2667,14 +2738,17 @@ final class ThorSecondScreenPresentation extends Presentation
             final int releasedControl = lobbyScenarioControlAt(event.getX(), event.getY());
             final long submittedRevision = lobbyScenarioGesture.revision();
             final long submittedSession = lobbyScenarioGesture.session();
-            final int actionId = ThorLobbyScenarioState.actionForControl(control);
+            final boolean campaignBonus = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId);
+            final int actionId = campaignBonus ? ThorCampaignState.actionForControl(control)
+                    : ThorLobbyScenarioState.actionForControl(control);
             final boolean actionEnabledAtUp = actionId != ThorActionIds.NONE && isActionEnabled(actionId);
             final boolean sessionIsCurrent = sessionValidity != null && sessionValidity.isCurrent(submittedSession);
             if (!lobbyScenarioGesture.finish(releasedControl, event.getPointerCount(), event.getPointerId(0),
                     revision, presentationSessionId, actionEnabledAtUp, sessionIsCurrent))
                 return true;
 
-            final int targetId = ThorLobbyScenarioState.difficultyTargetForControl(control);
+            final int targetId = campaignBonus ? ThorActionIds.NO_TARGET
+                    : ThorLobbyScenarioState.difficultyTargetForControl(control);
             if (targetId != ThorActionIds.NO_TARGET
                     && !ThorLobbyScenarioState.shouldDispatchDifficulty(
                             ThorLobbyScenarioState.difficultyIndex(detailLines), targetId))
@@ -2776,16 +2850,31 @@ final class ThorSecondScreenPresentation extends Presentation
                 }
                 return description.toString();
             }
-            if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId))
+            if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
+                    || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
             {
+                final boolean loadGame = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
                 final String difficulty = difficultyLabel(ThorLobbyScenarioState.difficultyIndex(detailLines));
                 return title + ". " + status + ". " + getContext().getString(R.string.thor_lobby_map_size)
                         + " " + detailLines[0] + ". " + getContext().getString(R.string.thor_lobby_players)
-                        + " " + detailLines[1] + ". " + getContext().getString(R.string.thor_lobby_difficulty)
-                        + " " + difficulty + ". " + getContext().getString(R.string.thor_lobby_previous_scenario)
+                        + " " + detailLines[1] + ". " + (loadGame ? "" : getContext().getString(R.string.thor_lobby_difficulty)
+                        + " " + difficulty + ". ") + getContext().getString(R.string.thor_lobby_previous_scenario)
                         + ", " + getContext().getString(R.string.thor_lobby_next_scenario) + ", "
-                        + getContext().getString(R.string.thor_lobby_start) + ", "
+                        + getContext().getString(loadGame ? R.string.thor_lobby_load : R.string.thor_lobby_start) + ", "
                         + getContext().getString(R.string.thor_lobby_back);
+            }
+            if (ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
+            {
+                final StringBuilder description = new StringBuilder(status).append(". ").append(title)
+                        .append(". ").append(getContext().getString(R.string.thor_campaign_choose_bonus));
+                for (final String detail : detailLines)
+                    if (!detail.isEmpty())
+                        description.append(". ").append(detail);
+                return description.append(". ")
+                        .append(getContext().getString(R.string.thor_campaign_previous_scenario)).append(", ")
+                        .append(getContext().getString(R.string.thor_campaign_next_scenario)).append(", ")
+                        .append(getContext().getString(R.string.thor_lobby_start)).append(", ")
+                        .append(getContext().getString(R.string.thor_lobby_back)).toString();
             }
 
             if (ThorContextIds.HERO_WINDOW.equals(contextId))

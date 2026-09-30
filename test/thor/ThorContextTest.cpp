@@ -211,6 +211,25 @@ TEST(ThorContextStoreTest, NativeScenarioSelectionChangesInvalidateRenderedReque
 	EXPECT_EQ(validateThorActionRequest(renderedTap, changed), ThorActionValidation::STALE_REVISION);
 }
 
+TEST(ThorContextStoreTest, NativeCampaignSelectionChangesInvalidateRenderedRequests)
+{
+	ThorContextStore store;
+	ThorContextRecord campaign;
+	campaign.contextId = ThorContextIds::CAMPAIGN_BONUS_SELECTION;
+	campaign.enabledActionMask = thorActionMask(ThorAction::CAMPAIGN_NEXT_SCENARIO);
+	campaign.campaignSelectionRevision = 41;
+	const auto rendered = store.publishNext(campaign);
+	const ThorActionRequest renderedTap{.revision = rendered.revision,
+		.action = ThorAction::CAMPAIGN_NEXT_SCENARIO};
+	EXPECT_EQ(store.publishNext(campaign).revision, rendered.revision);
+
+	campaign.campaignSelectionRevision = 42;
+	const auto changed = store.publishNext(campaign);
+	EXPECT_GT(changed.revision, rendered.revision);
+	EXPECT_EQ(changed.enabledActionMask, rendered.enabledActionMask);
+	EXPECT_EQ(validateThorActionRequest(renderedTap, changed), ThorActionValidation::STALE_REVISION);
+}
+
 TEST(ThorContextStoreTest, HeroMeetingRedistributionConsumptionAndRestoreAreSemanticRevisions)
 {
 	ThorContextStore store;
