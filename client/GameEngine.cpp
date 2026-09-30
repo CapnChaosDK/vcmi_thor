@@ -42,6 +42,7 @@
 #include "lobby/CLobbyScreen.h"
 #include "lobby/CBonusSelection.h"
 #include "mainmenu/CMainMenu.h"
+#include "mainmenu/CCampaignScreen.h"
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -291,6 +292,13 @@ void GameEngine::updateFrame()
 				continue;
 			}
 			executed = bonusWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::CAMPAIGN_BROWSER)
+		{
+			auto campaignWindow = windows().topWindow<CCampaignScreen>();
+			if(!campaignWindow)
+				continue;
+			executed = campaignWindow->executeThorAction(*request);
 		}
 		else if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO
 			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)

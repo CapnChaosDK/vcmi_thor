@@ -45,7 +45,14 @@ final class ThorActionIds
     static final int CAMPAIGN_SELECT_BONUS_3 = 40;
     static final int CAMPAIGN_START = 41;
     static final int CAMPAIGN_BACK = 42;
-    static final int MAX_ACTION_ID = CAMPAIGN_BACK;
+    static final int CAMPAIGN_BROWSER_SELECT = 43;
+    static final int CAMPAIGN_BROWSER_PREVIOUS_PAGE = 44;
+    static final int CAMPAIGN_BROWSER_NEXT_PAGE = 45;
+    static final int CAMPAIGN_BROWSER_BACK = 46;
+    static final int LOAD_BROWSER_SELECT = 47;
+    static final int LOAD_BROWSER_PREVIOUS_PAGE = 48;
+    static final int LOAD_BROWSER_NEXT_PAGE = 49;
+    static final int MAX_ACTION_ID = LOAD_BROWSER_NEXT_PAGE;
     static final int NO_TARGET = -1;
 
     static

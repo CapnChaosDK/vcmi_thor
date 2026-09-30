@@ -154,6 +154,19 @@ public class NativeMethods
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorBrowser(final long revision, final int page, final int pageCount,
+                                          final int[] targets, final String[] labels, final int[] flags)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorBrowser(revision, page, pageCount, targets, labels, flags));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorHeroes(final long revision, final int[] ids, final String[] names,
                                          final int[] movement, final int[] maximum, final int[] flags)
     {

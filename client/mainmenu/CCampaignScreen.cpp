@@ -41,6 +41,12 @@
 #include "../../lib/texts/CGeneralTextHandler.h"
 #include "../../lib/texts/CompositeTranslator.h"
 #include "../GameInstance.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../gui/WindowHandler.h"
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorContext.h"
+#endif
 
 CCampaignScreen::CCampaignScreen(const JsonNode & config, std::string name)
 	: CWindowObject(BORDERED), campaignSet(name)
@@ -83,7 +89,7 @@ CCampaignScreen::CCampaignScreen(const JsonNode & config, std::string name)
 	
 	for (const auto& node : campaigns)
 	{
-		auto button = std::make_shared<CCampaignButton>(node, config, campaignSet);
+		auto button = std::make_shared<CCampaignButton>(node, config, campaignSet, this);
 		button->enable();
 		campButtons.push_back(button);
 	}
@@ -130,6 +136,22 @@ void CCampaignScreen::activate()
 	ENGINE->music().playMusic(AudioPath::builtin("Music/MainMenu"), true, false);
 
 	CWindowObject::activate();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorContext();
+#endif
+}
+
+void CCampaignScreen::deactivate()
+{
+	CWindowObject::deactivate();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	for(const auto & button : campButtons)
+		button->hover(false);
+	thorActionQueue().clear();
+	ThorContextRecord context;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+#endif
 }
 
 std::shared_ptr<CButton> CCampaignScreen::createExitButton(const JsonNode & button)
@@ -141,8 +163,9 @@ std::shared_ptr<CButton> CCampaignScreen::createExitButton(const JsonNode & butt
 	return std::make_shared<CButton>(Point((int)button["x"].Float(), (int)button["y"].Float()), AnimationPath::fromJson(button["name"]), help, [this](){ close();}, EShortcut::GLOBAL_CANCEL);
 }
 
-CCampaignScreen::CCampaignButton::CCampaignButton(const JsonNode & config, const JsonNode & parentConfig, std::string campaignSet)
-	: campaignSet(campaignSet)
+CCampaignScreen::CCampaignButton::CCampaignButton(const JsonNode & config, const JsonNode & parentConfig,
+	std::string campaignSet, CCampaignScreen * screen)
+	: screen(screen), campaignSet(campaignSet)
 {
 	OBJECT_CONSTRUCTION;
 
@@ -152,6 +175,7 @@ CCampaignScreen::CCampaignButton::CCampaignButton(const JsonNode & config, const
 	pos.h = 116;
 
 	campFile = config["file"].String();
+	campaignId = config["id"].Integer();
 	videoPath = VideoPath::fromJson(config["video"]);
 
 	status = CCampaignScreen::ENABLED;
@@ -205,6 +229,9 @@ void CCampaignScreen::CCampaignButton::clickReleased(const Point & cursorPositio
 void CCampaignScreen::CCampaignButton::hover(bool on)
 {
 	OBJECT_CONSTRUCTION;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	const bool hadVideo = videoPlayer != nullptr;
+#endif
 
 	if (on && !videoPath.empty())
 		videoPlayer = std::make_shared<VideoWidget>(Point(), videoPath, false);
@@ -218,6 +245,10 @@ void CCampaignScreen::CCampaignButton::hover(bool on)
 		else
 			hoverLabel->setText(" ");
 	}
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(screen && hadVideo != (videoPlayer != nullptr))
+		screen->publishThorContext();
+#endif
 }
 
 void CCampaignScreen::switchPage(int delta)
@@ -244,7 +275,10 @@ void CCampaignScreen::updateCampaignButtons(const JsonNode & parentConfig)
 		if(campaignId >= minId && campaignId <= maxId)
 			campButtons[i]->enable();
 		else
+		{
+			campButtons[i]->hover(false); // A disabled button cannot receive the hover-off event later.
 			campButtons[i]->disable();
+		}
 
 		if(!CResourceHandler::get()->existsResource(ResourcePath(campaigns[i]["file"].String(), EResType::CAMPAIGN)))
 		{
@@ -269,4 +303,133 @@ void CCampaignScreen::updateCampaignButtons(const JsonNode & parentConfig)
 	}
 
 	redraw();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorContext();
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CCampaignScreen::publishThorContext()
+{
+	if(!isActive() || ENGINE->windows().topWindow<CCampaignScreen>().get() != this)
+		return;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::CAMPAIGN_BROWSER;
+	if(buttonBack)
+		context.enabledActionMask = thorActionMask(ThorAction::CAMPAIGN_BROWSER_BACK);
+	const auto & campaignItems = CMainMenuConfig::get().getCampaigns()[campaignSet]["items"];
+	if(!campaignItems.isVector())
+	{
+		const auto previous = thorContextStore().snapshot();
+		context = thorContextStore().publishNext(std::move(context));
+		if(context.revision != previous.revision)
+			thorActionQueue().clear();
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
+		CAndroidVMHelper().publishThorBrowser(context.revision, 0, 0, {});
+		return;
+	}
+	const auto & campaigns = campaignItems.Vector();
+	const bool validPage = campaignsPerPage > 0 && campaignsPerPage <= static_cast<int>(THOR_BROWSER_MAX_ROWS)
+		&& !campaigns.empty() && campaigns.size() <= 128 && campaigns.size() == campButtons.size()
+		&& maxPages == static_cast<int>((campaigns.size() + campaignsPerPage - 1) / campaignsPerPage)
+		&& currentPage >= 0 && currentPage < maxPages;
+	if(validPage)
+	{
+		std::vector<bool> seen(campaigns.size() + 1);
+		bool validItems = true;
+		for(std::size_t index = 0; index < campaigns.size(); ++index)
+		{
+			const int id = campaigns[index]["id"].Integer();
+			const std::string file = campaigns[index]["file"].String();
+			if(id < 1 || id > static_cast<int>(campaigns.size()) || seen[id] || file.empty()
+				|| id != campButtons[index]->campaignId || file != campButtons[index]->campFile)
+			{
+				validItems = false;
+				break;
+			}
+			seen[id] = true;
+		}
+		if(validItems)
+		{
+			context.browserPage = currentPage;
+			context.browserPageCount = maxPages;
+			const int firstId = currentPage * campaignsPerPage + 1;
+			for(std::size_t index = 0; index < campaigns.size(); ++index)
+			{
+				const int id = campButtons[index]->campaignId;
+				if(id < firstId || id >= firstId + campaignsPerPage)
+					continue;
+				const auto & button = *campButtons[index];
+				const bool enabled = button.status != DISABLED
+					&& CResourceHandler::get()->existsResource(ResourcePath(button.campFile, EResType::CAMPAIGN));
+				context.browserEntries.push_back({static_cast<int>(index), button.hoverText, enabled,
+					false, button.status == COMPLETED});
+				context.browserNativeKeys.push_back(std::to_string(id) + ":" + button.campFile);
+				if(enabled)
+					context.enabledActionMask |= thorActionMask(ThorAction::CAMPAIGN_BROWSER_SELECT);
+			}
+			if(currentPage > 0 && buttonPrev)
+				context.enabledActionMask |= thorActionMask(ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE);
+			if(currentPage + 1 < maxPages && buttonNext)
+				context.enabledActionMask |= thorActionMask(ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE);
+		}
+	}
+	if(std::any_of(campButtons.begin(), campButtons.end(), [](const auto & button)
+		{
+			return button->videoPlayer != nullptr;
+		}))
+		context.enabledActionMask = 0;
+	const auto previous = thorContextStore().snapshot();
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision != previous.revision)
+		thorActionQueue().clear();
+	CAndroidVMHelper bridge;
+	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status);
+	bridge.publishThorActionState(context.revision, context.enabledActionMask, 0);
+	bridge.publishThorBrowser(context.revision, context.browserPage, context.browserPageCount, context.browserEntries);
+}
+
+bool CCampaignScreen::executeThorAction(const ThorActionRequest & request)
+{
+	const auto before = thorContextStore().snapshot();
+	publishThorContext();
+	const auto context = thorContextStore().snapshot();
+	if(!isActive() || ENGINE->windows().topWindow<CCampaignScreen>().get() != this
+		|| before.revision != context.revision
+		|| validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE
+		|| request.action == ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE)
+	{
+		const int delta = request.action == ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE ? 1 : -1;
+		if(context.browserPage + delta < 0 || context.browserPage + delta >= context.browserPageCount)
+			return false;
+		switchPage(delta);
+		return true;
+	}
+	if(request.action == ThorAction::CAMPAIGN_BROWSER_BACK)
+	{
+		close();
+		return true;
+	}
+	if(request.action != ThorAction::CAMPAIGN_BROWSER_SELECT || request.targetId < 0
+		|| request.targetId >= static_cast<int>(campButtons.size()))
+		return false;
+	const auto row = std::find_if(context.browserEntries.begin(), context.browserEntries.end(), [&](const auto & entry)
+	{
+		return entry.target == request.targetId && entry.enabled;
+	});
+	if(row == context.browserEntries.end())
+		return false;
+	const auto rowIndex = static_cast<std::size_t>(row - context.browserEntries.begin());
+	auto & button = *campButtons[request.targetId];
+	if(rowIndex >= context.browserNativeKeys.size()
+		|| context.browserNativeKeys[rowIndex] != std::to_string(button.campaignId) + ":" + button.campFile
+		|| button.status == DISABLED
+		|| !CResourceHandler::get()->existsResource(ResourcePath(button.campFile, EResType::CAMPAIGN)))
+		return false;
+	button.clickReleased(Point());
+	return true;
+}
+#endif

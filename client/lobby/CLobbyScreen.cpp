@@ -93,6 +93,17 @@ namespace
 		return thorAdjacentScenarioPosition(selectableEntries, tab.selectionPos, action);
 	}
 
+	std::vector<std::size_t> thorSelectableSavePositions(const SelectionTab & tab)
+	{
+		if(tab.curItems.size() > 10000)
+			return {};
+		std::vector<std::uint8_t> selectable;
+		selectable.reserve(tab.curItems.size());
+		for(const auto & item : tab.curItems)
+			selectable.push_back(item && !item->isFolder && item->mapHeader ? 1 : 0);
+		return thorSelectableBrowserPositions(selectable);
+	}
+
 	void publishThorLobbyContext(CLobbyScreen & lobby)
 	{
 		lobby.publishThorContext();
@@ -347,6 +358,43 @@ void CLobbyScreen::publishThorContext()
 		}
 		else
 			context.enabledActionMask = thorActionMask(ThorAction::LOBBY_BACK);
+		if(screenType == ESelectionScreen::loadGame && tabSel)
+		{
+			context.scenarioSelectionRevision = tabSel->getThorScenarioSelectionRevision();
+			const auto positions = thorSelectableSavePositions(*tabSel);
+			if(tabSel->curItems.size() <= 10000 && !positions.empty())
+			{
+				const auto selected = std::find(positions.begin(), positions.end(), tabSel->selectionPos);
+				if(thorSaveBrowserListRevision != context.scenarioSelectionRevision)
+				{
+					thorSaveBrowserPage = selected == positions.end() ? 0
+						: static_cast<std::size_t>(selected - positions.begin()) / THOR_SAVE_BROWSER_PAGE_SIZE;
+					thorSaveBrowserListRevision = context.scenarioSelectionRevision;
+				}
+				context.browserPageCount = static_cast<int>((positions.size() + THOR_SAVE_BROWSER_PAGE_SIZE - 1)
+					/ THOR_SAVE_BROWSER_PAGE_SIZE);
+				thorSaveBrowserPage = std::min(thorSaveBrowserPage,
+					static_cast<std::size_t>(context.browserPageCount - 1));
+				context.browserPage = static_cast<int>(thorSaveBrowserPage);
+				const auto first = thorSaveBrowserPage * THOR_SAVE_BROWSER_PAGE_SIZE;
+				for(std::size_t index = first; index < std::min(positions.size(), first + THOR_SAVE_BROWSER_PAGE_SIZE); ++index)
+				{
+					const auto position = positions[index];
+					const auto & item = tabSel->curItems[position];
+					context.browserEntries.push_back({static_cast<int>(position), item->name, true,
+						position == tabSel->selectionPos, false});
+					context.browserNativeKeys.push_back(item->fileURI);
+				}
+				if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending)
+				{
+					context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+					if(thorSaveBrowserPage > 0)
+						context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+					if(thorSaveBrowserPage + 1 < static_cast<std::size_t>(context.browserPageCount))
+						context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+				}
+			}
+		}
 	}
 
 	const auto previous = thorContextStore().snapshot();
@@ -359,6 +407,9 @@ void CLobbyScreen::publishThorContext()
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 		context.details);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	if(context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
+		CAndroidVMHelper().publishThorBrowser(context.revision, context.browserPage,
+			context.browserPageCount, context.browserEntries);
 }
 
 bool CLobbyScreen::matchesThorContext(const ThorContextRecord & context) const
@@ -390,6 +441,39 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 
 	switch(request.action)
 	{
+	case ThorAction::LOAD_BROWSER_PREVIOUS_PAGE:
+	case ThorAction::LOAD_BROWSER_NEXT_PAGE:
+	{
+		if(screenType != ESelectionScreen::loadGame || !thorDifficultyAuthorityAvailable()
+			|| context.scenarioSelectionRevision != tabSel->getThorScenarioSelectionRevision())
+			return false;
+		const int delta = request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE ? 1 : -1;
+		if(context.browserPage + delta < 0 || context.browserPage + delta >= context.browserPageCount)
+			return false;
+		thorSaveBrowserPage = static_cast<std::size_t>(context.browserPage + delta);
+		publishThorContext();
+		return true;
+	}
+	case ThorAction::LOAD_BROWSER_SELECT:
+	{
+		if(screenType != ESelectionScreen::loadGame || !thorDifficultyAuthorityAvailable()
+			|| context.scenarioSelectionRevision != tabSel->getThorScenarioSelectionRevision())
+			return false;
+		const auto row = std::find_if(context.browserEntries.begin(), context.browserEntries.end(), [&](const auto & entry)
+		{
+			return entry.target == request.targetId && entry.enabled;
+		});
+		if(row == context.browserEntries.end() || request.targetId >= static_cast<int>(tabSel->curItems.size()))
+			return false;
+		const auto rowIndex = static_cast<std::size_t>(row - context.browserEntries.begin());
+		const auto & item = tabSel->curItems[request.targetId];
+		if(!item || item->isFolder || !item->mapHeader || rowIndex >= context.browserNativeKeys.size()
+			|| item->fileURI != context.browserNativeKeys[rowIndex])
+			return false;
+		tabSel->selectAbs(request.targetId);
+		return tabSel->selectionPos == static_cast<std::size_t>(request.targetId)
+			&& tabSel->getSelectedMapInfo() == item;
+	}
 	case ThorAction::LOBBY_SET_DIFFICULTY:
 		if(!getStartInfo() || request.targetId == getStartInfo()->difficulty)
 			return false;

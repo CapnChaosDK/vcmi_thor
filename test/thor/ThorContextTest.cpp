@@ -230,6 +230,32 @@ TEST(ThorContextStoreTest, NativeCampaignSelectionChangesInvalidateRenderedReque
 	EXPECT_EQ(validateThorActionRequest(renderedTap, changed), ThorActionValidation::STALE_REVISION);
 }
 
+TEST(ThorContextStoreTest, BrowserPageAndNativeOnlyIdentityChangesInvalidateOldRows)
+{
+	ThorContextStore store;
+	ThorContextRecord browser;
+	browser.contextId = ThorContextIds::CAMPAIGN_BROWSER;
+	browser.browserPageCount = 2;
+	browser.browserEntries = {{0, "First", true, false, false}};
+	browser.browserNativeKeys = {"1:campaign-a"};
+	browser.enabledActionMask = thorActionMask(ThorAction::CAMPAIGN_BROWSER_SELECT);
+	const auto first = store.publishNext(browser);
+	EXPECT_EQ(store.publishNext(browser).revision, first.revision);
+	browser.browserPage = 1;
+	browser.browserEntries = {{1, "Second", true, false, true}};
+	browser.browserNativeKeys = {"2:campaign-b"};
+	const auto second = store.publishNext(browser);
+	EXPECT_GT(second.revision, first.revision);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::CAMPAIGN_BROWSER_SELECT, 0}, second),
+		ThorActionValidation::STALE_REVISION);
+	browser.browserNativeKeys = {"2:reordered"};
+	const auto reordered = store.publishNext(browser);
+	EXPECT_GT(reordered.revision, second.revision);
+	browser.browserEntries.resize(THOR_BROWSER_MAX_ROWS + 1);
+	const auto invalid = store.publishNext(browser);
+	EXPECT_TRUE(invalid.browserEntries.empty());
+}
+
 TEST(ThorContextStoreTest, HeroMeetingRedistributionConsumptionAndRestoreAreSemanticRevisions)
 {
 	ThorContextStore store;

@@ -17,6 +17,8 @@ class CLabel;
 class CPicture;
 class CButton;
 class VideoWidget;
+struct ThorActionRequest;
+struct ThorContextRecord;
 
 class CCampaignScreen : public CWindowObject
 {
@@ -32,6 +34,7 @@ private:
 		std::shared_ptr<CPicture> graphicsImage;
 		std::shared_ptr<CPicture> graphicsCompleted;
 		std::shared_ptr<VideoWidget> videoPlayer;
+		CCampaignScreen * screen = nullptr;
 		CampaignStatus status;
 		VideoPath videoPath;
 
@@ -39,12 +42,15 @@ private:
 		std::string hoverText;
 
 		std::string campaignSet;
+		int campaignId = -1;
 
 		void clickReleased(const Point & cursorPosition) override;
 		void hover(bool on) override;
 
 	public:
-		CCampaignButton(const JsonNode & config, const JsonNode & parentConfig, std::string campaignSet);
+		CCampaignButton(const JsonNode & config, const JsonNode & parentConfig,
+			std::string campaignSet, CCampaignScreen * screen);
+		friend class CCampaignScreen;
 	};
 
 	std::string campaignSet;
@@ -69,4 +75,9 @@ public:
 	CCampaignScreen(const JsonNode & config, std::string campaignSet);
 
 	void activate() override;
+	void deactivate() override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void publishThorContext();
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 };
