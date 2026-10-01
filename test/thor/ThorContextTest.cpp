@@ -781,3 +781,22 @@ TEST(ThorContextStoreTest, TownRosterClearsOutsideAdventure)
 	townWindow.towns = adventure.towns;
 	EXPECT_TRUE(store.publishNext(townWindow).towns.empty());
 }
+
+TEST(ThorContextStoreTest, WindowSubjectChangeInvalidatesNavigationRevision)
+{
+	ThorContextStore store;
+	ThorContextRecord first;
+	first.contextId = ThorContextIds::HERO_WINDOW;
+	first.title = "Same translated name";
+	first.windowSubjectId = 11;
+	first.enabledActionMask = thorActionMask(ThorAction::WINDOW_NEXT);
+	const auto old = store.publishNext(first);
+	first.windowSubjectId = 12;
+	const auto next = store.publishNext(first);
+	EXPECT_GT(next.revision, old.revision);
+	EXPECT_EQ(next.windowSubjectId, 12);
+	first.contextId = ThorContextIds::TOWN_WINDOW;
+	EXPECT_GT(store.publishNext(first).revision, next.revision);
+	first.contextId = ThorContextIds::UNKNOWN;
+	EXPECT_EQ(store.publishNext(first).windowSubjectId, -1);
+}

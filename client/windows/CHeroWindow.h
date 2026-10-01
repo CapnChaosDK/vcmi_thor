@@ -15,6 +15,10 @@
 
 #include <vcmi/FactionMember.h>
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#endif
+
 class CGHeroInstance;
 
 class CButton;
@@ -103,6 +107,13 @@ public:
 	void keyPressed(EShortcut key) override;
 	void activate() override;
 	void deactivate() override;
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	void updateThorActionState();
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
+	void showHero(const CGHeroInstance * hero);
 
 	void dismissCurrent(); //dismissed currently displayed hero (curHero)
 	void commanderWindow();

@@ -204,6 +204,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorLobbyScenarioGesture lobbyScenarioGesture = new ThorLobbyScenarioGesture();
         private final ThorMainMenuGesture mainMenuGesture = new ThorMainMenuGesture();
         private final ThorBrowserGesture browserGesture = new ThorBrowserGesture();
+        private final ThorWindowNavigation windowNavigation = new ThorWindowNavigation();
         private final Runnable heroMeetingLongPress = () ->
         {
             if (!heroMeetingRedistribution.isActive()
@@ -253,6 +254,7 @@ final class ThorSecondScreenPresentation extends Presentation
             cancelLobbyScenarioTouch();
             cancelMainMenuTouch();
             browserGesture.cancel();
+            windowNavigation.cancel();
             invalidate();
         }
 
@@ -268,6 +270,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 cancelLobbyScenarioTouch();
                 cancelMainMenuTouch();
                 browserGesture.cancel();
+                windowNavigation.cancel();
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
@@ -294,6 +297,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
                     && this.enabledActionMask != enabledActionMask)
                 browserGesture.cancel();
+            if (ThorWindowNavigation.isWindow(contextId) && this.enabledActionMask != enabledActionMask)
+                windowNavigation.cancel();
             this.revision = revision;
             this.contextId = contextId;
             heroPortraitAssetKey = publishedHeroPortraitAssetKey;
@@ -626,10 +631,12 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {
                 drawHeroDashboard(canvas, frame, dividerY, bevel, density);
+                drawWindowNavigation(canvas, frame, bevel, density);
             }
             else if (ThorContextIds.TOWN_WINDOW.equals(contextId))
             {
                 drawTownDashboard(canvas, frame, dividerY, bevel, density);
+                drawWindowNavigation(canvas, frame, bevel, density);
             }
             else if (ThorContextIds.HERO_MEETING.equals(contextId))
             {
@@ -724,6 +731,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
                 return handleBrowserTouch(event);
+            if (ThorWindowNavigation.isWindow(contextId))
+                return handleWindowNavigationTouch(event);
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
                 return handleLobbyScenarioTouch(event);
@@ -2229,7 +2238,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
             paint.setColor(PARCHMENT_DARK);
             final float detailsTop = dividerY + bevel * 3f;
-            final float detailsHeight = frame.bottom - bevel * 3f - detailsTop;
+            final float detailsHeight = frame.top + frame.height() * 0.87f - detailsTop;
             for (int index = 0; index < 3; ++index)
             {
                 drawFittedText(canvas, detailLines[index], frame.centerX(),
@@ -2272,7 +2281,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final float left = frame.left + bevel * 3f;
             final float top = dividerY + bevel * 3f;
             final float availableWidth = frame.width() - bevel * 6f;
-            final float availableHeight = frame.bottom - bevel * 3f - top;
+            final float availableHeight = frame.top + frame.height() * 0.87f - top;
             final float cellWidth = (availableWidth - gap) / 2f;
             final float cellHeight = (availableHeight - gap) / 2f;
 
@@ -2294,6 +2303,77 @@ final class ThorSecondScreenPresentation extends Presentation
         private String townHeroName(final String heroName)
         {
             return heroName.isEmpty() ? getContext().getString(R.string.thor_town_none) : heroName;
+        }
+
+        private void drawWindowNavigation(final Canvas canvas, final RectF frame,
+                                          final float bevel, final float density)
+        {
+            final int[] labels = {R.string.thor_previous, R.string.thor_next, R.string.thor_lobby_back};
+            for (int control = ThorWindowNavigation.PREVIOUS; control <= ThorWindowNavigation.CLOSE; ++control)
+            {
+                final float[] box = ThorWindowNavigation.bounds(control, frame.width(), frame.height());
+                final RectF bounds = new RectF(frame.left + box[0], frame.top + box[1],
+                        frame.left + box[2], frame.top + box[3]);
+                final boolean enabled = isActionEnabled(ThorWindowNavigation.actionFor(control));
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
+                canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(2f, bevel * 0.4f));
+                paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
+                canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setFakeBoldText(enabled);
+                paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+                drawFittedText(canvas, getContext().getString(labels[control]), bounds.centerX(),
+                        bounds.centerY(), bounds.width() * 0.88f,
+                        Math.min(30f * density, bounds.height() * 0.36f));
+            }
+            paint.setFakeBoldText(false);
+        }
+
+        private int windowNavigationControlAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            return ThorWindowNavigation.controlAt(x - frame.left, y - frame.top,
+                    frame.width(), frame.height());
+        }
+
+        private boolean handleWindowNavigationTouch(final MotionEvent event)
+        {
+            final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN)
+            {
+                final int control = windowNavigationControlAt(event.getX(), event.getY());
+                windowNavigation.begin(contextId, control, revision, presentationSessionId,
+                        event.getPointerId(0), isActionEnabled(ThorWindowNavigation.actionFor(control)));
+                return true;
+            }
+            if (!windowNavigation.isActive())
+                return true;
+            if (event.getPointerCount() != 1 || event.getPointerId(0) != windowNavigation.pointerId()
+                    || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP
+                    || action == MotionEvent.ACTION_CANCEL)
+            {
+                windowNavigation.cancel();
+                return true;
+            }
+            if (action == MotionEvent.ACTION_UP)
+            {
+                final int control = windowNavigation.control();
+                final long submittedRevision = windowNavigation.revision();
+                if (windowNavigation.finish(contextId, windowNavigationControlAt(event.getX(), event.getY()),
+                        revision, presentationSessionId, event.getPointerId(0), event.getPointerCount(),
+                        isActionEnabled(ThorWindowNavigation.actionFor(control)),
+                        sessionValidity != null && sessionValidity.isCurrent(presentationSessionId)))
+                {
+                    performClick();
+                    NativeMethods.submitThorAction(submittedRevision,
+                            ThorWindowNavigation.actionFor(control), ThorActionIds.NO_TARGET);
+                }
+            }
+            return true;
         }
 
         private void drawBattleDashboard(final Canvas canvas, final RectF frame, final float dividerY,

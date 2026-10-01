@@ -84,12 +84,21 @@ namespace
 		return hero ? GAME->translator().translate(hero->getNameTextID()) : "";
 	}
 
-	void publishThorTownContext(const CGTownInstance * town)
+	void publishThorTownContext(const CCastleInterface * owner)
 	{
+		const auto * town = owner->town;
 		assert(town);
 
 		ThorContextRecord context;
 		context.contextId = ThorContextIds::TOWN_WINDOW;
+		context.windowSubjectId = town->id.getNum();
+		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+		const int selected = owner->townlist->getSelectedIndex();
+		const int count = static_cast<int>(GAME->interface()->localState->getOwnedTowns().size());
+		if(selected > 0 && selected < count)
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_PREVIOUS);
+		if(selected >= 0 && count > 1)
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_NEXT);
 		context.title = GAME->translator().translate(town->getNameTextID());
 		context.status = town->getFaction()->getNameTranslated();
 		context.details[0] = std::to_string(town->dailyIncome()[EGameResID::GOLD]);
@@ -101,8 +110,11 @@ namespace
 		const auto previous = thorContextStore().snapshot();
 		context = thorContextStore().publishNext(std::move(context));
 		if(context.revision != previous.revision)
+		{
 			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 				context.details);
+			CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
+		}
 	}
 }
 #endif
@@ -1625,7 +1637,7 @@ void CCastleInterface::activate()
 	CStatusbarWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorTownContext(town);
+	publishThorTownContext(this);
 #endif
 }
 
@@ -1657,7 +1669,7 @@ void CCastleInterface::updateGarrisons()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(isActive())
-		publishThorTownContext(town);
+		publishThorTownContext(this);
 #endif
 
 	redraw();
@@ -1669,7 +1681,7 @@ void CCastleInterface::updateTownName()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(isActive())
-		publishThorTownContext(town);
+		publishThorTownContext(this);
 #endif
 }
 
@@ -1708,6 +1720,47 @@ void CCastleInterface::townChange()
 	close();
 	ENGINE->windows().createAndPushWindow<CCastleInterface>(dest, town);
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CCastleInterface::matchesThorContext(const ThorContextRecord & context) const
+{
+	const int selected = townlist->getSelectedIndex();
+	const auto & owned = GAME->interface()->localState->getOwnedTowns();
+	return thorWindowOwnerMatches(context, ThorContextIds::TOWN_WINDOW,
+		town->id.getNum(), isActive(), true) && selected >= 0
+		&& selected < static_cast<int>(owned.size()) && owned[selected] == town;
+}
+
+void CCastleInterface::updateThorActionState()
+{
+	if(isActive())
+		publishThorTownContext(this);
+}
+
+bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
+{
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context) || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		close();
+		return true;
+	}
+	const int selected = townlist->getSelectedIndex();
+	const int count = static_cast<int>(GAME->interface()->localState->getOwnedTowns().size());
+	if(request.action == ThorAction::WINDOW_PREVIOUS && selected <= 0)
+		return false;
+	if(request.action == ThorAction::WINDOW_NEXT && count <= 1)
+		return false;
+	// The upper Town list clamps Previous and wraps Next; its onSelect calls townChange().
+	if(request.action == ThorAction::WINDOW_PREVIOUS)
+		townlist->selectPrev();
+	else
+		townlist->selectNext();
+	return true;
+}
+#endif
 
 void CCastleInterface::addBuilding(BuildingID bid)
 {

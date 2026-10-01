@@ -231,6 +231,9 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 	case static_cast<int>(ThorAction::LOAD_BROWSER_SELECT): return ThorAction::LOAD_BROWSER_SELECT;
 	case static_cast<int>(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE): return ThorAction::LOAD_BROWSER_PREVIOUS_PAGE;
 	case static_cast<int>(ThorAction::LOAD_BROWSER_NEXT_PAGE): return ThorAction::LOAD_BROWSER_NEXT_PAGE;
+	case static_cast<int>(ThorAction::WINDOW_PREVIOUS): return ThorAction::WINDOW_PREVIOUS;
+	case static_cast<int>(ThorAction::WINDOW_NEXT): return ThorAction::WINDOW_NEXT;
+	case static_cast<int>(ThorAction::WINDOW_CLOSE): return ThorAction::WINDOW_CLOSE;
 	default:
 		return std::nullopt;
 	}
@@ -242,6 +245,8 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 		return true;
 	if(contextId == ThorContextIds::ADVENTURE_MAP)
 		return isThorActionAllowedInAdventureMap(action);
+	if(contextId == ThorContextIds::HERO_WINDOW || contextId == ThorContextIds::TOWN_WINDOW)
+		return action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::BATTLE)
 		return action == ThorAction::BATTLE_WAIT || action == ThorAction::BATTLE_DEFEND;
 	if(contextId == ThorContextIds::BATTLE_TACTICS)
@@ -267,6 +272,29 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 	if(contextId == ThorContextIds::CAMPAIGN_BROWSER)
 		return action >= ThorAction::CAMPAIGN_BROWSER_SELECT && action <= ThorAction::CAMPAIGN_BROWSER_BACK;
 	return false;
+}
+
+bool thorWindowOwnerMatches(const ThorContextRecord & context,
+	const std::string & expectedContext, int subjectId, bool active, bool top)
+{
+	return active && top && subjectId >= 0 && context.windowSubjectId == subjectId
+		&& (expectedContext == ThorContextIds::HERO_WINDOW || expectedContext == ThorContextIds::TOWN_WINDOW)
+		&& context.contextId == expectedContext;
+}
+
+std::optional<int> thorHeroWindowAdjacentIndex(int oneBasedSerial, int visibleCount, ThorAction action)
+{
+	if(oneBasedSerial < 1 || visibleCount < 1 || visibleCount > static_cast<int>(THOR_MAX_HEROES)
+		|| oneBasedSerial > visibleCount)
+		return std::nullopt;
+	int index = oneBasedSerial - 1;
+	if(action == ThorAction::WINDOW_PREVIOUS)
+		--index;
+	else if(action == ThorAction::WINDOW_NEXT)
+		++index;
+	else
+		return std::nullopt;
+	return index >= 0 && index < visibleCount ? std::optional<int>{index} : std::nullopt;
 }
 
 std::optional<ThorMainMenuChoice> thorMainMenuChoice(const std::string & contextId, ThorAction action)
@@ -511,7 +539,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	}
 	else if((request.action >= ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && request.action <= ThorAction::CAMPAIGN_BACK)
 		|| (request.action >= ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE && request.action <= ThorAction::CAMPAIGN_BROWSER_BACK)
-		|| request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE || request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		|| request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE || request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE
+		|| (request.action >= ThorAction::WINDOW_PREVIOUS && request.action <= ThorAction::WINDOW_CLOSE))
 	{
 		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)

@@ -246,7 +246,47 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	for(int id = 43; id <= 49; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 49);
+	for(int id = 50; id <= 52; ++id)
+		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 52);
+}
+
+TEST(ThorActionTest, WindowNavigationIsContextQualifiedRevisionBoundAndTargetless)
+{
+	ThorContextRecord context;
+	context.revision = 70;
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	context.windowSubjectId = 12;
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_NEXT) | thorActionMask(ThorAction::WINDOW_CLOSE);
+	EXPECT_EQ(validateThorActionRequest({70, ThorAction::WINDOW_NEXT}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({70, ThorAction::WINDOW_PREVIOUS}, context), ThorActionValidation::UNAVAILABLE);
+	EXPECT_EQ(validateThorActionRequest({69, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(validateThorActionRequest({70, ThorAction::WINDOW_NEXT, 12}, context), ThorActionValidation::INVALID_TARGET);
+	context.contextId = ThorContextIds::ADVENTURE_MAP;
+	EXPECT_EQ(validateThorActionRequest({70, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::TOWN_WINDOW;
+	EXPECT_EQ(validateThorActionRequest({70, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({70, ThorAction::WINDOW_NEXT}, context), ThorActionValidation::VALID);
+	EXPECT_FALSE(isThorActionHapticEligible(ThorAction::WINDOW_CLOSE));
+	EXPECT_TRUE(thorWindowOwnerMatches(context, ThorContextIds::TOWN_WINDOW, 12, true, true));
+	EXPECT_FALSE(thorWindowOwnerMatches(context, ThorContextIds::TOWN_WINDOW, 12, false, true));
+	EXPECT_FALSE(thorWindowOwnerMatches(context, ThorContextIds::TOWN_WINDOW, 12, true, false));
+	EXPECT_FALSE(thorWindowOwnerMatches(context, ThorContextIds::TOWN_WINDOW, 13, true, true));
+	EXPECT_FALSE(thorWindowOwnerMatches(context, ThorContextIds::HERO_WINDOW, 12, true, true));
+}
+
+TEST(ThorActionTest, HeroWindowNavigationConvertsOneBasedSerialToVisibleZeroBasedIndex)
+{
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(1, 2, ThorAction::WINDOW_PREVIOUS));
+	EXPECT_EQ(thorHeroWindowAdjacentIndex(1, 2, ThorAction::WINDOW_NEXT), 1);
+	EXPECT_EQ(thorHeroWindowAdjacentIndex(2, 2, ThorAction::WINDOW_PREVIOUS), 0);
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(2, 2, ThorAction::WINDOW_NEXT));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(1, 1, ThorAction::WINDOW_NEXT));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(0, 2, ThorAction::WINDOW_NEXT));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(3, 2, ThorAction::WINDOW_PREVIOUS));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(1, 2, ThorAction::WINDOW_CLOSE));
+	EXPECT_EQ(thorHeroWindowAdjacentIndex(8, 8, ThorAction::WINDOW_PREVIOUS), 6);
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(8, 8, ThorAction::WINDOW_NEXT));
 }
 
 TEST(ThorActionTest, MainMenuChoicesRequireExactContextSlotAndBuiltInCommand)
