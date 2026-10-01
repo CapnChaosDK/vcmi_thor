@@ -4,6 +4,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 
 ## Validated starting point
 
+- For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
 - Upstream baseline: `819259d97f1de9262b97811ccb081346c20ffef2`

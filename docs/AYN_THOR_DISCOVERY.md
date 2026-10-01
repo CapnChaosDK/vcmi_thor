@@ -4,15 +4,15 @@ Discovery date: 2026-09-13
 
 Baseline: VCMI `develop` at `819259d97f1de9262b97811ccb081346c20ffef2`
 
-This report records the repository-specific evidence used to plan the AYN Thor dual-screen fork. It is a design document, not approval to implement a feature slice.
+This report records the repository-specific evidence used to plan the AYN Thor dual-screen fork. Early discovery findings below are historical; the current implementation and validation status are in `AYN_THOR_BACKLOG.md` and current code.
 
 ## Repository and fork state
 
 - Official reference: `https://github.com/vcmi/vcmi.git`.
 - New public fork: `https://github.com/CapnChaosDK/vcmi_thor`.
-- Local and fork branch: `ayn-thor-dual-screen`.
+- Product branch: `ayn-thor-dual-screen`. Current slice delivery branches and PRs are recorded in `AYN_THOR_BACKLOG.md`.
 - `origin` is the CapnChaosDK fork. `upstream` fetches from official VCMI and has its push URL disabled locally.
-- The fork branch currently matches the clean upstream baseline. `AYN_THOR_BACKLOG.md` and this report are local planning additions and have not been committed.
+- At discovery, the fork matched the clean upstream baseline. The fork now has validated Thor slices; consult `AYN_THOR_BACKLOG.md` for the current product branch, candidate, and delivery state.
 - Repository guidance is in `AGENTS.md`; C++ changes must follow `docs/developers/Coding_Guidelines.md`, use established constants, and preserve the server-authoritative state model.
 
 ## Engine and thread architecture
@@ -22,14 +22,14 @@ VCMI is not a single-process game-state engine like fheroes2. Its architecture s
 - `clientapp/EntryPoint.cpp` supplies `SDL_main` on mobile, initializes the library, creates `GameEngine` and `GameInstance`, opens the main menu, and enters `GameEngine::mainLoop()`.
 - `client/GameEngine.cpp` runs the `MainGUI` loop. Each frame fetches SDL events, acquires `interfaceMutex`, updates the client, processes input, redraws the active window stack, updates the screen texture, and presents it through the selected SDL backend.
 - `client/gui/WindowHandler.*` owns an ordered `windowsStack`. `pushWindow()` deactivates the current top and activates the new top; `popWindows()` deactivates/removes the top and reactivates its immediate parent. This is the primary source of visible client context and exact modal restoration. Do not collapse multiple stack transitions merely to suppress a transient Thor context: parent activation/deactivation can perform essential upper-screen cleanup, as demonstrated by Battle Result dismissal restoring Adventure Map.
-- `client/gui/CIntObject.*` defines the common activatable UI base. A later context bridge should expose an explicit stable context identity from screen/window owners rather than rely on Android labels or coordinates.
+- `client/gui/CIntObject.*` defines the common activatable UI base. The Thor context bridge publishes explicit stable context identities from screen/window owners rather than relying on Android labels or coordinates.
 - `runNetwork` processes incoming packets and client feedback. `runServer` is the authoritative server thread for local/hosted games. The server validates client requests and sends state changes back to clients.
 - `lib/gameState/CGameState.h` owns authoritative map, player, hero, army, town, and game-option state. Client-side visibility must be read through `CPlayerSpecificInfoCallback`/related callbacks.
 - `lib/callback/CCallback.*` is the safe mutation boundary. Existing methods create network packs for movement, turn completion, stack arrangement, artifact exchange, hero dismissal, construction, recruitment, and other actions. A Thor action must re-resolve current client-visible objects, validate current UI/context, then invoke these existing client request paths. It must never mutate `CGameState` directly.
 
-### Safe future game-thread dispatch
+### Thor game-thread dispatch
 
-`GameEngine::mainLoop()` and `GameEngine::updateFrame()` are the only safe consumer location for one-shot Android requests that affect gameplay UI or issue client/server requests. The bridge should enqueue bounded plain data from the Android main thread and consume it under the normal `MainGUI` frame path. Direct JNI calls from a lower-screen touch handler into gameplay code would violate thread ownership.
+`GameEngine::mainLoop()` and `GameEngine::updateFrame()` provide the safe consumer location for one-shot Android requests that affect gameplay UI or issue client/server requests. The Thor bridge enqueues bounded plain data from the Android main thread and consumes it under the normal `MainGUI` frame path. Direct JNI calls from a lower-screen touch handler into gameplay code would violate thread ownership.
 
 ### New Game scenario companion
 
@@ -46,6 +46,12 @@ VCMI is not a single-process game-state engine like fheroes2. Its architecture s
 - Load Game reuses the `CLobbyScreen`/`SelectionTab` scenario contract for the currently selected compatible save. Native code publishes only the bounded translated name, map dimensions, player counts, and save date; navigation follows the current filtered native list, while Load and Back retain `start(false)` and `leaveLobby()` semantics. Paths and save contents never cross JNI.
 - Slice 35 adds a five-row page derived from that same filtered/sorted native `SelectionTab::curItems`; each target is revalidated against the native-only list revision and exact current item before `selectAbs()`. The selected-save summary remains separate from the row payload. The configurable `CCampaignScreen` now owns a distinct `CAMPAIGN_BROWSER` context and publishes only its current page of up to eight campaign rows; exact top ownership, configured ID/order, button status, and current resource existence guard its existing campaign selection route. The two native owners share only a bounded Android page renderer and gesture contract.
 - Campaign scenario and starting-bonus interaction belongs to the exact non-gameplay `CBonusSelection`, not Android or the preceding configurable campaign-set grid. It publishes only bounded campaign/scenario names and at most three translated bonus descriptions. Revision-bound actions re-resolve accessible scenarios and bonus positions before using the existing server lobby calls, and videos, child windows, gameplay campaign information, or oversized bonus collections fail closed.
+
+### Hero and Town window navigation
+
+- Slice 36 adds one shared lower-dashboard Previous/Next/Close action family (IDs 50–52) to the existing Hero and Town information cards. `CHeroWindow` and `CCastleInterface` publish availability and their exact current object identity; `MainGUI` validates the rendered revision, top active owner, context, subject, and current availability before calling the existing upper-window navigation or close route. Android submits only the action ID and revision, and clears pending touch state on context, pointer, lifecycle, or presentation changes.
+- Hero navigation uses the upper window's visible hero order. `getHeroSerial()` is one-based, while `getHeroBySerial()` takes a zero-based index; `thorHeroWindowAdjacentIndex()` converts and bounds the adjacent target for both publication and execution. The first and last Hero disable the unavailable direction.
+- Town navigation uses the zero-based `CTownList::getSelectedIndex()` directly. Its native `selectPrev()` clamps at the first town and `selectNext()` wraps after the last; the lower controls follow those same routes. Normal window replacement and close/parent activation refresh the actual Hero or Town card, including Hero opened from Town.
 
 ## Android application architecture
 
@@ -75,11 +81,11 @@ VCMI combines Qt and SDL in one Android package:
 - A Hero Meeting context may reference at most 64 distinct assets: 14 creature rows, 48 artifact slots, and two hero portraits. Each PNG is at most 64×64 pixels and 32 KiB. Native and Android caches retain at most 64 entries and 1 MiB each. Native checks the Android cache before sending; Android rejects stale/unreferenced keys and preserves existing text and interaction behavior if a resource is unavailable or fails decoding.
 - Context/revision changes replace rendered references and clear transient gestures. The bounded activity-owned image cache may reuse type assets across revisions and presentation recreation. This path stays separate from SDL frame publication and adds no gameplay action, hit target, or game-state mutation.
 
-## Existing multi-display support
+## Multi-display baseline and Thor implementation
 
-A repository-wide Android/client search found no use of `DisplayManager`, `Presentation`, display-listener callbacks, virtual displays, or secondary Android surfaces. VCMI currently has no Android multi-display support.
+The initial repository-wide Android/client search found no use of `DisplayManager`, `Presentation`, display-listener callbacks, virtual displays, or secondary Android surfaces. The Thor fork subsequently added a lifecycle-owned lower `Presentation`; this paragraph records the original baseline, not current Thor capability.
 
-The proven fheroes2 policy is applicable: compare candidates with the activity's current display, prefer `DISPLAY_CATEGORY_PRESENTATION`, accept a valid active non-activity display only as a compatibility fallback, never persist display IDs, and rebuild when Android reports add/remove/change. VCMI-specific lifecycle and Qt/SDL packaging still require independent tests.
+`ThorSecondScreenController` compares candidates with the activity's current display, prefers `DISPLAY_CATEGORY_PRESENTATION`, accepts a valid active non-activity display as a compatibility fallback, does not persist display IDs, and reacts to Android add/remove/change callbacks. The exact candidate's panel toggle/reconnect, pause/resume, focus, and upper-input behavior passed the physical AYN Thor checklist recorded in `AYN_THOR_BACKLOG.md`.
 
 ## Input paths
 
@@ -140,7 +146,7 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - A distinct Android application ID yields a distinct app-specific external files directory through `Storage.getVcmiDataDir()`, so Thor assets, settings, mods, and saves remain separate from standard VCMI.
 - The Thor APK must contain only VCMI/fork-created generic framing and appropriately licensed resources. Heroes III portraits, creatures, artifacts, town art, fonts, or other original assets may be decoded only from the player's imported data at runtime. Missing, malformed, or oversized resources must fall back to bounded generic/text UI.
 
-## Discovery conclusions
+## Initial discovery conclusions and subsequent milestones
 
 - The smallest safe foundation is Android-only: fork identity plus a lifecycle-safe inert `Presentation` owned by `VcmiSDLActivity`.
 - No native bridge belongs in Slice 1. This isolates multi-display, focus, package/data separation, and lifecycle behavior before exposing gameplay state.
