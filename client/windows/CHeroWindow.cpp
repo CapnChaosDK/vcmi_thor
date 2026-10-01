@@ -83,9 +83,9 @@ namespace
 		const int serial = GAME->interface()->cb->getHeroSerial(hero, false);
 		const int count = std::min(GAME->interface()->cb->howManyHeroes(false), 8);
 		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
-		if(serial > 0 && serial < count)
+		if(thorHeroWindowAdjacentIndex(serial, count, ThorAction::WINDOW_PREVIOUS))
 			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_PREVIOUS);
-		if(serial >= 0 && serial + 1 < count)
+		if(thorHeroWindowAdjacentIndex(serial, count, ThorAction::WINDOW_NEXT))
 			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_NEXT);
 		context.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum());
 		context.title = GAME->translator().translate(hero->getNameTextID());
@@ -154,10 +154,10 @@ bool CHeroWindow::executeThorAction(const ThorActionRequest & request)
 	}
 	const int serial = GAME->interface()->cb->getHeroSerial(curHero, false);
 	const int count = std::min(GAME->interface()->cb->howManyHeroes(false), 8);
-	const int target = serial + (request.action == ThorAction::WINDOW_NEXT ? 1 : -1);
-	if(serial < 0 || target < 0 || target >= count)
+	const auto target = thorHeroWindowAdjacentIndex(serial, count, request.action);
+	if(!target)
 		return false;
-	const auto * next = GAME->interface()->cb->getHeroBySerial(target, false);
+	const auto * next = GAME->interface()->cb->getHeroBySerial(*target, false);
 	if(!next || next == curHero)
 		return false;
 	showHero(next);

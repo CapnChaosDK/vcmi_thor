@@ -275,6 +275,20 @@ TEST(ThorActionTest, WindowNavigationIsContextQualifiedRevisionBoundAndTargetles
 	EXPECT_FALSE(thorWindowOwnerMatches(context, ThorContextIds::HERO_WINDOW, 12, true, true));
 }
 
+TEST(ThorActionTest, HeroWindowNavigationConvertsOneBasedSerialToVisibleZeroBasedIndex)
+{
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(1, 2, ThorAction::WINDOW_PREVIOUS));
+	EXPECT_EQ(thorHeroWindowAdjacentIndex(1, 2, ThorAction::WINDOW_NEXT), 1);
+	EXPECT_EQ(thorHeroWindowAdjacentIndex(2, 2, ThorAction::WINDOW_PREVIOUS), 0);
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(2, 2, ThorAction::WINDOW_NEXT));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(1, 1, ThorAction::WINDOW_NEXT));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(0, 2, ThorAction::WINDOW_NEXT));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(3, 2, ThorAction::WINDOW_PREVIOUS));
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(1, 2, ThorAction::WINDOW_CLOSE));
+	EXPECT_EQ(thorHeroWindowAdjacentIndex(8, 8, ThorAction::WINDOW_PREVIOUS), 6);
+	EXPECT_FALSE(thorHeroWindowAdjacentIndex(8, 8, ThorAction::WINDOW_NEXT));
+}
+
 TEST(ThorActionTest, MainMenuChoicesRequireExactContextSlotAndBuiltInCommand)
 {
 	using namespace ThorContextIds;

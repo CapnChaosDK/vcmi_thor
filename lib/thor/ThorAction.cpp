@@ -282,6 +282,21 @@ bool thorWindowOwnerMatches(const ThorContextRecord & context,
 		&& context.contextId == expectedContext;
 }
 
+std::optional<int> thorHeroWindowAdjacentIndex(int oneBasedSerial, int visibleCount, ThorAction action)
+{
+	if(oneBasedSerial < 1 || visibleCount < 1 || visibleCount > static_cast<int>(THOR_MAX_HEROES)
+		|| oneBasedSerial > visibleCount)
+		return std::nullopt;
+	int index = oneBasedSerial - 1;
+	if(action == ThorAction::WINDOW_PREVIOUS)
+		--index;
+	else if(action == ThorAction::WINDOW_NEXT)
+		++index;
+	else
+		return std::nullopt;
+	return index >= 0 && index < visibleCount ? std::optional<int>{index} : std::nullopt;
+}
+
 std::optional<ThorMainMenuChoice> thorMainMenuChoice(const std::string & contextId, ThorAction action)
 {
 	const int choice = static_cast<int>(action) - static_cast<int>(ThorAction::MAIN_MENU_CHOICE_1);

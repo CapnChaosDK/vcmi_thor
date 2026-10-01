@@ -89,6 +89,8 @@ DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
 DLL_LINKAGE bool thorWindowOwnerMatches(const ThorContextRecord & context,
 	const std::string & expectedContext, int subjectId, bool active, bool top);
+/// getHeroSerial is one-based; getHeroBySerial accepts a zero-based index.
+DLL_LINKAGE std::optional<int> thorHeroWindowAdjacentIndex(int oneBasedSerial, int visibleCount, ThorAction action);
 struct DLL_LINKAGE ThorMainMenuChoice
 {
 	std::size_t index;
