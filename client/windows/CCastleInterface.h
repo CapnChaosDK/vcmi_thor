@@ -12,6 +12,10 @@
 #include "CWindowObject.h"
 #include "../widgets/Images.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#endif
+
 class CBuilding;
 class CGTownInstance;
 class CSpell;
@@ -260,6 +264,12 @@ public:
 	bool holdsGarrison(const CArmedInstance * army) override;
 	void activate() override;
 	void deactivate() override;
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	void updateThorActionState();
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 
 	void castleTeleport(int where);
 	void townChange();

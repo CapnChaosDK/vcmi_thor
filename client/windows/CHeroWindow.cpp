@@ -79,6 +79,14 @@ namespace
 
 		ThorContextRecord context;
 		context.contextId = ThorContextIds::HERO_WINDOW;
+		context.windowSubjectId = hero->id.getNum();
+		const int serial = GAME->interface()->cb->getHeroSerial(hero, false);
+		const int count = std::min(GAME->interface()->cb->howManyHeroes(false), 8);
+		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+		if(serial > 0 && serial < count)
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_PREVIOUS);
+		if(serial >= 0 && serial + 1 < count)
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_NEXT);
 		context.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum());
 		context.title = GAME->translator().translate(hero->getNameTextID());
 		context.status = levelAndClass.toString(&GAME->translator());
@@ -94,6 +102,7 @@ namespace
 		{
 			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 				context.details, context.heroPortraitAssetKey);
+			CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
 			publishThorVisualAssets(context);
 		}
 	}
@@ -110,10 +119,51 @@ void CHeroSwitcher::clickPressed(const Point & cursorPosition)
 	else
 	{
 		const CGHeroInstance * buf = hero;
-		ENGINE->windows().popWindows(1);
-		ENGINE->windows().createAndPushWindow<CHeroWindow>(buf);
+		owner->showHero(buf);
 	}
 }
+
+void CHeroWindow::showHero(const CGHeroInstance * hero)
+{
+	ENGINE->windows().popWindows(1);
+	ENGINE->windows().createAndPushWindow<CHeroWindow>(hero);
+}
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CHeroWindow::matchesThorContext(const ThorContextRecord & context) const
+{
+	return curHero && thorWindowOwnerMatches(context, ThorContextIds::HERO_WINDOW,
+		curHero->id.getNum(), isActive(), true);
+}
+
+void CHeroWindow::updateThorActionState()
+{
+	if(isActive())
+		publishThorHeroContext(curHero);
+}
+
+bool CHeroWindow::executeThorAction(const ThorActionRequest & request)
+{
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context) || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		close();
+		return true;
+	}
+	const int serial = GAME->interface()->cb->getHeroSerial(curHero, false);
+	const int count = std::min(GAME->interface()->cb->howManyHeroes(false), 8);
+	const int target = serial + (request.action == ThorAction::WINDOW_NEXT ? 1 : -1);
+	if(serial < 0 || target < 0 || target >= count)
+		return false;
+	const auto * next = GAME->interface()->cb->getHeroBySerial(target, false);
+	if(!next || next == curHero)
+		return false;
+	showHero(next);
+	return true;
+}
+#endif
 
 CHeroSwitcher::CHeroSwitcher(CHeroWindow * owner_, Point pos_, const CGHeroInstance * hero_)
 	: CIntObject(LCLICK),

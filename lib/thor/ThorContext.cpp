@@ -23,6 +23,7 @@ namespace
 			&& lhs.heroPortraitAssetKey == rhs.heroPortraitAssetKey
 			&& lhs.actionSubjectId == rhs.actionSubjectId
 			&& lhs.actionEpoch == rhs.actionEpoch
+			&& lhs.windowSubjectId == rhs.windowSubjectId
 			&& lhs.heroes == rhs.heroes
 			&& lhs.towns == rhs.towns
 			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies
@@ -33,6 +34,8 @@ namespace
 	{
 		if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS)
 			context.actionSubjectId = -1;
+		if(context.contextId != ThorContextIds::HERO_WINDOW && context.contextId != ThorContextIds::TOWN_WINDOW)
+			context.windowSubjectId = -1;
 	}
 
 	void boundTextFields(ThorContextRecord & context)

@@ -244,6 +244,8 @@ struct DLL_LINKAGE ThorContextRecord
 	int selectedHeroId = -1;
 	std::int64_t actionSubjectId = -1;
 	std::uint64_t actionEpoch = 0;
+	/// Native-only identity of the active Hero or Town window subject.
+	int windowSubjectId = -1;
 	ThorContextDetails details;
 	std::vector<ThorHeroEntry> heroes;
 	std::vector<ThorTownEntry> towns;

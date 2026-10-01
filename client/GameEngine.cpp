@@ -39,6 +39,8 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "windows/CExchangeWindow.h"
+#include "windows/CHeroWindow.h"
+#include "windows/CCastleInterface.h"
 #include "lobby/CLobbyScreen.h"
 #include "lobby/CBonusSelection.h"
 #include "mainmenu/CMainMenu.h"
@@ -276,6 +278,29 @@ void GameEngine::updateFrame()
 				continue;
 			}
 			executed = exchangeWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::HERO_WINDOW || context.contextId == ThorContextIds::TOWN_WINDOW)
+		{
+			if(context.contextId == ThorContextIds::HERO_WINDOW)
+			{
+				auto heroWindow = windows().topWindow<CHeroWindow>();
+				if(!heroWindow || !heroWindow->matchesThorContext(context))
+					continue;
+				heroWindow->updateThorActionState();
+				if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+					continue;
+				executed = heroWindow->executeThorAction(*request);
+			}
+			else
+			{
+				auto townWindow = windows().topWindow<CCastleInterface>();
+				if(!townWindow || !townWindow->matchesThorContext(context))
+					continue;
+				townWindow->updateThorActionState();
+				if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+					continue;
+				executed = townWindow->executeThorAction(*request);
+			}
 		}
 		else if(context.contextId == ThorContextIds::CAMPAIGN_BONUS_SELECTION)
 		{

@@ -52,7 +52,10 @@ final class ThorActionIds
     static final int LOAD_BROWSER_SELECT = 47;
     static final int LOAD_BROWSER_PREVIOUS_PAGE = 48;
     static final int LOAD_BROWSER_NEXT_PAGE = 49;
-    static final int MAX_ACTION_ID = LOAD_BROWSER_NEXT_PAGE;
+    static final int WINDOW_PREVIOUS = 50;
+    static final int WINDOW_NEXT = 51;
+    static final int WINDOW_CLOSE = 52;
+    static final int MAX_ACTION_ID = WINDOW_CLOSE;
     static final int NO_TARGET = -1;
 
     static

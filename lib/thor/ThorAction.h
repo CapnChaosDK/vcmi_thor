@@ -67,10 +67,13 @@ enum class ThorAction : std::uint8_t
 	CAMPAIGN_BROWSER_BACK = 46,
 	LOAD_BROWSER_SELECT = 47,
 	LOAD_BROWSER_PREVIOUS_PAGE = 48,
-	LOAD_BROWSER_NEXT_PAGE = 49
+	LOAD_BROWSER_NEXT_PAGE = 49,
+	WINDOW_PREVIOUS = 50,
+	WINDOW_NEXT = 51,
+	WINDOW_CLOSE = 52
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::WINDOW_CLOSE);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -84,6 +87,8 @@ constexpr std::uint64_t thorActionMask(ThorAction action)
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
+DLL_LINKAGE bool thorWindowOwnerMatches(const ThorContextRecord & context,
+	const std::string & expectedContext, int subjectId, bool active, bool top);
 struct DLL_LINKAGE ThorMainMenuChoice
 {
 	std::size_t index;
