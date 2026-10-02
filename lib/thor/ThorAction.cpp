@@ -234,9 +234,17 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 	case static_cast<int>(ThorAction::WINDOW_PREVIOUS): return ThorAction::WINDOW_PREVIOUS;
 	case static_cast<int>(ThorAction::WINDOW_NEXT): return ThorAction::WINDOW_NEXT;
 	case static_cast<int>(ThorAction::WINDOW_CLOSE): return ThorAction::WINDOW_CLOSE;
+	case static_cast<int>(ThorAction::TOWN_OPEN_SERVICE): return ThorAction::TOWN_OPEN_SERVICE;
 	default:
 		return std::nullopt;
 	}
+}
+
+std::optional<ThorTownService> thorTownServiceFromTarget(int targetId)
+{
+	if(targetId < 0 || targetId >= static_cast<int>(THOR_TOWN_SERVICE_COUNT))
+		return std::nullopt;
+	return static_cast<ThorTownService>(targetId);
 }
 
 bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId)
@@ -245,8 +253,11 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 		return true;
 	if(contextId == ThorContextIds::ADVENTURE_MAP)
 		return isThorActionAllowedInAdventureMap(action);
-	if(contextId == ThorContextIds::HERO_WINDOW || contextId == ThorContextIds::TOWN_WINDOW)
+	if(contextId == ThorContextIds::HERO_WINDOW)
 		return action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE;
+	if(contextId == ThorContextIds::TOWN_WINDOW)
+		return (action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE)
+			|| action == ThorAction::TOWN_OPEN_SERVICE;
 	if(contextId == ThorContextIds::BATTLE)
 		return action == ThorAction::BATTLE_WAIT || action == ThorAction::BATTLE_DEFEND;
 	if(contextId == ThorContextIds::BATTLE_TACTICS)
@@ -544,6 +555,16 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	{
 		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(request.action == ThorAction::TOWN_OPEN_SERVICE)
+	{
+		if(!thorTownServiceFromTarget(request.targetId) || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1
+			|| std::none_of(context.browserEntries.begin(), context.browserEntries.end(), [&](const auto & entry)
+			{
+				return entry.target == request.targetId && entry.enabled;
+			}))
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	else if(thorMainMenuChoice(context.contextId, request.action))

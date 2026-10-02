@@ -60,10 +60,18 @@ namespace
 			hero.name = thorBoundedText(std::move(hero.name));
 		for(auto & town : context.towns)
 			town.name = thorBoundedText(std::move(town.name));
-		if((context.contextId != ThorContextIds::CAMPAIGN_BROWSER
-				&& context.contextId != ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
+		bool exactTownServiceTargets = context.browserEntries.size() == THOR_TOWN_SERVICE_COUNT;
+		for(std::size_t index = 0; exactTownServiceTargets && index < context.browserEntries.size(); ++index)
+			exactTownServiceTargets = context.browserEntries[index].target == static_cast<int>(index);
+		const bool townServices = context.contextId == ThorContextIds::TOWN_WINDOW
+			&& context.browserPage == 0 && context.browserPageCount == 1
+			&& exactTownServiceTargets
+			&& context.browserNativeKeys.empty();
+		const bool nativeBrowser = (context.contextId == ThorContextIds::CAMPAIGN_BROWSER
+			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
+			&& context.browserNativeKeys.size() == context.browserEntries.size();
+		if((!townServices && !nativeBrowser)
 			|| context.browserEntries.size() > THOR_BROWSER_MAX_ROWS
-			|| context.browserNativeKeys.size() != context.browserEntries.size()
 			|| context.browserPage < 0 || context.browserPageCount < 0
 			|| (context.browserPageCount != 0 && context.browserPage >= context.browserPageCount)
 			|| (context.browserPageCount == 0 && !context.browserEntries.empty()))
@@ -73,7 +81,8 @@ namespace
 				| thorActionMask(ThorAction::CAMPAIGN_BROWSER_NEXT_PAGE)
 				| thorActionMask(ThorAction::LOAD_BROWSER_SELECT)
 				| thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
-				| thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE));
+				| thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE)
+				| thorActionMask(ThorAction::TOWN_OPEN_SERVICE));
 			context.browserEntries.clear();
 			context.browserNativeKeys.clear();
 			context.browserPage = 0;

@@ -205,6 +205,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorMainMenuGesture mainMenuGesture = new ThorMainMenuGesture();
         private final ThorBrowserGesture browserGesture = new ThorBrowserGesture();
         private final ThorWindowNavigation windowNavigation = new ThorWindowNavigation();
+        private final ThorTownServices townServices = new ThorTownServices();
         private final Runnable heroMeetingLongPress = () ->
         {
             if (!heroMeetingRedistribution.isActive()
@@ -255,6 +256,7 @@ final class ThorSecondScreenPresentation extends Presentation
             cancelMainMenuTouch();
             browserGesture.cancel();
             windowNavigation.cancel();
+            townServices.cancel();
             invalidate();
         }
 
@@ -271,6 +273,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 cancelMainMenuTouch();
                 browserGesture.cancel();
                 windowNavigation.cancel();
+                townServices.cancel();
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
@@ -299,6 +302,8 @@ final class ThorSecondScreenPresentation extends Presentation
                 browserGesture.cancel();
             if (ThorWindowNavigation.isWindow(contextId) && this.enabledActionMask != enabledActionMask)
                 windowNavigation.cancel();
+            if (ThorContextIds.TOWN_WINDOW.equals(contextId) && this.enabledActionMask != enabledActionMask)
+                townServices.cancel();
             this.revision = revision;
             this.contextId = contextId;
             heroPortraitAssetKey = publishedHeroPortraitAssetKey;
@@ -505,6 +510,7 @@ final class ThorSecondScreenPresentation extends Presentation
         void updateBrowser(final ThorBrowserState publishedBrowser)
         {
             browserGesture.cancel();
+            townServices.cancel();
             browser = publishedBrowser == null ? ThorBrowserState.EMPTY : publishedBrowser;
             invalidate();
         }
@@ -636,6 +642,7 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (ThorContextIds.TOWN_WINDOW.equals(contextId))
             {
                 drawTownDashboard(canvas, frame, dividerY, bevel, density);
+                drawTownServices(canvas, frame, density);
                 drawWindowNavigation(canvas, frame, bevel, density);
             }
             else if (ThorContextIds.HERO_MEETING.equals(contextId))
@@ -731,6 +738,9 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
                 return handleBrowserTouch(event);
+            if (ThorContextIds.TOWN_WINDOW.equals(contextId) && (townServices.isActive()
+                    || townServiceAt(event.getX(), event.getY()) != ThorTownServices.NONE))
+                return handleTownServiceTouch(event);
             if (ThorWindowNavigation.isWindow(contextId))
                 return handleWindowNavigationTouch(event);
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
@@ -2281,7 +2291,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final float left = frame.left + bevel * 3f;
             final float top = dividerY + bevel * 3f;
             final float availableWidth = frame.width() - bevel * 6f;
-            final float availableHeight = frame.top + frame.height() * 0.87f - top;
+            final float availableHeight = frame.top + frame.height() * 0.56f - top;
             final float cellWidth = (availableWidth - gap) / 2f;
             final float cellHeight = (availableHeight - gap) / 2f;
 
@@ -2298,6 +2308,71 @@ final class ThorSecondScreenPresentation extends Presentation
                 drawFittedText(canvas, values[index], cell.centerX(), cell.top + cell.height() * 0.68f,
                         cell.width() * 0.9f, Math.min(30f * density, cell.height() * 0.27f));
             }
+        }
+
+        private void drawTownServices(final Canvas canvas, final RectF frame, final float density)
+        {
+            final int[] labels = {R.string.thor_town_service_hall, R.string.thor_town_service_recruit,
+                    R.string.thor_town_service_tavern, R.string.thor_town_service_mage_guild,
+                    R.string.thor_town_service_marketplace};
+            for (int service = 0; service < ThorTownServices.SERVICE_COUNT; ++service)
+            {
+                final float[] box = ThorTownServices.bounds(service, frame.width(), frame.height());
+                drawLobbyScenarioButton(canvas, new RectF(frame.left + box[0], frame.top + box[1],
+                                frame.left + box[2], frame.top + box[3]),
+                        getContext().getString(labels[service]), townServiceEnabled(service), false, density);
+            }
+        }
+
+        private boolean townServiceEnabled(final int service)
+        {
+            if (!isActionEnabled(ThorActionIds.TOWN_OPEN_SERVICE))
+                return false;
+            for (int row = 0; row < browser.rowCount(); ++row)
+                if (browser.targets[row] == service)
+                    return browser.enabled(row);
+            return false;
+        }
+
+        private int townServiceAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            return ThorTownServices.serviceAt(x - frame.left, y - frame.top, frame.width(), frame.height());
+        }
+
+        private boolean handleTownServiceTouch(final MotionEvent event)
+        {
+            final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN)
+            {
+                final int service = townServiceAt(event.getX(), event.getY());
+                townServices.begin(service, revision, presentationSessionId, event.getPointerId(0),
+                        townServiceEnabled(service));
+                return true;
+            }
+            if (!townServices.isActive())
+                return true;
+            if (event.getPointerCount() != 1 || event.getPointerId(0) != townServices.pointerId()
+                    || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP
+                    || action == MotionEvent.ACTION_CANCEL)
+            {
+                townServices.cancel();
+                return true;
+            }
+            if (action == MotionEvent.ACTION_UP)
+            {
+                final int service = townServices.service();
+                final long submittedRevision = townServices.revision();
+                if (townServices.finish(townServiceAt(event.getX(), event.getY()), revision,
+                        presentationSessionId, event.getPointerId(0), event.getPointerCount(),
+                        townServiceEnabled(service),
+                        sessionValidity != null && sessionValidity.isCurrent(presentationSessionId)))
+                {
+                    performClick();
+                    NativeMethods.submitThorAction(submittedRevision, ThorActionIds.TOWN_OPEN_SERVICE, service);
+                }
+            }
+            return true;
         }
 
         private String townHeroName(final String heroName)

@@ -34,17 +34,20 @@ final class ThorBrowserState
     {
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
         final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
-        if ((!campaign && !load) || page < 0 || pageCount < 0 || pageCount > 2000
+        final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
+        if ((!campaign && !load && !town) || page < 0 || pageCount < 0 || pageCount > 2000
                 || (pageCount == 0 ? page != 0 : page >= pageCount)
                 || targets == null || labels == null || flags == null
                 || targets.length != labels.length || targets.length != flags.length
                 || targets.length > (campaign ? MAX_ROWS : SAVE_ROWS)
+                || (town && (page != 0 || pageCount != 1 || targets.length != ThorTownServices.SERVICE_COUNT))
                 || (pageCount == 0 && targets.length != 0))
             return EMPTY;
         for (int index = 0; index < targets.length; ++index)
         {
             if (targets[index] < 0 || targets[index] > 10000 || labels[index] == null
-                    || labels[index].length() > 128 || (flags[index] & ~7) != 0)
+                    || labels[index].length() > 128 || (flags[index] & ~7) != 0
+                    || (town && targets[index] != index))
                 return EMPTY;
             for (int earlier = 0; earlier < index; ++earlier)
                 if (targets[index] == targets[earlier])
