@@ -65,6 +65,18 @@
 #include "../../lib/spells/CSpell.h"
 #include "wiki/WikiWindow.h"
 
+namespace
+{
+	bool hasCreaturesToRecruit(const CGTownInstance * town)
+	{
+		const auto begin = town->creatures.cbegin();
+		const auto end = town->creatures.size() > town->getTown()->creatures.size()
+			? std::next(begin, town->getTown()->creatures.size())
+			: town->creatures.cend();
+		return std::any_of(begin, end, [](const auto & creatures) { return creatures.first > 0; });
+	}
+}
+
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
@@ -82,6 +94,18 @@ namespace
 	std::string thorHeroName(const CGHeroInstance * hero)
 	{
 		return hero ? GAME->translator().translate(hero->getNameTextID()) : "";
+	}
+
+	std::vector<ThorBrowserEntry> thorTownServices(const CGTownInstance * town)
+	{
+		const bool owned = town->tempOwner == GAME->interface()->playerID;
+		return {
+			{static_cast<int>(ThorTownService::HALL), "", owned, false, false},
+			{static_cast<int>(ThorTownService::RECRUIT), "", owned && hasCreaturesToRecruit(town), false, false},
+			{static_cast<int>(ThorTownService::TAVERN), "", owned && town->hasBuilt(BuildingID::TAVERN), false, false},
+			{static_cast<int>(ThorTownService::MAGE_GUILD), "", owned && town->hasBuilt(BuildingID::MAGES_GUILD_1), false, false},
+			{static_cast<int>(ThorTownService::MARKETPLACE), "", owned && town->hasBuilt(BuildingID::MARKETPLACE), false, false}
+		};
 	}
 
 	void publishThorTownContext(const CCastleInterface * owner)
@@ -106,6 +130,11 @@ namespace
 			GAME->interface()->cb->getSettings().getInteger(EGameSettings::TOWNS_BUILDINGS_PER_TURN_CAP));
 		context.details[2] = thorHeroName(town->getVisitingHero());
 		context.details[3] = thorHeroName(town->getGarrisonHero());
+		context.browserPage = 0;
+		context.browserPageCount = 1;
+		context.browserEntries = thorTownServices(town);
+		if(std::ranges::any_of(context.browserEntries, [](const auto & entry) { return entry.enabled; }))
+			context.enabledActionMask |= thorActionMask(ThorAction::TOWN_OPEN_SERVICE);
 
 		const auto previous = thorContextStore().snapshot();
 		context = thorContextStore().publishNext(std::move(context));
@@ -114,6 +143,7 @@ namespace
 			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 				context.details);
 			CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
+			CAndroidVMHelper().publishThorBrowser(context.revision, 0, 1, context.browserEntries);
 		}
 	}
 }
@@ -1207,13 +1237,7 @@ void CCastleBuildings::enterDwelling(int level)
 
 void CCastleBuildings::enterToTheQuickRecruitmentWindow()
 {
-	const auto beginIt = town->creatures.cbegin();
-	const auto afterLastIt = town->creatures.size() > town->getTown()->creatures.size()
-		? std::next(beginIt, town->getTown()->creatures.size())
-		: town->creatures.cend();
-	const auto hasSomeoneToRecruit = std::any_of(beginIt, afterLastIt,
-		[](const auto & creatureInfo) { return creatureInfo.first > 0; });
-	if(hasSomeoneToRecruit)
+	if(hasCreaturesToRecruit(town))
 		ENGINE->windows().createAndPushWindow<QuickRecruitmentWindow>(town, pos);
 	else
 		CInfoWindow::showInfoDialog(LIBRARY->generaltexth->translate("vcmi.townHall.noCreaturesToRecruit"), {});
@@ -1747,6 +1771,31 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 		close();
 		return true;
 	}
+	if(request.action == ThorAction::TOWN_OPEN_SERVICE)
+	{
+		const auto service = thorTownServiceFromTarget(request.targetId);
+		if(!service)
+			return false;
+		switch(*service)
+		{
+		case ThorTownService::HALL:
+			builds->enterTownHall();
+			break;
+		case ThorTownService::RECRUIT:
+			builds->enterToTheQuickRecruitmentWindow();
+			break;
+		case ThorTownService::TAVERN:
+			keyPressed(EShortcut::TOWN_OPEN_TAVERN);
+			break;
+		case ThorTownService::MAGE_GUILD:
+			keyPressed(EShortcut::TOWN_OPEN_MAGE_GUILD);
+			break;
+		case ThorTownService::MARKETPLACE:
+			keyPressed(EShortcut::TOWN_OPEN_MARKET);
+			break;
+		}
+		return true;
+	}
 	const int selected = townlist->getSelectedIndex();
 	const int count = static_cast<int>(GAME->interface()->localState->getOwnedTowns().size());
 	if(request.action == ThorAction::WINDOW_PREVIOUS && selected <= 0)
@@ -1979,6 +2028,10 @@ void CCastleInterface::creaturesChangedEventHandler()
 			creatureInfoBox->update();
 		}
 	}
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(isActive())
+		publishThorTownContext(this);
+#endif
 }
 
 CHallInterface::CBuildingBox::CBuildingBox(int x, int y, const CGTownInstance * Town, const CBuilding * Building):
