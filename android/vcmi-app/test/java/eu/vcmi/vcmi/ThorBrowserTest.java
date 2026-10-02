@@ -52,7 +52,7 @@ public class ThorBrowserTest
         final float width = 982f;
         final float height = 1142f;
         for (final String context : new String[]{ThorContextIds.CAMPAIGN_BROWSER,
-                ThorContextIds.LOBBY_LOAD_GAME_SCENARIO})
+                ThorContextIds.LOBBY_LOAD_GAME_SCENARIO, ThorContextIds.TOWN_HALL})
         {
             final int rowCount = ThorContextIds.CAMPAIGN_BROWSER.equals(context) ? 8 : 5;
             for (int row = 0; row < rowCount; ++row)
@@ -65,7 +65,8 @@ public class ThorBrowserTest
             }
             assertEquals(ThorBrowserState.CONTROL_NONE,
                     ThorBrowserState.controlAt(context, width / 2, height * 0.8f, width, height, rowCount));
-            assertEquals(ThorContextIds.CAMPAIGN_BROWSER.equals(context)
+            assertEquals(ThorContextIds.TOWN_HALL.equals(context) ? ThorActionIds.LOCAL_CONTROL
+                            : ThorContextIds.CAMPAIGN_BROWSER.equals(context)
                             ? ThorActionIds.CAMPAIGN_BROWSER_SELECT : ThorActionIds.LOAD_BROWSER_SELECT,
                     ThorBrowserState.actionForControl(context, ThorBrowserState.CONTROL_FIRST_ROW));
         }

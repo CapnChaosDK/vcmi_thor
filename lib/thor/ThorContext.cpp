@@ -32,7 +32,8 @@ namespace
 
 	void normalizeActionSubject(ThorContextRecord & context)
 	{
-		if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS)
+		if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS
+			&& context.contextId != ThorContextIds::TOWN_HALL)
 			context.actionSubjectId = -1;
 		if(context.contextId != ThorContextIds::HERO_WINDOW && context.contextId != ThorContextIds::TOWN_WINDOW)
 			context.windowSubjectId = -1;
@@ -67,11 +68,17 @@ namespace
 			&& context.browserPage == 0 && context.browserPageCount == 1
 			&& exactTownServiceTargets
 			&& context.browserNativeKeys.empty();
+		const bool townHall = context.contextId == ThorContextIds::TOWN_HALL
+			&& context.actionSubjectId >= 0 && context.browserPage == 0
+			&& context.browserPageCount == static_cast<int>((context.browserEntries.size()
+				+ THOR_TOWN_HALL_PAGE_SIZE - 1) / THOR_TOWN_HALL_PAGE_SIZE)
+			&& context.browserNativeKeys.size() == context.browserEntries.size();
 		const bool nativeBrowser = (context.contextId == ThorContextIds::CAMPAIGN_BROWSER
 			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
 			&& context.browserNativeKeys.size() == context.browserEntries.size();
-		if((!townServices && !nativeBrowser)
-			|| context.browserEntries.size() > THOR_BROWSER_MAX_ROWS
+		if((!townServices && !nativeBrowser && !townHall)
+			|| context.browserEntries.size() > (context.contextId == ThorContextIds::TOWN_HALL
+				? THOR_MAX_TOWN_HALL_BUILDINGS : THOR_BROWSER_MAX_ROWS)
 			|| context.browserPage < 0 || context.browserPageCount < 0
 			|| (context.browserPageCount != 0 && context.browserPage >= context.browserPageCount)
 			|| (context.browserPageCount == 0 && !context.browserEntries.empty()))
@@ -82,7 +89,8 @@ namespace
 				| thorActionMask(ThorAction::LOAD_BROWSER_SELECT)
 				| thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
 				| thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE)
-				| thorActionMask(ThorAction::TOWN_OPEN_SERVICE));
+				| thorActionMask(ThorAction::TOWN_OPEN_SERVICE)
+				| thorActionMask(ThorAction::TOWN_HALL_BUILD));
 			context.browserEntries.clear();
 			context.browserNativeKeys.clear();
 			context.browserPage = 0;
@@ -90,6 +98,24 @@ namespace
 		}
 		for(auto & entry : context.browserEntries)
 			entry.label = thorBoundedText(std::move(entry.label));
+		if(context.contextId == ThorContextIds::TOWN_HALL)
+		{
+			for(std::size_t index = 0; index < context.browserEntries.size(); ++index)
+			{
+				const auto & entry = context.browserEntries[index];
+				if(entry.target < 0 || (entry.enabled && entry.completed)
+					|| context.browserNativeKeys[index] != std::to_string(entry.target)
+					|| std::any_of(context.browserEntries.begin(), context.browserEntries.begin() + index,
+						[&](const auto & earlier) { return earlier.target == entry.target; }))
+				{
+					context.enabledActionMask &= ~thorActionMask(ThorAction::TOWN_HALL_BUILD);
+					context.browserEntries.clear();
+					context.browserNativeKeys.clear();
+					context.browserPageCount = 0;
+					break;
+				}
+			}
+		}
 		if(context.heroMeetingArmies)
 		{
 			auto & armies = *context.heroMeetingArmies;
@@ -280,6 +306,8 @@ std::string thorContextIdForInGameContext(ThorInGameContext context)
 		return ThorContextIds::HERO_WINDOW;
 	case ThorInGameContext::TOWN_WINDOW:
 		return ThorContextIds::TOWN_WINDOW;
+	case ThorInGameContext::TOWN_HALL:
+		return ThorContextIds::TOWN_HALL;
 	case ThorInGameContext::HERO_MEETING:
 		return ThorContextIds::HERO_MEETING;
 	case ThorInGameContext::BATTLE:

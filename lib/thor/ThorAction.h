@@ -71,10 +71,11 @@ enum class ThorAction : std::uint8_t
 	WINDOW_PREVIOUS = 50,
 	WINDOW_NEXT = 51,
 	WINDOW_CLOSE = 52,
-	TOWN_OPEN_SERVICE = 53
+	TOWN_OPEN_SERVICE = 53,
+	TOWN_HALL_BUILD = 54
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::TOWN_OPEN_SERVICE);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::TOWN_HALL_BUILD);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 

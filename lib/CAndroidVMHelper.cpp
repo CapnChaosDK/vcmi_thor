@@ -131,7 +131,7 @@ void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint6
 void CAndroidVMHelper::publishThorBrowser(std::uint64_t revision, int page, int pageCount,
 	const std::vector<ThorBrowserEntry> & entries)
 {
-	if(entries.size() > THOR_BROWSER_MAX_ROWS)
+	if(entries.size() > THOR_MAX_TOWN_HALL_BUILDINGS)
 		return;
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorBrowser", "(JII[I[Ljava/lang/String;[I)V",
 		[revision, page, pageCount, &entries](JNIEnv * env, jclass cls, jmethodID methodId)

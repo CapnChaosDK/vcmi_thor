@@ -250,6 +250,7 @@ jobs:
               --tests eu.vcmi.vcmi.ThorBrowserTest \
               --tests eu.vcmi.vcmi.ThorWindowNavigationTest \
               --tests eu.vcmi.vcmi.ThorTownServicesTest \
+              --tests eu.vcmi.vcmi.ThorTownHallBrowserTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingTransferPairTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactPairTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactGestureTest \

@@ -40,6 +40,8 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(30), ThorAction::LOBBY_NEXT_SCENARIO);
 	for(int id = 31; id <= 49; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
+	for(int id = 50; id <= 54; ++id)
+		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -248,7 +250,34 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	for(int id = 50; id <= 53; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 53);
+	EXPECT_EQ(thorActionMask(ThorAction::TOWN_OPEN_SERVICE), std::uint64_t{1} << 52);
+	EXPECT_EQ(thorActionMask(ThorAction::TOWN_HALL_BUILD), std::uint64_t{1} << 53);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 54);
+}
+
+TEST(ThorActionTest, TownHallBuildUsesOneExactContextActionAndPublishedBuildableTarget)
+{
+	ThorContextRecord context;
+	context.revision = 81;
+	context.contextId = ThorContextIds::TOWN_HALL;
+	context.actionSubjectId = 42;
+	context.enabledActionMask = thorActionMask(ThorAction::TOWN_HALL_BUILD)
+		| thorActionMask(ThorAction::WINDOW_CLOSE);
+	context.browserEntries = {{70001, "Mod building", true, false, false},
+		{2, "Built hall", false, false, true}, {3, "Unavailable", false, false, false}};
+	context.browserNativeKeys = {"70001", "2", "3"};
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::TOWN_HALL_BUILD, ThorContextIds::TOWN_HALL));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::TOWN_HALL_BUILD, ThorContextIds::TOWN_WINDOW));
+	EXPECT_EQ(validateThorActionRequest({81, ThorAction::TOWN_HALL_BUILD, 70001}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({80, ThorAction::TOWN_HALL_BUILD, 70001}, context), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(validateThorActionRequest({81, ThorAction::TOWN_HALL_BUILD, 2}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({81, ThorAction::TOWN_HALL_BUILD, 3}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({81, ThorAction::TOWN_HALL_BUILD, 4}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({81, ThorAction::TOWN_HALL_BUILD, 70001, 1}, context), ThorActionValidation::INVALID_TARGET);
+	context.contextId = ThorContextIds::TOWN_WINDOW;
+	EXPECT_EQ(validateThorActionRequest({81, ThorAction::TOWN_HALL_BUILD, 70001}, context), ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(validateThorActionRequest({81, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::VALID);
+	EXPECT_FALSE(isThorActionHapticEligible(ThorAction::TOWN_HALL_BUILD));
 }
 
 TEST(ThorActionTest, TownServiceUsesOneContextQualifiedActionAndPublishedTargets)
