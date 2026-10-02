@@ -108,6 +108,7 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 - Adventure Map: `client/adventureMap/AdventureMapInterface.*`; commands are centralized substantially in `AdventureMapShortcuts.*`. `CList.*`, `CMinimap.*`, `CInfoBar.*`, and `CResDataBar.*` expose focused hero/town, minimap, date, and resources. `client/windows/CMapOverview.*`, `CKingdomInterface.*`, `CPuzzleWindow.*`, and `CQuestLog.*` own related views.
 - Hero: `client/windows/CHeroWindow.*` with reusable garrison and artifact widgets under `client/widgets/`.
 - Town/castle: `client/windows/CCastleInterface.*`, with native callbacks for building, recruitment, upgrades, visiting/garrison heroes, markets, guilds, shipyards, and related nested windows.
+  The Thor Town dashboard exposes only a fixed semantic launcher for Town Hall, recruitment, Tavern, Mage Guild, and the current town's Marketplace. One context-qualified action carries a bounded service target; `CCastleInterface` republishes and revalidates the exact current town and availability before invoking its existing quick-control route. Child windows retain their normal lifecycle and temporarily invalidate the deck.
 - Hero meeting/exchange: `client/windows/CExchangeWindow.*`, `client/widgets/CGarrisonInt.*`, and artifact widgets. Existing callbacks already represent exact move/merge/split/swap and bulk army/artifact operations.
 - Battle: `client/battle/BattleInterface.*`, `BattleWindow.*`, `BattleActionsController.*`, `BattleFieldController.*`, `UnitActionPanel.*`, `StackQueue.*`, and `BattleResultWindow.*`. Battle availability depends on active side/unit, tactics, spell targeting, and server battle state.
 - Dialogs and choices: `client/windows/CMessage.*`, `InfoWindows.*`, recruitment/market/spell/level/reward windows, plus numerous object-specific windows. The `WindowHandler` top and parent stack are essential to avoid stale controls and stacked dialogs.
@@ -125,6 +126,8 @@ The real VCMI hierarchy differs from the fheroes2 fork and must drive context na
 7. After an existing semantic execution path returns success, acknowledge the originating revision/action to Android; emit no acknowledgement on validation failure or no-op execution. Android may provide feedback but does not decide whether execution succeeded.
 8. Let the server perform its existing final gameplay validation. Client-side revalidation is still required to reject stale/incorrect lower-screen requests before a packet is issued.
 9. Use `CAndroidVMHelper` only for bounded transfer/notification. Define hard limits before adding text arrays or pixels. Do not poll or stream full SDL frames.
+
+Stable action IDs are a scarce cross-language protocol because availability currently uses a 64-bit mask. Allocate one ID per native semantic operation, not per rendered row: context-qualify actions and carry only bounded typed targets that are present in the current published snapshot. Reuse an ID across contexts only when execution and validation semantics are genuinely identical.
 
 ## Build, test, packaging, CI, and release
 

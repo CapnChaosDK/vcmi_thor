@@ -256,6 +256,24 @@ TEST(ThorContextStoreTest, BrowserPageAndNativeOnlyIdentityChangesInvalidateOldR
 	EXPECT_TRUE(invalid.browserEntries.empty());
 }
 
+TEST(ThorContextStoreTest, TownServicePayloadRequiresExactFixedTargets)
+{
+	ThorContextStore store;
+	ThorContextRecord town;
+	town.contextId = ThorContextIds::TOWN_WINDOW;
+	town.browserPageCount = 1;
+	for(int target = 0; target < static_cast<int>(THOR_TOWN_SERVICE_COUNT); ++target)
+		town.browserEntries.push_back({target, "", target != 1, false, false});
+	town.enabledActionMask = thorActionMask(ThorAction::TOWN_OPEN_SERVICE);
+	const auto valid = store.publishNext(town);
+	EXPECT_EQ(valid.browserEntries.size(), THOR_TOWN_SERVICE_COUNT);
+	EXPECT_NE(valid.enabledActionMask & thorActionMask(ThorAction::TOWN_OPEN_SERVICE), 0);
+	town.browserEntries[3].target = 4;
+	const auto invalid = store.publishNext(town);
+	EXPECT_TRUE(invalid.browserEntries.empty());
+	EXPECT_EQ(invalid.enabledActionMask & thorActionMask(ThorAction::TOWN_OPEN_SERVICE), 0);
+}
+
 TEST(ThorContextStoreTest, HeroMeetingRedistributionConsumptionAndRestoreAreSemanticRevisions)
 {
 	ThorContextStore store;

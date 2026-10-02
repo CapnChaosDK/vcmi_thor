@@ -246,9 +246,36 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	for(int id = 43; id <= 49; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	for(int id = 50; id <= 52; ++id)
+	for(int id = 50; id <= 53; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 52);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 53);
+}
+
+TEST(ThorActionTest, TownServiceUsesOneContextQualifiedActionAndPublishedTargets)
+{
+	ThorContextRecord context;
+	context.revision = 71;
+	context.contextId = ThorContextIds::TOWN_WINDOW;
+	context.enabledActionMask = thorActionMask(ThorAction::TOWN_OPEN_SERVICE);
+	context.browserEntries = {
+		{static_cast<int>(ThorTownService::HALL), "", true, false, false},
+		{static_cast<int>(ThorTownService::RECRUIT), "", false, false, false},
+		{static_cast<int>(ThorTownService::TAVERN), "", true, false, false}
+	};
+	EXPECT_EQ(validateThorActionRequest({71, ThorAction::TOWN_OPEN_SERVICE,
+		static_cast<int>(ThorTownService::HALL)}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({71, ThorAction::TOWN_OPEN_SERVICE,
+		static_cast<int>(ThorTownService::RECRUIT)}, context), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({71, ThorAction::TOWN_OPEN_SERVICE, 5}, context),
+		ThorActionValidation::INVALID_TARGET);
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	EXPECT_EQ(validateThorActionRequest({71, ThorAction::TOWN_OPEN_SERVICE,
+		static_cast<int>(ThorTownService::HALL)}, context), ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(thorTownServiceFromTarget(0), ThorTownService::HALL);
+	EXPECT_EQ(thorTownServiceFromTarget(4), ThorTownService::MARKETPLACE);
+	EXPECT_FALSE(thorTownServiceFromTarget(-1));
+	EXPECT_FALSE(thorTownServiceFromTarget(5));
+	EXPECT_FALSE(isThorActionHapticEligible(ThorAction::TOWN_OPEN_SERVICE));
 }
 
 TEST(ThorActionTest, WindowNavigationIsContextQualifiedRevisionBoundAndTargetless)

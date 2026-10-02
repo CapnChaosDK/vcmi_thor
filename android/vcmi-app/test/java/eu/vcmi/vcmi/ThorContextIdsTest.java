@@ -141,7 +141,7 @@ public class ThorContextIdsTest
 		assertEquals(28, ThorActionIds.LOBBY_BACK);
 		assertEquals(29, ThorActionIds.LOBBY_PREVIOUS_SCENARIO);
 		assertEquals(30, ThorActionIds.LOBBY_NEXT_SCENARIO);
-		assertEquals(52, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(53, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
 		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
 		assertEquals(43, ThorActionIds.CAMPAIGN_BROWSER_SELECT);

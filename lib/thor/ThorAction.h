@@ -70,10 +70,11 @@ enum class ThorAction : std::uint8_t
 	LOAD_BROWSER_NEXT_PAGE = 49,
 	WINDOW_PREVIOUS = 50,
 	WINDOW_NEXT = 51,
-	WINDOW_CLOSE = 52
+	WINDOW_CLOSE = 52,
+	TOWN_OPEN_SERVICE = 53
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::WINDOW_CLOSE);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::TOWN_OPEN_SERVICE);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -84,7 +85,19 @@ constexpr std::uint64_t thorActionMask(ThorAction action)
 		? 0 : std::uint64_t{1} << (actionId - 1U);
 }
 
+enum class ThorTownService : std::uint8_t
+{
+	HALL = 0,
+	RECRUIT = 1,
+	TAVERN = 2,
+	MAGE_GUILD = 3,
+	MARKETPLACE = 4
+};
+
+inline constexpr std::size_t THOR_TOWN_SERVICE_COUNT = 5;
+
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
+DLL_LINKAGE std::optional<ThorTownService> thorTownServiceFromTarget(int targetId);
 DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
 DLL_LINKAGE bool thorWindowOwnerMatches(const ThorContextRecord & context,

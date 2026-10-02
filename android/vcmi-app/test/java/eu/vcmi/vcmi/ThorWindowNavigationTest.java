@@ -16,7 +16,8 @@ public class ThorWindowNavigationTest
         assertEquals(51, ThorActionIds.WINDOW_NEXT);
         assertEquals(52, ThorActionIds.WINDOW_CLOSE);
         assertEquals(1L << 51, ThorActionIds.maskFor(ThorActionIds.WINDOW_CLOSE));
-        assertEquals(0L, ThorActionIds.maskFor(53));
+        assertEquals(53, ThorActionIds.TOWN_OPEN_SERVICE);
+        assertEquals(1L << 52, ThorActionIds.maskFor(ThorActionIds.TOWN_OPEN_SERVICE));
         for (int control = 0; control < 3; ++control)
         {
             final float[] box = ThorWindowNavigation.bounds(control, 1000f, 1200f);
