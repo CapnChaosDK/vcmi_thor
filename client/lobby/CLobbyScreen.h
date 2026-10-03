@@ -56,6 +56,7 @@ private:
 	bool compatibilityFilterInitialized = false;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	bool thorDifficultyChangePending = false;
+	bool thorSaveSelectionPending = false;
 	std::size_t thorSaveBrowserPage = 0;
 	std::uint64_t thorSaveBrowserListRevision = 0;
 #endif

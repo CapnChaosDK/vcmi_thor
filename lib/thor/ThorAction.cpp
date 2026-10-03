@@ -238,6 +238,7 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 	case static_cast<int>(ThorAction::TOWN_HALL_BUILD): return ThorAction::TOWN_HALL_BUILD;
 	case static_cast<int>(ThorAction::RECRUITMENT_EDIT): return ThorAction::RECRUITMENT_EDIT;
 	case static_cast<int>(ThorAction::RECRUITMENT_BUY): return ThorAction::RECRUITMENT_BUY;
+	case static_cast<int>(ThorAction::WINDOW_CONFIRM): return ThorAction::WINDOW_CONFIRM;
 	default:
 		return std::nullopt;
 	}
@@ -298,6 +299,8 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::TOWN_OPEN_SERVICE;
 	if(contextId == ThorContextIds::TOWN_HALL)
 		return action == ThorAction::TOWN_HALL_BUILD || action == ThorAction::WINDOW_CLOSE;
+	if(contextId == ThorContextIds::BUILD_CONFIRMATION)
+		return action == ThorAction::WINDOW_CONFIRM || action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK
 		|| contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING)
 		return action == ThorAction::RECRUITMENT_EDIT || action == ThorAction::RECRUITMENT_BUY
@@ -335,6 +338,14 @@ bool thorWindowOwnerMatches(const ThorContextRecord & context,
 	return active && top && subjectId >= 0 && context.windowSubjectId == subjectId
 		&& (expectedContext == ThorContextIds::HERO_WINDOW || expectedContext == ThorContextIds::TOWN_WINDOW)
 		&& context.contextId == expectedContext;
+}
+
+bool thorBuildConfirmationOwnerMatches(const ThorContextRecord & context,
+	int townId, int buildingId, bool active, bool top)
+{
+	return active && top && townId >= 0 && buildingId >= 0
+		&& context.actionSubjectId == townId && context.windowSubjectId == buildingId
+		&& context.contextId == ThorContextIds::BUILD_CONFIRMATION;
 }
 
 bool thorRecruitmentOwnerMatches(const ThorContextRecord & context, ThorRecruitmentMode mode,
@@ -637,7 +648,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 	else if((request.action >= ThorAction::CAMPAIGN_PREVIOUS_SCENARIO && request.action <= ThorAction::CAMPAIGN_BACK)
 		|| (request.action >= ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE && request.action <= ThorAction::CAMPAIGN_BROWSER_BACK)
 		|| request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE || request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE
-		|| (request.action >= ThorAction::WINDOW_PREVIOUS && request.action <= ThorAction::WINDOW_CLOSE))
+		|| (request.action >= ThorAction::WINDOW_PREVIOUS && request.action <= ThorAction::WINDOW_CLOSE)
+		|| request.action == ThorAction::WINDOW_CONFIRM)
 	{
 		if(request.targetId != -1 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)
@@ -780,6 +792,11 @@ ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & re
 		&& (!authoritative || !mapAvailable || !scenarioNavigationAvailable))
 		return ThorActionValidation::UNAVAILABLE;
 	return ThorActionValidation::VALID;
+}
+
+bool thorLobbyStartActionAvailable(bool mapAvailable, bool selectionPending, bool lobbyReady, bool upperButtonEnabled)
+{
+	return mapAvailable && !selectionPending && lobbyReady && upperButtonEnabled;
 }
 
 ThorActionValidation validateThorHeroMeetingRedistributionRequest(

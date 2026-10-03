@@ -27,6 +27,7 @@ final class ThorContextIds
     static final String HERO_WINDOW = "HERO_WINDOW";
     static final String TOWN_WINDOW = "TOWN_WINDOW";
     static final String TOWN_HALL = "TOWN_HALL";
+    static final String BUILD_CONFIRMATION = "BUILD_CONFIRMATION";
     static final String TOWN_RECRUITMENT_QUICK = "TOWN_RECRUITMENT_QUICK";
     static final String TOWN_RECRUITMENT_DWELLING = "TOWN_RECRUITMENT_DWELLING";
     static final String HERO_MEETING = "HERO_MEETING";

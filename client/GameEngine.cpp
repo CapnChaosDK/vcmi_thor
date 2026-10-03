@@ -164,6 +164,8 @@ void GameEngine::updateFrame()
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(adventureInt)
 		adventureInt->updateThorActionState();
+	if(auto buildWindow = windows().topWindow<CBuildWindow>())
+		buildWindow->updateThorContext();
 	if(auto quickRecruitment = windows().topWindow<QuickRecruitmentWindow>())
 		quickRecruitment->refreshThorNativeState();
 	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
@@ -373,6 +375,13 @@ void GameEngine::updateFrame()
 				continue;
 			}
 			executed = hallWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::BUILD_CONFIRMATION)
+		{
+			auto buildWindow = windows().topWindow<CBuildWindow>();
+			if(!buildWindow || !buildWindow->matchesThorContext(context))
+				continue;
+			executed = buildWindow->executeThorAction(*request);
 		}
 		else if(context.contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK)
 		{

@@ -224,6 +224,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private float artifactTouchDownY;
         private boolean artifactTouchMovedWithoutSource;
         private final ThorLobbyScenarioGesture lobbyScenarioGesture = new ThorLobbyScenarioGesture();
+        private final ThorLobbyScenarioGesture buildConfirmationGesture = new ThorLobbyScenarioGesture();
         private final ThorMainMenuGesture mainMenuGesture = new ThorMainMenuGesture();
         private final ThorBrowserGesture browserGesture = new ThorBrowserGesture();
         private final ThorWindowNavigation windowNavigation = new ThorWindowNavigation();
@@ -275,6 +276,7 @@ final class ThorSecondScreenPresentation extends Presentation
             heroMeetingRedistribution.cancel();
             cancelHeroMeetingGesture();
             cancelLobbyScenarioTouch();
+            buildConfirmationGesture.cancel();
             cancelMainMenuTouch();
             browserGesture.cancel();
             windowNavigation.cancel();
@@ -295,6 +297,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 cancelLobbyScenarioTouch();
+                buildConfirmationGesture.cancel();
                 cancelMainMenuTouch();
                 browserGesture.cancel();
                 windowNavigation.cancel();
@@ -325,6 +328,9 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorMainMenuState.choiceCount(contextId) > 0
                     && this.enabledActionMask != enabledActionMask)
                 cancelMainMenuTouch();
+            if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId)
+                    && this.enabledActionMask != enabledActionMask)
+                buildConfirmationGesture.cancel();
             if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
@@ -462,6 +468,11 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 title = getContext().getString(R.string.thor_campaign_browser_title);
                 status = getContext().getString(R.string.thor_campaign_browser_status);
+            }
+            else if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
+            {
+                title = publishedTitle;
+                status = getContext().getString(R.string.thor_build_confirmation_status);
             }
             else if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
@@ -647,6 +658,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean lobbyScenario = ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
             final boolean campaignBonus = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId);
+            final boolean buildConfirmation = ThorContextIds.BUILD_CONFIRMATION.equals(contextId);
             final boolean browserContext = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId);
@@ -684,6 +696,10 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (campaignBonus)
             {
                 drawCampaignDashboard(canvas, frame, dividerY, bevel, density);
+            }
+            else if (buildConfirmation)
+            {
+                drawBuildConfirmationDashboard(canvas, frame, dividerY, bevel, density);
             }
             else if (ThorMainMenuState.choiceCount(contextId) > 0)
             {
@@ -794,6 +810,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
                 return handleBrowserTouch(event);
+            if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
+                return handleBuildConfirmationTouch(event);
             if (isRecruitmentContext(contextId))
                 return handleRecruitmentTouch(event);
             if (ThorContextIds.TOWN_WINDOW.equals(contextId) && (townServices.isActive()
@@ -1706,6 +1724,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             removeCallbacks(heroMeetingLongPress);
             cancelLobbyScenarioTouch();
+            buildConfirmationGesture.cancel();
             cancelMainMenuTouch();
             browserGesture.cancel();
             recruitmentGesture.cancel();
@@ -1732,6 +1751,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (visibility != View.VISIBLE)
             {
                 cancelLobbyScenarioTouch();
+                buildConfirmationGesture.cancel();
                 cancelMainMenuTouch();
                 browserGesture.cancel();
                 recruitmentGesture.cancel();
@@ -2596,6 +2616,88 @@ final class ThorSecondScreenPresentation extends Presentation
                     lobbyScenarioControlBounds(ThorLobbyScenarioState.CONTROL_BACK, frame, dividerY),
                     getContext().getString(R.string.thor_lobby_back),
                     isActionEnabled(ThorActionIds.CAMPAIGN_BACK), false, density);
+        }
+
+        private void drawBuildConfirmationDashboard(final Canvas canvas, final RectF frame,
+                                                    final float dividerY, final float bevel, final float density)
+        {
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.16f,
+                    frame.width() * 0.84f, Math.min(38f * density, frame.height() * 0.08f));
+            drawFittedText(canvas, detailLines[0], frame.centerX(), frame.top + frame.height() * 0.33f,
+                    frame.width() * 0.86f, Math.min(34f * density, frame.height() * 0.07f));
+            paint.setFakeBoldText(false);
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, detailLines[2], frame.centerX(), frame.top + frame.height() * 0.42f,
+                    frame.width() * 0.86f, Math.min(25f * density, frame.height() * 0.05f));
+            drawFittedText(canvas, detailLines[1], frame.centerX(), frame.top + frame.height() * 0.53f,
+                    frame.width() * 0.86f, Math.min(25f * density, frame.height() * 0.055f));
+            final RectF confirm = buildConfirmationControlBounds(frame, dividerY, ThorBuildConfirmationState.CONTROL_BUY);
+            final RectF cancel = buildConfirmationControlBounds(frame, dividerY, ThorBuildConfirmationState.CONTROL_CANCEL);
+            drawLobbyScenarioButton(canvas, confirm, getContext().getString(R.string.thor_build_confirm),
+                    isActionEnabled(ThorActionIds.WINDOW_CONFIRM), false, density);
+            drawLobbyScenarioButton(canvas, cancel, getContext().getString(R.string.thor_lobby_back),
+                    isActionEnabled(ThorActionIds.WINDOW_CLOSE), false, density);
+        }
+
+        private RectF buildConfirmationControlBounds(final RectF frame, final float dividerY, final int control)
+        {
+            final float[] bounds = ThorBuildConfirmationState.boundsForControl(control, frame.width(),
+                    frame.height(), dividerY - frame.top);
+            return new RectF(frame.left + bounds[0], frame.top + bounds[1],
+                    frame.left + bounds[2], frame.top + bounds[3]);
+        }
+
+        private int buildConfirmationControlAt(final float x, final float y)
+        {
+            final RectF frame = adventureFrame();
+            final float dividerY = frame.top + frame.height() * 0.34f;
+            return ThorBuildConfirmationState.controlAt(x - frame.left, y - frame.top,
+                    frame.width(), frame.height(), dividerY - frame.top);
+        }
+
+        private boolean handleBuildConfirmationTouch(final MotionEvent event)
+        {
+            final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN)
+            {
+                final int control = buildConfirmationControlAt(event.getX(), event.getY());
+                final int actionId = ThorBuildConfirmationState.actionForControl(control);
+                buildConfirmationGesture.begin(control, revision, presentationSessionId, event.getPointerId(0),
+                        actionId != ThorActionIds.NONE && isActionEnabled(actionId));
+                return true;
+            }
+            if (!buildConfirmationGesture.isActive())
+                return true;
+            if (event.getPointerCount() != 1 || event.getPointerId(0) != buildConfirmationGesture.pointerId()
+                    || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP)
+            {
+                buildConfirmationGesture.cancel();
+                return true;
+            }
+            if (action == MotionEvent.ACTION_CANCEL)
+            {
+                buildConfirmationGesture.cancel();
+                return true;
+            }
+            if (action != MotionEvent.ACTION_UP)
+                return true;
+            final int control = buildConfirmationGesture.control();
+            final long submittedRevision = buildConfirmationGesture.revision();
+            final long submittedSession = buildConfirmationGesture.session();
+            final int actionId = ThorBuildConfirmationState.actionForControl(control);
+            final boolean enabled = actionId != ThorActionIds.NONE && isActionEnabled(actionId);
+            final boolean currentSession = sessionValidity != null && sessionValidity.isCurrent(submittedSession);
+            if (buildConfirmationGesture.finish(buildConfirmationControlAt(event.getX(), event.getY()),
+                    event.getPointerCount(), event.getPointerId(0), revision, presentationSessionId,
+                    enabled, currentSession))
+            {
+                performClick();
+                NativeMethods.submitThorAction(submittedRevision, actionId, ThorActionIds.NO_TARGET);
+            }
+            return true;
         }
 
         private void drawLobbyScenarioButton(final Canvas canvas, final RectF bounds, final String label,
@@ -3652,6 +3754,11 @@ final class ThorSecondScreenPresentation extends Presentation
 
             if (ThorContextIds.HERO_WINDOW.equals(contextId))
                 return title + ". " + status + ". " + detailLines[0] + ". " + detailLines[1] + ". " + detailLines[2];
+
+            if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
+                return title + ". " + detailLines[0] + ". " + detailLines[1] + ". "
+                        + getContext().getString(R.string.thor_build_confirm) + ", "
+                        + getContext().getString(R.string.thor_lobby_back);
 
             if (ThorContextIds.TOWN_WINDOW.equals(contextId))
                 return title + ". " + status + ". "
