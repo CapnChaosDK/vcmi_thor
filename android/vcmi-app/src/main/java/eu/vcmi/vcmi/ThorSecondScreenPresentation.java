@@ -2005,23 +2005,23 @@ final class ThorSecondScreenPresentation extends Presentation
         private void drawBrowserDashboard(final Canvas canvas, final RectF frame, final float density)
         {
             final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
-            final boolean townHall = ThorContextIds.TOWN_HALL.equals(contextId);
+            final boolean townHallContext = ThorContextIds.TOWN_HALL.equals(contextId);
             paint.setStyle(Paint.Style.FILL);
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(TEXT);
-            drawFittedText(canvas, campaign ? title : townHall
+            drawFittedText(canvas, campaign ? title : townHallContext
                             ? getContext().getString(R.string.thor_town_hall_title)
                             : getContext().getString(R.string.thor_context_load_game),
                     frame.centerX(), frame.top + frame.height() * 0.065f, frame.width() * 0.78f,
                     Math.min(36f * density, frame.height() * 0.060f));
             paint.setFakeBoldText(false);
             drawFittedText(canvas, getContext().getString(R.string.thor_browser_page,
-                            browser.pageCount == 0 ? 0 : (townHall ? townHall.page() : browser.page) + 1,
+                            browser.pageCount == 0 ? 0 : (townHallContext ? townHall.page() : browser.page) + 1,
                             browser.pageCount),
                     frame.centerX(), frame.top + frame.height() * 0.115f, frame.width() * 0.72f,
                     Math.min(26f * density, frame.height() * 0.04f));
-            if (!campaign && !townHall)
+            if (!campaign && !townHallContext)
             {
                 drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.157f,
                         frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
@@ -2029,22 +2029,22 @@ final class ThorSecondScreenPresentation extends Presentation
                         frame.centerX(), frame.top + frame.height() * 0.19f,
                         frame.width() * 0.84f, Math.min(22f * density, frame.height() * 0.035f));
             }
-            else if (townHall)
+            else if (townHallContext)
             {
                 drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.157f,
                         frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
             }
-            final int first = townHall ? townHall.page() * ThorBrowserState.TOWN_HALL_PAGE_SIZE : 0;
-            final int visibleCount = townHall
+            final int first = townHallContext ? townHall.page() * ThorBrowserState.TOWN_HALL_PAGE_SIZE : 0;
+            final int visibleCount = townHallContext
                     ? townHall.rowCount()
                     : browser.rowCount();
             for (int row = 0; row < visibleCount; ++row)
             {
                 final int index = first + row;
-                String label = townHall ? townHall.labelAt(row) : browser.labels[index];
+                String label = townHallContext ? townHall.labelAt(row) : browser.labels[index];
                 if (label.isEmpty())
                     label = getContext().getString(R.string.thor_browser_unavailable);
-                if (townHall)
+                if (townHallContext)
                 {
                     drawTownHallRow(canvas, browserControlBounds(ThorBrowserState.CONTROL_FIRST_ROW + row, frame),
                             label, getContext().getString(townHall.builtAt(row)
@@ -2069,12 +2069,12 @@ final class ThorSecondScreenPresentation extends Presentation
                     browserControlEnabled(ThorBrowserState.CONTROL_NEXT), false, density);
             if (!campaign)
                 drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_PRIMARY, frame),
-                        getContext().getString(townHall ? R.string.thor_town_hall_build : R.string.thor_lobby_load),
+                        getContext().getString(townHallContext ? R.string.thor_town_hall_build : R.string.thor_lobby_load),
                         browserControlEnabled(ThorBrowserState.CONTROL_PRIMARY), false, density);
             drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_BACK, frame),
                     getContext().getString(R.string.thor_lobby_back),
                     isActionEnabled(campaign ? ThorActionIds.CAMPAIGN_BROWSER_BACK
-                            : townHall ? ThorActionIds.WINDOW_CLOSE : ThorActionIds.LOBBY_BACK),
+                            : townHallContext ? ThorActionIds.WINDOW_CLOSE : ThorActionIds.LOBBY_BACK),
                     false, density);
         }
 
