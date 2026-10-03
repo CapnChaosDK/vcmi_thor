@@ -44,10 +44,10 @@ void CreaturePurchaseCard::initMinButton()
 
 void CreaturePurchaseCard::initCreatureSwitcherButton()
 {
-	creatureSwitcher = std::make_shared<CButton>(Point(pos.x + 18, pos.y-37), AnimationPath::builtin("iDv6432.def"), CButton::tooltip(), [&](){ switchCreatureLevel(); }, EShortcut::RECRUITMENT_SWITCH_LEVEL);
+	creatureSwitcher = std::make_shared<CButton>(Point(pos.x + 18, pos.y-37), AnimationPath::builtin("iDv6432.def"), CButton::tooltip(), [&](){ switchVariant(); }, EShortcut::RECRUITMENT_SWITCH_LEVEL);
 }
 
-void CreaturePurchaseCard::switchCreatureLevel()
+void CreaturePurchaseCard::switchVariant()
 {
 	OBJECT_CONSTRUCTION;
 	auto index = vstd::find_pos(upgradesID, creatureOnTheCard->getId());
@@ -57,6 +57,16 @@ void CreaturePurchaseCard::switchCreatureLevel()
 	creatureClickArea = std::make_shared<CCreatureClickArea>(Point(picture->pos.x - pos.x, picture->pos.y - pos.y), picture, creatureOnTheCard);
 	parent->updateAllSliders();
 	cost->set(creatureOnTheCard->getFullRecruitCost() * slider->getValue());
+}
+
+int CreaturePurchaseCard::currentVariantIndex() const
+{
+	return static_cast<int>(vstd::find_pos(upgradesID, creatureOnTheCard->getId()));
+}
+
+int CreaturePurchaseCard::variantCount() const
+{
+	return static_cast<int>(upgradesID.size());
 }
 
 void CreaturePurchaseCard::initAmountInfo()
@@ -90,10 +100,12 @@ void CreaturePurchaseCard::sliderMoved(int to)
 	parent->updateAllSliders();
 }
 
-CreaturePurchaseCard::CreaturePurchaseCard(const std::vector<CreatureID> & creaturesID, Point position, int creaturesMaxAmount, QuickRecruitmentWindow * parents)
-	: upgradesID(creaturesID),
-	parent(parents),
-	maxAmount(creaturesMaxAmount)
+CreaturePurchaseCard::CreaturePurchaseCard(const std::vector<CreatureID> & creaturesID, Point position, int creaturesMaxAmount,
+	int tier, QuickRecruitmentWindow * parents)
+	: parent(parents),
+	maxAmount(creaturesMaxAmount),
+	tierIndex(tier),
+	upgradesID(creaturesID)
 {
 	creatureOnTheCard = upgradesID.back().toCreature();
 	moveTo(Point(position.x, position.y));

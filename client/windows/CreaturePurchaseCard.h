@@ -24,9 +24,14 @@ public:
 	std::shared_ptr<CSlider> slider;
 	QuickRecruitmentWindow * parent;
 	int maxAmount;
+	int tierIndex;
 	void sliderMoved(int to);
+	void switchVariant();
+	int currentVariantIndex() const;
+	int variantCount() const;
 
-	CreaturePurchaseCard(const std::vector<CreatureID> & creaturesID, Point position, int creaturesMaxAmount, QuickRecruitmentWindow * parents);
+	CreaturePurchaseCard(const std::vector<CreatureID> & creaturesID, Point position, int creaturesMaxAmount, int tier,
+		QuickRecruitmentWindow * parents);
 private:
 	void initView();
 
@@ -34,7 +39,6 @@ private:
 	void initMaxButton();
 	void initMinButton();
 	void initCreatureSwitcherButton();
-	void switchCreatureLevel();
 
 	void initAmountInfo();
 	void updateAmountInfo(int value);

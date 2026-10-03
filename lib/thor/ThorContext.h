@@ -40,6 +40,8 @@ namespace ThorContextIds
 	inline constexpr char HERO_WINDOW[] = "HERO_WINDOW";
 	inline constexpr char TOWN_WINDOW[] = "TOWN_WINDOW";
 	inline constexpr char TOWN_HALL[] = "TOWN_HALL";
+	inline constexpr char TOWN_RECRUITMENT_QUICK[] = "TOWN_RECRUITMENT_QUICK";
+	inline constexpr char TOWN_RECRUITMENT_DWELLING[] = "TOWN_RECRUITMENT_DWELLING";
 	inline constexpr char HERO_MEETING[] = "HERO_MEETING";
 	inline constexpr char BATTLE[] = "BATTLE";
 	inline constexpr char BATTLE_TACTICS[] = "BATTLE_TACTICS";
@@ -78,6 +80,8 @@ enum class ThorInGameContext
 	HERO_WINDOW,
 	TOWN_WINDOW,
 	TOWN_HALL,
+	TOWN_RECRUITMENT_QUICK,
+	TOWN_RECRUITMENT_DWELLING,
 	HERO_MEETING,
 	BATTLE,
 	BATTLE_TACTICS,
@@ -92,6 +96,9 @@ enum class ThorInGameContext
 inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
 inline constexpr std::size_t THOR_BROWSER_MAX_ROWS = 8;
 inline constexpr std::size_t THOR_MAX_TOWN_HALL_BUILDINGS = 64;
+inline constexpr std::size_t THOR_MAX_RECRUITMENT_ROWS = 64;
+inline constexpr std::size_t THOR_RECRUITMENT_PAGE_SIZE = 5;
+inline constexpr std::size_t THOR_MAX_RECRUITMENT_VARIANTS = 16;
 inline constexpr std::size_t THOR_TOWN_HALL_PAGE_SIZE = 5;
 inline constexpr std::size_t THOR_SAVE_BROWSER_PAGE_SIZE = 5;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
@@ -182,6 +189,49 @@ struct DLL_LINKAGE ThorBrowserEntry
 	bool operator==(const ThorBrowserEntry &) const = default;
 };
 
+enum class ThorRecruitmentMode : std::uint8_t
+{
+	QUICK_TOWN = 1,
+	TOWN_DWELLING = 2
+};
+
+/// One bounded creature choice owned by the exact native recruitment window.
+struct DLL_LINKAGE ThorRecruitmentRow
+{
+	int target = -1;
+	int creatureId = -1;
+	std::string name;
+	std::string unitCost;
+	std::string selectedCost;
+	int availableCount = 0;
+	int selectedAmount = 0;
+	int maximumAmount = 0;
+	int variantIndex = 0;
+	int variantCount = 1;
+	bool enabled = false;
+	bool selected = false;
+	std::uint64_t visualAssetKey = 0;
+	bool armyAvailable = true;
+	bool operator==(const ThorRecruitmentRow &) const = default;
+};
+
+/// Native-only owner identities and immutable visible state for both Town recruitment windows.
+struct DLL_LINKAGE ThorRecruitmentSnapshot
+{
+	ThorRecruitmentMode mode = ThorRecruitmentMode::QUICK_TOWN;
+	int townId = -1;
+	int dwellingLevel = -1;
+	int destinationArmyId = -1;
+	int destinationArmyFreeSlots = 0;
+	int selectedTarget = -1;
+	std::string townName;
+	std::string totalCost;
+	bool locallyControllable = false;
+	bool canBuy = false;
+	std::vector<ThorRecruitmentRow> rows;
+	bool operator==(const ThorRecruitmentSnapshot &) const = default;
+};
+
 /// One fixed, addressable stack position in a Hero Meeting army.
 struct DLL_LINKAGE ThorHeroMeetingSlot
 {
@@ -260,6 +310,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::vector<std::string> browserNativeKeys;
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
+	std::optional<ThorRecruitmentSnapshot> recruitment;
 	std::uint64_t heroPortraitAssetKey = 0;
 	/// Native-only SelectionTab state token. Never passed through JNI.
 	std::uint64_t scenarioSelectionRevision = 0;

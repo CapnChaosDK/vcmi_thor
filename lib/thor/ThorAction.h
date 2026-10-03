@@ -72,10 +72,12 @@ enum class ThorAction : std::uint8_t
 	WINDOW_NEXT = 51,
 	WINDOW_CLOSE = 52,
 	TOWN_OPEN_SERVICE = 53,
-	TOWN_HALL_BUILD = 54
+	TOWN_HALL_BUILD = 54,
+	RECRUITMENT_EDIT = 55,
+	RECRUITMENT_BUY = 56
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::TOWN_HALL_BUILD);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::RECRUITMENT_BUY);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -95,6 +97,23 @@ enum class ThorTownService : std::uint8_t
 	MARKETPLACE = 4
 };
 
+enum class ThorRecruitmentOperation : std::uint8_t
+{
+	NONE = 0,
+	SELECT_ROW = 1,
+	DECREASE_10 = 2,
+	DECREASE_1 = 3,
+	INCREASE_1 = 4,
+	INCREASE_10 = 5,
+	SET_MINIMUM = 6,
+	SET_MAXIMUM = 7,
+	CYCLE_VARIANT = 8
+};
+
+DLL_LINKAGE std::optional<ThorRecruitmentOperation> thorRecruitmentOperationFromId(int operationId);
+DLL_LINKAGE std::optional<int> thorRecruitmentAmountAfter(ThorRecruitmentOperation operation,
+	int currentAmount, int maximumAmount);
+
 inline constexpr std::size_t THOR_TOWN_SERVICE_COUNT = 5;
 
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
@@ -103,6 +122,8 @@ DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
 DLL_LINKAGE bool thorWindowOwnerMatches(const ThorContextRecord & context,
 	const std::string & expectedContext, int subjectId, bool active, bool top);
+DLL_LINKAGE bool thorRecruitmentOwnerMatches(const ThorContextRecord & context, ThorRecruitmentMode mode,
+	int townId, int dwellingLevel, int destinationArmyId, int destinationArmyFreeSlots, bool active, bool top);
 /// getHeroSerial is one-based; getHeroBySerial accepts a zero-based index.
 DLL_LINKAGE std::optional<int> thorHeroWindowAdjacentIndex(int oneBasedSerial, int visibleCount, ThorAction action);
 struct DLL_LINKAGE ThorMainMenuChoice
@@ -154,6 +175,7 @@ struct DLL_LINKAGE ThorActionRequest
 	int destinationArmyId = -1;
 	int destinationSlot = -1;
 	int amount = -1;
+	ThorRecruitmentOperation recruitmentOperation = ThorRecruitmentOperation::NONE;
 };
 
 /// One destination in a bounded Hero Meeting redistribution plan.

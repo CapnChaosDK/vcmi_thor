@@ -55,6 +55,13 @@ public class NativeMethods
     }
 
     private static native void submitThorActionNative(long revision, int actionId, int targetId);
+
+    static boolean submitThorRecruitmentEdit(final long revision, final int targetId, final int operationId)
+    {
+        return BuildConfig.AYN_THOR_BUILD && submitThorRecruitmentEditNative(revision, targetId, operationId);
+    }
+
+    private static native boolean submitThorRecruitmentEditNative(long revision, int targetId, int operationId);
     public static boolean submitThorHeroMeetingSplit(final long revision, final int sourceArmyId,
             final int sourceSlot, final int destinationArmyId, final int destinationSlot, final int amount)
     {
@@ -164,6 +171,24 @@ public class NativeMethods
             return;
         ((VcmiSDLActivity) ctx).runOnUiThread(() ->
                 ((VcmiSDLActivity) ctx).publishThorBrowser(revision, page, pageCount, targets, labels, flags));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorRecruitment(final long revision, final int mode, final int selectedTarget,
+            final int[] targets, final int[] creatureIds, final int[] available, final int[] selectedAmounts,
+            final int[] maximum, final int[] variantIndexes, final int[] variantCounts, final int[] flags,
+            final long[] visualKeys, final String[] names, final String[] unitCosts, final String[] selectedCosts,
+            final String townName, final String totalCost)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorRecruitment(revision, mode, selectedTarget, targets, creatureIds,
+                        available, selectedAmounts, maximum, variantIndexes, variantCounts, flags, visualKeys,
+                        names, unitCosts, selectedCosts, townName, totalCost));
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

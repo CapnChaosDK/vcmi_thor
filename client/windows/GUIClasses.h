@@ -14,6 +14,11 @@
 #include "../widgets/Images.h"
 #include "../widgets/IVideoHolder.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorContext.h"
+#endif
+
 class CGHeroInstance;
 class CGObjectInstance;
 class CGDwelling;
@@ -79,6 +84,11 @@ class CRecruitmentWindow : public CStatusbarWindow
 
 	std::shared_ptr<CCreatureCard> selected;
 	std::vector<std::shared_ptr<CCreatureCard>> cards;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::uint64_t thorActionEpoch = 0;
+	std::optional<ResourceSet> lastThorResources;
+	std::vector<int> lastThorStocks;
+#endif
 
 	std::shared_ptr<CSlider> slider;
 	std::shared_ptr<CButton> maxButton;
@@ -92,7 +102,7 @@ class CRecruitmentWindow : public CStatusbarWindow
 	std::shared_ptr<CreatureCostBox> costPerTroopValue;
 	std::shared_ptr<CreatureCostBox> totalCostValue;
 
-	void select(std::shared_ptr<CCreatureCard> card);
+	void select(std::shared_ptr<CCreatureCard> card, bool refreshCurrent = false);
 	void buy();
 	void sliderMoved(int to);
 	static ImagePath getRecruitmentBackground(const CGDwelling * dwelling, int level);
@@ -103,6 +113,14 @@ public:
 	CRecruitmentWindow(const CGDwelling * Dwelling, int Level, const CArmedInstance * Dst, const std::function<void(CreatureID,int)> & Recruit, const std::function<void()> & onClose, int y_offset = 0);
 	void availableCreaturesChanged();
 	void close() override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorNativeState();
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 };
 
 /// Split window where creatures can be split up into two single unit stacks

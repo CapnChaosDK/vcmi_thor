@@ -144,9 +144,13 @@ public class ThorContextIdsTest
 		assertEquals(30, ThorActionIds.LOBBY_NEXT_SCENARIO);
         assertEquals(53, ThorActionIds.TOWN_OPEN_SERVICE);
         assertEquals(54, ThorActionIds.TOWN_HALL_BUILD);
+        assertEquals(55, ThorActionIds.RECRUITMENT_EDIT);
+        assertEquals(56, ThorActionIds.RECRUITMENT_BUY);
         assertEquals(1L << 52, ThorActionIds.maskFor(ThorActionIds.TOWN_OPEN_SERVICE));
         assertEquals(1L << 53, ThorActionIds.maskFor(ThorActionIds.TOWN_HALL_BUILD));
-        assertEquals(54, ThorActionIds.MAX_ACTION_ID);
+        assertEquals(1L << 54, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_EDIT));
+        assertEquals(1L << 55, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_BUY));
+        assertEquals(56, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
 		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
 		assertEquals(43, ThorActionIds.CAMPAIGN_BROWSER_SELECT);

@@ -153,6 +153,8 @@ TEST(ThorContextMappingTest, MapsApprovedInGameContexts)
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::HERO_WINDOW), ThorContextIds::HERO_WINDOW);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_WINDOW), ThorContextIds::TOWN_WINDOW);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_HALL), ThorContextIds::TOWN_HALL);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_RECRUITMENT_QUICK), ThorContextIds::TOWN_RECRUITMENT_QUICK);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_RECRUITMENT_DWELLING), ThorContextIds::TOWN_RECRUITMENT_DWELLING);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::HERO_MEETING), ThorContextIds::HERO_MEETING);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE), ThorContextIds::BATTLE);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE_TACTICS), ThorContextIds::BATTLE_TACTICS);

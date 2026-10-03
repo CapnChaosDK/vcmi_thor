@@ -17,16 +17,14 @@ final class ThorVisualAssetReferences
     }
 
     boolean references(final long revision, final long key, final ThorHeroMeetingArmies armies,
-                       final ThorHeroMeetingArtifacts artifacts)
+                       final ThorHeroMeetingArtifacts artifacts, final ThorRecruitmentState recruitment)
     {
         if (revision != this.revision || !ThorVisualAssetKey.isValid(key))
             return false;
         if ((ThorContextIds.ADVENTURE_MAP.equals(contextId) || ThorContextIds.HERO_WINDOW.equals(contextId))
                 && key == heroPortraitAssetKey)
             return true;
-        if (!ThorContextIds.HERO_MEETING.equals(contextId))
-            return false;
-        if (armies != null)
+        if (ThorContextIds.HERO_MEETING.equals(contextId) && armies != null)
         {
             for (final long referenced : armies.heroPortraitAssetKeys)
                 if (referenced == key)
@@ -35,10 +33,22 @@ final class ThorVisualAssetReferences
                 if (referenced == key)
                     return true;
         }
-        if (artifacts != null)
+        if (ThorContextIds.HERO_MEETING.equals(contextId) && artifacts != null)
             for (final long referenced : artifacts.visualAssetKeys)
                 if (referenced == key)
                     return true;
+        if ((ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(contextId)
+                || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId))
+                && recruitment != null && recruitment.revision == revision)
+            for (final long referenced : recruitment.visualAssetKeys())
+                if (referenced == key)
+                    return true;
         return false;
+    }
+
+    boolean references(final long revision, final long key, final ThorHeroMeetingArmies armies,
+                       final ThorHeroMeetingArtifacts artifacts)
+    {
+        return references(revision, key, armies, artifacts, ThorRecruitmentState.EMPTY);
     }
 }

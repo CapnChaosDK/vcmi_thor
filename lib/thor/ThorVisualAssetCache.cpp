@@ -76,6 +76,21 @@ std::vector<std::uint64_t> collectThorContextVisualAssetKeys(const ThorContextRe
 		return collectThorHeroMeetingVisualAssetKeys(*context.heroMeetingArmies,
 			context.heroMeetingArtifacts.value_or(ThorHeroMeetingArtifacts{}));
 	}
+	if((context.contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK
+		|| context.contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING) && context.recruitment)
+	{
+		std::vector<std::uint64_t> result;
+		std::unordered_set<std::uint64_t> seen;
+		for(const auto & row : context.recruitment->rows)
+		{
+			if(row.visualAssetKey == 0 || !isThorVisualAssetKey(row.visualAssetKey)
+				|| seen.contains(row.visualAssetKey))
+				continue;
+			seen.insert(row.visualAssetKey);
+			result.push_back(row.visualAssetKey);
+		}
+		return result.size() <= THOR_MAX_RECRUITMENT_ROWS ? result : std::vector<std::uint64_t>{};
+	}
 
 	if((context.contextId == ThorContextIds::ADVENTURE_MAP || context.contextId == ThorContextIds::HERO_WINDOW)
 		&& isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))

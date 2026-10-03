@@ -1281,6 +1281,13 @@ void CPlayerInterface::availableCreaturesChanged( const CGDwelling *town )
 			if(castleInterface->town == town)
 				castleInterface->creaturesChangedEventHandler();
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		if(dynamic_cast<const CGTownInstance *>(town))
+			for (auto recruitmentWindow : ENGINE->windows().findWindows<CRecruitmentWindow>())
+				if(recruitmentWindow->dwelling == town)
+					recruitmentWindow->availableCreaturesChanged();
+#endif
+
 		if (townObj)
 			for (auto ki : ENGINE->windows().findWindows<CKingdomInterface>())
 				ki->townChanged(townObj);

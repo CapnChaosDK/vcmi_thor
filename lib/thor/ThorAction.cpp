@@ -236,9 +236,46 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 	case static_cast<int>(ThorAction::WINDOW_CLOSE): return ThorAction::WINDOW_CLOSE;
 	case static_cast<int>(ThorAction::TOWN_OPEN_SERVICE): return ThorAction::TOWN_OPEN_SERVICE;
 	case static_cast<int>(ThorAction::TOWN_HALL_BUILD): return ThorAction::TOWN_HALL_BUILD;
+	case static_cast<int>(ThorAction::RECRUITMENT_EDIT): return ThorAction::RECRUITMENT_EDIT;
+	case static_cast<int>(ThorAction::RECRUITMENT_BUY): return ThorAction::RECRUITMENT_BUY;
 	default:
 		return std::nullopt;
 	}
+}
+
+std::optional<ThorRecruitmentOperation> thorRecruitmentOperationFromId(int operationId)
+{
+	if(operationId < static_cast<int>(ThorRecruitmentOperation::SELECT_ROW)
+		|| operationId > static_cast<int>(ThorRecruitmentOperation::CYCLE_VARIANT))
+		return std::nullopt;
+	return static_cast<ThorRecruitmentOperation>(operationId);
+}
+
+std::optional<int> thorRecruitmentAmountAfter(ThorRecruitmentOperation operation, int currentAmount,
+	int maximumAmount)
+{
+	if(currentAmount < 0 || maximumAmount < currentAmount)
+		return std::nullopt;
+	switch(operation)
+	{
+	case ThorRecruitmentOperation::DECREASE_10:
+		return std::max(0, currentAmount - 10);
+	case ThorRecruitmentOperation::DECREASE_1:
+		return std::max(0, currentAmount - 1);
+	case ThorRecruitmentOperation::INCREASE_1:
+		return static_cast<int>(std::min<std::int64_t>(maximumAmount, static_cast<std::int64_t>(currentAmount) + 1));
+	case ThorRecruitmentOperation::INCREASE_10:
+		return static_cast<int>(std::min<std::int64_t>(maximumAmount, static_cast<std::int64_t>(currentAmount) + 10));
+	case ThorRecruitmentOperation::SET_MINIMUM:
+		return 0;
+	case ThorRecruitmentOperation::SET_MAXIMUM:
+		return maximumAmount;
+	case ThorRecruitmentOperation::NONE:
+	case ThorRecruitmentOperation::SELECT_ROW:
+	case ThorRecruitmentOperation::CYCLE_VARIANT:
+		return std::nullopt;
+	}
+	return std::nullopt;
 }
 
 std::optional<ThorTownService> thorTownServiceFromTarget(int targetId)
@@ -261,6 +298,10 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::TOWN_OPEN_SERVICE;
 	if(contextId == ThorContextIds::TOWN_HALL)
 		return action == ThorAction::TOWN_HALL_BUILD || action == ThorAction::WINDOW_CLOSE;
+	if(contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK
+		|| contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING)
+		return action == ThorAction::RECRUITMENT_EDIT || action == ThorAction::RECRUITMENT_BUY
+			|| action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::BATTLE)
 		return action == ThorAction::BATTLE_WAIT || action == ThorAction::BATTLE_DEFEND;
 	if(contextId == ThorContextIds::BATTLE_TACTICS)
@@ -294,6 +335,21 @@ bool thorWindowOwnerMatches(const ThorContextRecord & context,
 	return active && top && subjectId >= 0 && context.windowSubjectId == subjectId
 		&& (expectedContext == ThorContextIds::HERO_WINDOW || expectedContext == ThorContextIds::TOWN_WINDOW)
 		&& context.contextId == expectedContext;
+}
+
+bool thorRecruitmentOwnerMatches(const ThorContextRecord & context, ThorRecruitmentMode mode,
+	int townId, int dwellingLevel, int destinationArmyId, int destinationArmyFreeSlots, bool active, bool top)
+{
+	if(mode != ThorRecruitmentMode::QUICK_TOWN && mode != ThorRecruitmentMode::TOWN_DWELLING)
+		return false;
+	const auto expectedContext = mode == ThorRecruitmentMode::QUICK_TOWN
+		? ThorContextIds::TOWN_RECRUITMENT_QUICK : ThorContextIds::TOWN_RECRUITMENT_DWELLING;
+	return active && top && townId >= 0 && destinationArmyId >= 0 && context.contextId == expectedContext
+		&& context.actionSubjectId == townId && context.recruitment
+		&& context.recruitment->mode == mode && context.recruitment->townId == townId
+		&& context.recruitment->dwellingLevel == dwellingLevel
+		&& context.recruitment->destinationArmyId == destinationArmyId
+		&& context.recruitment->destinationArmyFreeSlots == destinationArmyFreeSlots;
 }
 
 std::optional<int> thorHeroWindowAdjacentIndex(int oneBasedSerial, int visibleCount, ThorAction action)
@@ -528,7 +584,34 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::WRONG_CONTEXT;
 	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
 		return ThorActionValidation::UNAVAILABLE;
-	if(request.action == ThorAction::LOBBY_SET_DIFFICULTY)
+	if(request.action == ThorAction::RECRUITMENT_EDIT)
+	{
+		if(!context.recruitment || !context.recruitment->locallyControllable || request.targetId < 0 || request.sourceArmyId != -1
+			|| request.sourceSlot != -1 || request.destinationArmyId != -1 || request.destinationSlot != -1
+			|| request.amount != -1 || request.recruitmentOperation == ThorRecruitmentOperation::NONE
+			|| static_cast<unsigned int>(request.recruitmentOperation)
+			> static_cast<unsigned int>(ThorRecruitmentOperation::CYCLE_VARIANT))
+			return ThorActionValidation::INVALID_TARGET;
+		const auto row = std::find_if(context.recruitment->rows.begin(), context.recruitment->rows.end(),
+			[&](const auto & entry) { return entry.target == request.targetId; });
+		if(row == context.recruitment->rows.end() || !row->enabled
+			|| (request.recruitmentOperation == ThorRecruitmentOperation::CYCLE_VARIANT && row->variantCount <= 1))
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(request.action == ThorAction::RECRUITMENT_BUY)
+	{
+		if(!context.recruitment || !context.recruitment->locallyControllable || !context.recruitment->canBuy
+			|| std::none_of(context.recruitment->rows.begin(), context.recruitment->rows.end(),
+				[](const auto & row) { return row.selectedAmount > 0 && row.enabled && row.armyAvailable; })
+			|| request.targetId != -1
+			|| request.sourceArmyId != -1 || request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1
+			|| request.recruitmentOperation != ThorRecruitmentOperation::NONE)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(request.recruitmentOperation != ThorRecruitmentOperation::NONE)
+		return ThorActionValidation::INVALID_TARGET;
+	else if(request.action == ThorAction::LOBBY_SET_DIFFICULTY)
 	{
 		if(request.targetId < 0 || request.targetId > 4 || request.sourceArmyId != -1 || request.sourceSlot != -1
 			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1)

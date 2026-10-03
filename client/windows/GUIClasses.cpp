@@ -12,6 +12,7 @@
 
 #include "CCastleInterface.h"
 #include "CCreatureWindow.h"
+#include "ThorRecruitmentSupport.h"
 #include "CHeroWindow.h"
 #include "InfoWindows.h"
 
@@ -71,6 +72,11 @@
 #include "../../lib/CSkillHandler.h"
 #include "../../lib/CSoundBase.h"
 #include "../../lib/constants/EntityIdentifiers.h"
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../gui/WindowHandler.h"
+#include "../../lib/CAndroidVMHelper.h"
+#endif
 
 
 ImagePath CRecruitmentWindow::getRecruitmentBackground(const CGDwelling * dwelling, int level)
@@ -152,17 +158,16 @@ void CRecruitmentWindow::CCreatureCard::showAll(Canvas & to)
 		to.drawBorder(pos, Colors::YELLOW);
 }
 
-void CRecruitmentWindow::select(std::shared_ptr<CCreatureCard> card)
+void CRecruitmentWindow::select(std::shared_ptr<CCreatureCard> card, bool refreshCurrent)
 {
-	if(card == selected)
+	const bool changed = card != selected;
+	if(!changed && !refreshCurrent)
 		return;
-
-	if(selected)
+	const int previousAmount = slider->getValue();
+	if(changed && selected)
 		selected->select(false);
-
 	selected = card;
-
-	if(selected)
+	if(changed && selected)
 		selected->select(true);
 
 	if(card)
@@ -173,16 +178,15 @@ void CRecruitmentWindow::select(std::shared_ptr<CCreatureCard> card)
 
 		slider->setAmount(maxAmount);
 
-		if(slider->getValue() != maxAmount)
-			slider->scrollTo(maxAmount);
-		else // if slider already at 0 - emulate call to sliderMoved()
-			sliderMoved(maxAmount);
+		const int amount = changed ? maxAmount : std::min(previousAmount, maxAmount);
+		slider->scrollTo(amount);
+		sliderMoved(slider->getValue());
 
 		costPerTroopValue->createItems(card->creature->getFullRecruitCost());
 		totalCostValue->createItems(card->creature->getFullRecruitCost());
 
 		costPerTroopValue->set(card->creature->getFullRecruitCost());
-		totalCostValue->set(card->creature->getFullRecruitCost() * maxAmount);
+		totalCostValue->set(card->creature->getFullRecruitCost() * slider->getValue());
 
 		//Recruit %s
 		MetaString recruitText;
@@ -368,12 +372,24 @@ void CRecruitmentWindow::availableCreaturesChanged()
 	}
 
 	//restore selection
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(cards.empty())
+	{
+		select(nullptr);
+		slider->setAmount(0);
+		slider->scrollToMin();
+		buyButton->block(true);
+	}
+	else
+		select(cards[std::min(selectedIndex, cards.size() - 1)]);
+	#else
 	select(cards[selectedIndex]);
 
 	if(slider->getValue() == slider->getAmount())
 		slider->scrollToMax();
 	else // if slider already at 0 - emulate call to sliderMoved()
 		sliderMoved(slider->getAmount());
+	#endif
 }
 
 void CRecruitmentWindow::sliderMoved(int to)
@@ -387,6 +403,196 @@ void CRecruitmentWindow::sliderMoved(int to)
 
 	totalCostValue->set(selected->creature->getFullRecruitCost() * to);
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CRecruitmentWindow::activate()
+{
+	if(isActive())
+		return;
+	CWindowObject::activate();
+	refreshThorNativeState();
+}
+
+void CRecruitmentWindow::deactivate()
+{
+	if(!isActive())
+		return;
+	CWindowObject::deactivate();
+	ThorContextRecord empty;
+	empty = thorContextStore().publishNext(std::move(empty));
+	CAndroidVMHelper().publishThorContext(empty.revision, empty.contextId, empty.title, empty.status);
+}
+
+void CRecruitmentWindow::refreshThorNativeState()
+{
+	if(!isActive() || ENGINE->windows().topWindow<CRecruitmentWindow>().get() != this)
+		return;
+	auto * town = dynamic_cast<const CGTownInstance *>(dwelling);
+	if(!town || level < 0 || dst != town->getUpperArmy())
+	{
+		ThorContextRecord empty;
+		empty = thorContextStore().publishNext(std::move(empty));
+		CAndroidVMHelper().publishThorContext(empty.revision, empty.contextId, empty.title, empty.status);
+		return;
+	}
+
+	const auto resources = GAME->interface()->cb->getResourceAmount();
+	std::vector<int> stocks;
+	stocks.reserve(town->creatures.size());
+	for(const auto & tier : town->creatures)
+		stocks.push_back(tier.first);
+	if(!lastThorResources || *lastThorResources != resources || lastThorStocks != stocks)
+	{
+		if(lastThorStocks != stocks)
+			availableCreaturesChanged();
+		else if(selected)
+			select(selected, true);
+		lastThorResources = resources;
+		lastThorStocks = std::move(stocks);
+	}
+	publishThorContext();
+}
+
+void CRecruitmentWindow::publishThorContext()
+{
+	auto * town = dynamic_cast<const CGTownInstance *>(dwelling);
+	if(!town || level < 0 || dst != town->getUpperArmy())
+		return;
+	const auto castleWindows = ENGINE->windows().findWindows<CCastleInterface>();
+	const bool hasOwningTownWindow = std::any_of(castleWindows.begin(), castleWindows.end(),
+		[&](const auto & window) { return window && window->town == town; });
+	if(!hasOwningTownWindow)
+	{
+		ThorContextRecord empty;
+		empty = thorContextStore().publishNext(std::move(empty));
+		CAndroidVMHelper().publishThorContext(empty.revision, empty.contextId, empty.title, empty.status);
+		return;
+	}
+
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::TOWN_RECRUITMENT_DWELLING;
+	context.title = GAME->translator().translate(town->getNameTextID());
+	context.actionSubjectId = town->id.getNum();
+	context.actionEpoch = thorActionEpoch;
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	ThorRecruitmentSnapshot recruitment;
+	recruitment.mode = ThorRecruitmentMode::TOWN_DWELLING;
+	recruitment.townId = town->id.getNum();
+	recruitment.dwellingLevel = level;
+	recruitment.destinationArmyId = dst->id.getNum();
+	recruitment.destinationArmyFreeSlots = static_cast<int>(dst->getFreeSlots().size());
+	recruitment.selectedTarget = -1;
+	recruitment.townName = context.title;
+	recruitment.locallyControllable = hasOwningTownWindow && GAME->interface()->playerID == town->tempOwner
+		&& GAME->interface()->makingTurn;
+	const auto resources = GAME->interface()->cb->getResourceAmount();
+	if(selected)
+	{
+		const auto selectedIndex = std::find(cards.begin(), cards.end(), selected);
+		if(selectedIndex != cards.end())
+			recruitment.selectedTarget = static_cast<int>(selectedIndex - cards.begin());
+	}
+	bool canBuyCurrentSelection = false;
+	ResourceSet totalCost;
+	for(std::size_t index = 0; index < cards.size(); ++index)
+	{
+		const auto & card = cards[index];
+		ThorRecruitmentRow row;
+		row.target = static_cast<int>(index);
+		row.creatureId = card->creature->getId().getNum();
+		row.name = card->creature->getNameTranslated();
+		row.availableCount = std::max(0, card->amount);
+		row.selected = card == selected;
+		const auto nativeMaximum = std::clamp(card->creature->maxAmount(resources), 0, row.availableCount);
+		row.maximumAmount = row.selected ? std::clamp(slider->getAmount(), 0, nativeMaximum) : nativeMaximum;
+		row.selectedAmount = row.selected ? std::clamp(slider->getValue(), 0, row.maximumAmount) : 0;
+		const auto destinationSlot = dst->getSlotFor(card->creature->getId());
+		row.armyAvailable = destinationSlot.validSlot()
+			|| card->creature->warMachine != ArtifactID::NONE;
+		if(!row.armyAvailable)
+		{
+			std::pair<SlotID, SlotID> toMerge;
+			const bool allowMerge = GAME->interface()->cb->getSettings()
+				.getBoolean(EGameSettings::DWELLINGS_ACCUMULATE_WHEN_OWNED);
+			row.armyAvailable = allowMerge && dst->mergeableStacks(toMerge);
+		}
+		row.enabled = recruitment.locallyControllable && nativeMaximum > 0 && row.armyAvailable;
+		canBuyCurrentSelection |= row.selected && row.selectedAmount > 0 && row.armyAvailable;
+		row.unitCost = formatThorRecruitmentCost(card->creature->getFullRecruitCost());
+		const auto selectionCost = card->creature->getFullRecruitCost() * row.selectedAmount;
+		row.selectedCost = formatThorRecruitmentCost(selectionCost);
+		row.visualAssetKey = thorCreatureVisualAssetKey(row.creatureId);
+		totalCost += selectionCost;
+		recruitment.rows.push_back(std::move(row));
+	}
+	recruitment.canBuy = recruitment.locallyControllable && canBuyCurrentSelection
+		&& resources.canAfford(totalCost);
+	recruitment.totalCost = formatThorRecruitmentCost(totalCost);
+	context.recruitment = std::move(recruitment);
+	if(context.recruitment->locallyControllable)
+	{
+		context.enabledActionMask |= thorActionMask(ThorAction::RECRUITMENT_EDIT);
+		if(context.recruitment->canBuy)
+			context.enabledActionMask |= thorActionMask(ThorAction::RECRUITMENT_BUY);
+	}
+	publishThorRecruitmentContext(std::move(context));
+}
+
+bool CRecruitmentWindow::matchesThorContext(const ThorContextRecord & context) const
+{
+	auto * town = dynamic_cast<const CGTownInstance *>(dwelling);
+	if(!town || level < 0 || dst != town->getUpperArmy())
+		return false;
+	const auto castleWindows = ENGINE->windows().findWindows<CCastleInterface>();
+	const bool hasOwningTownWindow = std::any_of(castleWindows.begin(), castleWindows.end(),
+		[&](const auto & window) { return window && window->town == town; });
+	return isActive() && ENGINE->windows().topWindow<CRecruitmentWindow>().get() == this
+		&& hasOwningTownWindow && thorRecruitmentOwnerMatches(context, ThorRecruitmentMode::TOWN_DWELLING,
+			town->id.getNum(), level, dst->id.getNum(), static_cast<int>(dst->getFreeSlots().size()),
+			isActive(), ENGINE->windows().topWindow<CRecruitmentWindow>().get() == this);
+}
+
+bool CRecruitmentWindow::executeThorAction(const ThorActionRequest & request)
+{
+	const auto before = thorContextStore().snapshot();
+	refreshThorNativeState();
+	const auto current = thorContextStore().snapshot();
+	if(current.revision != before.revision || !matchesThorContext(current)
+		|| validateThorActionRequest(request, current) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		close();
+		return true;
+	}
+	if(request.action == ThorAction::RECRUITMENT_BUY)
+	{
+		if(!current.recruitment->locallyControllable || !current.recruitment->canBuy || !selected)
+			return false;
+		buy();
+		return true;
+	}
+	if(request.action != ThorAction::RECRUITMENT_EDIT || !current.recruitment->locallyControllable)
+		return false;
+	if(thorActionEpoch == std::numeric_limits<std::uint64_t>::max())
+		return false;
+	if(request.targetId < 0 || static_cast<std::size_t>(request.targetId) >= cards.size())
+		return false;
+	const auto targetIndex = static_cast<std::size_t>(request.targetId);
+	select(cards[targetIndex]);
+	if(request.recruitmentOperation != ThorRecruitmentOperation::SELECT_ROW)
+	{
+		const auto amount = thorRecruitmentAmountAfter(request.recruitmentOperation,
+			slider->getValue(), slider->getAmount());
+		if(!amount)
+			return false;
+		slider->scrollTo(*amount);
+	}
+	++thorActionEpoch;
+	refreshThorNativeState();
+	return true;
+}
+#endif
 
 CSplitWindow::CSplitWindow(const CCreature * creature, std::function<void(int, int)> callback_, int leftMin_, int rightMin_, int leftAmount_, int rightAmount_)
 	: CWindowObject(PLAYER_COLORED, ImagePath::builtin("GPUCRDIV")),
