@@ -129,7 +129,7 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType, bool hideScreen)
 
 	auto initLobby = [&]()
 	{
-		tabSel->callOnSelect = [this](std::shared_ptr<CMapInfo> mapInfo)
+		tabSel->callOnSelect = [this, screenType](std::shared_ptr<CMapInfo> mapInfo)
 		{
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 			thorSaveSelectionPending = screenType == ESelectionScreen::loadGame && mapInfo
