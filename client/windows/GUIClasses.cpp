@@ -500,7 +500,7 @@ void CRecruitmentWindow::publishThorContext()
 		ThorRecruitmentRow row;
 		row.target = static_cast<int>(index);
 		row.creatureId = card->creature->getId().getNum();
-		row.name = card->creature->getNameTranslated();
+		row.name = card->creature->getNameSingularTranslated();
 		row.availableCount = std::max(0, card->amount);
 		row.selected = card == selected;
 		const auto nativeMaximum = std::clamp(card->creature->maxAmount(resources), 0, row.availableCount);

@@ -27,7 +27,7 @@
 #include "CCastleInterface.h"
 #include "../gui/WindowHandler.h"
 #include "../../lib/CAndroidVMHelper.h"
-#include "../../lib/thor/ThorVisualAssetPublisher.h"
+#include "../thor/ThorVisualAssetPublisher.h"
 #endif
 
 
@@ -413,7 +413,7 @@ void QuickRecruitmentWindow::publishThorContext()
 		ThorRecruitmentRow row;
 		row.target = card->tierIndex;
 		row.creatureId = card->creatureOnTheCard->getId().getNum();
-		row.name = card->creatureOnTheCard->getNameTranslated();
+		row.name = card->creatureOnTheCard->getNameSingularTranslated();
 		row.availableCount = std::max(0, card->maxAmount);
 		row.selectedAmount = std::clamp(card->slider->getValue(), 0, std::max(0, card->slider->getAmount()));
 		row.maximumAmount = std::clamp(card->slider->getAmount(), 0, row.availableCount);
