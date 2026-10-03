@@ -30,6 +30,14 @@
 #include "../thor/ThorVisualAssetPublisher.h"
 #endif
 
+namespace
+{
+	std::size_t recruitmentTierCount(const CGTownInstance * town)
+	{
+		return std::min(town->getTown()->creatures.size(), town->creatures.size());
+	}
+}
+
 
 void QuickRecruitmentWindow::setButtons()
 {
@@ -60,12 +68,12 @@ void QuickRecruitmentWindow::setCreaturePurchaseCards()
 {
 	int availableAmount = getAvailableCreatures();
 	Point position = Point((pos.w - 100*availableAmount - 8*(availableAmount-1))/2,64);
-	for (int i = 0; i < town->getTown()->creatures.size(); i++)
+	for(std::size_t i = 0; i < recruitmentTierCount(town); ++i)
 	{
 		if(!town->getTown()->creatures.at(i).empty() && !town->creatures.at(i).second.empty() && town->creatures[i].first)
 		{
 			cards.push_back(std::make_shared<CreaturePurchaseCard>(town->creatures[i].second, position,
-				town->creatures[i].first, i, this));
+				town->creatures[i].first, static_cast<int>(i), this));
 			position.x += 108;
 		}
 	}
@@ -148,7 +156,7 @@ void QuickRecruitmentWindow::purchaseUnits()
 int QuickRecruitmentWindow::getAvailableCreatures()
 {
 	int creaturesAmount = 0;
-	for (int i=0; i< town->getTown()->creatures.size(); i++)
+	for(std::size_t i = 0; i < recruitmentTierCount(town); ++i)
 		if(!town->getTown()->creatures.at(i).empty() && !town->creatures.at(i).second.empty() && town->creatures[i].first)
 			creaturesAmount++;
 	return creaturesAmount;
@@ -321,10 +329,11 @@ void QuickRecruitmentWindow::refreshThorNativeState()
 	}
 
 	const auto resources = GAME->interface()->cb->getResourceAmount();
+	const auto tierCount = recruitmentTierCount(town);
 	std::vector<int> stocks;
-	stocks.reserve(town->creatures.size());
-	for(const auto & tier : town->creatures)
-		stocks.push_back(tier.first);
+	stocks.reserve(tierCount);
+	for(std::size_t index = 0; index < tierCount; ++index)
+		stocks.push_back(town->creatures[index].first);
 	std::vector<int> variants;
 	variants.reserve(cards.size());
 	for(const auto & card : cards)
@@ -336,7 +345,7 @@ void QuickRecruitmentWindow::refreshThorNativeState()
 		currentTiers.reserve(cards.size());
 		for(const auto & card : cards)
 			currentTiers.push_back(card->tierIndex);
-		for(std::size_t index = 0; index < town->creatures.size(); ++index)
+		for(std::size_t index = 0; index < tierCount; ++index)
 			if(!town->getTown()->creatures.at(index).empty() && !town->creatures[index].second.empty()
 				&& stocks[index] > 0)
 				refreshedTiers.push_back(static_cast<int>(index));
