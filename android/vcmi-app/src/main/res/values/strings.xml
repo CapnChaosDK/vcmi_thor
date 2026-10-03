@@ -48,6 +48,11 @@
     <string name="thor_browser_completed">Completed</string>
     <string name="thor_browser_previous_page">Previous page</string>
     <string name="thor_browser_next_page">Next page</string>
+    <string name="thor_town_hall_title">Town Hall</string>
+    <string name="thor_town_hall_build">Build</string>
+    <string name="thor_town_hall_built">Built</string>
+    <string name="thor_town_hall_buildable">Buildable</string>
+    <string name="thor_town_hall_unavailable">Unavailable</string>
     <string name="thor_lobby_difficulty_easy">Easy</string>
     <string name="thor_lobby_difficulty_normal">Normal</string>
     <string name="thor_lobby_difficulty_hard">Hard</string>

@@ -2146,10 +2146,121 @@ CHallInterface::CHallInterface(const CGTownInstance * Town):
 			int posY = 35 + 104*(int)row;
 
 			if(building)
+			{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+				choices.push_back(building);
+#endif
 				boxes[row].push_back(std::make_shared<CBuildingBox>(posX, posY, town, building));
+			}
 		}
 	}
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CHallInterface::activate()
+{
+	if(isActive())
+		return;
+	CStatusbarWindow::activate();
+	updateThorContext();
+}
+
+void CHallInterface::deactivate()
+{
+	if(!isActive())
+		return;
+	CStatusbarWindow::deactivate();
+	ThorContextRecord context;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+}
+
+void CHallInterface::updateThorContext()
+{
+	if(!isActive() || ENGINE->windows().topWindow<CHallInterface>().get() != this)
+		return;
+
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::TOWN_HALL;
+	context.title = GAME->translator().translate(town->getNameTextID());
+	context.actionSubjectId = town->id.getNum();
+	context.browserPage = 0;
+	const bool supportedChoiceCount = choices.size() <= THOR_MAX_TOWN_HALL_BUILDINGS;
+	context.browserPageCount = supportedChoiceCount ? static_cast<int>((choices.size()
+		+ THOR_TOWN_HALL_PAGE_SIZE - 1) / THOR_TOWN_HALL_PAGE_SIZE) : 0;
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	const bool locallyBuildable = GAME->interface()->playerID == town->tempOwner && GAME->interface()->makingTurn;
+	if(supportedChoiceCount)
+	{
+		for(const auto * building : choices)
+		{
+			if(!building)
+				continue;
+			const auto buildingId = building->bid.getNum();
+			const auto state = GAME->interface()->cb->canBuildStructure(town, building->bid);
+			const bool built = town->hasBuilt(building->bid);
+			std::string label = building->getNameTranslated();
+			std::string cost;
+			for(const GameResID resource : LIBRARY->resourceTypeHandler->getAllObjects())
+			{
+				const auto amount = building->resources[resource];
+				if(amount <= 0)
+					continue;
+				if(!cost.empty())
+					cost += ", ";
+				cost += std::to_string(amount) + " " + resource.toResource()->getNameTranslated();
+			}
+			if(!cost.empty())
+				label += "\n" + cost;
+			const bool enabled = locallyBuildable && state == EBuildingState::ALLOWED;
+			context.browserEntries.push_back({buildingId, std::move(label), enabled, false, built});
+			context.browserNativeKeys.push_back(std::to_string(buildingId));
+			if(enabled)
+				context.enabledActionMask |= thorActionMask(ThorAction::TOWN_HALL_BUILD);
+		}
+	}
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper bridge;
+	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status);
+	bridge.publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	bridge.publishThorBrowser(context.revision, context.browserPage, context.browserPageCount, context.browserEntries);
+}
+
+bool CHallInterface::matchesThorContext(const ThorContextRecord & context) const
+{
+	return isActive() && ENGINE->windows().topWindow<CHallInterface>().get() == this
+		&& context.contextId == ThorContextIds::TOWN_HALL
+		&& context.actionSubjectId == town->id.getNum();
+}
+
+bool CHallInterface::executeThorAction(const ThorActionRequest & request)
+{
+	const auto before = thorContextStore().snapshot();
+	updateThorContext();
+	const auto current = thorContextStore().snapshot();
+	if(current.revision != before.revision || !matchesThorContext(current)
+		|| validateThorActionRequest(request, current) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		close();
+		return true;
+	}
+	if(request.action != ThorAction::TOWN_HALL_BUILD)
+		return false;
+	const auto found = std::find_if(choices.begin(), choices.end(), [&](const CBuilding * building)
+	{
+		return building && building->bid.getNum() == request.targetId;
+	});
+	if(found == choices.end() || GAME->interface()->playerID != town->tempOwner || !GAME->interface()->makingTurn)
+		return false;
+	const auto state = GAME->interface()->cb->canBuildStructure(town, (*found)->bid);
+	if(state != EBuildingState::ALLOWED)
+		return false;
+	ENGINE->windows().createAndPushWindow<CBuildWindow>(town, *found, state, 0);
+	return true;
+}
+#endif
 
 CBuildWindow::CBuildWindow(const CGTownInstance *Town, const CBuilding * Building, EBuildingState state, bool rightClick):
 	CWindowObject(PLAYER_COLORED | (rightClick ? RCLICK_POPUP : 0), ImagePath::builtin("TPUBUILD")),

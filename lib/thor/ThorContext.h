@@ -39,6 +39,7 @@ namespace ThorContextIds
 	inline constexpr char ADVENTURE_MAP[] = "ADVENTURE_MAP";
 	inline constexpr char HERO_WINDOW[] = "HERO_WINDOW";
 	inline constexpr char TOWN_WINDOW[] = "TOWN_WINDOW";
+	inline constexpr char TOWN_HALL[] = "TOWN_HALL";
 	inline constexpr char HERO_MEETING[] = "HERO_MEETING";
 	inline constexpr char BATTLE[] = "BATTLE";
 	inline constexpr char BATTLE_TACTICS[] = "BATTLE_TACTICS";
@@ -76,6 +77,7 @@ enum class ThorInGameContext
 	ADVENTURE_MAP,
 	HERO_WINDOW,
 	TOWN_WINDOW,
+	TOWN_HALL,
 	HERO_MEETING,
 	BATTLE,
 	BATTLE_TACTICS,
@@ -89,6 +91,8 @@ enum class ThorInGameContext
 
 inline constexpr std::size_t THOR_CONTEXT_DETAIL_LINE_COUNT = 4;
 inline constexpr std::size_t THOR_BROWSER_MAX_ROWS = 8;
+inline constexpr std::size_t THOR_MAX_TOWN_HALL_BUILDINGS = 64;
+inline constexpr std::size_t THOR_TOWN_HALL_PAGE_SIZE = 5;
 inline constexpr std::size_t THOR_SAVE_BROWSER_PAGE_SIZE = 5;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
 inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;

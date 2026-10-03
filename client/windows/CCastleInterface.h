@@ -305,12 +305,22 @@ class CHallInterface : public CStatusbarWindow
 	const CGTownInstance * town;
 
 	std::vector<std::vector<std::shared_ptr<CBuildingBox>>> boxes;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::vector<const CBuilding *> choices;
+#endif
 	std::shared_ptr<CLabel> title;
 	std::shared_ptr<CMinorResDataBar> resdatabar;
 	std::shared_ptr<CButton> exit;
 
 public:
 	CHallInterface(const CGTownInstance * Town);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void updateThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 };
 
 ///  Window where you can decide to buy a building or not

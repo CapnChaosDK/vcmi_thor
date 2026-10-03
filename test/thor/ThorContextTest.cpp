@@ -152,6 +152,7 @@ TEST(ThorContextMappingTest, MapsApprovedInGameContexts)
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::ADVENTURE_MAP), ThorContextIds::ADVENTURE_MAP);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::HERO_WINDOW), ThorContextIds::HERO_WINDOW);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_WINDOW), ThorContextIds::TOWN_WINDOW);
+	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::TOWN_HALL), ThorContextIds::TOWN_HALL);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::HERO_MEETING), ThorContextIds::HERO_MEETING);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE), ThorContextIds::BATTLE);
 	EXPECT_EQ(thorContextIdForInGameContext(ThorInGameContext::BATTLE_TACTICS), ThorContextIds::BATTLE_TACTICS);
@@ -272,6 +273,63 @@ TEST(ThorContextStoreTest, TownServicePayloadRequiresExactFixedTargets)
 	const auto invalid = store.publishNext(town);
 	EXPECT_TRUE(invalid.browserEntries.empty());
 	EXPECT_EQ(invalid.enabledActionMask & thorActionMask(ThorAction::TOWN_OPEN_SERVICE), 0);
+}
+
+TEST(ThorContextStoreTest, TownHallListIsBoundedRevisionSemanticAndFailClosed)
+{
+	ThorContextStore store;
+	ThorContextRecord hall;
+	hall.contextId = ThorContextIds::TOWN_HALL;
+	hall.title = "Castle Town";
+	hall.actionSubjectId = 44;
+	hall.browserPageCount = 1;
+	hall.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE)
+		| thorActionMask(ThorAction::TOWN_HALL_BUILD);
+	hall.browserEntries = {{901, "Village Hall, 500 gold", true, false, false},
+		{902, "Tavern, 500 gold", false, false, true}};
+	hall.browserNativeKeys = {"901", "902"};
+	const auto rendered = store.publishNext(hall);
+	EXPECT_EQ(store.publishNext(hall).revision, rendered.revision);
+	hall.browserEntries[0].enabled = false; // Resources or prerequisites changed.
+	const auto unavailable = store.publishNext(hall);
+	EXPECT_GT(unavailable.revision, rendered.revision);
+	EXPECT_EQ(validateThorActionRequest({rendered.revision, ThorAction::TOWN_HALL_BUILD, 901}, unavailable),
+		ThorActionValidation::STALE_REVISION);
+	hall.actionSubjectId = 45; // A different Town owns the same menu choices.
+	const auto otherTown = store.publishNext(hall);
+	EXPECT_GT(otherTown.revision, unavailable.revision);
+	hall.browserEntries.resize(THOR_MAX_TOWN_HALL_BUILDINGS + 1);
+	hall.browserNativeKeys.resize(hall.browserEntries.size());
+	hall.browserPageCount = static_cast<int>((hall.browserEntries.size() + 4) / 5);
+	const auto oversized = store.publishNext(hall);
+	EXPECT_TRUE(oversized.browserEntries.empty());
+	EXPECT_TRUE(oversized.browserNativeKeys.empty());
+	EXPECT_EQ(oversized.enabledActionMask & thorActionMask(ThorAction::TOWN_HALL_BUILD), 0);
+}
+
+TEST(ThorContextStoreTest, TownHallRejectsDuplicateOrMismatchedNativeBuildingIdentities)
+{
+	ThorContextStore store;
+	ThorContextRecord hall;
+	hall.contextId = ThorContextIds::TOWN_HALL;
+	hall.actionSubjectId = 12;
+	hall.browserPageCount = 1;
+	hall.enabledActionMask = thorActionMask(ThorAction::TOWN_HALL_BUILD)
+		| thorActionMask(ThorAction::WINDOW_CLOSE);
+	hall.browserEntries = {{1, "First", true, false, false}, {1, "Duplicate", true, false, false}};
+	hall.browserNativeKeys = {"1", "1"};
+	const auto duplicate = store.publishNext(hall);
+	EXPECT_TRUE(duplicate.browserEntries.empty());
+	EXPECT_EQ(duplicate.enabledActionMask & thorActionMask(ThorAction::TOWN_HALL_BUILD), 0);
+	EXPECT_EQ(duplicate.actionSubjectId, 12);
+	EXPECT_EQ(validateThorActionRequest({duplicate.revision, ThorAction::WINDOW_CLOSE}, duplicate), ThorActionValidation::VALID);
+	hall.browserEntries[1].target = 2;
+	hall.browserNativeKeys[1] = "not-2";
+	const auto mismatched = store.publishNext(hall);
+	EXPECT_TRUE(mismatched.browserEntries.empty());
+	EXPECT_EQ(mismatched.enabledActionMask & thorActionMask(ThorAction::TOWN_HALL_BUILD), 0);
+	EXPECT_EQ(mismatched.actionSubjectId, 12);
+	EXPECT_EQ(validateThorActionRequest({mismatched.revision, ThorAction::WINDOW_CLOSE}, mismatched), ThorActionValidation::VALID);
 }
 
 TEST(ThorContextStoreTest, HeroMeetingRedistributionConsumptionAndRestoreAreSemanticRevisions)

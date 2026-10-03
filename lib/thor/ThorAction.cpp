@@ -235,6 +235,7 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 	case static_cast<int>(ThorAction::WINDOW_NEXT): return ThorAction::WINDOW_NEXT;
 	case static_cast<int>(ThorAction::WINDOW_CLOSE): return ThorAction::WINDOW_CLOSE;
 	case static_cast<int>(ThorAction::TOWN_OPEN_SERVICE): return ThorAction::TOWN_OPEN_SERVICE;
+	case static_cast<int>(ThorAction::TOWN_HALL_BUILD): return ThorAction::TOWN_HALL_BUILD;
 	default:
 		return std::nullopt;
 	}
@@ -258,6 +259,8 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 	if(contextId == ThorContextIds::TOWN_WINDOW)
 		return (action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE)
 			|| action == ThorAction::TOWN_OPEN_SERVICE;
+	if(contextId == ThorContextIds::TOWN_HALL)
+		return action == ThorAction::TOWN_HALL_BUILD || action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::BATTLE)
 		return action == ThorAction::BATTLE_WAIT || action == ThorAction::BATTLE_DEFEND;
 	if(contextId == ThorContextIds::BATTLE_TACTICS)
@@ -565,6 +568,23 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			{
 				return entry.target == request.targetId && entry.enabled;
 			}))
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(request.action == ThorAction::TOWN_HALL_BUILD)
+	{
+		if(request.targetId < 0 || request.sourceArmyId != -1 || request.sourceSlot != -1
+			|| request.destinationArmyId != -1 || request.destinationSlot != -1 || request.amount != -1
+			|| context.actionSubjectId < 0 || context.browserEntries.size() > THOR_MAX_TOWN_HALL_BUILDINGS
+			|| context.browserNativeKeys.size() != context.browserEntries.size())
+			return ThorActionValidation::INVALID_TARGET;
+		const auto found = std::find_if(context.browserEntries.begin(), context.browserEntries.end(), [&](const auto & entry)
+		{
+			return entry.target == request.targetId && entry.enabled && !entry.completed;
+		});
+		if(found == context.browserEntries.end())
+			return ThorActionValidation::INVALID_TARGET;
+		const auto index = static_cast<std::size_t>(found - context.browserEntries.begin());
+		if(context.browserNativeKeys[index] != std::to_string(request.targetId))
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	else if(thorMainMenuChoice(context.contextId, request.action))

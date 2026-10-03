@@ -358,6 +358,16 @@ void GameEngine::updateFrame()
 			}
 			executed = menuWindow->executeThorAction(request->action);
 		}
+		else if(context.contextId == ThorContextIds::TOWN_HALL)
+		{
+			auto hallWindow = windows().topWindow<CHallInterface>();
+			if(!hallWindow || !hallWindow->matchesThorContext(context))
+			{
+				logGlobal->debug("Thor action rejected: inactive Town Hall");
+				continue;
+			}
+			executed = hallWindow->executeThorAction(*request);
+		}
 		else
 		{
 			auto battleInterface = CPlayerInterface::battleInt;

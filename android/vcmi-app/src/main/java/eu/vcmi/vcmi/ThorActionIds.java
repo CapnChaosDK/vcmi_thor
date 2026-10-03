@@ -56,7 +56,9 @@ final class ThorActionIds
     static final int WINDOW_NEXT = 51;
     static final int WINDOW_CLOSE = 52;
     static final int TOWN_OPEN_SERVICE = 53;
-    static final int MAX_ACTION_ID = TOWN_OPEN_SERVICE;
+    static final int TOWN_HALL_BUILD = 54;
+    static final int MAX_ACTION_ID = TOWN_HALL_BUILD;
+    static final int LOCAL_CONTROL = -1;
     static final int NO_TARGET = -1;
 
     static

@@ -3,8 +3,10 @@ package eu.vcmi.vcmi;
 /** Bounded current-page data and hit regions shared by the two native browser owners. */
 final class ThorBrowserState
 {
-    static final int MAX_ROWS = 8;
+    static final int MAX_ROWS = 64;
+    static final int CAMPAIGN_MAX_ROWS = 8;
     static final int SAVE_ROWS = 5;
+    static final int TOWN_HALL_PAGE_SIZE = 5;
     static final int CONTROL_NONE = 0;
     static final int CONTROL_FIRST_ROW = 1;
     static final int CONTROL_PREVIOUS = 9;
@@ -35,17 +37,22 @@ final class ThorBrowserState
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
         final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
         final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
-        if ((!campaign && !load && !town) || page < 0 || pageCount < 0 || pageCount > 2000
+        final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
+        final int maxRows = campaign ? CAMPAIGN_MAX_ROWS : (load || town ? SAVE_ROWS : MAX_ROWS);
+        final int maxPages = hall ? (MAX_ROWS + TOWN_HALL_PAGE_SIZE - 1) / TOWN_HALL_PAGE_SIZE : 2000;
+        if ((!campaign && !load && !town && !hall) || page < 0 || pageCount < 0
+                || pageCount > maxPages
                 || (pageCount == 0 ? page != 0 : page >= pageCount)
                 || targets == null || labels == null || flags == null
                 || targets.length != labels.length || targets.length != flags.length
-                || targets.length > (campaign ? MAX_ROWS : SAVE_ROWS)
+                || targets.length > maxRows
                 || (town && (page != 0 || pageCount != 1 || targets.length != ThorTownServices.SERVICE_COUNT))
+                || (hall && (page != 0 || pageCount != (targets.length + TOWN_HALL_PAGE_SIZE - 1) / TOWN_HALL_PAGE_SIZE))
                 || (pageCount == 0 && targets.length != 0))
             return EMPTY;
         for (int index = 0; index < targets.length; ++index)
         {
-            if (targets[index] < 0 || targets[index] > 10000 || labels[index] == null
+            if (targets[index] < 0 || ((!hall) && targets[index] > 10000) || labels[index] == null
                     || labels[index].length() > 128 || (flags[index] & ~7) != 0
                     || (town && targets[index] != index))
                 return EMPTY;
@@ -79,9 +86,23 @@ final class ThorBrowserState
     static int actionForControl(final String contextId, final int control)
     {
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
-        if (!campaign && !ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
+        final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
+        if (!campaign && !ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId) && !hall)
             return ThorActionIds.NONE;
-        if (control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + MAX_ROWS)
+        if (hall)
+        {
+            if (control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + TOWN_HALL_PAGE_SIZE)
+                return ThorActionIds.LOCAL_CONTROL;
+            if (control == CONTROL_PREVIOUS || control == CONTROL_NEXT)
+                return ThorActionIds.LOCAL_CONTROL;
+            if (control == CONTROL_PRIMARY)
+                return ThorActionIds.TOWN_HALL_BUILD;
+            if (control == CONTROL_BACK)
+                return ThorActionIds.WINDOW_CLOSE;
+            return ThorActionIds.NONE;
+        }
+        if (control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW
+                + (campaign ? CAMPAIGN_MAX_ROWS : SAVE_ROWS))
             return campaign ? ThorActionIds.CAMPAIGN_BROWSER_SELECT : ThorActionIds.LOAD_BROWSER_SELECT;
         if (control == CONTROL_PREVIOUS)
             return campaign ? ThorActionIds.CAMPAIGN_BROWSER_PREVIOUS_PAGE : ThorActionIds.LOAD_BROWSER_PREVIOUS_PAGE;
@@ -99,11 +120,13 @@ final class ThorBrowserState
     {
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
         final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
-        if ((!campaign && !load) || width <= 0f || height <= 0f)
+        final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
+        final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
+        if ((!campaign && !load && !town && !hall) || width <= 0f || height <= 0f)
             return new float[]{0f, 0f, 0f, 0f};
         final float side = width * 0.055f;
         final float gap = width * 0.018f;
-        if (control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + (campaign ? MAX_ROWS : SAVE_ROWS))
+        if (control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + (campaign ? CAMPAIGN_MAX_ROWS : SAVE_ROWS))
         {
             final int row = control - CONTROL_FIRST_ROW;
             final int columns = campaign ? 2 : 1;
@@ -136,7 +159,9 @@ final class ThorBrowserState
     static int controlAt(final String contextId, final float x, final float y,
                          final float width, final float height, final int rowCount)
     {
-        for (int row = 0; row < rowCount; ++row)
+        final int visibleRows = ThorContextIds.TOWN_HALL.equals(contextId) ? TOWN_HALL_PAGE_SIZE
+                : ThorContextIds.CAMPAIGN_BROWSER.equals(contextId) ? CAMPAIGN_MAX_ROWS : SAVE_ROWS;
+        for (int row = 0; row < Math.min(rowCount, visibleRows); ++row)
         {
             final float[] bounds = boundsForControl(contextId, CONTROL_FIRST_ROW + row, width, height);
             if (x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3])
