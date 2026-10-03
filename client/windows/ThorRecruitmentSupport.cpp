@@ -16,6 +16,7 @@
 #include "../thor/ThorVisualAssetPublisher.h"
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/GameLibrary.h"
+#include "../../lib/entities/ResourceTypeHandler.h"
 
 std::string formatThorRecruitmentCost(const ResourceSet & cost)
 {
