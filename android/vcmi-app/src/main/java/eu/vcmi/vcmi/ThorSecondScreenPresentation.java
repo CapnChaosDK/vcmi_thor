@@ -102,6 +102,12 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateBrowser(browser);
     }
 
+    void updateRecruitment(final ThorRecruitmentState recruitment)
+    {
+        if (foundationView != null)
+            foundationView.updateRecruitment(recruitment);
+    }
+
     void updateHeroMeetingArmies(final ThorHeroMeetingArmies armies)
     {
         if (foundationView != null)
@@ -151,6 +157,18 @@ final class ThorSecondScreenPresentation extends Presentation
 
     private static final class ThorFoundationView extends View
     {
+        private static final class RecruitmentHit
+        {
+            final int target;
+            final int operation;
+
+            RecruitmentHit(final int target, final int operation)
+            {
+                this.target = target;
+                this.operation = operation;
+            }
+        }
+
         private static final int BACKGROUND = Color.rgb(30, 31, 28);
         private static final int STONE_DARK = Color.rgb(55, 57, 52);
         private static final int STONE_LIGHT = Color.rgb(105, 105, 94);
@@ -179,6 +197,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
         private ThorTownRoster towns = ThorTownRoster.EMPTY;
         private ThorBrowserState browser = ThorBrowserState.EMPTY;
+        private ThorRecruitmentState recruitment = ThorRecruitmentState.EMPTY;
         private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
         private ThorHeroMeetingArtifacts heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
         private final ThorHeroMeetingModeState heroMeetingMode = new ThorHeroMeetingModeState();
@@ -187,6 +206,8 @@ final class ThorSecondScreenPresentation extends Presentation
         private int adventureTab;
         private int townPage;
         private final ThorTownHallBrowser townHall = new ThorTownHallBrowser();
+        private int recruitmentPage;
+        private final ThorRecruitmentGesture recruitmentGesture = new ThorRecruitmentGesture();
         private int selectedMeetingSlot = -1;
         private boolean pendingMeetingAction;
         private final ThorHeroMeetingGesture heroMeetingGesture = new ThorHeroMeetingGesture();
@@ -258,6 +279,9 @@ final class ThorSecondScreenPresentation extends Presentation
             browserGesture.cancel();
             windowNavigation.cancel();
             townServices.cancel();
+            recruitmentGesture.cancel();
+            recruitment = ThorRecruitmentState.EMPTY;
+            recruitmentPage = 0;
             invalidate();
         }
 
@@ -275,11 +299,14 @@ final class ThorSecondScreenPresentation extends Presentation
                 browserGesture.cancel();
                 windowNavigation.cancel();
                 townServices.cancel();
+                recruitmentGesture.cancel();
                 heroes = ThorHeroRoster.EMPTY;
                 towns = ThorTownRoster.EMPTY;
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
                 heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
                 browser = ThorBrowserState.EMPTY;
+                recruitment = ThorRecruitmentState.EMPTY;
+                recruitmentPage = 0;
                 artifactPage = 0;
                 selectedArtifact = -1;
                 townPage = 0;
@@ -454,6 +481,11 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_context_town) : publishedTitle;
                 status = publishedStatus.isEmpty() ? getContext().getString(R.string.thor_context_town_status) : publishedStatus;
             }
+            else if (isRecruitmentContext(contextId))
+            {
+                title = publishedTitle == null ? "" : publishedTitle;
+                status = "";
+            }
             else if (ThorContextIds.HERO_MEETING.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_hero_meeting);
@@ -517,6 +549,18 @@ final class ThorSecondScreenPresentation extends Presentation
             browser = publishedBrowser == null ? ThorBrowserState.EMPTY : publishedBrowser;
             if (ThorContextIds.TOWN_HALL.equals(contextId))
                 townHall.update(contextId, revision, presentationSessionId, browser);
+            invalidate();
+        }
+
+        void updateRecruitment(final ThorRecruitmentState publishedRecruitment)
+        {
+            if (publishedRecruitment == null || !isRecruitmentContext(contextId)
+                    || (publishedRecruitment != ThorRecruitmentState.EMPTY
+                            && publishedRecruitment.revision != revision))
+                return;
+            recruitment = publishedRecruitment;
+            recruitmentPage = Math.min(recruitmentPage, recruitment.pageCount() - 1);
+            recruitmentGesture.cancel();
             invalidate();
         }
 
@@ -606,8 +650,9 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean browserContext = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId);
+            final boolean recruitmentContext = isRecruitmentContext(contextId);
             final float dividerY = frame.top + contentHeight * (battleDashboard ? 0.55f
-                    : adventure ? ThorAdventureLayout.DIVIDER : browserContext ? 0.20f
+                    : adventure ? ThorAdventureLayout.DIVIDER : recruitmentContext ? 0.14f : browserContext ? 0.20f
                     : lobbyScenario || campaignBonus ? 0.48f : 0.34f);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(PARCHMENT_DARK);
@@ -620,7 +665,11 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawLine(frame.left + bevel * 2f, dividerY, frame.right - bevel * 2f, dividerY, paint);
 
-            if (battleDashboard)
+            if (recruitmentContext)
+            {
+                drawRecruitmentDashboard(canvas, frame, bevel, density);
+            }
+            else if (battleDashboard)
             {
                 drawBattleDashboard(canvas, frame, dividerY, bevel, density);
             }
@@ -745,6 +794,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
                 return handleBrowserTouch(event);
+            if (isRecruitmentContext(contextId))
+                return handleRecruitmentTouch(event);
             if (ThorContextIds.TOWN_WINDOW.equals(contextId) && (townServices.isActive()
                     || townServiceAt(event.getX(), event.getY()) != ThorTownServices.NONE))
                 return handleTownServiceTouch(event);
@@ -1657,6 +1708,9 @@ final class ThorSecondScreenPresentation extends Presentation
             cancelLobbyScenarioTouch();
             cancelMainMenuTouch();
             browserGesture.cancel();
+            recruitmentGesture.cancel();
+            recruitment = ThorRecruitmentState.EMPTY;
+            recruitmentPage = 0;
             heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
             heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
             heroMeetingGesture.cancel();
@@ -1680,6 +1734,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 cancelLobbyScenarioTouch();
                 cancelMainMenuTouch();
                 browserGesture.cancel();
+                recruitmentGesture.cancel();
                 cancelHeroMeetingGesture();
             }
         }
@@ -2000,6 +2055,301 @@ final class ThorSecondScreenPresentation extends Presentation
                     frame.width(), frame.height());
             return new RectF(frame.left + bounds[0], frame.top + bounds[1],
                     frame.left + bounds[2], frame.top + bounds[3]);
+        }
+
+        private void drawRecruitmentDashboard(final Canvas canvas, final RectF frame,
+                                              final float bevel, final float density)
+        {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setFakeBoldText(true);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, getContext().getString(R.string.thor_recruitment_title),
+                    frame.centerX(), frame.top + frame.height() * 0.065f, frame.width() * 0.78f,
+                    Math.min(36f * density, frame.height() * 0.060f));
+            paint.setFakeBoldText(false);
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, recruitment.townName, frame.centerX(), frame.top + frame.height() * 0.125f,
+                    frame.width() * 0.82f, Math.min(29f * density, frame.height() * 0.047f));
+            drawFittedText(canvas, getContext().getString(R.string.thor_recruitment_total) + ": "
+                            + (recruitment.totalCost.isEmpty() ? "0" : recruitment.totalCost),
+                    frame.centerX(), frame.top + frame.height() * 0.178f, frame.width() * 0.86f,
+                    Math.min(24f * density, frame.height() * 0.039f));
+
+            final float left = frame.left + frame.width() * 0.06f;
+            final float right = frame.right - frame.width() * 0.06f;
+            final float rowTop = frame.top + frame.height() * 0.225f;
+            final float rowHeight = frame.height() * 0.078f;
+            final float rowGap = frame.height() * 0.010f;
+            if (recruitment.revision != revision || recruitment.rows.length == 0)
+            {
+                paint.setColor(PARCHMENT_DARK);
+                drawFittedText(canvas, getContext().getString(R.string.thor_recruitment_empty), frame.centerX(),
+                        frame.top + frame.height() * 0.46f, frame.width() * 0.82f,
+                        Math.min(28f * density, frame.height() * 0.045f));
+            }
+            else
+            {
+                for (int position = 0; position < ThorRecruitmentState.PAGE_SIZE; ++position)
+                {
+                    final int rowIndex = recruitment.rowIndexOnPage(recruitmentPage, position);
+                    if (rowIndex < 0)
+                        break;
+                    final ThorRecruitmentState.Row row = recruitment.rows[rowIndex];
+                    final RectF bounds = new RectF(left, rowTop + position * (rowHeight + rowGap), right,
+                            rowTop + position * (rowHeight + rowGap) + rowHeight);
+                    drawRecruitmentRow(canvas, bounds, row, density);
+                }
+            }
+
+            drawFittedText(canvas, getContext().getString(R.string.thor_recruitment_page,
+                            recruitmentPage + 1, recruitment.pageCount()), frame.centerX(),
+                    frame.top + frame.height() * 0.705f, frame.width() * 0.60f,
+                    Math.min(22f * density, frame.height() * 0.035f));
+            final String[] labels = {"−10", "−1", "+1", "+10", "Min", "Max",
+                    getContext().getString(R.string.thor_recruitment_previous),
+                    getContext().getString(R.string.thor_recruitment_variant),
+                    getContext().getString(R.string.thor_recruitment_next),
+                    getContext().getString(R.string.thor_recruitment_buy),
+                    getContext().getString(R.string.thor_recruitment_back)};
+            for (int index = 0; index < labels.length; ++index)
+            {
+                final RectF bounds = recruitmentControlBounds(index, frame);
+                final int code = recruitmentControlCode(index);
+                drawLobbyScenarioButton(canvas, bounds, labels[index], recruitmentControlEnabled(code),
+                        false, density);
+            }
+        }
+
+        private void drawRecruitmentRow(final Canvas canvas, final RectF bounds,
+                                        final ThorRecruitmentState.Row row, final float density)
+        {
+            final boolean unavailable = !row.enabled || row.maximum <= 0 || !row.armyAvailable;
+            paint.setAlpha(unavailable ? 150 : 255);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(row.selected ? PARCHMENT_DARK : STONE_DARK);
+            canvas.drawRoundRect(bounds, 7f * density, 7f * density, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(Math.max(1.5f * density, 2f));
+            paint.setColor(row.selected ? GOLD : STONE_LIGHT);
+            canvas.drawRoundRect(bounds, 7f * density, 7f * density, paint);
+            final float iconSize = Math.min(bounds.height() * 0.76f, 54f * density);
+            final RectF icon = new RectF(bounds.left + bounds.height() * 0.12f,
+                    bounds.centerY() - iconSize * 0.5f, bounds.left + bounds.height() * 0.12f + iconSize,
+                    bounds.centerY() + iconSize * 0.5f);
+            if (!drawVisualAsset(canvas, row.visualAssetKey, icon))
+            {
+                paint.setStyle(Paint.Style.FILL);
+                paint.setTextAlign(Paint.Align.CENTER);
+                paint.setColor(TEXT);
+                drawFittedText(canvas, Integer.toString(row.creatureId + 1), icon.centerX(), icon.centerY(),
+                        icon.width(), Math.min(21f * density, icon.height() * 0.55f));
+            }
+            paint.setStyle(Paint.Style.FILL);
+            paint.setTextAlign(Paint.Align.LEFT);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, row.name, icon.right + bounds.width() * 0.025f,
+                    bounds.centerY() - bounds.height() * 0.08f, bounds.width() * 0.54f,
+                    Math.min(24f * density, bounds.height() * 0.34f));
+            paint.setColor(PARCHMENT);
+            drawFittedText(canvas, getContext().getString(R.string.thor_recruitment_available) + ": "
+                            + row.available + "     " + row.selectedAmount + " / " + row.maximum
+                            + (row.enabled && row.maximum > 0 && !row.armyAvailable
+                                    ? "  " + getContext().getString(R.string.thor_recruitment_no_army_space) : ""),
+                    icon.right + bounds.width() * 0.025f, bounds.centerY() + bounds.height() * 0.28f,
+                    bounds.width() * 0.60f, Math.min(18f * density, bounds.height() * 0.27f));
+            paint.setTextAlign(Paint.Align.RIGHT);
+            paint.setColor(PARCHMENT);
+            drawFittedText(canvas, row.selectedCost.isEmpty() ? row.unitCost : row.selectedCost,
+                    bounds.right - bounds.width() * 0.025f, bounds.centerY() + bounds.height() * 0.1f,
+                    bounds.width() * 0.30f, Math.min(18f * density, bounds.height() * 0.25f));
+            paint.setAlpha(255);
+        }
+
+        private RectF recruitmentControlBounds(final int index, final RectF frame)
+        {
+            final int row = index < 6 ? 0 : 1;
+            final int column = index % 6;
+            final float left = frame.left + frame.width() * 0.055f;
+            final float width = frame.width() * 0.89f;
+            final float gap = frame.width() * 0.012f;
+            final float buttonWidth = (width - gap * 5f) / 6f;
+            final float top = frame.top + frame.height() * (row == 0 ? 0.728f : 0.818f);
+            final float height = frame.height() * 0.073f;
+            final float x = left + column * (buttonWidth + gap);
+            return new RectF(x, top, x + buttonWidth, top + height);
+        }
+
+        private int recruitmentControlCode(final int index)
+        {
+            switch (index)
+            {
+                case 0: return ThorRecruitmentState.DECREASE_10;
+                case 1: return ThorRecruitmentState.DECREASE_1;
+                case 2: return ThorRecruitmentState.INCREASE_1;
+                case 3: return ThorRecruitmentState.INCREASE_10;
+                case 4: return ThorRecruitmentState.SET_MINIMUM;
+                case 5: return ThorRecruitmentState.SET_MAXIMUM;
+                case 6: return ThorRecruitmentGesture.PAGE_PREVIOUS;
+                case 7: return ThorRecruitmentState.CYCLE_VARIANT;
+                case 8: return ThorRecruitmentGesture.PAGE_NEXT;
+                case 9: return ThorRecruitmentState.BUY_CONTROL;
+                case 10: return ThorRecruitmentState.BACK_CONTROL;
+                default: return 0;
+            }
+        }
+
+        private boolean recruitmentControlEnabled(final int code)
+        {
+            if (code == ThorRecruitmentGesture.PAGE_PREVIOUS)
+                return recruitmentPage > 0;
+            if (code == ThorRecruitmentGesture.PAGE_NEXT)
+                return recruitmentPage + 1 < recruitment.pageCount();
+            if (code == ThorRecruitmentState.BUY_CONTROL)
+                return recruitment.revision == revision && isActionEnabled(ThorActionIds.RECRUITMENT_BUY);
+            if (code == ThorRecruitmentState.BACK_CONTROL)
+                return isActionEnabled(ThorActionIds.WINDOW_CLOSE);
+            final ThorRecruitmentState.Row selected = selectedRecruitmentRow();
+            return recruitment.revision == revision && isActionEnabled(ThorActionIds.RECRUITMENT_EDIT)
+                    && selected != null && selected.enabled && selected.armyAvailable && selectedRecruitmentRowVisible()
+                    && (code != ThorRecruitmentState.CYCLE_VARIANT || selected.variantCount > 1);
+        }
+
+        private ThorRecruitmentState.Row selectedRecruitmentRow()
+        {
+            for (final ThorRecruitmentState.Row row : recruitment.rows)
+                if (row.selected)
+                    return row;
+            return null;
+        }
+
+        private boolean selectedRecruitmentRowVisible()
+        {
+            for (int position = 0; position < ThorRecruitmentState.PAGE_SIZE; ++position)
+            {
+                final int index = recruitment.rowIndexOnPage(recruitmentPage, position);
+                if (index < 0)
+                    break;
+                if (recruitment.rows[index].selected)
+                    return true;
+            }
+            return false;
+        }
+
+        private RecruitmentHit recruitmentHit(final float x, final float y)
+        {
+            if (recruitment.revision == revision)
+            {
+                final RectF frame = recruitmentFrame();
+                for (int position = 0; position < ThorRecruitmentState.PAGE_SIZE; ++position)
+                {
+                    final int rowIndex = recruitment.rowIndexOnPage(recruitmentPage, position);
+                    if (rowIndex < 0)
+                        break;
+                    final float left = frame.left + frame.width() * 0.06f;
+                    final float right = frame.right - frame.width() * 0.06f;
+                    final float top = frame.top + frame.height() * (0.225f + position * 0.088f);
+                    final float bottom = top + frame.height() * 0.078f;
+                    if (x >= left && x <= right && y >= top && y <= bottom
+                            && recruitment.rows[rowIndex].enabled && recruitment.rows[rowIndex].armyAvailable
+                            && isActionEnabled(ThorActionIds.RECRUITMENT_EDIT))
+                        return new RecruitmentHit(recruitment.rows[rowIndex].target,
+                                ThorRecruitmentState.SELECT_ROW);
+                }
+            }
+            final RectF frame = recruitmentFrame();
+            for (int index = 0; index < 11; ++index)
+            {
+                final int code = recruitmentControlCode(index);
+                if (recruitmentControlBounds(index, frame).contains(x, y) && recruitmentControlEnabled(code))
+                {
+                    final ThorRecruitmentState.Row selected = selectedRecruitmentRow();
+                    final int target = code == ThorRecruitmentGesture.PAGE_PREVIOUS
+                            || code == ThorRecruitmentGesture.PAGE_NEXT
+                            || code == ThorRecruitmentState.BUY_CONTROL
+                            || code == ThorRecruitmentState.BACK_CONTROL ? ThorActionIds.NO_TARGET
+                            : selected == null ? ThorActionIds.NO_TARGET : selected.target;
+                    return new RecruitmentHit(target, code);
+                }
+            }
+            return null;
+        }
+
+        private RectF recruitmentFrame()
+        {
+            final float density = getResources().getDisplayMetrics().density;
+            final float referenceScale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
+            final float margin = Math.max(16f * density,
+                    Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
+                            Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
+            return new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
+        }
+
+        private boolean handleRecruitmentTouch(final MotionEvent event)
+        {
+            final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN)
+            {
+                if (event.getPointerCount() != 1 || !sessionValidity.isCurrent(presentationSessionId))
+                    return true;
+                final RecruitmentHit hit = recruitmentHit(event.getX(), event.getY());
+                if (hit == null)
+                    return true;
+                recruitmentGesture.begin(revision, presentationSessionId, event.getPointerId(0),
+                        hit.target, hit.operation);
+                return true;
+            }
+            if (!recruitmentGesture.isActive())
+                return true;
+            if (event.getPointerCount() != 1 || event.getPointerId(0) != recruitmentGesture.pointerId()
+                    || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP)
+            {
+                recruitmentGesture.cancel();
+                return true;
+            }
+            if (action == MotionEvent.ACTION_CANCEL)
+            {
+                recruitmentGesture.cancel();
+                return true;
+            }
+            if (action != MotionEvent.ACTION_UP)
+                return true;
+            if (!sessionValidity.isCurrent(presentationSessionId))
+            {
+                recruitmentGesture.cancel();
+                return true;
+            }
+            final RecruitmentHit hit = recruitmentHit(event.getX(), event.getY());
+            final int pointerId = event.getPointerId(0);
+            final int result = hit == null ? 0
+                    : recruitmentGesture.finish(revision, presentationSessionId, pointerId, hit.target, hit.operation);
+            if (result == 0)
+            {
+                recruitmentGesture.cancel();
+                return true;
+            }
+            final int target = hit.target;
+            if (result == ThorRecruitmentGesture.PAGE_PREVIOUS)
+                --recruitmentPage;
+            else if (result == ThorRecruitmentGesture.PAGE_NEXT)
+                ++recruitmentPage;
+            else if (result == ThorRecruitmentState.BUY_CONTROL)
+                NativeMethods.submitThorAction(revision, ThorActionIds.RECRUITMENT_BUY, ThorActionIds.NO_TARGET);
+            else if (result == ThorRecruitmentState.BACK_CONTROL)
+                NativeMethods.submitThorAction(revision, ThorActionIds.WINDOW_CLOSE, ThorActionIds.NO_TARGET);
+            else if (result == ThorRecruitmentState.SELECT_ROW)
+                NativeMethods.submitThorRecruitmentEdit(revision, target, result);
+            else if (target >= 0)
+                NativeMethods.submitThorRecruitmentEdit(revision, target, result);
+            performClick();
+            invalidate();
+            return true;
+        }
+
+        private static boolean isRecruitmentContext(final String value)
+        {
+            return ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(value)
+                    || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(value);
         }
 
         private void drawBrowserDashboard(final Canvas canvas, final RectF frame, final float density)

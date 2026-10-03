@@ -34,6 +34,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
     private ThorBrowserState browser = ThorBrowserState.EMPTY;
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+    private ThorRecruitmentState recruitment = ThorRecruitmentState.EMPTY;
     private final ThorHeroMeetingArtifactCache heroMeetingArtifactCache = new ThorHeroMeetingArtifactCache();
     private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
     private final ThorVisualAssetReferences visualAssetReferences = new ThorVisualAssetReferences();
@@ -152,6 +153,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         heroes = ThorHeroRoster.EMPTY;
         towns = ThorTownRoster.EMPTY;
         browser = ThorBrowserState.EMPTY;
+        recruitment = ThorRecruitmentState.EMPTY;
         heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
         heroMeetingArtifactCache.reset(revision, contextId);
         contextTitle = title == null ? "" : title;
@@ -189,6 +191,23 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         browser = ThorBrowserState.copyOf(contextId, page, pageCount, targets, labels, flags);
         if (presentation != null)
             presentation.updateBrowser(browser);
+    }
+
+    void publishRecruitment(final long revision, final int mode, final int selectedTarget,
+            final int[] targets, final int[] creatureIds, final int[] available, final int[] selectedAmounts,
+            final int[] maximum, final int[] variantIndexes, final int[] variantCounts, final int[] flags,
+            final long[] visualKeys, final String[] names, final String[] unitCosts, final String[] selectedCosts,
+            final String townName, final String totalCost)
+    {
+        if (revision != contextRevision || !(ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(contextId)
+                || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId)))
+            return;
+        final ThorRecruitmentState published = ThorRecruitmentState.copyOf(contextId, revision, mode, selectedTarget, targets, creatureIds,
+                available, selectedAmounts, maximum, variantIndexes, variantCounts, flags, visualKeys,
+                names, unitCosts, selectedCosts, townName, totalCost);
+        recruitment = published.revision == revision ? published : ThorRecruitmentState.EMPTY;
+        if (presentation != null)
+            presentation.updateRecruitment(recruitment);
     }
 
     void publishHeroes(final long revision, final ThorHeroRoster roster)
@@ -244,7 +263,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private boolean referencesVisualAsset(final long revision, final long key)
     {
         return visualAssetReferences.references(revision, key, heroMeetingArmies,
-                heroMeetingArtifactCache.snapshot());
+                heroMeetingArtifactCache.snapshot(), recruitment);
     }
 
     private Bitmap decodeVisualAsset(final int width, final int height, final byte[] encoded)
@@ -337,6 +356,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
             newPresentation.updateBrowser(browser);
+            newPresentation.updateRecruitment(recruitment);
             newPresentation.updateHeroMeetingArmies(heroMeetingArmies);
             newPresentation.updateHeroMeetingArtifacts(heroMeetingArtifactCache.snapshot());
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());

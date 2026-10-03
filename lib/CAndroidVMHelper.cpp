@@ -162,6 +162,82 @@ void CAndroidVMHelper::publishThorBrowser(std::uint64_t revision, int page, int 
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorRecruitment(std::uint64_t revision,
+	const ThorRecruitmentSnapshot & recruitment)
+{
+	if(recruitment.rows.size() > THOR_MAX_RECRUITMENT_ROWS)
+		return;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorRecruitment",
+		"(JII[I[I[I[I[I[I[I[I[J[Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+		[revision, &recruitment](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto size = static_cast<jsize>(recruitment.rows.size());
+			jintArray targets = env->NewIntArray(size);
+			jintArray creatureIds = env->NewIntArray(size);
+			jintArray available = env->NewIntArray(size);
+			jintArray selected = env->NewIntArray(size);
+			jintArray maximum = env->NewIntArray(size);
+			jintArray variantIndexes = env->NewIntArray(size);
+			jintArray variantCounts = env->NewIntArray(size);
+			jintArray flags = env->NewIntArray(size);
+			jlongArray visualKeys = env->NewLongArray(size);
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray names = env->NewObjectArray(size, stringClass, nullptr);
+			jobjectArray unitCosts = env->NewObjectArray(size, stringClass, nullptr);
+			jobjectArray selectedCosts = env->NewObjectArray(size, stringClass, nullptr);
+			for(jsize index = 0; index < size; ++index)
+			{
+				const auto & row = recruitment.rows[static_cast<std::size_t>(index)];
+				const jint target = row.target, creatureId = row.creatureId;
+				const jint availableCount = row.availableCount, selectedAmount = row.selectedAmount;
+				const jint maximumAmount = row.maximumAmount, variantIndex = row.variantIndex;
+				const jint variantCount = row.variantCount;
+				const jint state = (row.enabled ? 1 : 0) | (row.selected ? 2 : 0)
+					| (row.armyAvailable ? 4 : 0);
+				const jlong visualKey = static_cast<jlong>(row.visualAssetKey);
+				env->SetIntArrayRegion(targets, index, 1, &target);
+				env->SetIntArrayRegion(creatureIds, index, 1, &creatureId);
+				env->SetIntArrayRegion(available, index, 1, &availableCount);
+				env->SetIntArrayRegion(selected, index, 1, &selectedAmount);
+				env->SetIntArrayRegion(maximum, index, 1, &maximumAmount);
+				env->SetIntArrayRegion(variantIndexes, index, 1, &variantIndex);
+				env->SetIntArrayRegion(variantCounts, index, 1, &variantCount);
+				env->SetIntArrayRegion(flags, index, 1, &state);
+				env->SetLongArrayRegion(visualKeys, index, 1, &visualKey);
+				jstring name = env->NewStringUTF(row.name.c_str());
+				jstring unitCost = env->NewStringUTF(row.unitCost.c_str());
+				jstring selectedCost = env->NewStringUTF(row.selectedCost.c_str());
+				env->SetObjectArrayElement(names, index, name);
+				env->SetObjectArrayElement(unitCosts, index, unitCost);
+				env->SetObjectArrayElement(selectedCosts, index, selectedCost);
+				env->DeleteLocalRef(name);
+				env->DeleteLocalRef(unitCost);
+				env->DeleteLocalRef(selectedCost);
+			}
+			jstring townName = env->NewStringUTF(recruitment.townName.c_str());
+			jstring totalCost = env->NewStringUTF(recruitment.totalCost.c_str());
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision),
+				static_cast<jint>(recruitment.mode), static_cast<jint>(recruitment.selectedTarget),
+				targets, creatureIds, available, selected, maximum, variantIndexes, variantCounts, flags,
+				visualKeys, names, unitCosts, selectedCosts, townName, totalCost);
+			env->DeleteLocalRef(targets);
+			env->DeleteLocalRef(creatureIds);
+			env->DeleteLocalRef(available);
+			env->DeleteLocalRef(selected);
+			env->DeleteLocalRef(maximum);
+			env->DeleteLocalRef(variantIndexes);
+			env->DeleteLocalRef(variantCounts);
+			env->DeleteLocalRef(flags);
+			env->DeleteLocalRef(visualKeys);
+			env->DeleteLocalRef(names);
+			env->DeleteLocalRef(unitCosts);
+			env->DeleteLocalRef(selectedCosts);
+			env->DeleteLocalRef(townName);
+			env->DeleteLocalRef(totalCost);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 void CAndroidVMHelper::acknowledgeThorAction(std::uint64_t revision, ThorAction action, std::uint64_t submittedRevision)
 {
 	if(submittedRevision == 0)

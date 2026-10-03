@@ -100,6 +100,18 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishBrowser(revision, page, pageCount, targets, labels, flags);
     }
 
+    void publishThorRecruitment(final long revision, final int mode, final int selectedTarget,
+            final int[] targets, final int[] creatureIds, final int[] available, final int[] selectedAmounts,
+            final int[] maximum, final int[] variantIndexes, final int[] variantCounts, final int[] flags,
+            final long[] visualKeys, final String[] names, final String[] unitCosts, final String[] selectedCosts,
+            final String townName, final String totalCost)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.publishRecruitment(revision, mode, selectedTarget, targets, creatureIds,
+                    available, selectedAmounts, maximum, variantIndexes, variantCounts, flags, visualKeys,
+                    names, unitCosts, selectedCosts, townName, totalCost);
+    }
+
     void registerThorActionSubmission(final long revision, final int actionId)
     {
         if (mThorSecondScreenController != null)

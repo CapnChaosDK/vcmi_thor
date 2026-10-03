@@ -41,6 +41,8 @@
 #include "windows/CExchangeWindow.h"
 #include "windows/CHeroWindow.h"
 #include "windows/CCastleInterface.h"
+#include "windows/GUIClasses.h"
+#include "windows/QuickRecruitmentWindow.h"
 #include "lobby/CLobbyScreen.h"
 #include "lobby/CBonusSelection.h"
 #include "mainmenu/CMainMenu.h"
@@ -162,6 +164,10 @@ void GameEngine::updateFrame()
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(adventureInt)
 		adventureInt->updateThorActionState();
+	if(auto quickRecruitment = windows().topWindow<QuickRecruitmentWindow>())
+		quickRecruitment->refreshThorNativeState();
+	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
+		dwellingRecruitment->refreshThorNativeState();
 	bool thorActionExecuted = false;
 	while(const auto request = thorHeroMeetingRedistributionQueue().pop())
 	{
@@ -367,6 +373,38 @@ void GameEngine::updateFrame()
 				continue;
 			}
 			executed = hallWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK)
+		{
+			auto recruitmentWindow = windows().topWindow<QuickRecruitmentWindow>();
+			if(!recruitmentWindow || !recruitmentWindow->matchesThorContext(context))
+			{
+				logGlobal->debug("Thor action rejected: inactive quick Town recruitment");
+				continue;
+			}
+			recruitmentWindow->refreshThorNativeState();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: quick recruitment state changed");
+				continue;
+			}
+			executed = recruitmentWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING)
+		{
+			auto recruitmentWindow = windows().topWindow<CRecruitmentWindow>();
+			if(!recruitmentWindow || !recruitmentWindow->matchesThorContext(context))
+			{
+				logGlobal->debug("Thor action rejected: inactive Town dwelling recruitment");
+				continue;
+			}
+			recruitmentWindow->refreshThorNativeState();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+			{
+				logGlobal->debug("Thor action rejected: dwelling recruitment state changed");
+				continue;
+			}
+			executed = recruitmentWindow->executeThorAction(*request);
 		}
 		else
 		{

@@ -120,6 +120,7 @@ set(test_SRCS
 
 		thor/ThorContextTest.cpp
 		thor/ThorActionTest.cpp
+		thor/ThorRecruitmentTest.cpp
 
 		mock/BattleFake.cpp
 		mock/GameHandlerTestServer.cpp

@@ -44,6 +44,7 @@ set(vcmiclientcommon_SRCS
 	gui/ShortcutHandler.cpp
 	gui/WindowHandler.cpp
 	thor/ThorVisualAssetPublisher.cpp
+	windows/ThorRecruitmentSupport.cpp
 
 	lobby/BattleOnlyModeTab.cpp
 	lobby/CBonusSelection.cpp
@@ -397,6 +398,7 @@ set(vcmiclientcommon_HEADERS
 	windows/GUIClasses.h
 	windows/InfoWindows.h
 	windows/QuickRecruitmentWindow.h
+	windows/ThorRecruitmentSupport.h
 	windows/CHeroBackpackWindow.h
 	windows/CWindowWithArtifacts.h
 	windows/settings/GeneralOptionsTab.h

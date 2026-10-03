@@ -11,6 +11,12 @@
 
 #include "CWindowObject.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorContext.h"
+#include "../../lib/ResourceSet.h"
+#endif
+
 class CGTownInstance;
 
 class CButton;
@@ -23,7 +29,18 @@ class QuickRecruitmentWindow : public CWindowObject
 public:
 	int getAvailableCreatures();
 	void updateAllSliders();
-	QuickRecruitmentWindow(const CGTownInstance * townd, Rect startupPosition);
+	QuickRecruitmentWindow(const CGTownInstance * townd, Rect startupPosition, bool thorTownRecruitmentSource = false);
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void rebuildThorCreaturePurchaseCards();
+	void clampThorPlanToAvailableResources();
+	void refreshThorNativeState();
+	void publishThorContext();
+	bool hasOwningTownWindow() const;
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(const ThorActionRequest & request);
+	#endif
 
 private:
 	void initWindow(Rect startupPosition);
@@ -47,4 +64,14 @@ private:
 	std::vector<std::shared_ptr<CreaturePurchaseCard>> cards;
 	std::shared_ptr<CFilledTexture> backgroundTexture;
 	std::shared_ptr<CPicture> costBackground;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	Rect thorStartupPosition;
+	bool thorTownRecruitmentSource = false;
+	std::uint64_t thorActionEpoch = 0;
+	int selectedThorTarget = -1;
+	bool thorRefreshingNativeState = false;
+	std::optional<ResourceSet> lastThorResources;
+	std::vector<int> lastThorStocks;
+	std::vector<int> lastThorVariants;
+#endif
 };

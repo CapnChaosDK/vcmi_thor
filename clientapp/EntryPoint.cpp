@@ -100,6 +100,28 @@ extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActi
 	logGlobal->debug("Thor action queued: revision %llu action %d", static_cast<unsigned long long>(revision), actionId);
 }
 
+extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorRecruitmentEditNative(
+	JNIEnv *, jclass, jlong revision, jint targetId, jint operationId)
+{
+	const auto operation = thorRecruitmentOperationFromId(operationId);
+	if(revision <= 0 || targetId < 0 || !operation)
+	{
+		logGlobal->debug("Thor recruitment edit rejected: malformed target or operation");
+		return JNI_FALSE;
+	}
+	ThorActionRequest request;
+	request.revision = static_cast<std::uint64_t>(revision);
+	request.action = ThorAction::RECRUITMENT_EDIT;
+	request.targetId = targetId;
+	request.recruitmentOperation = *operation;
+	if(!thorActionQueue().submit(request))
+	{
+		logGlobal->debug("Thor recruitment edit rejected: action queue full");
+		return JNI_FALSE;
+	}
+	return JNI_TRUE;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorHeroMeetingRedistributionNative(
 	JNIEnv * env, jclass, jlong revision, jint leftHeroId, jint rightHeroId, jint sourceArmyId, jint sourceSlot,
 	jint sourceCreatureId, jint sourceCount, jintArray destinationArmyIds, jintArray destinationSlots, jintArray amounts)

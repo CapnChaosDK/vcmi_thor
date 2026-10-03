@@ -1235,10 +1235,10 @@ void CCastleBuildings::enterDwelling(int level)
 	ENGINE->windows().createAndPushWindow<CRecruitmentWindow>(town, level, town->getUpperArmy(), recruitCb, nullptr, -87);
 }
 
-void CCastleBuildings::enterToTheQuickRecruitmentWindow()
+void CCastleBuildings::enterToTheQuickRecruitmentWindow(bool thorTownRecruitmentSource)
 {
 	if(hasCreaturesToRecruit(town))
-		ENGINE->windows().createAndPushWindow<QuickRecruitmentWindow>(town, pos);
+		ENGINE->windows().createAndPushWindow<QuickRecruitmentWindow>(town, pos, thorTownRecruitmentSource);
 	else
 		CInfoWindow::showInfoDialog(LIBRARY->generaltexth->translate("vcmi.townHall.noCreaturesToRecruit"), {});
 }
@@ -1782,7 +1782,7 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 			builds->enterTownHall();
 			break;
 		case ThorTownService::RECRUIT:
-			builds->enterToTheQuickRecruitmentWindow();
+			builds->enterToTheQuickRecruitmentWindow(true);
 			break;
 		case ThorTownService::TAVERN:
 			keyPressed(EShortcut::TOWN_OPEN_TAVERN);
@@ -1900,7 +1900,7 @@ void CCastleInterface::recreateIcons()
 	fastTownHall->setOverlay(std::make_shared<CAnimImage>(AnimationPath::builtin("ITMTL"), town->hallLevel()));
 
 	int imageIndex = town->fortLevel() == CGTownInstance::EFortLevel::NONE ? 3 : town->fortLevel() - 1;
-	fastArmyPurchase = std::make_shared<CButton>(Point(122, 413), AnimationPath::builtin("castleInterfaceQuickAccess"), CButton::tooltip(), [this](){ builds->enterToTheQuickRecruitmentWindow(); }, EShortcut::TOWN_OPEN_RECRUITMENT);
+	fastArmyPurchase = std::make_shared<CButton>(Point(122, 413), AnimationPath::builtin("castleInterfaceQuickAccess"), CButton::tooltip(), [this](){ builds->enterToTheQuickRecruitmentWindow(true); }, EShortcut::TOWN_OPEN_RECRUITMENT);
 	fastArmyPurchase->setOverlay(std::make_shared<CAnimImage>(AnimationPath::builtin("itmcl"), imageIndex));
 
 	fastMarket = std::make_shared<LRClickableArea>(Rect(163, 410, 64, 42), [this]() { builds->enterAnyMarket(); });

@@ -52,6 +52,7 @@ public:
 		std::uint64_t activeActionMask);
 	void publishThorBrowser(std::uint64_t revision, int page, int pageCount,
 		const std::vector<ThorBrowserEntry> & entries);
+	void publishThorRecruitment(std::uint64_t revision, const ThorRecruitmentSnapshot & recruitment);
 	void acknowledgeThorAction(std::uint64_t revision, ThorAction action, std::uint64_t submittedRevision = 0);
 	void publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes);
 	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);

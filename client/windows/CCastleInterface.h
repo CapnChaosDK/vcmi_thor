@@ -177,7 +177,7 @@ public:
 	void enterAnyMarket();
 	void enterAnyThievesGuild();
 	void enterBank(BuildingID building);
-	void enterToTheQuickRecruitmentWindow();
+	void enterToTheQuickRecruitmentWindow(bool thorTownRecruitmentSource = false);
 
 	bool buildingTryActivateCustomUI(BuildingID buildingToTest, BuildingID buildingTarget);
 	void buildingClicked(BuildingID building);

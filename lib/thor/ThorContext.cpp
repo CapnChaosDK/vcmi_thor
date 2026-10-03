@@ -27,13 +27,16 @@ namespace
 			&& lhs.heroes == rhs.heroes
 			&& lhs.towns == rhs.towns
 			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies
-			&& lhs.heroMeetingArtifacts == rhs.heroMeetingArtifacts;
+			&& lhs.heroMeetingArtifacts == rhs.heroMeetingArtifacts
+			&& lhs.recruitment == rhs.recruitment;
 	}
 
 	void normalizeActionSubject(ThorContextRecord & context)
 	{
 		if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS
-			&& context.contextId != ThorContextIds::TOWN_HALL)
+			&& context.contextId != ThorContextIds::TOWN_HALL
+			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
+			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING)
 			context.actionSubjectId = -1;
 		if(context.contextId != ThorContextIds::HERO_WINDOW && context.contextId != ThorContextIds::TOWN_WINDOW)
 			context.windowSubjectId = -1;
@@ -56,6 +59,72 @@ namespace
 		{
 			context.heroMeetingArmies.reset();
 			context.heroMeetingArtifacts.reset();
+		}
+		if(context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
+			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING)
+			context.recruitment.reset();
+		if(context.recruitment)
+		{
+			auto & recruitment = *context.recruitment;
+			const bool quick = context.contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK;
+			bool valid = recruitment.townId >= 0 && recruitment.destinationArmyId >= 0
+				&& recruitment.destinationArmyFreeSlots >= 0
+				&& recruitment.destinationArmyFreeSlots <= static_cast<int>(GameConstants::ARMY_SIZE)
+				&& recruitment.rows.size() <= THOR_MAX_RECRUITMENT_ROWS
+				&& (quick ? recruitment.mode == ThorRecruitmentMode::QUICK_TOWN && recruitment.dwellingLevel == -1
+					: recruitment.mode == ThorRecruitmentMode::TOWN_DWELLING && recruitment.dwellingLevel >= 0)
+				&& recruitment.townName.size() <= 128 && recruitment.totalCost.size() <= 128;
+			std::size_t selectedRows = 0;
+			bool selectedTargetFound = recruitment.selectedTarget == -1;
+			for(std::size_t index = 0; valid && index < recruitment.rows.size(); ++index)
+			{
+				auto & row = recruitment.rows[index];
+				valid = row.target >= 0 && row.creatureId >= 0 && !row.name.empty() && row.name.size() <= 128
+					&& row.unitCost.size() <= 128 && row.selectedCost.size() <= 128
+					&& row.availableCount >= 0 && row.selectedAmount >= 0 && row.maximumAmount >= 0
+					&& row.selectedAmount <= row.maximumAmount && row.maximumAmount <= row.availableCount
+					&& row.variantCount >= 1 && row.variantCount <= static_cast<int>(THOR_MAX_RECRUITMENT_VARIANTS)
+					&& row.variantIndex >= 0 && row.variantIndex < row.variantCount
+					&& (!row.enabled || row.armyAvailable)
+					&& (recruitment.mode != ThorRecruitmentMode::TOWN_DWELLING
+						|| row.selected || row.selectedAmount == 0)
+					&& (row.visualAssetKey == 0 || row.visualAssetKey == thorCreatureVisualAssetKey(row.creatureId));
+				if(!valid)
+					break;
+				row.name = thorBoundedText(std::move(row.name));
+				row.unitCost = thorBoundedText(std::move(row.unitCost));
+				row.selectedCost = thorBoundedText(std::move(row.selectedCost));
+				row.visualAssetKey = thorCreatureVisualAssetKey(row.creatureId);
+				selectedRows += row.selected;
+				selectedTargetFound |= row.target == recruitment.selectedTarget && row.selected;
+				for(std::size_t earlier = 0; earlier < index; ++earlier)
+					valid = valid && recruitment.rows[earlier].target != row.target;
+			}
+			valid = valid && (recruitment.selectedTarget == -1 || selectedTargetFound)
+				&& selectedRows <= 1
+				&& (recruitment.selectedTarget == -1 ? selectedRows == 0 : selectedRows == 1)
+				&& (!recruitment.canBuy || (recruitment.locallyControllable
+					&& std::any_of(recruitment.rows.begin(), recruitment.rows.end(),
+						[](const auto & row) { return row.selectedAmount > 0 && row.enabled && row.armyAvailable; })))
+				&& (recruitment.locallyControllable || std::none_of(recruitment.rows.begin(), recruitment.rows.end(),
+					[](const auto & row) { return row.enabled; }));
+			if(!valid)
+			{
+				context.recruitment.reset();
+				context.enabledActionMask &= ~(thorActionMask(ThorAction::RECRUITMENT_EDIT)
+					| thorActionMask(ThorAction::RECRUITMENT_BUY)
+					| thorActionMask(ThorAction::WINDOW_CLOSE));
+			}
+			else
+			{
+				recruitment.townName = thorBoundedText(std::move(recruitment.townName));
+				recruitment.totalCost = thorBoundedText(std::move(recruitment.totalCost));
+				if(!recruitment.locallyControllable)
+					context.enabledActionMask &= ~(thorActionMask(ThorAction::RECRUITMENT_EDIT)
+						| thorActionMask(ThorAction::RECRUITMENT_BUY));
+				else if(!recruitment.canBuy)
+					context.enabledActionMask &= ~thorActionMask(ThorAction::RECRUITMENT_BUY);
+			}
 		}
 		for(auto & hero : context.heroes)
 			hero.name = thorBoundedText(std::move(hero.name));
@@ -308,6 +377,10 @@ std::string thorContextIdForInGameContext(ThorInGameContext context)
 		return ThorContextIds::TOWN_WINDOW;
 	case ThorInGameContext::TOWN_HALL:
 		return ThorContextIds::TOWN_HALL;
+	case ThorInGameContext::TOWN_RECRUITMENT_QUICK:
+		return ThorContextIds::TOWN_RECRUITMENT_QUICK;
+	case ThorInGameContext::TOWN_RECRUITMENT_DWELLING:
+		return ThorContextIds::TOWN_RECRUITMENT_DWELLING;
 	case ThorInGameContext::HERO_MEETING:
 		return ThorContextIds::HERO_MEETING;
 	case ThorInGameContext::BATTLE:

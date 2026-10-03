@@ -53,6 +53,17 @@
     <string name="thor_town_hall_built">Built</string>
     <string name="thor_town_hall_buildable">Buildable</string>
     <string name="thor_town_hall_unavailable">Unavailable</string>
+    <string name="thor_recruitment_title">Recruitment</string>
+    <string name="thor_recruitment_available">Available</string>
+    <string name="thor_recruitment_total">Total</string>
+    <string name="thor_recruitment_page">Page %1$d of %2$d</string>
+    <string name="thor_recruitment_previous">Previous</string>
+    <string name="thor_recruitment_next">Next</string>
+    <string name="thor_recruitment_variant">Variant</string>
+    <string name="thor_recruitment_buy">Buy</string>
+    <string name="thor_recruitment_back">Back</string>
+    <string name="thor_recruitment_empty">No creatures available</string>
+    <string name="thor_recruitment_no_army_space">No army space</string>
     <string name="thor_lobby_difficulty_easy">Easy</string>
     <string name="thor_lobby_difficulty_normal">Normal</string>
     <string name="thor_lobby_difficulty_hard">Hard</string>

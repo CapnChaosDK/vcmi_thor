@@ -91,11 +91,12 @@ jobs:
             lib/thor/ThorVisualAssetCache.cpp \
             test/thor/ThorContextTest.cpp \
             test/thor/ThorActionTest.cpp \
+            test/thor/ThorRecruitmentTest.cpp \
             test/thor/ThorVisualAssetTest.cpp \
             test/googletest/googletest/src/gtest-all.cc \
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
-          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorVisualAsset*'
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*'
 
   arm64-candidate:
     name: Thor ARM64 candidate
@@ -251,6 +252,7 @@ jobs:
               --tests eu.vcmi.vcmi.ThorWindowNavigationTest \
               --tests eu.vcmi.vcmi.ThorTownServicesTest \
               --tests eu.vcmi.vcmi.ThorTownHallBrowserTest \
+              --tests eu.vcmi.vcmi.ThorRecruitmentTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingTransferPairTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactPairTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactGestureTest \
