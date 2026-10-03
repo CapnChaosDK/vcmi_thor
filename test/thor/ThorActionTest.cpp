@@ -48,13 +48,12 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
-TEST(ThorActionTest, LobbyStartWaitsForAuthoritativeSelectedSaveAndUpperButton)
+TEST(ThorActionTest, LobbyStartRequiresMatchingMapAndNativeAvailability)
 {
-	EXPECT_FALSE(thorLobbyStartActionAvailable(false, false, true, true));
-	EXPECT_FALSE(thorLobbyStartActionAvailable(true, true, true, true));
-	EXPECT_FALSE(thorLobbyStartActionAvailable(true, false, false, true));
-	EXPECT_FALSE(thorLobbyStartActionAvailable(true, false, true, false));
-	EXPECT_TRUE(thorLobbyStartActionAvailable(true, false, true, true));
+	EXPECT_FALSE(thorLobbyStartActionAvailable(false, true, true));
+	EXPECT_FALSE(thorLobbyStartActionAvailable(true, false, true));
+	EXPECT_FALSE(thorLobbyStartActionAvailable(true, true, false));
+	EXPECT_TRUE(thorLobbyStartActionAvailable(true, true, true));
 }
 
 TEST(ThorActionTest, HapticAcceptanceRequiresValidSuccessfullyExecutedSemanticAction)

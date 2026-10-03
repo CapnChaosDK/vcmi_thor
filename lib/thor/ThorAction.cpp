@@ -794,9 +794,9 @@ ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & re
 	return ThorActionValidation::VALID;
 }
 
-bool thorLobbyStartActionAvailable(bool mapAvailable, bool selectionPending, bool lobbyReady, bool upperButtonEnabled)
+bool thorLobbyStartActionAvailable(bool mapAvailable, bool lobbyReady, bool upperButtonEnabled)
 {
-	return mapAvailable && !selectionPending && lobbyReady && upperButtonEnabled;
+	return mapAvailable && lobbyReady && upperButtonEnabled;
 }
 
 ThorActionValidation validateThorHeroMeetingRedistributionRequest(

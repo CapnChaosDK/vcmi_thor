@@ -129,12 +129,8 @@ CLobbyScreen::CLobbyScreen(ESelectionScreen screenType, bool hideScreen)
 
 	auto initLobby = [&]()
 	{
-		tabSel->callOnSelect = [this, screenType](std::shared_ptr<CMapInfo> mapInfo)
+		tabSel->callOnSelect = [this](std::shared_ptr<CMapInfo> mapInfo)
 		{
-#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-			thorSaveSelectionPending = screenType == ESelectionScreen::loadGame && mapInfo
-				&& (!GAME->server().mi || GAME->server().mi->fileURI != mapInfo->fileURI);
-#endif
 			GAME->server().setMapInfo(mapInfo, nullptr);
 			if(curTab != tabBattleOnlyMode)
 				updateStartButtonState();
@@ -357,7 +353,7 @@ void CLobbyScreen::publishThorContext()
 			if(screenType == ESelectionScreen::newGame && thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending
 				&& startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY);
-			if(!thorDifficultyChangePending && thorLobbyStartActionAvailable(mapAvailable, thorSaveSelectionPending,
+			if(!thorDifficultyChangePending && thorLobbyStartActionAvailable(mapAvailable,
 				canStartLobbyGame(), buttonStart && !buttonStart->isBlocked()))
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_START_GAME);
 		}
@@ -435,7 +431,7 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 		|| screenType == ESelectionScreen::loadGame) && curTab == tabSel;
 	const bool mapAvailable = thorScenarioMapAvailable();
 	const bool startAvailable = !thorDifficultyChangePending && thorLobbyStartActionAvailable(mapAvailable,
-		thorSaveSelectionPending, canStartLobbyGame(), buttonStart && !buttonStart->isBlocked());
+		canStartLobbyGame(), buttonStart && !buttonStart->isBlocked());
 	const auto adjacentPosition = (tabSel && (request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO
 		|| request.action == ThorAction::LOBBY_NEXT_SCENARIO)
 		? adjacentThorScenarioPosition(*tabSel, request.action) : std::optional<std::size_t>{});
@@ -475,7 +471,6 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 		if(!item || item->isFolder || !item->mapHeader || rowIndex >= context.browserNativeKeys.size()
 			|| item->fileURI != context.browserNativeKeys[rowIndex])
 			return false;
-		thorSaveSelectionPending = true;
 		tabSel->selectAbs(request.targetId);
 		return tabSel->selectionPos == static_cast<std::size_t>(request.targetId)
 			&& tabSel->getSelectedMapInfo() == item;
@@ -819,7 +814,6 @@ void CLobbyScreen::updateAfterStateChange()
 		tabRand->setMapGenOptions(GAME->server().si->mapGenOptions);
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	thorDifficultyChangePending = false;
-	thorSaveSelectionPending = false;
 	publishThorLobbyContext(*this);
 #endif
 }

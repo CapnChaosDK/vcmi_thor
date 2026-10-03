@@ -342,12 +342,6 @@ void GameEngine::updateFrame()
 				logGlobal->debug("Thor action rejected: inactive scenario/load lobby");
 				continue;
 			}
-			lobbyWindow->publishThorContext();
-			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
-			{
-				logGlobal->debug("Thor action rejected: lobby scenario state changed");
-				continue;
-			}
 			executed = lobbyWindow->executeThorAction(*request);
 		}
 		else if(thorMainMenuChoice(context.contextId, request->action))

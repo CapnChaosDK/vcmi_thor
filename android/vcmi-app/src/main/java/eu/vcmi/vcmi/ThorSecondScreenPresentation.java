@@ -294,12 +294,19 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final boolean retainMeetingArmies = ThorHeroMeetingGesture.retainsArmies(
                     this.revision, this.contextId, revision, contextId);
+            final boolean retainLoadBackGesture = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(this.contextId)
+                    && ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                    && browserGesture.isActive()
+                    && ThorBrowserState.actionForControl(contextId, browserGesture.control())
+                    == ThorActionIds.LOBBY_BACK
+                    && (enabledActionMask & ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK)) != 0L;
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 cancelLobbyScenarioTouch();
                 buildConfirmationGesture.cancel();
                 cancelMainMenuTouch();
-                browserGesture.cancel();
+                if (!retainLoadBackGesture)
+                    browserGesture.cancel();
                 windowNavigation.cancel();
                 townServices.cancel();
                 recruitmentGesture.cancel();
@@ -334,7 +341,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
-                    && this.enabledActionMask != enabledActionMask)
+                    && this.enabledActionMask != enabledActionMask && !retainLoadBackGesture)
                 browserGesture.cancel();
             if (ThorWindowNavigation.isWindow(contextId) && this.enabledActionMask != enabledActionMask)
                 windowNavigation.cancel();
@@ -3488,12 +3495,14 @@ final class ThorSecondScreenPresentation extends Presentation
             final int target = browserGesture.target();
             final long submittedRevision = browserGesture.revision();
             final long submittedSession = browserGesture.session();
+            final boolean loadBack = actionId == ThorActionIds.LOBBY_BACK
+                    && ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
             final boolean accepted = browserGesture.finish(contextId,
                     browserControlAt(event.getX(), event.getY()),
                     browserTarget(browserControlAt(event.getX(), event.getY())),
                     event.getPointerCount(), event.getPointerId(0), revision, presentationSessionId,
                     browserControlEnabled(control), sessionValidity != null
-                            && sessionValidity.isCurrent(submittedSession));
+                            && sessionValidity.isCurrent(submittedSession), loadBack);
             if (accepted)
             {
                 performClick();
@@ -3510,7 +3519,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     invalidate();
                 }
                 else if (actionId != ThorActionIds.NONE)
-                    NativeMethods.submitThorAction(submittedRevision, actionId, target);
+                    NativeMethods.submitThorAction(loadBack ? revision : submittedRevision, actionId, target);
             }
             return true;
         }

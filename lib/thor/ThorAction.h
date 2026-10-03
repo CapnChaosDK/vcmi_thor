@@ -254,8 +254,7 @@ enum class ThorActionValidation
 DLL_LINKAGE ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & request,
 	const ThorContextRecord & context, bool exactTopOwner, bool scenarioTabActive, bool authoritative,
 	bool mapAvailable, bool startAvailable, bool scenarioNavigationAvailable);
-DLL_LINKAGE bool thorLobbyStartActionAvailable(bool mapAvailable, bool selectionPending,
-	bool lobbyReady, bool upperButtonEnabled);
+DLL_LINKAGE bool thorLobbyStartActionAvailable(bool mapAvailable, bool lobbyReady, bool upperButtonEnabled);
 
 struct DLL_LINKAGE ThorActionAcceptance
 {

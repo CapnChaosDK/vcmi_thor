@@ -75,6 +75,41 @@ public class ThorBrowserTest
     }
 
     @Test
+    public void loadAndBackControlsHaveDistinctTouchableRegionsAndLobbyActions()
+    {
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final float width = 982f;
+        final float height = 1142f;
+        final int[] controls = {ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
+        final int[] actions = {ThorActionIds.LOBBY_START_GAME, ThorActionIds.LOBBY_BACK};
+        final float[][] bounds = new float[controls.length][];
+        for (int index = 0; index < controls.length; ++index)
+        {
+            bounds[index] = ThorBrowserState.boundsForControl(context, controls[index], width, height);
+            assertTrue(bounds[index][0] >= 0f);
+            assertTrue(bounds[index][1] >= 0f);
+            assertTrue(bounds[index][2] <= width);
+            assertTrue(bounds[index][3] <= height);
+            assertTrue(bounds[index][2] > bounds[index][0]);
+            assertTrue(bounds[index][3] > bounds[index][1]);
+            assertEquals(controls[index], ThorBrowserState.controlAt(context,
+                    (bounds[index][0] + bounds[index][2]) / 2, (bounds[index][1] + bounds[index][3]) / 2,
+                    width, height, 1));
+            assertEquals(actions[index], ThorBrowserState.actionForControl(context, controls[index]));
+            final ThorBrowserGesture gesture = new ThorBrowserGesture();
+            gesture.begin(context, controls[index], ThorActionIds.NO_TARGET, 7, 9, 1, true);
+            if (controls[index] == ThorBrowserState.CONTROL_BACK)
+                assertTrue(gesture.finish(context, controls[index], ThorActionIds.NO_TARGET, 1, 1, 8, 9,
+                        true, true, true));
+            else
+                assertFalse(gesture.finish(context, controls[index], ThorActionIds.NO_TARGET, 1, 1, 8, 9,
+                        true, true));
+        }
+        assertTrue(bounds[0][2] <= bounds[1][0] || bounds[1][2] <= bounds[0][0]
+                || bounds[0][3] <= bounds[1][1] || bounds[1][3] <= bounds[0][1]);
+    }
+
+    @Test
     public void gesturesRejectCrossRowPagePointerRevisionAndSessionChanges()
     {
         final ThorBrowserGesture gesture = new ThorBrowserGesture();
