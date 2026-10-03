@@ -2147,21 +2147,22 @@ CHallInterface::CHallInterface(const CGTownInstance * Town):
 
 			if(building)
 			{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 				choices.push_back(building);
+#endif
 				boxes[row].push_back(std::make_shared<CBuildingBox>(posX, posY, town, building));
 			}
 		}
 	}
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 void CHallInterface::activate()
 {
 	if(isActive())
 		return;
 	CStatusbarWindow::activate();
-#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	updateThorContext();
-#endif
 }
 
 void CHallInterface::deactivate()
@@ -2169,14 +2170,11 @@ void CHallInterface::deactivate()
 	if(!isActive())
 		return;
 	CStatusbarWindow::deactivate();
-#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	ThorContextRecord context;
 	context = thorContextStore().publishNext(std::move(context));
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-#endif
 }
 
-#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 void CHallInterface::updateThorContext()
 {
 	if(!isActive() || ENGINE->windows().topWindow<CHallInterface>().get() != this)
