@@ -74,10 +74,11 @@ enum class ThorAction : std::uint8_t
 	TOWN_OPEN_SERVICE = 53,
 	TOWN_HALL_BUILD = 54,
 	RECRUITMENT_EDIT = 55,
-	RECRUITMENT_BUY = 56
+	RECRUITMENT_BUY = 56,
+	WINDOW_CONFIRM = 57
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::RECRUITMENT_BUY);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::WINDOW_CONFIRM);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -122,6 +123,8 @@ DLL_LINKAGE bool isThorActionAllowedInAdventureMap(ThorAction action);
 DLL_LINKAGE bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId);
 DLL_LINKAGE bool thorWindowOwnerMatches(const ThorContextRecord & context,
 	const std::string & expectedContext, int subjectId, bool active, bool top);
+DLL_LINKAGE bool thorBuildConfirmationOwnerMatches(const ThorContextRecord & context,
+	int townId, int buildingId, bool active, bool top);
 DLL_LINKAGE bool thorRecruitmentOwnerMatches(const ThorContextRecord & context, ThorRecruitmentMode mode,
 	int townId, int dwellingLevel, int destinationArmyId, int destinationArmyFreeSlots, bool active, bool top);
 /// getHeroSerial is one-based; getHeroBySerial accepts a zero-based index.
@@ -251,6 +254,7 @@ enum class ThorActionValidation
 DLL_LINKAGE ThorActionValidation validateThorLobbyActionRequest(const ThorActionRequest & request,
 	const ThorContextRecord & context, bool exactTopOwner, bool scenarioTabActive, bool authoritative,
 	bool mapAvailable, bool startAvailable, bool scenarioNavigationAvailable);
+DLL_LINKAGE bool thorLobbyStartActionAvailable(bool mapAvailable, bool lobbyReady, bool upperButtonEnabled);
 
 struct DLL_LINKAGE ThorActionAcceptance
 {

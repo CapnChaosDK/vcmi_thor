@@ -31,6 +31,18 @@ public class ThorBrowserTest
     }
 
     @Test
+    public void repeatedBrowserPublicationKeepsCurrentPageUntilItsContentsChange()
+    {
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final ThorBrowserState current = ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{1, 3});
+        assertTrue(current.sameContents(ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{1, 3})));
+        assertFalse(current.sameContents(ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{3, 1})));
+    }
+
+    @Test
     public void malformedOrOversizedPayloadFailsClosed()
     {
         assertEquals(0, ThorBrowserState.copyOf(ThorContextIds.UNKNOWN, 0, 1,
@@ -72,6 +84,56 @@ public class ThorBrowserTest
         }
         assertEquals(ThorActionIds.NONE, ThorBrowserState.actionForControl(
                 ThorContextIds.CAMPAIGN_BROWSER, ThorBrowserState.CONTROL_PRIMARY));
+    }
+
+    @Test
+    public void loadAndBackControlsHaveDistinctTouchableRegionsAndLobbyActions()
+    {
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final float width = 982f;
+        final float height = 1142f;
+        final int[] controls = {ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
+        final int[] actions = {ThorActionIds.LOBBY_START_GAME, ThorActionIds.LOBBY_BACK};
+        final float[][] bounds = new float[controls.length][];
+        for (int index = 0; index < controls.length; ++index)
+        {
+            bounds[index] = ThorBrowserState.boundsForControl(context, controls[index], width, height);
+            assertTrue(bounds[index][0] >= 0f);
+            assertTrue(bounds[index][1] >= 0f);
+            assertTrue(bounds[index][2] <= width);
+            assertTrue(bounds[index][3] <= height);
+            assertTrue(bounds[index][2] > bounds[index][0]);
+            assertTrue(bounds[index][3] > bounds[index][1]);
+            assertEquals(controls[index], ThorBrowserState.controlAt(context,
+                    (bounds[index][0] + bounds[index][2]) / 2, (bounds[index][1] + bounds[index][3]) / 2,
+                    width, height, 1));
+            assertEquals(actions[index], ThorBrowserState.actionForControl(context, controls[index]));
+            final ThorBrowserGesture gesture = new ThorBrowserGesture();
+            gesture.begin(context, controls[index], ThorActionIds.NO_TARGET, 7, 9, 1, true);
+            if (controls[index] == ThorBrowserState.CONTROL_BACK)
+                assertTrue(gesture.finish(context, controls[index], ThorActionIds.NO_TARGET, 1, 1, 8, 9,
+                        true, true, true));
+            else
+                assertFalse(gesture.finish(context, controls[index], ThorActionIds.NO_TARGET, 1, 1, 8, 9,
+                        true, true));
+        }
+        assertTrue(bounds[0][2] <= bounds[1][0] || bounds[1][2] <= bounds[0][0]
+                || bounds[0][3] <= bounds[1][1] || bounds[1][3] <= bounds[0][1]);
+    }
+
+    @Test
+    public void loadBackSurvivesBrowserRefreshWhileRowsAndOtherContextsCancel()
+    {
+        final ThorBrowserGesture gesture = new ThorBrowserGesture();
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        gesture.begin(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET, 7, 9, 1, true);
+        assertTrue(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, false));
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(ThorContextIds.CAMPAIGN_BROWSER, true));
+        gesture.begin(context, ThorBrowserState.CONTROL_FIRST_ROW, 2, 7, 9, 1, true);
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
+        gesture.cancel();
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
     }
 
     @Test

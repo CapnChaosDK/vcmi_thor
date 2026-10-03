@@ -353,7 +353,8 @@ void CLobbyScreen::publishThorContext()
 			if(screenType == ESelectionScreen::newGame && thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending
 				&& startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY);
-			if(!thorDifficultyChangePending && canStartLobbyGame() && buttonStart && !buttonStart->isBlocked())
+			if(!thorDifficultyChangePending && thorLobbyStartActionAvailable(mapAvailable,
+				canStartLobbyGame(), buttonStart && !buttonStart->isBlocked()))
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_START_GAME);
 		}
 		else
@@ -412,6 +413,20 @@ void CLobbyScreen::publishThorContext()
 			context.browserPageCount, context.browserEntries);
 }
 
+void CLobbyScreen::refreshThorActionAvailability()
+{
+	if(!isActive() || ENGINE->windows().topWindow<CLobbyScreen>().get() != this || curTab != tabSel
+		|| (screenType != ESelectionScreen::newGame && screenType != ESelectionScreen::loadGame))
+		return;
+	const auto context = thorContextStore().snapshot();
+	if(context.contextId != thorContextIdForLobby(thorLobbyModeFor(screenType), ThorLobbyTab::SCENARIO))
+		return;
+	const bool available = !thorDifficultyChangePending && thorLobbyStartActionAvailable(thorScenarioMapAvailable(),
+		canStartLobbyGame(), buttonStart && !buttonStart->isBlocked());
+	if(available != ((context.enabledActionMask & thorActionMask(ThorAction::LOBBY_START_GAME)) != 0))
+		publishThorContext();
+}
+
 bool CLobbyScreen::matchesThorContext(const ThorContextRecord & context) const
 {
 	const auto current = thorContextStore().snapshot();
@@ -429,8 +444,8 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 	const bool scenarioTabActive = (screenType == ESelectionScreen::newGame
 		|| screenType == ESelectionScreen::loadGame) && curTab == tabSel;
 	const bool mapAvailable = thorScenarioMapAvailable();
-	const bool startAvailable = mapAvailable && !thorDifficultyChangePending && canStartLobbyGame()
-		&& buttonStart && !buttonStart->isBlocked();
+	const bool startAvailable = !thorDifficultyChangePending && thorLobbyStartActionAvailable(mapAvailable,
+		canStartLobbyGame(), buttonStart && !buttonStart->isBlocked());
 	const auto adjacentPosition = (tabSel && (request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO
 		|| request.action == ThorAction::LOBBY_NEXT_SCENARIO)
 		? adjacentThorScenarioPosition(*tabSel, request.action) : std::optional<std::size_t>{});

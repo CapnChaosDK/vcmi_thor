@@ -252,6 +252,7 @@ jobs:
               --tests eu.vcmi.vcmi.ThorWindowNavigationTest \
               --tests eu.vcmi.vcmi.ThorTownServicesTest \
               --tests eu.vcmi.vcmi.ThorTownHallBrowserTest \
+              --tests eu.vcmi.vcmi.ThorBuildConfirmationTest \
               --tests eu.vcmi.vcmi.ThorRecruitmentTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingTransferPairTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactPairTest \

@@ -2265,7 +2265,8 @@ bool CHallInterface::executeThorAction(const ThorActionRequest & request)
 CBuildWindow::CBuildWindow(const CGTownInstance *Town, const CBuilding * Building, EBuildingState state, bool rightClick):
 	CWindowObject(PLAYER_COLORED | (rightClick ? RCLICK_POPUP : 0), ImagePath::builtin("TPUBUILD")),
 	town(Town),
-	building(Building)
+	building(Building),
+	rightClick(rightClick)
 {
 	OBJECT_CONSTRUCTION;
 
@@ -2330,6 +2331,91 @@ CBuildWindow::CBuildWindow(const CGTownInstance *Town, const CBuilding * Buildin
 		cancel->setBorderColor(Colors::METALLIC_GOLD);
 	}
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CBuildWindow::activate()
+{
+	if(isActive())
+		return;
+	CStatusbarWindow::activate();
+	updateThorContext();
+}
+
+void CBuildWindow::deactivate()
+{
+	if(!isActive())
+		return;
+	CStatusbarWindow::deactivate();
+	ThorContextRecord hidden;
+	hidden = thorContextStore().publishNext(std::move(hidden));
+	CAndroidVMHelper().publishThorContext(hidden.revision, hidden.contextId, hidden.title, hidden.status);
+}
+
+void CBuildWindow::updateThorContext()
+{
+	if(rightClick || !isActive() || ENGINE->windows().topWindow<CBuildWindow>().get() != this)
+		return;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BUILD_CONFIRMATION;
+	context.title = GAME->translator().translate(town->getNameTextID());
+	context.actionSubjectId = town->id.getNum();
+	context.windowSubjectId = building->bid.getNum();
+	context.details[0] = building->getNameTranslated();
+	for(const GameResID resource : LIBRARY->resourceTypeHandler->getAllObjects())
+	{
+		const auto amount = building->resources[resource];
+		if(amount <= 0)
+			continue;
+		if(!context.details[1].empty())
+			context.details[1] += ", ";
+		context.details[1] += std::to_string(amount) + " " + resource.toResource()->getNameTranslated();
+	}
+	const bool localOwner = GAME->interface()->playerID == town->tempOwner && GAME->interface()->makingTurn;
+	const auto buildState = GAME->interface()->cb->canBuildStructure(town, building->bid);
+	const bool buildable = buildState == EBuildingState::ALLOWED;
+	context.details[2] = getTextForState(buildState);
+	if(buy)
+		buy->block(!localOwner || !buildable);
+	if(localOwner && buildable && buy && !buy->isBlocked())
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+	context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CLOSE);
+	const auto previous = thorContextStore().snapshot();
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision == previous.revision)
+		return;
+	CAndroidVMHelper bridge;
+	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status, context.details);
+	bridge.publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CBuildWindow::matchesThorContext(const ThorContextRecord & context) const
+{
+	return !rightClick && thorBuildConfirmationOwnerMatches(context, town->id.getNum(), building->bid.getNum(),
+		isActive(), ENGINE->windows().topWindow<CBuildWindow>().get() == this);
+}
+
+bool CBuildWindow::executeThorAction(const ThorActionRequest & request)
+{
+	const auto before = thorContextStore().snapshot();
+	updateThorContext();
+	const auto context = thorContextStore().snapshot();
+	if(context.revision != before.revision || !matchesThorContext(context)
+		|| validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		close();
+		return true;
+	}
+	if(request.action != ThorAction::WINDOW_CONFIRM
+		|| GAME->interface()->playerID != town->tempOwner || !GAME->interface()->makingTurn
+		|| GAME->interface()->cb->canBuildStructure(town, building->bid) != EBuildingState::ALLOWED
+		|| !buy || buy->isBlocked())
+		return false;
+	buyFunc();
+	return true;
+}
+#endif
 
 void CBuildWindow::buyFunc()
 {

@@ -59,7 +59,8 @@ final class ThorActionIds
     static final int TOWN_HALL_BUILD = 54;
     static final int RECRUITMENT_EDIT = 55;
     static final int RECRUITMENT_BUY = 56;
-    static final int MAX_ACTION_ID = RECRUITMENT_BUY;
+    static final int WINDOW_CONFIRM = 57;
+    static final int MAX_ACTION_ID = WINDOW_CONFIRM;
     static final int LOCAL_CONTROL = -1;
     static final int NO_TARGET = -1;
 

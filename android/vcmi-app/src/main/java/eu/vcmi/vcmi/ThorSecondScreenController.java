@@ -188,7 +188,10 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     {
         if (revision != contextRevision)
             return;
-        browser = ThorBrowserState.copyOf(contextId, page, pageCount, targets, labels, flags);
+        final ThorBrowserState published = ThorBrowserState.copyOf(contextId, page, pageCount, targets, labels, flags);
+        if (browser.sameContents(published))
+            return;
+        browser = published;
         if (presentation != null)
             presentation.updateBrowser(browser);
     }

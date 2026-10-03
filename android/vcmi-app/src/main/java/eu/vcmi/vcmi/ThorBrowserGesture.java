@@ -36,13 +36,29 @@ final class ThorBrowserGesture
     long revision() { return revision; }
     long session() { return session; }
 
+    boolean retainsLoadBackAfterBrowserUpdate(final String currentContext, final boolean backEnabled)
+    {
+        return active && backEnabled && ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                && contextId.equals(currentContext) && control == ThorBrowserState.CONTROL_BACK;
+    }
+
     boolean finish(final String releasedContext, final int releasedControl, final int releasedTarget,
                    final int pointerCount, final int releasedPointerId, final long currentRevision,
                    final long currentSession, final boolean enabledAtUp, final boolean sessionIsCurrent)
     {
+        return finish(releasedContext, releasedControl, releasedTarget, pointerCount, releasedPointerId,
+                currentRevision, currentSession, enabledAtUp, sessionIsCurrent, false);
+    }
+
+    boolean finish(final String releasedContext, final int releasedControl, final int releasedTarget,
+                   final int pointerCount, final int releasedPointerId, final long currentRevision,
+                   final long currentSession, final boolean enabledAtUp, final boolean sessionIsCurrent,
+                   final boolean allowRevisionChange)
+    {
         final boolean accepted = active && enabledAtDown && enabledAtUp && sessionIsCurrent
                 && contextId.equals(releasedContext) && control == releasedControl && target == releasedTarget
-                && pointerCount == 1 && pointerId == releasedPointerId && revision == currentRevision
+                && pointerCount == 1 && pointerId == releasedPointerId
+                && (allowRevisionChange || revision == currentRevision)
                 && session > 0L && session == currentSession;
         cancel();
         return accepted;

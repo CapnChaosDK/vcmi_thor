@@ -37,6 +37,7 @@ public class ThorContextIdsTest
         assertEquals("HERO_WINDOW", ThorContextIds.HERO_WINDOW);
         assertEquals("TOWN_WINDOW", ThorContextIds.TOWN_WINDOW);
         assertEquals("TOWN_HALL", ThorContextIds.TOWN_HALL);
+        assertEquals("BUILD_CONFIRMATION", ThorContextIds.BUILD_CONFIRMATION);
         assertEquals("HERO_MEETING", ThorContextIds.HERO_MEETING);
         assertEquals("BATTLE", ThorContextIds.BATTLE);
         assertEquals("BATTLE_TACTICS", ThorContextIds.BATTLE_TACTICS);
@@ -106,6 +107,9 @@ public class ThorContextIdsTest
 		assertEquals(4096, ThorActionIds.maskFor(ThorActionIds.SELECT_HERO));
 		assertEquals(14, ThorActionIds.SELECT_TOWN);
 		assertEquals(8192, ThorActionIds.maskFor(ThorActionIds.SELECT_TOWN));
+		assertEquals(57, ThorActionIds.WINDOW_CONFIRM);
+		assertEquals(1L << 56, ThorActionIds.maskFor(ThorActionIds.WINDOW_CONFIRM));
+		assertEquals(57, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(-1, ThorActionIds.NO_TARGET);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
@@ -150,7 +154,7 @@ public class ThorContextIdsTest
         assertEquals(1L << 53, ThorActionIds.maskFor(ThorActionIds.TOWN_HALL_BUILD));
         assertEquals(1L << 54, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_EDIT));
         assertEquals(1L << 55, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_BUY));
-        assertEquals(56, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(57, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
 		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
 		assertEquals(43, ThorActionIds.CAMPAIGN_BROWSER_SELECT);
