@@ -443,6 +443,8 @@ void GameEngine::updateFrame()
 		thorHeroMeetingRedistributionQueue().clear();
 		break;
 	}
+	if(auto lobbyWindow = windows().topWindow<CLobbyScreen>())
+		lobbyWindow->refreshThorActionAvailability();
 #endif
 
 	handleEvents();

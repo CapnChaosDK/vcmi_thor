@@ -36,6 +36,12 @@ final class ThorBrowserGesture
     long revision() { return revision; }
     long session() { return session; }
 
+    boolean retainsLoadBackAfterBrowserUpdate(final String currentContext, final boolean backEnabled)
+    {
+        return active && backEnabled && ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                && contextId.equals(currentContext) && control == ThorBrowserState.CONTROL_BACK;
+    }
+
     boolean finish(final String releasedContext, final int releasedControl, final int releasedTarget,
                    final int pointerCount, final int releasedPointerId, final long currentRevision,
                    final long currentSession, final boolean enabledAtUp, final boolean sessionIsCurrent)

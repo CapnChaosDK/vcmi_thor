@@ -413,6 +413,20 @@ void CLobbyScreen::publishThorContext()
 			context.browserPageCount, context.browserEntries);
 }
 
+void CLobbyScreen::refreshThorActionAvailability()
+{
+	if(!isActive() || ENGINE->windows().topWindow<CLobbyScreen>().get() != this || curTab != tabSel
+		|| (screenType != ESelectionScreen::newGame && screenType != ESelectionScreen::loadGame))
+		return;
+	const auto context = thorContextStore().snapshot();
+	if(context.contextId != thorContextIdForLobby(thorLobbyModeFor(screenType), ThorLobbyTab::SCENARIO))
+		return;
+	const bool available = !thorDifficultyChangePending && thorLobbyStartActionAvailable(thorScenarioMapAvailable(),
+		canStartLobbyGame(), buttonStart && !buttonStart->isBlocked());
+	if(available != ((context.enabledActionMask & thorActionMask(ThorAction::LOBBY_START_GAME)) != 0))
+		publishThorContext();
+}
+
 bool CLobbyScreen::matchesThorContext(const ThorContextRecord & context) const
 {
 	const auto current = thorContextStore().snapshot();

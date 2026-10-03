@@ -31,6 +31,18 @@ public class ThorBrowserTest
     }
 
     @Test
+    public void repeatedBrowserPublicationKeepsCurrentPageUntilItsContentsChange()
+    {
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final ThorBrowserState current = ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{1, 3});
+        assertTrue(current.sameContents(ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{1, 3})));
+        assertFalse(current.sameContents(ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{3, 1})));
+    }
+
+    @Test
     public void malformedOrOversizedPayloadFailsClosed()
     {
         assertEquals(0, ThorBrowserState.copyOf(ThorContextIds.UNKNOWN, 0, 1,
@@ -107,6 +119,21 @@ public class ThorBrowserTest
         }
         assertTrue(bounds[0][2] <= bounds[1][0] || bounds[1][2] <= bounds[0][0]
                 || bounds[0][3] <= bounds[1][1] || bounds[1][3] <= bounds[0][1]);
+    }
+
+    @Test
+    public void loadBackSurvivesBrowserRefreshWhileRowsAndOtherContextsCancel()
+    {
+        final ThorBrowserGesture gesture = new ThorBrowserGesture();
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        gesture.begin(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET, 7, 9, 1, true);
+        assertTrue(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, false));
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(ThorContextIds.CAMPAIGN_BROWSER, true));
+        gesture.begin(context, ThorBrowserState.CONTROL_FIRST_ROW, 2, 7, 9, 1, true);
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
+        gesture.cancel();
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
     }
 
     @Test

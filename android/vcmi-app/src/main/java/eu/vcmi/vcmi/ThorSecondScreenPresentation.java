@@ -294,12 +294,8 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final boolean retainMeetingArmies = ThorHeroMeetingGesture.retainsArmies(
                     this.revision, this.contextId, revision, contextId);
-            final boolean retainLoadBackGesture = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(this.contextId)
-                    && ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
-                    && browserGesture.isActive()
-                    && ThorBrowserState.actionForControl(contextId, browserGesture.control())
-                    == ThorActionIds.LOBBY_BACK
-                    && (enabledActionMask & ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK)) != 0L;
+            final boolean retainLoadBackGesture = browserGesture.retainsLoadBackAfterBrowserUpdate(contextId,
+                    (enabledActionMask & ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK)) != 0L);
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 cancelLobbyScenarioTouch();
@@ -562,7 +558,9 @@ final class ThorSecondScreenPresentation extends Presentation
 
         void updateBrowser(final ThorBrowserState publishedBrowser)
         {
-            browserGesture.cancel();
+            if (!browserGesture.retainsLoadBackAfterBrowserUpdate(contextId,
+                    isActionEnabled(ThorActionIds.LOBBY_BACK)))
+                browserGesture.cancel();
             townServices.cancel();
             browser = publishedBrowser == null ? ThorBrowserState.EMPTY : publishedBrowser;
             if (ThorContextIds.TOWN_HALL.equals(contextId))
