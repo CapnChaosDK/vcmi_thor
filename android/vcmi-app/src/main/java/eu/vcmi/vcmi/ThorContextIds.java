@@ -8,6 +8,17 @@ final class ThorContextIds
     static final String MAIN_MENU_LOAD_GAME = "MAIN_MENU_LOAD_GAME";
     static final String MAIN_MENU_CAMPAIGN = "MAIN_MENU_CAMPAIGN";
     static final String MAIN_MENU_CREDITS = "MAIN_MENU_CREDITS";
+    static final String HIGH_SCORES = "HIGH_SCORES";
+    static final String MULTI_MODE_NEW_GAME = "MULTI_MODE_NEW_GAME";
+    static final String MULTI_MODE_LOAD_GAME = "MULTI_MODE_LOAD_GAME";
+    static final String MULTI_PLAYERS_NEW_GAME = "MULTI_PLAYERS_NEW_GAME";
+    static final String MULTI_PLAYERS_LOAD_GAME = "MULTI_PLAYERS_LOAD_GAME";
+    static final String JOIN_SCREEN_NEW_GAME = "JOIN_SCREEN_NEW_GAME";
+    static final String JOIN_SCREEN_LOAD_GAME = "JOIN_SCREEN_LOAD_GAME";
+    static final String SIMPLE_JOIN = "SIMPLE_JOIN";
+    static final String MENU_QUIT_CONFIRMATION = "MENU_QUIT_CONFIRMATION";
+    static final String HIGH_SCORE_RESET_CONFIRMATION = "HIGH_SCORE_RESET_CONFIRMATION";
+    static final String TUTORIAL_MISSING_DIALOG = "TUTORIAL_MISSING_DIALOG";
     static final String LOBBY_NEW_GAME = "LOBBY_NEW_GAME";
     static final String LOBBY_NEW_GAME_SCENARIO = "LOBBY_NEW_GAME_SCENARIO";
     static final String LOBBY_NEW_GAME_OPTIONS = "LOBBY_NEW_GAME_OPTIONS";

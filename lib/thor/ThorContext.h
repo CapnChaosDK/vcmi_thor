@@ -21,6 +21,17 @@ namespace ThorContextIds
 	inline constexpr char MAIN_MENU_LOAD_GAME[] = "MAIN_MENU_LOAD_GAME";
 	inline constexpr char MAIN_MENU_CAMPAIGN[] = "MAIN_MENU_CAMPAIGN";
 	inline constexpr char MAIN_MENU_CREDITS[] = "MAIN_MENU_CREDITS";
+	inline constexpr char HIGH_SCORES[] = "HIGH_SCORES";
+	inline constexpr char MULTI_MODE_NEW_GAME[] = "MULTI_MODE_NEW_GAME";
+	inline constexpr char MULTI_MODE_LOAD_GAME[] = "MULTI_MODE_LOAD_GAME";
+	inline constexpr char MULTI_PLAYERS_NEW_GAME[] = "MULTI_PLAYERS_NEW_GAME";
+	inline constexpr char MULTI_PLAYERS_LOAD_GAME[] = "MULTI_PLAYERS_LOAD_GAME";
+	inline constexpr char JOIN_SCREEN_NEW_GAME[] = "JOIN_SCREEN_NEW_GAME";
+	inline constexpr char JOIN_SCREEN_LOAD_GAME[] = "JOIN_SCREEN_LOAD_GAME";
+	inline constexpr char SIMPLE_JOIN[] = "SIMPLE_JOIN";
+	inline constexpr char MENU_QUIT_CONFIRMATION[] = "MENU_QUIT_CONFIRMATION";
+	inline constexpr char HIGH_SCORE_RESET_CONFIRMATION[] = "HIGH_SCORE_RESET_CONFIRMATION";
+	inline constexpr char TUTORIAL_MISSING_DIALOG[] = "TUTORIAL_MISSING_DIALOG";
 	inline constexpr char LOBBY_NEW_GAME[] = "LOBBY_NEW_GAME";
 	inline constexpr char LOBBY_NEW_GAME_SCENARIO[] = "LOBBY_NEW_GAME_SCENARIO";
 	inline constexpr char LOBBY_NEW_GAME_OPTIONS[] = "LOBBY_NEW_GAME_OPTIONS";
@@ -60,6 +71,15 @@ enum class ThorLobbyMode
 	NEW_GAME,
 	LOAD_GAME,
 	CAMPAIGN_LIST
+};
+
+/// Native-only purpose tags for the three explicitly supported menu dialogs.
+enum class ThorMenuModalType : std::uint8_t
+{
+	NONE,
+	QUIT_CONFIRMATION,
+	HIGH_SCORE_RESET_CONFIRMATION,
+	MISSING_TUTORIAL_INFORMATION
 };
 
 enum class ThorLobbyTab
@@ -294,6 +314,11 @@ struct DLL_LINKAGE ThorContextRecord
 	std::string contextId = ThorContextIds::UNKNOWN;
 	std::string title;
 	std::string status;
+	ThorMenuModalType menuModalType = ThorMenuModalType::NONE;
+	std::string menuModalSourceContext;
+	/// Native-only owner identity. These pointers are never passed to JNI.
+	const void * nativeOwnerToken = nullptr;
+	const void * nativeParentToken = nullptr;
 	std::uint64_t enabledActionMask = 0;
 	std::uint64_t activeActionMask = 0;
 	int selectedHeroId = -1;
@@ -335,4 +360,6 @@ DLL_LINKAGE ThorContextStore & thorContextStore();
 DLL_LINKAGE std::string thorContextIdForMainMenuTab(const std::string & tabName);
 DLL_LINKAGE std::string thorContextIdForLobby(ThorLobbyMode mode, ThorLobbyTab tab);
 DLL_LINKAGE std::string thorContextIdForInGameContext(ThorInGameContext context);
+DLL_LINKAGE bool thorMenuModalOwnerMatches(const ThorContextRecord & context, ThorMenuModalType type,
+	const std::string & sourceContext, const void * ownerToken, const void * parentToken, bool active, bool top);
 DLL_LINKAGE std::string thorBoundedText(std::string text, std::size_t maximumBytes = 128);

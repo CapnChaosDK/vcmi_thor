@@ -101,6 +101,10 @@ public:
 	void addHoverText(EButtonState state, const std::string & text);
 
 	void block(bool on);
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	/// Executes this button's native callback without routing synthetic pointer input.
+	bool invokeThorCallback();
+	#endif
 
 	void setHoverable(bool on);
 	void setSoundDisabled(bool on);

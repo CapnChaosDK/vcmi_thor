@@ -334,7 +334,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorMainMenuState.choiceCount(contextId) > 0
                     && this.enabledActionMask != enabledActionMask)
                 cancelMainMenuTouch();
-            if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId)
+            if (isConfirmationContext(contextId)
                     && this.enabledActionMask != enabledActionMask)
                 buildConfirmationGesture.cancel();
             if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
@@ -395,6 +395,42 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 title = getContext().getString(R.string.thor_context_credits);
                 status = getContext().getString(R.string.thor_context_credits_status);
+            }
+            else if (ThorContextIds.HIGH_SCORES.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_high_scores);
+                status = getContext().getString(isActionActive(ThorActionIds.WINDOW_PREVIOUS)
+                        ? R.string.thor_menu_campaign_scores : R.string.thor_menu_scenario_scores);
+            }
+            else if (ThorContextIds.MULTI_MODE_NEW_GAME.equals(contextId)
+                    || ThorContextIds.MULTI_MODE_LOAD_GAME.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_multiplayer);
+                status = getContext().getString(R.string.thor_menu_multiplayer_status);
+            }
+            else if (ThorContextIds.MENU_QUIT_CONFIRMATION.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_menu_quit_confirmation);
+                status = "";
+            }
+            else if (ThorContextIds.HIGH_SCORE_RESET_CONFIRMATION.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_menu_reset_confirmation);
+                status = "";
+            }
+            else if (ThorContextIds.TUTORIAL_MISSING_DIALOG.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_menu_tutorial_missing);
+                status = "";
+            }
+            else if (ThorContextIds.MULTI_PLAYERS_NEW_GAME.equals(contextId)
+                    || ThorContextIds.MULTI_PLAYERS_LOAD_GAME.equals(contextId)
+                    || ThorContextIds.JOIN_SCREEN_NEW_GAME.equals(contextId)
+                    || ThorContextIds.JOIN_SCREEN_LOAD_GAME.equals(contextId)
+                    || ThorContextIds.SIMPLE_JOIN.equals(contextId))
+            {
+                title = getContext().getString(R.string.thor_context_multiplayer);
+                status = "";
             }
             else if (ThorContextIds.LOBBY_NEW_GAME.equals(contextId))
             {
@@ -475,10 +511,13 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = getContext().getString(R.string.thor_campaign_browser_title);
                 status = getContext().getString(R.string.thor_campaign_browser_status);
             }
-            else if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
+            else if (isConfirmationContext(contextId))
             {
-                title = publishedTitle;
-                status = getContext().getString(R.string.thor_build_confirmation_status);
+                if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
+                {
+                    title = publishedTitle;
+                    status = getContext().getString(R.string.thor_build_confirmation_status);
+                }
             }
             else if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
             {
@@ -666,7 +705,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean lobbyScenario = ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
             final boolean campaignBonus = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId);
-            final boolean buildConfirmation = ThorContextIds.BUILD_CONFIRMATION.equals(contextId);
+            final boolean buildConfirmation = isConfirmationContext(contextId);
             final boolean browserContext = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId);
@@ -818,7 +857,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
                 return handleBrowserTouch(event);
-            if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
+            if (isConfirmationContext(contextId))
                 return handleBuildConfirmationTouch(event);
             if (isRecruitmentContext(contextId))
                 return handleRecruitmentTouch(event);
@@ -2073,7 +2112,8 @@ final class ThorSecondScreenPresentation extends Presentation
                         frame.left + bounds[2], frame.top + bounds[3]);
                 drawLobbyScenarioButton(canvas, button,
                         getContext().getString(ThorMainMenuState.labelForControl(contextId, control)),
-                        isActionEnabled(actionId), false, density);
+                        isActionEnabled(actionId), ThorContextIds.HIGH_SCORES.equals(contextId)
+                                && isActionActive(actionId), density);
             }
         }
 
@@ -2380,6 +2420,13 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(value);
         }
 
+        private static boolean isConfirmationContext(final String value)
+        {
+            return ThorContextIds.BUILD_CONFIRMATION.equals(value)
+                    || ThorContextIds.MENU_QUIT_CONFIRMATION.equals(value)
+                    || ThorContextIds.HIGH_SCORE_RESET_CONFIRMATION.equals(value);
+        }
+
         private void drawBrowserDashboard(final Canvas canvas, final RectF frame, final float density)
         {
             final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
@@ -2644,9 +2691,13 @@ final class ThorSecondScreenPresentation extends Presentation
                     frame.width() * 0.86f, Math.min(25f * density, frame.height() * 0.055f));
             final RectF confirm = buildConfirmationControlBounds(frame, dividerY, ThorBuildConfirmationState.CONTROL_BUY);
             final RectF cancel = buildConfirmationControlBounds(frame, dividerY, ThorBuildConfirmationState.CONTROL_CANCEL);
-            drawLobbyScenarioButton(canvas, confirm, getContext().getString(R.string.thor_build_confirm),
+            final boolean menuConfirmation = ThorContextIds.MENU_QUIT_CONFIRMATION.equals(contextId)
+                    || ThorContextIds.HIGH_SCORE_RESET_CONFIRMATION.equals(contextId);
+            drawLobbyScenarioButton(canvas, confirm, getContext().getString(menuConfirmation
+                            ? R.string.thor_menu_yes : R.string.thor_build_confirm),
                     isActionEnabled(ThorActionIds.WINDOW_CONFIRM), false, density);
-            drawLobbyScenarioButton(canvas, cancel, getContext().getString(R.string.thor_lobby_back),
+            drawLobbyScenarioButton(canvas, cancel, getContext().getString(menuConfirmation
+                            ? R.string.thor_menu_no : R.string.thor_lobby_back),
                     isActionEnabled(ThorActionIds.WINDOW_CLOSE), false, density);
         }
 

@@ -12,6 +12,9 @@
 #include "../widgets/IVideoHolder.h"
 #include "../windows/CWindowObject.h"
 #include "../../lib/gameState/HighScore.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#endif
 #include "../../lib/gameState/GameStatistics.h"
 
 class CButton;
@@ -56,6 +59,13 @@ private:
 	int highlighted;
 public:
 	CHighScoreScreen(HighScorePage highscorepage, int highlighted = -1);
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(ThorAction action);
+	#endif
 };
 
 class CHighScoreInput : public CWindowObject

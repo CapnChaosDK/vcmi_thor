@@ -14,6 +14,8 @@ public class ThorBuildConfirmationTest
         assertEquals(57, ThorActionIds.WINDOW_CONFIRM);
         assertEquals(1L << 56, ThorActionIds.maskFor(ThorActionIds.WINDOW_CONFIRM));
         assertEquals("BUILD_CONFIRMATION", ThorContextIds.BUILD_CONFIRMATION);
+        assertEquals("MENU_QUIT_CONFIRMATION", ThorContextIds.MENU_QUIT_CONFIRMATION);
+        assertEquals("HIGH_SCORE_RESET_CONFIRMATION", ThorContextIds.HIGH_SCORE_RESET_CONFIRMATION);
         assertEquals(4, ThorContextDetails.COUNT);
     }
 
@@ -59,5 +61,24 @@ public class ThorBuildConfirmationTest
                         width, height, divider));
         assertEquals(ThorBuildConfirmationState.CONTROL_NONE,
                 ThorBuildConfirmationState.controlAt(2f, 2f, width, height, divider));
+    }
+
+    @Test
+    public void menuConfirmationsReuseBoundedYesNoControls()
+    {
+        final String[] contexts = {
+                ThorContextIds.MENU_QUIT_CONFIRMATION,
+                ThorContextIds.HIGH_SCORE_RESET_CONFIRMATION
+        };
+        for (final String context : contexts)
+        {
+            assertEquals(0, ThorMainMenuState.choiceCount(context));
+            assertEquals(ThorActionIds.WINDOW_CONFIRM,
+                    ThorBuildConfirmationState.actionForControl(ThorBuildConfirmationState.CONTROL_BUY));
+            assertEquals(ThorActionIds.WINDOW_CLOSE,
+                    ThorBuildConfirmationState.actionForControl(ThorBuildConfirmationState.CONTROL_CANCEL));
+        }
+        assertEquals(ThorActionIds.NONE,
+                ThorBuildConfirmationState.actionForControl(ThorBuildConfirmationState.CONTROL_NONE));
     }
 }

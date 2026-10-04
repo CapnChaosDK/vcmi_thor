@@ -36,6 +36,82 @@ TEST(ThorContextStoreTest, BuildConfirmationRetainsTownAndBuildingIdentity)
 	EXPECT_EQ(store.publishNext(context).revision, published.revision);
 }
 
+TEST(ThorContextStoreTest, MenuModalPurposeRequiresExactSemanticSourceAndActiveTopOwner)
+{
+	int quitOwner = 0;
+	int quitParent = 0;
+	ThorContextRecord quit;
+	quit.contextId = ThorContextIds::MENU_QUIT_CONFIRMATION;
+	quit.menuModalType = ThorMenuModalType::QUIT_CONFIRMATION;
+	quit.menuModalSourceContext = ThorContextIds::MAIN_MENU;
+	quit.nativeOwnerToken = &quitOwner;
+	quit.nativeParentToken = &quitParent;
+	EXPECT_TRUE(thorMenuModalOwnerMatches(quit, ThorMenuModalType::QUIT_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &quitOwner, &quitParent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(quit, ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &quitOwner, &quitParent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(quit, ThorMenuModalType::QUIT_CONFIRMATION,
+		ThorContextIds::MAIN_MENU_NEW_GAME, &quitOwner, &quitParent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(quit, ThorMenuModalType::QUIT_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &quitOwner, &quitParent, false, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(quit, ThorMenuModalType::QUIT_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &quitOwner, &quitParent, true, false));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(quit, ThorMenuModalType::QUIT_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &quitParent, &quitParent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(quit, ThorMenuModalType::QUIT_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &quitOwner, &quitOwner, true, true));
+
+	int resetOwner = 0;
+	int resetParent = 0;
+	ThorContextRecord reset;
+	reset.contextId = ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION;
+	reset.menuModalType = ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION;
+	reset.menuModalSourceContext = ThorContextIds::HIGH_SCORES;
+	reset.nativeOwnerToken = &resetOwner;
+	reset.nativeParentToken = &resetParent;
+	EXPECT_TRUE(thorMenuModalOwnerMatches(reset, ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION,
+		ThorContextIds::HIGH_SCORES, &resetOwner, &resetParent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(reset, ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &resetOwner, &resetParent, true, true));
+
+	int tutorialOwner = 0;
+	int tutorialParent = 0;
+	ThorContextRecord tutorial;
+	tutorial.contextId = ThorContextIds::TUTORIAL_MISSING_DIALOG;
+	tutorial.menuModalType = ThorMenuModalType::MISSING_TUTORIAL_INFORMATION;
+	tutorial.menuModalSourceContext = ThorContextIds::MAIN_MENU_LOAD_GAME;
+	tutorial.nativeOwnerToken = &tutorialOwner;
+	tutorial.nativeParentToken = &tutorialParent;
+	EXPECT_TRUE(thorMenuModalOwnerMatches(tutorial, ThorMenuModalType::MISSING_TUTORIAL_INFORMATION,
+		ThorContextIds::MAIN_MENU_LOAD_GAME, &tutorialOwner, &tutorialParent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(tutorial, ThorMenuModalType::MISSING_TUTORIAL_INFORMATION,
+		ThorContextIds::HIGH_SCORES, &tutorialOwner, &tutorialParent, true, true));
+
+	ThorContextRecord arbitrary;
+	arbitrary.contextId = "UNRELATED_INFO_WINDOW";
+	EXPECT_FALSE(thorMenuModalOwnerMatches(arbitrary, ThorMenuModalType::QUIT_CONFIRMATION,
+		ThorContextIds::MAIN_MENU, &quitOwner, &quitParent, true, true));
+}
+
+TEST(ThorContextStoreTest, MenuModalNativeOwnerChangeAdvancesRevision)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::MENU_QUIT_CONFIRMATION;
+	context.menuModalType = ThorMenuModalType::QUIT_CONFIRMATION;
+	context.menuModalSourceContext = ThorContextIds::MAIN_MENU;
+	int firstOwner = 0;
+	int secondOwner = 0;
+	context.nativeOwnerToken = &firstOwner;
+	context.nativeParentToken = &firstOwner;
+	const auto first = store.publishNext(context);
+	EXPECT_EQ(store.publishNext(context).revision, first.revision);
+	context.nativeOwnerToken = &secondOwner;
+	context.nativeParentToken = &secondOwner;
+	const auto second = store.publishNext(context);
+	EXPECT_GT(second.revision, first.revision);
+}
+
 TEST(ThorContextStoreTest, HeroRosterChangesOnceAndClearsOutsideAdventure)
 {
 	ThorContextStore store;

@@ -37,6 +37,10 @@
 #include "../../lib/gameState/HighScore.h"
 #include "../../lib/gameState/GameStatistics.h"
 #include "../../lib/GameLibrary.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorContext.h"
+#endif
 #include "../../lib/serializer/JsonSerializer.h"
 #include "../../lib/serializer/JsonDeserializer.h"
 
@@ -161,6 +165,9 @@ void CHighScoreScreen::buttonCampaignClick()
 	addHighScores();
 	addButtons();
 	redraw();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorContext();
+#endif
 }
 
 void CHighScoreScreen::buttonScenarioClick()
@@ -170,24 +177,95 @@ void CHighScoreScreen::buttonScenarioClick()
 	addHighScores();
 	addButtons();
 	redraw();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorContext();
+#endif
 }
 
 void CHighScoreScreen::buttonResetClick()
 {
-	CInfoWindow::showYesNoDialog(
-		LIBRARY->generaltexth->allTexts[666],
-		{},
-		[this]()
+	auto onYes = [this]()
 		{
 			Settings entry = persistentStorage.write["highscore"];
 			entry->clear();
 			addHighScores();
 			addButtons();
 			redraw();
-		},
-		0
-	);
+		};
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	CInfoWindow::showThorMenuConfirmation(LIBRARY->generaltexth->allTexts[666], onYes, 0,
+		ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION, this, ThorContextIds::HIGH_SCORES);
+#else
+	CInfoWindow::showYesNoDialog(LIBRARY->generaltexth->allTexts[666], {}, onYes, 0);
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CHighScoreScreen::activate()
+{
+	CWindowObject::activate();
+	publishThorContext();
+}
+
+void CHighScoreScreen::deactivate()
+{
+	CWindowObject::deactivate();
+	thorActionQueue().clear();
+	ThorContextRecord context;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, 0, 0);
+}
+
+void CHighScoreScreen::publishThorContext()
+{
+	if(!ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HIGH_SCORES;
+	if(highscorepage == HighScorePage::CAMPAIGN)
+		context.activeActionMask = thorActionMask(ThorAction::WINDOW_PREVIOUS);
+	else
+		context.activeActionMask = thorActionMask(ThorAction::WINDOW_NEXT);
+	constexpr std::array<ThorAction, 4> actions{
+		ThorAction::WINDOW_PREVIOUS, ThorAction::WINDOW_NEXT, ThorAction::WINDOW_CONFIRM, ThorAction::WINDOW_CLOSE};
+	if(buttons.size() != actions.size())
+		context.contextId = ThorContextIds::UNKNOWN;
+	else
+		for(std::size_t index = 0; index < actions.size(); ++index)
+			if(buttons[index] && !buttons[index]->isBlocked())
+				context.enabledActionMask |= thorActionMask(actions[index]);
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CHighScoreScreen::matchesThorContext(const ThorContextRecord & context) const
+{
+	return ENGINE->windows().isTopWindow(const_cast<CHighScoreScreen *>(this)) && isActive()
+		&& context.contextId == ThorContextIds::HIGH_SCORES;
+}
+
+bool CHighScoreScreen::executeThorAction(ThorAction action)
+{
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context) || (context.enabledActionMask & thorActionMask(action)) == 0)
+		return false;
+	std::size_t index = 0;
+	switch(action)
+	{
+	case ThorAction::WINDOW_PREVIOUS: index = 0; break;
+	case ThorAction::WINDOW_NEXT: index = 1; break;
+	case ThorAction::WINDOW_CONFIRM: index = 2; break;
+	case ThorAction::WINDOW_CLOSE: index = 3; break;
+	default: return false;
+	}
+	if(index >= buttons.size())
+		return false;
+	auto button = buttons[index];
+	return button && button->invokeThorCallback();
+}
+#endif
 
 void CHighScoreScreen::buttonExitClick()
 {

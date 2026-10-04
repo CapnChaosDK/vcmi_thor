@@ -70,6 +70,48 @@
 
 ISelectionScreenInfo * SEL = nullptr;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+namespace
+{
+	std::string thorMenuOriginContext(ESelectionScreen screenType)
+	{
+		return screenType == ESelectionScreen::loadGame ? ThorContextIds::MAIN_MENU_LOAD_GAME
+			: screenType == ESelectionScreen::newGame ? ThorContextIds::MAIN_MENU_NEW_GAME
+			: ThorContextIds::UNKNOWN;
+	}
+
+	std::string thorMultiModeContext(ESelectionScreen screenType)
+	{
+		return screenType == ESelectionScreen::loadGame ? ThorContextIds::MULTI_MODE_LOAD_GAME
+			: screenType == ESelectionScreen::newGame ? ThorContextIds::MULTI_MODE_NEW_GAME
+			: ThorContextIds::UNKNOWN;
+	}
+
+	std::string thorMultiPlayersContext(ESelectionScreen screenType)
+	{
+		return screenType == ESelectionScreen::loadGame ? ThorContextIds::MULTI_PLAYERS_LOAD_GAME
+			: screenType == ESelectionScreen::newGame ? ThorContextIds::MULTI_PLAYERS_NEW_GAME
+			: ThorContextIds::UNKNOWN;
+	}
+
+	std::string thorJoinContext(ESelectionScreen screenType)
+	{
+		return screenType == ESelectionScreen::loadGame ? ThorContextIds::JOIN_SCREEN_LOAD_GAME
+			: screenType == ESelectionScreen::newGame ? ThorContextIds::JOIN_SCREEN_NEW_GAME
+			: ThorContextIds::UNKNOWN;
+	}
+
+	void clearThorMenuContext()
+	{
+		thorActionQueue().clear();
+		ThorContextRecord context;
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorActionState(context.revision, 0, 0);
+	}
+}
+#endif
+
 CMenuScreen::CMenuScreen(const JsonNode & configNode)
 	: CWindowObject(BORDERED), config(configNode)
 {
@@ -165,6 +207,12 @@ size_t CMenuScreen::getActiveTab() const
 	return tabs->getActive();
 }
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+std::string CMenuScreen::thorActiveContextId() const
+{
+	const auto index = getActiveTab();
+	return thorContextIdForMainMenuTab(index < menuNameToEntry.size() ? menuNameToEntry[index] : "");
+}
+
 void CMenuScreen::publishThorContext()
 {
 	if(!ENGINE->windows().isTopWindow(this))
@@ -287,7 +335,7 @@ static std::function<void()> genCommand(CMenuScreen * menu, std::vector<std::str
 				case 2:
 					return []() { CMainMenu::openLobby(ESelectionScreen::campaignList, true, {}, ELoadMode::NONE, false); };
 				case 3:
-					return []() { CMainMenu::startTutorial(); };
+					return [menu]() { CMainMenu::startTutorial(menu); };
 				case 4:
 					return []() { CMainMenu::openLobby(ESelectionScreen::newGame, true, {}, ELoadMode::NONE, true); };
 				}
@@ -311,7 +359,17 @@ static std::function<void()> genCommand(CMenuScreen * menu, std::vector<std::str
 			break;
 			case 4: //exit
 			{
-				return []() { CInfoWindow::showYesNoDialog(LIBRARY->generaltexth->allTexts[69], std::vector<std::shared_ptr<CComponent>>(), [](){GAME->onShutdownRequested(false);}, 0, PlayerColor(1)); };
+				return [menu]()
+				{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+					CInfoWindow::showThorMenuConfirmation(LIBRARY->generaltexth->allTexts[69],
+						[](){ GAME->onShutdownRequested(false); }, 0,
+						ThorMenuModalType::QUIT_CONFIRMATION, menu, ThorContextIds::MAIN_MENU, PlayerColor(1));
+#else
+					CInfoWindow::showYesNoDialog(LIBRARY->generaltexth->allTexts[69],
+						std::vector<std::shared_ptr<CComponent>>(), [](){ GAME->onShutdownRequested(false); }, 0, PlayerColor(1));
+#endif
+				};
 			}
 			break;
 			case 5: //highscores
@@ -581,11 +639,23 @@ void CMainMenu::openCampaignScreen(std::string name)
 	ENGINE->windows().createAndPushWindow<CCampaignScreen>(config, name);
 }
 
-void CMainMenu::startTutorial()
+void CMainMenu::startTutorial(CMenuScreen * sourceMenu)
 {
 	ResourcePath tutorialMap("Maps/Tutorial.tut", EResType::MAP);
 	if(!CResourceHandler::get()->existsResource(tutorialMap))
 	{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		if(sourceMenu && ENGINE->windows().isTopWindow(sourceMenu))
+		{
+			const auto sourceContext = sourceMenu->thorActiveContextId();
+			if(sourceContext == ThorContextIds::MAIN_MENU_NEW_GAME || sourceContext == ThorContextIds::MAIN_MENU_LOAD_GAME)
+			{
+				CInfoWindow::showThorMenuInformation(LIBRARY->generaltexth->translate("core.genrltxt.742"),
+					ThorMenuModalType::MISSING_TUTORIAL_INFORMATION, sourceMenu, sourceContext, PlayerColor(1));
+				return;
+			}
+		}
+#endif
 		CInfoWindow::showInfoDialog(LIBRARY->generaltexth->translate("core.genrltxt.742"), std::vector<std::shared_ptr<CComponent>>(), PlayerColor(1));
 		return;
 	}
@@ -636,6 +706,62 @@ CMultiMode::CMultiMode(ESelectionScreen ScreenType)
 
 	buttonCancel = std::make_shared<CButton>(Point(373, 380), AnimationPath::builtin("MUBCANC.DEF"), LIBRARY->generaltexth->zelp[288], [this](){ close();}, EShortcut::GLOBAL_CANCEL);
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CMultiMode::activate()
+{
+	CIntObject::activate();
+	publishThorContext();
+}
+
+void CMultiMode::deactivate()
+{
+	WindowBase::deactivate();
+	clearThorMenuContext();
+}
+
+void CMultiMode::publishThorContext()
+{
+	if(!ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	context.contextId = thorMultiModeContext(screenType);
+	const std::array<std::shared_ptr<CButton>, 5> buttonsByChoice{
+		buttonHotseat, buttonLobby, buttonHost, buttonJoin, buttonCancel};
+	for(std::size_t index = 0; index < buttonsByChoice.size(); ++index)
+	{
+		const auto action = static_cast<ThorAction>(static_cast<int>(ThorAction::MAIN_MENU_CHOICE_1) + index);
+		if(buttonsByChoice[index] && !buttonsByChoice[index]->isBlocked())
+			context.enabledActionMask |= thorActionMask(action);
+	}
+	if(context.contextId == ThorContextIds::UNKNOWN)
+		context.enabledActionMask = 0;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CMultiMode::matchesThorContext(const ThorContextRecord & context)
+{
+	return ENGINE->windows().isTopWindow(this) && isActive()
+		&& context.contextId == thorMultiModeContext(screenType)
+		&& (context.contextId == ThorContextIds::MULTI_MODE_NEW_GAME
+			|| context.contextId == ThorContextIds::MULTI_MODE_LOAD_GAME);
+}
+
+bool CMultiMode::executeThorAction(ThorAction action)
+{
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context) || (context.enabledActionMask & thorActionMask(action)) == 0)
+		return false;
+	const auto choice = thorMainMenuChoice(context.contextId, action);
+	if(!choice || choice->index >= 5)
+		return false;
+	const std::array<std::shared_ptr<CButton>, 5> buttonsByChoice{
+		buttonHotseat, buttonLobby, buttonHost, buttonJoin, buttonCancel};
+	return buttonsByChoice[choice->index] && buttonsByChoice[choice->index]->invokeThorCallback();
+}
+#endif
 
 void CMultiMode::openLobby()
 {
@@ -737,6 +863,51 @@ void JoinScreen::onServerDiscovered(const DiscoveredServer & server)
 		redraw();
 	});
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void JoinScreen::activate()
+{
+	CIntObject::activate();
+	publishThorContext();
+}
+
+void JoinScreen::deactivate()
+{
+	WindowBase::deactivate();
+	clearThorMenuContext();
+}
+
+void JoinScreen::publishThorContext()
+{
+	if(!ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	context.contextId = thorJoinContext(screenType);
+	if(context.contextId != ThorContextIds::UNKNOWN && buttonCancel && !buttonCancel->isBlocked())
+		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	else
+		context.contextId = ThorContextIds::UNKNOWN;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
+}
+
+bool JoinScreen::matchesThorContext(const ThorContextRecord & context)
+{
+	return ENGINE->windows().isTopWindow(this) && isActive()
+		&& context.contextId == thorJoinContext(screenType) && context.contextId != ThorContextIds::UNKNOWN;
+}
+
+bool JoinScreen::executeThorAction(ThorAction action)
+{
+	const auto context = thorContextStore().snapshot();
+	if(action != ThorAction::WINDOW_CLOSE || !matchesThorContext(context)
+		|| (context.enabledActionMask & thorActionMask(action)) == 0)
+		return false;
+	auto button = buttonCancel;
+	return button && button->invokeThorCallback();
+}
+#endif
 
 CMultiPlayers::CMultiPlayers(const std::vector<std::string>& playerNames, ESelectionScreen ScreenType, bool Host, ELoadMode LoadMode, EShortcut shortcut)
 	: host(Host), hotseat(shortcut == EShortcut::MAIN_MENU_HOTSEAT), loadMode(LoadMode), screenType(ScreenType)
@@ -848,6 +1019,51 @@ void CMultiPlayers::enterSelectionScreen()
 	CMainMenu::openLobby(screenType, host, playerNames, loadMode, false, hotseat);
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CMultiPlayers::activate()
+{
+	CIntObject::activate();
+	publishThorContext();
+}
+
+void CMultiPlayers::deactivate()
+{
+	WindowBase::deactivate();
+	clearThorMenuContext();
+}
+
+void CMultiPlayers::publishThorContext()
+{
+	if(!ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	context.contextId = thorMultiPlayersContext(screenType);
+	if(context.contextId != ThorContextIds::UNKNOWN && buttonCancel && !buttonCancel->isBlocked())
+		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	else
+		context.contextId = ThorContextIds::UNKNOWN;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
+}
+
+bool CMultiPlayers::matchesThorContext(const ThorContextRecord & context)
+{
+	return ENGINE->windows().isTopWindow(this) && isActive()
+		&& context.contextId == thorMultiPlayersContext(screenType) && context.contextId != ThorContextIds::UNKNOWN;
+}
+
+bool CMultiPlayers::executeThorAction(ThorAction action)
+{
+	const auto context = thorContextStore().snapshot();
+	if(action != ThorAction::WINDOW_CLOSE || !matchesThorContext(context)
+		|| (context.enabledActionMask & thorActionMask(action)) == 0)
+		return false;
+	auto button = buttonCancel;
+	return button && button->invokeThorCallback();
+}
+#endif
+
 CSimpleJoinScreen::CSimpleJoinScreen(bool host, const std::string & server, ui16 port)
 {
 	OBJECT_CONSTRUCTION;
@@ -900,6 +1116,51 @@ CSimpleJoinScreen::CSimpleJoinScreen(bool host, const std::string & server, ui16
 		connectToServer();
 	}
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CSimpleJoinScreen::activate()
+{
+	CIntObject::activate();
+	publishThorContext();
+}
+
+void CSimpleJoinScreen::deactivate()
+{
+	WindowBase::deactivate();
+	clearThorMenuContext();
+}
+
+void CSimpleJoinScreen::publishThorContext()
+{
+	if(!ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	if(buttonCancel && !buttonCancel->isBlocked())
+	{
+		context.contextId = ThorContextIds::SIMPLE_JOIN;
+		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	}
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
+}
+
+bool CSimpleJoinScreen::matchesThorContext(const ThorContextRecord & context) const
+{
+	return ENGINE->windows().isTopWindow(const_cast<CSimpleJoinScreen *>(this)) && isActive()
+		&& context.contextId == ThorContextIds::SIMPLE_JOIN;
+}
+
+bool CSimpleJoinScreen::executeThorAction(ThorAction action)
+{
+	const auto context = thorContextStore().snapshot();
+	if(action != ThorAction::WINDOW_CLOSE || !matchesThorContext(context)
+		|| (context.enabledActionMask & thorActionMask(action)) == 0)
+		return false;
+	auto button = buttonCancel;
+	return button && button->invokeThorCallback();
+}
+#endif
 
 void CSimpleJoinScreen::connectToServer()
 {

@@ -8,6 +8,10 @@ namespace
 	bool sameSemanticState(const ThorContextRecord & lhs, const ThorContextRecord & rhs)
 	{
 		return lhs.contextId == rhs.contextId
+			&& lhs.menuModalType == rhs.menuModalType
+			&& lhs.menuModalSourceContext == rhs.menuModalSourceContext
+			&& lhs.nativeOwnerToken == rhs.nativeOwnerToken
+			&& lhs.nativeParentToken == rhs.nativeParentToken
 			&& lhs.title == rhs.title
 			&& lhs.status == rhs.status
 			&& lhs.details == rhs.details
@@ -48,6 +52,13 @@ namespace
 	{
 		context.title = thorBoundedText(std::move(context.title));
 		context.status = thorBoundedText(std::move(context.status));
+		context.menuModalSourceContext = thorBoundedText(std::move(context.menuModalSourceContext), 64);
+		if(context.menuModalType == ThorMenuModalType::NONE)
+		{
+			context.menuModalSourceContext.clear();
+			context.nativeOwnerToken = nullptr;
+			context.nativeParentToken = nullptr;
+		}
 		for(auto & detail : context.details)
 			detail = thorBoundedText(std::move(detail));
 		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.heroes.size() > THOR_MAX_HEROES)
@@ -297,6 +308,30 @@ ThorContextRecord ThorContextStore::publishNext(ThorContextRecord next)
 	next.revision = current.revision + 1;
 	current = std::move(next);
 	return current;
+}
+
+bool thorMenuModalOwnerMatches(const ThorContextRecord & context, ThorMenuModalType type,
+	const std::string & sourceContext, const void * ownerToken, const void * parentToken, bool active, bool top)
+{
+	if(!active || !top || type == ThorMenuModalType::NONE || context.menuModalType != type
+		|| context.menuModalSourceContext != sourceContext || context.nativeOwnerToken != ownerToken
+		|| context.nativeParentToken != parentToken)
+		return false;
+	switch(type)
+	{
+	case ThorMenuModalType::QUIT_CONFIRMATION:
+		return context.contextId == ThorContextIds::MENU_QUIT_CONFIRMATION
+			&& sourceContext == ThorContextIds::MAIN_MENU;
+	case ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION:
+		return context.contextId == ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION
+			&& sourceContext == ThorContextIds::HIGH_SCORES;
+	case ThorMenuModalType::MISSING_TUTORIAL_INFORMATION:
+		return context.contextId == ThorContextIds::TUTORIAL_MISSING_DIALOG
+			&& (sourceContext == ThorContextIds::MAIN_MENU_NEW_GAME || sourceContext == ThorContextIds::MAIN_MENU_LOAD_GAME);
+	case ThorMenuModalType::NONE:
+		return false;
+	}
+	return false;
 }
 
 ThorContextStore & thorContextStore()
