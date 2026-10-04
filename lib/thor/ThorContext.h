@@ -314,11 +314,6 @@ struct DLL_LINKAGE ThorContextRecord
 	std::string contextId = ThorContextIds::UNKNOWN;
 	std::string title;
 	std::string status;
-	ThorMenuModalType menuModalType = ThorMenuModalType::NONE;
-	std::string menuModalSourceContext;
-	/// Native-only owner identity. These pointers are never passed to JNI.
-	const void * nativeOwnerToken = nullptr;
-	const void * nativeParentToken = nullptr;
 	std::uint64_t enabledActionMask = 0;
 	std::uint64_t activeActionMask = 0;
 	int selectedHeroId = -1;
@@ -342,6 +337,11 @@ struct DLL_LINKAGE ThorContextRecord
 	std::uint64_t scenarioSelectionRevision = 0;
 	/// Native-only campaign scenario/bonus state token. Never passed through JNI.
 	std::uint64_t campaignSelectionRevision = 0;
+	ThorMenuModalType menuModalType = ThorMenuModalType::NONE;
+	std::string menuModalSourceContext;
+	/// Native-only owner identity. These pointers are never passed to JNI.
+	const void * nativeOwnerToken = nullptr;
+	const void * nativeParentToken = nullptr;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.
