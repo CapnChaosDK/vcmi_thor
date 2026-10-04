@@ -42,6 +42,15 @@ final class ThorBrowserGesture
                 && contextId.equals(currentContext) && control == ThorBrowserState.CONTROL_BACK;
     }
 
+    boolean retainsLoadBackAcrossContextUpdate(final String currentContext,
+                                               final long previousMask, final long newMask,
+                                               final boolean revisionChanged)
+    {
+        final long backBit = ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK);
+        return retainsLoadBackAfterBrowserUpdate(currentContext,
+                (newMask & backBit) != 0L || (revisionChanged && (previousMask & backBit) != 0L));
+    }
+
     boolean finish(final String releasedContext, final int releasedControl, final int releasedTarget,
                    final int pointerCount, final int releasedPointerId, final long currentRevision,
                    final long currentSession, final boolean enabledAtUp, final boolean sessionIsCurrent)

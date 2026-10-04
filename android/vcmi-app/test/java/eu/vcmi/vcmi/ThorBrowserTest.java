@@ -137,6 +137,25 @@ public class ThorBrowserTest
     }
 
     @Test
+    public void loadBackSurvivesTransientZeroMaskButReleaseStillRequiresEnabledBack()
+    {
+        final ThorBrowserGesture gesture = new ThorBrowserGesture();
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final long backBit = ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK);
+        gesture.begin(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET, 7, 9, 1, true);
+        assertTrue(gesture.retainsLoadBackAcrossContextUpdate(context, backBit, 0L, true));
+        assertTrue(gesture.retainsLoadBackAcrossContextUpdate(context, 0L, backBit, false));
+        assertFalse(gesture.retainsLoadBackAcrossContextUpdate(context, backBit, 0L, false));
+        assertFalse(gesture.retainsLoadBackAcrossContextUpdate(context, 0L, 0L, true));
+        assertFalse(gesture.retainsLoadBackAcrossContextUpdate(ThorContextIds.CAMPAIGN_BROWSER, backBit, 0L, true));
+        assertFalse(gesture.finish(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET,
+                1, 1, 8, 9, false, true, true));
+        gesture.begin(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET, 7, 9, 1, true);
+        assertTrue(gesture.finish(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET,
+                1, 1, 8, 9, true, true, true));
+    }
+
+    @Test
     public void gesturesRejectCrossRowPagePointerRevisionAndSessionChanges()
     {
         final ThorBrowserGesture gesture = new ThorBrowserGesture();

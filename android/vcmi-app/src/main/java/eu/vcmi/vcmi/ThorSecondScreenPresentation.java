@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Display;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -18,6 +19,7 @@ import android.view.WindowManager;
 
 final class ThorSecondScreenPresentation extends Presentation
 {
+    private static final String LOG_TAG = "vcmi-thor";
     interface HapticsChangeListener
     {
         void onHapticsChanged(boolean enabled);
@@ -294,8 +296,11 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final boolean retainMeetingArmies = ThorHeroMeetingGesture.retainsArmies(
                     this.revision, this.contextId, revision, contextId);
-            final boolean retainLoadBackGesture = browserGesture.retainsLoadBackAfterBrowserUpdate(contextId,
-                    (enabledActionMask & ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK)) != 0L);
+            // publishContext resets the mask to zero before the action-state callback for a new
+            // revision. Keep an already enabled Back press through that transient state; the
+            // release still requires Back to be enabled under the new revision.
+            final boolean retainLoadBackGesture = browserGesture.retainsLoadBackAcrossContextUpdate(contextId,
+                    this.enabledActionMask, enabledActionMask, revision != this.revision);
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 cancelLobbyScenarioTouch();
@@ -788,6 +793,10 @@ final class ThorSecondScreenPresentation extends Presentation
         public boolean onTouchEvent(final android.view.MotionEvent event)
         {
             final int action = event.getActionMasked();
+            if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                    && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP))
+                Log.d(LOG_TAG, "Load presentation touch: phase=" + action + " x=" + event.getX()
+                        + " y=" + event.getY());
             if (action == MotionEvent.ACTION_DOWN
                     && hapticsToggleGesture.begin(hapticsToggleBounds().contains(event.getX(), event.getY())))
                 return true;
@@ -3466,6 +3475,11 @@ final class ThorSecondScreenPresentation extends Presentation
         private boolean handleBrowserTouch(final MotionEvent event)
         {
             final int action = event.getActionMasked();
+            if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                    && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP))
+                Log.d(LOG_TAG, "Load browser touch: phase=" + action + " x=" + event.getX()
+                        + " y=" + event.getY() + " control=" + browserControlAt(event.getX(), event.getY())
+                        + " active=" + browserGesture.isActive() + " revision=" + revision);
             if (action == MotionEvent.ACTION_DOWN)
             {
                 final int control = browserControlAt(event.getX(), event.getY());
@@ -3501,6 +3515,12 @@ final class ThorSecondScreenPresentation extends Presentation
                     event.getPointerCount(), event.getPointerId(0), revision, presentationSessionId,
                     browserControlEnabled(control), sessionValidity != null
                             && sessionValidity.isCurrent(submittedSession), loadBack);
+            if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                    && (control == ThorBrowserState.CONTROL_BACK
+                    || control == ThorBrowserState.CONTROL_PRIMARY))
+                Log.d(LOG_TAG, "Load browser up: control=" + control + " enabled="
+                        + browserControlEnabled(control) + " accepted=" + accepted
+                        + " revision=" + revision + " pressedRevision=" + submittedRevision);
             if (accepted)
             {
                 performClick();
