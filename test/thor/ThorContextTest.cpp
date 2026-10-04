@@ -11,6 +11,31 @@ TEST(ThorContextStoreTest, StartsUnknown)
 	EXPECT_EQ(context.contextId, "UNKNOWN");
 }
 
+TEST(ThorContextStoreTest, BuildConfirmationRetainsTownAndBuildingIdentity)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BUILD_CONFIRMATION;
+	context.actionSubjectId = 12;
+	context.windowSubjectId = 34;
+	context.title = "Town";
+	context.details[0] = "Building";
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CONFIRM)
+		| thorActionMask(ThorAction::WINDOW_CLOSE);
+	const auto published = store.publishNext(context);
+	EXPECT_EQ(published.actionSubjectId, 12);
+	EXPECT_EQ(published.windowSubjectId, 34);
+	EXPECT_EQ(published.enabledActionMask, context.enabledActionMask);
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, published.contextId));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, ThorContextIds::TOWN_HALL));
+	EXPECT_TRUE(thorBuildConfirmationOwnerMatches(published, 12, 34, true, true));
+	EXPECT_FALSE(thorBuildConfirmationOwnerMatches(published, 13, 34, true, true));
+	EXPECT_FALSE(thorBuildConfirmationOwnerMatches(published, 12, 35, true, true));
+	EXPECT_FALSE(thorBuildConfirmationOwnerMatches(published, 12, 34, false, true));
+	EXPECT_FALSE(thorBuildConfirmationOwnerMatches(published, 12, 34, true, false));
+	EXPECT_EQ(store.publishNext(context).revision, published.revision);
+}
+
 TEST(ThorContextStoreTest, HeroRosterChangesOnceAndClearsOutsideAdventure)
 {
 	ThorContextStore store;

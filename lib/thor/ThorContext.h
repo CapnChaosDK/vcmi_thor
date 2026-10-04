@@ -40,6 +40,7 @@ namespace ThorContextIds
 	inline constexpr char HERO_WINDOW[] = "HERO_WINDOW";
 	inline constexpr char TOWN_WINDOW[] = "TOWN_WINDOW";
 	inline constexpr char TOWN_HALL[] = "TOWN_HALL";
+	inline constexpr char BUILD_CONFIRMATION[] = "BUILD_CONFIRMATION";
 	inline constexpr char TOWN_RECRUITMENT_QUICK[] = "TOWN_RECRUITMENT_QUICK";
 	inline constexpr char TOWN_RECRUITMENT_DWELLING[] = "TOWN_RECRUITMENT_DWELLING";
 	inline constexpr char HERO_MEETING[] = "HERO_MEETING";

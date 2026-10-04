@@ -35,10 +35,12 @@ namespace
 	{
 		if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS
 			&& context.contextId != ThorContextIds::TOWN_HALL
+			&& context.contextId != ThorContextIds::BUILD_CONFIRMATION
 			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
 			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING)
 			context.actionSubjectId = -1;
-		if(context.contextId != ThorContextIds::HERO_WINDOW && context.contextId != ThorContextIds::TOWN_WINDOW)
+		if(context.contextId != ThorContextIds::HERO_WINDOW && context.contextId != ThorContextIds::TOWN_WINDOW
+			&& context.contextId != ThorContextIds::BUILD_CONFIRMATION)
 			context.windowSubjectId = -1;
 	}
 

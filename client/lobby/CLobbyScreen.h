@@ -41,6 +41,7 @@ public:
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	void publishThorContext();
+	void refreshThorActionAvailability();
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	bool executeThorAction(const ThorActionRequest & request);
 	void onThorLobbyAvailabilityChanged();

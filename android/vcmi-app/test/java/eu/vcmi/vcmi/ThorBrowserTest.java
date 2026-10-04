@@ -31,6 +31,18 @@ public class ThorBrowserTest
     }
 
     @Test
+    public void repeatedBrowserPublicationKeepsCurrentPageUntilItsContentsChange()
+    {
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final ThorBrowserState current = ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{1, 3});
+        assertTrue(current.sameContents(ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{1, 3})));
+        assertFalse(current.sameContents(ThorBrowserState.copyOf(context, 0, 1,
+                new int[]{2, 4}, new String[]{"Autosave", "NEWGAME"}, new int[]{3, 1})));
+    }
+
+    @Test
     public void malformedOrOversizedPayloadFailsClosed()
     {
         assertEquals(0, ThorBrowserState.copyOf(ThorContextIds.UNKNOWN, 0, 1,
@@ -72,6 +84,87 @@ public class ThorBrowserTest
         }
         assertEquals(ThorActionIds.NONE, ThorBrowserState.actionForControl(
                 ThorContextIds.CAMPAIGN_BROWSER, ThorBrowserState.CONTROL_PRIMARY));
+    }
+
+    @Test
+    public void loadAndBackControlsHaveDistinctTouchableRegionsAndLobbyActions()
+    {
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final float width = 982f;
+        final float height = 1142f;
+        final int[] controls = {ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
+        final int[] actions = {ThorActionIds.LOBBY_START_GAME, ThorActionIds.LOBBY_BACK};
+        final float[][] bounds = new float[controls.length][];
+        for (int index = 0; index < controls.length; ++index)
+        {
+            bounds[index] = ThorBrowserState.boundsForControl(context, controls[index], width, height);
+            assertTrue(bounds[index][0] >= 0f);
+            assertTrue(bounds[index][1] >= 0f);
+            assertTrue(bounds[index][2] <= width);
+            assertTrue(bounds[index][3] <= height);
+            assertTrue(bounds[index][2] > bounds[index][0]);
+            assertTrue(bounds[index][3] > bounds[index][1]);
+            assertEquals(controls[index], ThorBrowserState.controlAt(context,
+                    (bounds[index][0] + bounds[index][2]) / 2, (bounds[index][1] + bounds[index][3]) / 2,
+                    width, height, 1));
+            assertEquals(actions[index], ThorBrowserState.actionForControl(context, controls[index]));
+            final ThorBrowserGesture gesture = new ThorBrowserGesture();
+            gesture.begin(context, controls[index], ThorActionIds.NO_TARGET, 7, 9, 1, true);
+            if (controls[index] == ThorBrowserState.CONTROL_BACK)
+                assertTrue(gesture.finish(context, controls[index], ThorActionIds.NO_TARGET, 1, 1, 8, 9,
+                        true, true, true));
+            else
+                assertFalse(gesture.finish(context, controls[index], ThorActionIds.NO_TARGET, 1, 1, 8, 9,
+                        true, true));
+        }
+        assertTrue(bounds[0][2] <= bounds[1][0] || bounds[1][2] <= bounds[0][0]
+                || bounds[0][3] <= bounds[1][1] || bounds[1][3] <= bounds[0][1]);
+    }
+
+    @Test
+    public void loadBackSurvivesBrowserRefreshWhileRowsAndOtherContextsCancel()
+    {
+        final ThorBrowserGesture gesture = new ThorBrowserGesture();
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        gesture.begin(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET, 7, 9, 1, true);
+        assertTrue(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, false));
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(ThorContextIds.CAMPAIGN_BROWSER, true));
+        gesture.begin(context, ThorBrowserState.CONTROL_FIRST_ROW, 2, 7, 9, 1, true);
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
+        gesture.cancel();
+        assertFalse(gesture.retainsLoadBackAfterBrowserUpdate(context, true));
+    }
+
+    @Test
+    public void loadBackSurvivesTransientZeroMaskButReleaseStillRequiresEnabledBack()
+    {
+        final ThorBrowserGesture gesture = new ThorBrowserGesture();
+        final String context = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO;
+        final long backBit = ThorActionIds.maskFor(ThorActionIds.LOBBY_BACK);
+        gesture.begin(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET, 7, 9, 1, true);
+        assertTrue(gesture.retainsLoadBackAcrossContextUpdate(context, backBit, 0L, true));
+        assertTrue(gesture.retainsLoadBackAcrossContextUpdate(context, 0L, backBit, false));
+        assertFalse(gesture.retainsLoadBackAcrossContextUpdate(context, backBit, 0L, false));
+        assertFalse(gesture.retainsLoadBackAcrossContextUpdate(context, 0L, 0L, true));
+        assertFalse(gesture.retainsLoadBackAcrossContextUpdate(ThorContextIds.CAMPAIGN_BROWSER, backBit, 0L, true));
+        assertFalse(gesture.finish(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET,
+                1, 1, 8, 9, false, true, true));
+        gesture.begin(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET, 7, 9, 1, true);
+        assertTrue(gesture.finish(context, ThorBrowserState.CONTROL_BACK, ThorActionIds.NO_TARGET,
+                1, 1, 8, 9, true, true, true));
+    }
+
+    @Test
+    public void loadAndBackControlsAreNotSaveRows()
+    {
+        assertTrue(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_FIRST_ROW));
+        assertTrue(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_FIRST_ROW
+                + ThorBrowserState.SAVE_ROWS - 1));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_PREVIOUS));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_NEXT));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_PRIMARY));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_BACK));
     }
 
     @Test

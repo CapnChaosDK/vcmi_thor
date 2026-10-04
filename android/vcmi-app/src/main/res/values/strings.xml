@@ -61,6 +61,8 @@
     <string name="thor_recruitment_next">Next</string>
     <string name="thor_recruitment_variant">Variant</string>
     <string name="thor_recruitment_buy">Buy</string>
+    <string name="thor_build_confirm">Buy</string>
+    <string name="thor_build_confirmation_status">Confirm construction or cancel</string>
     <string name="thor_recruitment_back">Back</string>
     <string name="thor_recruitment_empty">No creatures available</string>
     <string name="thor_recruitment_no_army_space">No army space</string>

@@ -40,10 +40,20 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(30), ThorAction::LOBBY_NEXT_SCENARIO);
 	for(int id = 31; id <= 49; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
-	for(int id = 50; id <= 56; ++id)
+	for(int id = 50; id <= 57; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
-	EXPECT_EQ(thorActionFromId(57), std::nullopt);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 57);
+	EXPECT_EQ(thorActionMask(ThorAction::WINDOW_CONFIRM), std::uint64_t{1} << 56);
+	EXPECT_EQ(thorActionFromId(58), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
+}
+
+TEST(ThorActionTest, LobbyStartRequiresMatchingMapAndNativeAvailability)
+{
+	EXPECT_FALSE(thorLobbyStartActionAvailable(false, true, true));
+	EXPECT_FALSE(thorLobbyStartActionAvailable(true, false, true));
+	EXPECT_FALSE(thorLobbyStartActionAvailable(true, true, false));
+	EXPECT_TRUE(thorLobbyStartActionAvailable(true, true, true));
 }
 
 TEST(ThorActionTest, HapticAcceptanceRequiresValidSuccessfullyExecutedSemanticAction)
@@ -249,11 +259,11 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	for(int id = 43; id <= 49; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	for(int id = 50; id <= 56; ++id)
+	for(int id = 50; id <= 57; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	EXPECT_EQ(thorActionMask(ThorAction::TOWN_OPEN_SERVICE), std::uint64_t{1} << 52);
 	EXPECT_EQ(thorActionMask(ThorAction::TOWN_HALL_BUILD), std::uint64_t{1} << 53);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 56);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 57);
 }
 
 TEST(ThorActionTest, TownHallBuildUsesOneExactContextActionAndPublishedBuildableTarget)

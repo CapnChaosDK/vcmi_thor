@@ -115,6 +115,10 @@ Thor invariants include:
   revision-bound plain data; consume it on the existing `MainGUI` path, re-resolve
   stable identities, validate current owner/context/bounds/availability, then use
   existing UI/controller or callback routes. Never mutate game state from Java.
+- Keep Android control IDs distinct from payload row indexes. Bound row checks by
+  the explicit row-control range, not by the browser's maximum row capacity; footer
+  controls such as Load and Back must use their own action availability. Pin this
+  boundary in focused tests.
 - The lower `Presentation` supplements the SDL display and must not steal or replace
   upper-screen touch, keyboard, controller, rendering, or focus paths.
 - Discover displays through public Android APIs; never hard-code transient display

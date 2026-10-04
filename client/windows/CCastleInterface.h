@@ -328,6 +328,7 @@ class CBuildWindow: public CStatusbarWindow
 {
 	const CGTownInstance * town;
 	const CBuilding * building;
+	bool rightClick;
 
 	std::shared_ptr<CAnimImage> icon;
 	std::shared_ptr<CLabel> name;
@@ -342,6 +343,13 @@ class CBuildWindow: public CStatusbarWindow
 	void buyFunc();
 public:
 	CBuildWindow(const CGTownInstance *Town, const CBuilding * building, EBuildingState State, bool rightClick);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void updateThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 };
 
 //Small class to display

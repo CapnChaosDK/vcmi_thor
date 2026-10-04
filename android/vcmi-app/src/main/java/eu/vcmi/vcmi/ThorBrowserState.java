@@ -1,5 +1,7 @@
 package eu.vcmi.vcmi;
 
+import java.util.Arrays;
+
 /** Bounded current-page data and hit regions shared by the two native browser owners. */
 final class ThorBrowserState
 {
@@ -68,6 +70,13 @@ final class ThorBrowserState
         return targets.length;
     }
 
+    boolean sameContents(final ThorBrowserState other)
+    {
+        return other != null && page == other.page && pageCount == other.pageCount
+                && Arrays.equals(targets, other.targets) && Arrays.equals(labels, other.labels)
+                && Arrays.equals(flags, other.flags);
+    }
+
     boolean enabled(final int row)
     {
         return row >= 0 && row < flags.length && (flags[row] & 1) != 0;
@@ -81,6 +90,11 @@ final class ThorBrowserState
     boolean completed(final int row)
     {
         return row >= 0 && row < flags.length && (flags[row] & 4) != 0;
+    }
+
+    static boolean isRowControl(final int control)
+    {
+        return control >= CONTROL_FIRST_ROW && control < CONTROL_PREVIOUS;
     }
 
     static int actionForControl(final String contextId, final int control)
