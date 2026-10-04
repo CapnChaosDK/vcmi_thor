@@ -8,7 +8,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Display;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -19,7 +18,6 @@ import android.view.WindowManager;
 
 final class ThorSecondScreenPresentation extends Presentation
 {
-    private static final String LOG_TAG = "vcmi-thor";
     interface HapticsChangeListener
     {
         void onHapticsChanged(boolean enabled);
@@ -793,10 +791,6 @@ final class ThorSecondScreenPresentation extends Presentation
         public boolean onTouchEvent(final android.view.MotionEvent event)
         {
             final int action = event.getActionMasked();
-            if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
-                    && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP))
-                Log.d(LOG_TAG, "Load presentation touch: phase=" + action + " x=" + event.getX()
-                        + " y=" + event.getY());
             if (action == MotionEvent.ACTION_DOWN
                     && hapticsToggleGesture.begin(hapticsToggleBounds().contains(event.getX(), event.getY())))
                 return true;
@@ -3466,8 +3460,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 return browser.pageCount > 0 && browser.page > 0;
             if (control == ThorBrowserState.CONTROL_NEXT)
                 return browser.pageCount > 0 && browser.page + 1 < browser.pageCount;
-            if (control >= ThorBrowserState.CONTROL_FIRST_ROW
-                    && control < ThorBrowserState.CONTROL_FIRST_ROW + ThorBrowserState.MAX_ROWS)
+            if (ThorBrowserState.isRowControl(control))
                 return browser.enabled(control - ThorBrowserState.CONTROL_FIRST_ROW);
             return true;
         }
@@ -3475,11 +3468,6 @@ final class ThorSecondScreenPresentation extends Presentation
         private boolean handleBrowserTouch(final MotionEvent event)
         {
             final int action = event.getActionMasked();
-            if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
-                    && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_UP))
-                Log.d(LOG_TAG, "Load browser touch: phase=" + action + " x=" + event.getX()
-                        + " y=" + event.getY() + " control=" + browserControlAt(event.getX(), event.getY())
-                        + " active=" + browserGesture.isActive() + " revision=" + revision);
             if (action == MotionEvent.ACTION_DOWN)
             {
                 final int control = browserControlAt(event.getX(), event.getY());
@@ -3515,12 +3503,6 @@ final class ThorSecondScreenPresentation extends Presentation
                     event.getPointerCount(), event.getPointerId(0), revision, presentationSessionId,
                     browserControlEnabled(control), sessionValidity != null
                             && sessionValidity.isCurrent(submittedSession), loadBack);
-            if (ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
-                    && (control == ThorBrowserState.CONTROL_BACK
-                    || control == ThorBrowserState.CONTROL_PRIMARY))
-                Log.d(LOG_TAG, "Load browser up: control=" + control + " enabled="
-                        + browserControlEnabled(control) + " accepted=" + accepted
-                        + " revision=" + revision + " pressedRevision=" + submittedRevision);
             if (accepted)
             {
                 performClick();

@@ -156,6 +156,18 @@ public class ThorBrowserTest
     }
 
     @Test
+    public void loadAndBackControlsAreNotSaveRows()
+    {
+        assertTrue(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_FIRST_ROW));
+        assertTrue(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_FIRST_ROW
+                + ThorBrowserState.SAVE_ROWS - 1));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_PREVIOUS));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_NEXT));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_PRIMARY));
+        assertFalse(ThorBrowserState.isRowControl(ThorBrowserState.CONTROL_BACK));
+    }
+
+    @Test
     public void gesturesRejectCrossRowPagePointerRevisionAndSessionChanges()
     {
         final ThorBrowserGesture gesture = new ThorBrowserGesture();

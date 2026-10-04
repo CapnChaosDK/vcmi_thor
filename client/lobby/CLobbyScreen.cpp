@@ -325,10 +325,6 @@ void CLobbyScreen::publishThorContext()
 		|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
 	{
 		const bool mapAvailable = thorScenarioMapAvailable();
-		if(screenType == ESelectionScreen::loadGame)
-			logGlobal->debug("Thor Load availability: map=%d ready=%d button=%d pending=%d",
-				mapAvailable, canStartLobbyGame(), buttonStart && !buttonStart->isBlocked(),
-				thorDifficultyChangePending);
 		const auto * mapInfo = mapAvailable ? getMapInfo() : nullptr;
 		const auto * startInfo = mapAvailable ? getStartInfo() : nullptr;
 		if(mapInfo && mapInfo->mapHeader && startInfo)

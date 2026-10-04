@@ -92,6 +92,11 @@ final class ThorBrowserState
         return row >= 0 && row < flags.length && (flags[row] & 4) != 0;
     }
 
+    static boolean isRowControl(final int control)
+    {
+        return control >= CONTROL_FIRST_ROW && control < CONTROL_PREVIOUS;
+    }
+
     static int actionForControl(final String contextId, final int control)
     {
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
