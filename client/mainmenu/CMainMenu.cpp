@@ -73,13 +73,6 @@ ISelectionScreenInfo * SEL = nullptr;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 namespace
 {
-	std::string thorMenuOriginContext(ESelectionScreen screenType)
-	{
-		return screenType == ESelectionScreen::loadGame ? ThorContextIds::MAIN_MENU_LOAD_GAME
-			: screenType == ESelectionScreen::newGame ? ThorContextIds::MAIN_MENU_NEW_GAME
-			: ThorContextIds::UNKNOWN;
-	}
-
 	std::string thorMultiModeContext(ESelectionScreen screenType)
 	{
 		return screenType == ESelectionScreen::loadGame ? ThorContextIds::MULTI_MODE_LOAD_GAME
