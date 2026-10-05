@@ -56,6 +56,8 @@ public:
 	void acknowledgeThorAction(std::uint64_t revision, ThorAction action, std::uint64_t submittedRevision = 0);
 	void publishThorHeroes(std::uint64_t revision, const std::vector<ThorHeroEntry> & heroes);
 	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);
+	void publishThorAdventureMap(std::uint64_t revision, const ThorAdventureMap & map,
+		ThorMapViewport viewport, bool includeColors);
 	void publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies);
 	void publishThorHeroMeetingArtifacts(std::uint64_t revision, const ThorHeroMeetingArtifacts & artifacts);
 	bool hasThorVisualAsset(std::uint64_t key);

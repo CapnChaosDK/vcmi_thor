@@ -60,7 +60,9 @@ final class ThorActionIds
     static final int RECRUITMENT_EDIT = 55;
     static final int RECRUITMENT_BUY = 56;
     static final int WINDOW_CONFIRM = 57;
-    static final int MAX_ACTION_ID = WINDOW_CONFIRM;
+    static final int ADVENTURE_CENTER_VIEW = 58;
+    static final int ADVENTURE_SET_MAP_LEVEL = 59;
+    static final int MAX_ACTION_ID = ADVENTURE_SET_MAP_LEVEL;
     static final int LOCAL_CONTROL = -1;
     static final int NO_TARGET = -1;
 

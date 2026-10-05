@@ -26,10 +26,10 @@ class CMinimapInstance : public CIntObject
 	//get color of selected tile on minimap
 	//minimapShowHeroes is passed in rather than read here: it is a settings lookup,
 	//and redrawMinimap() calls this once per tile of the entire map
-	ColorRGBA getTileColor(const int3 & pos, bool minimapShowHeroes) const;
-
 	void redrawMinimap();
 public:
+	/// Shared callback-filtered color semantics for the upper minimap and Thor.
+	static ColorRGBA getTileColor(const int3 & pos, bool minimapShowHeroes);
 	CMinimapInstance(const Point & position, const Point & dimensions, int level);
 	~CMinimapInstance();
 

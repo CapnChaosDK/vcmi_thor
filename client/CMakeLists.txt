@@ -216,6 +216,7 @@ set(vcmiclientcommon_HEADERS
 	adventureMap/CInfoBar.h
 	adventureMap/CList.h
 	adventureMap/CMinimap.h
+	adventureMap/MinimapColor.h
 	adventureMap/CResDataBar.h
 	adventureMap/MapAudioPlayer.h
 	adventureMap/TurnTimerWidget.h

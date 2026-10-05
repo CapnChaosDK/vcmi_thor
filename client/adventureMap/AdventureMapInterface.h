@@ -14,6 +14,10 @@
 
 #include "../../lib/int3.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#endif
+
 class CGObjectInstance;
 class CGHeroInstance;
 class CGTownInstance;
@@ -71,6 +75,19 @@ private:
 	std::shared_ptr<AdventureMapShortcuts> shortcuts;
 	std::shared_ptr<TurnTimerWidget> watches;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::optional<ThorAdventureMap> thorMap;
+	ThorMapViewport thorViewport;
+	ThorMapViewport thorLastViewport;
+	bool thorMapDirty = true;
+	bool thorViewportDirty = true;
+	bool thorShowHeroes = false;
+	std::uint64_t thorLastContentRevision = 0;
+	std::uint32_t thorViewportElapsed = 0;
+	std::optional<ThorAdventureMap> buildThorAdventureMap();
+	void publishThorAdventureMap(const ThorContextRecord & context, bool force);
+#endif
+
 private:
 	EAdventureState getState() const;
 	void setState(EAdventureState state);
@@ -125,6 +142,10 @@ public:
 	/// Provides access to the shortcut/action registry (callbacks + enabled states)
 	AdventureMapShortcuts & getAdventureShortcuts() const { return *shortcuts; }
 	void updateThorActionState(bool invalidateActions = false);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool executeThorMapAction(const ThorActionRequest & request);
+	void invalidateThorMap() { thorMapDirty = true; }
+#endif
 
 	void hotkeyAbortCastingMode();
 	void hotkeyExitWorldView();

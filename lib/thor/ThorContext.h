@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "../constants/NumericConstants.h"
+#include "ThorAdventureMap.h"
 
 namespace ThorContextIds
 {
@@ -125,6 +126,7 @@ inline constexpr std::size_t THOR_SAVE_BROWSER_PAGE_SIZE = 5;
 using ThorContextDetails = std::array<std::string, THOR_CONTEXT_DETAIL_LINE_COUNT>;
 inline constexpr std::size_t THOR_MAX_HEROES = GameConstants::MAX_HEROES_PER_PLAYER;
 inline constexpr std::size_t THOR_MAX_TOWNS = 64;
+static_assert(THOR_MAX_HEROES == THOR_MAP_MAX_HERO_MARKERS && THOR_MAX_TOWNS == THOR_MAP_MAX_TOWN_MARKERS);
 inline constexpr std::size_t THOR_HERO_MEETING_ARMY_SIZE = GameConstants::ARMY_SIZE;
 inline constexpr std::size_t THOR_HERO_MEETING_SLOT_KEY_COUNT = THOR_HERO_MEETING_ARMY_SIZE * 2;
 inline constexpr std::size_t THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT = 19;
@@ -342,6 +344,7 @@ struct DLL_LINKAGE ThorContextRecord
 	/// Native-only owner identity. These pointers are never passed to JNI.
 	const void * nativeOwnerToken = nullptr;
 	const void * nativeParentToken = nullptr;
+	std::optional<ThorAdventureMap> adventureMap;
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

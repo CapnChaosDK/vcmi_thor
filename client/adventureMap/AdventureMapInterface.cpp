@@ -39,6 +39,7 @@
 #include "../CPlayerInterface.h"
 
 #include "../../lib/mapping/CMap.h"
+#include "../../lib/Color.h"
 #include "../../lib/GameLibrary.h"
 #include "../../lib/IGameSettings.h"
 #include "../../lib/StartInfo.h"
@@ -121,6 +122,13 @@ void AdventureMapInterface::onMapViewMoved(const Rect & visibleArea, int mapLeve
 	shortcuts->onMapViewMoved(visibleArea, mapLevel);
 	widget->getMinimap()->onMapViewMoved(visibleArea, mapLevel);
 	widget->onMapViewMoved(visibleArea, mapLevel);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(thorMap && thorMap->level != mapLevel)
+		thorMapDirty = true;
+	const auto size = GAME->interface()->cb->getMapSize();
+	thorViewport = clampThorMapViewport({visibleArea.x, visibleArea.y, visibleArea.w, visibleArea.h}, size.x, size.y);
+	thorViewportDirty = thorViewport != thorLastViewport;
+#endif
 }
 
 void AdventureMapInterface::onAudioResumed()
@@ -189,6 +197,8 @@ void AdventureMapInterface::activate()
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(!wasActive)
 	{
+		thorMapDirty = true;
+		thorLastContentRevision = 0; // UNKNOWN clears the activity-owned map cache.
 		const auto * hero = GAME->interface()->localState->getCurrentHero();
 		publishThorInGameContext(ThorInGameContext::ADVENTURE_MAP,
 			shortcuts->getThorActionMask(), shortcuts->getThorActiveActionMask(), shortcuts->getThorSelectedHeroId(),
@@ -196,6 +206,7 @@ void AdventureMapInterface::activate()
 			hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{},
 			shortcuts->getThorHeroes(), shortcuts->getThorTowns(),
 			hero ? thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum()) : 0);
+		updateThorActionState();
 	}
 #endif
 }
@@ -218,6 +229,14 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	context.heroPortraitAssetKey = hero ? thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum()) : 0;
 	context.heroes = shortcuts->getThorHeroes();
 	context.towns = shortcuts->getThorTowns();
+	context.adventureMap = buildThorAdventureMap();
+	if(context.adventureMap && shortcuts->optionInMapView() && GAME->interface()->makingTurn
+		&& currentPlayerID == GAME->interface()->playerID && !settings["session"]["spectate"].Bool())
+	{
+		context.enabledActionMask |= thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW);
+		if(context.adventureMap->levels == 2)
+			context.enabledActionMask |= thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL);
+	}
 	context.title = thorBoundedText(hero ? hero->getObjectName().toString(&GAME->translator()) : std::string{});
 	context.status = hero ? std::to_string(hero->movementPointsRemaining()) + " / " + std::to_string(hero->movementPointsLimit()) : std::string{};
 	if(invalidateActions)
@@ -231,11 +250,123 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	CAndroidVMHelper().publishThorHeroes(context.revision, context.heroes);
 	CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	publishThorAdventureMap(context, true);
 	publishThorVisualAssets(context);
 #else
 	(void)invalidateActions;
 #endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+std::optional<ThorAdventureMap> AdventureMapInterface::buildThorAdventureMap()
+{
+	const auto size = GAME->interface()->cb->getMapSize();
+	const int level = mapViewCenter.z;
+	if(!thorMapDimensionsValid(size.x, size.y, size.z) || level < 0 || level >= size.z
+		|| !shortcuts->optionInMapView() || !GAME->interface()->makingTurn
+		|| currentPlayerID != GAME->interface()->playerID || settings["session"]["spectate"].Bool())
+	{
+		thorMap.reset();
+		thorMapDirty = true;
+		return std::nullopt;
+	}
+
+	const bool showHeroes = settings["adventure"]["minimapShowHeroes"].Bool();
+	ThorAdventureMap map = thorMap.value_or(ThorAdventureMap{});
+	const bool shapeChanged = map.width != size.x || map.height != size.y || map.levels != size.z || map.level != level;
+	map.width = size.x;
+	map.height = size.y;
+	map.level = level;
+	map.levels = size.z;
+	map.markers.clear();
+	const auto & heroes = GAME->interface()->localState->getWanderingHeroes();
+	const auto & towns = GAME->interface()->localState->getOwnedTowns();
+	if(heroes.size() > THOR_MAX_HEROES || towns.size() > THOR_MAX_TOWNS)
+		return std::nullopt;
+	for(const auto * hero : heroes)
+	{
+		if(!hero || hero->tempOwner != GAME->interface()->playerID)
+			return std::nullopt;
+		const auto tile = hero->visitablePos();
+		map.markers.push_back({static_cast<int>(ThorAction::SELECT_HERO), hero->id.getNum(), {tile.x, tile.y, tile.z},
+			hero == GAME->interface()->localState->getCurrentHero()});
+	}
+	for(const auto * town : towns)
+	{
+		if(!town || town->tempOwner != GAME->interface()->playerID)
+			return std::nullopt;
+		const auto tile = town->visitablePos();
+		map.markers.push_back({static_cast<int>(ThorAction::SELECT_TOWN), town->id.getNum(), {tile.x, tile.y, tile.z},
+			town == GAME->interface()->localState->getCurrentTown()});
+	}
+	// Reject unsupported rosters before allocating or resolving any map-sized colors.
+	if(!map.markersValid())
+		return std::nullopt;
+	if(thorMapDirty || shapeChanged || thorShowHeroes != showHeroes || !map.rgb)
+	{
+		auto colors = std::make_shared<std::vector<std::uint8_t>>();
+		colors->reserve(static_cast<std::size_t>(size.x) * size.y * 3);
+		for(int y = 0; y < size.y; ++y)
+			for(int x = 0; x < size.x; ++x)
+			{
+				const auto color = CMinimapInstance::getTileColor(int3(x, y, level), showHeroes);
+				colors->insert(colors->end(), {color.r, color.g, color.b});
+			}
+		if(shapeChanged || !map.rgb || *colors != *map.rgb)
+		{
+			// MainGUI-only generation; monotonic across Adventure owner replacement.
+			static std::uint64_t contentGeneration = 0;
+			map.contentRevision = ++contentGeneration;
+			map.rgb = std::move(colors);
+		}
+		thorMapDirty = false;
+		thorShowHeroes = showHeroes;
+	}
+
+	thorMap = map;
+	return map;
+}
+
+void AdventureMapInterface::publishThorAdventureMap(const ThorContextRecord & context, bool force)
+{
+	if(context.contextId != ThorContextIds::ADVENTURE_MAP)
+		return;
+	if(!context.adventureMap)
+	{
+		if(force)
+			CAndroidVMHelper().publishThorAdventureMap(context.revision, {}, {}, false);
+		thorLastContentRevision = 0;
+		return;
+	}
+	const auto & map = *context.adventureMap;
+	if(!force && !thorViewportDirty)
+		return;
+	CAndroidVMHelper().publishThorAdventureMap(context.revision, map, thorViewport,
+		map.contentRevision != thorLastContentRevision);
+	thorLastContentRevision = map.contentRevision;
+	thorLastViewport = thorViewport;
+	thorViewportDirty = false;
+}
+
+bool AdventureMapInterface::executeThorMapAction(const ThorActionRequest & request)
+{
+	const auto size = GAME->interface()->cb->getMapSize();
+	if(validateThorAdventureMapRequest(request, thorContextStore().snapshot(), isActive(),
+		ENGINE->windows().topWindow<AdventureMapInterface>().get() == this,
+		shortcuts->optionInMapView() && GAME->interface()->makingTurn
+			&& currentPlayerID == GAME->interface()->playerID && !settings["session"]["spectate"].Bool(),
+		size.x, size.y, size.z, mapViewCenter.z) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::ADVENTURE_CENTER_VIEW)
+	{
+		const auto tile = *decodeThorMapTile(request.targetId);
+		centerOnTile(int3(tile.x, tile.y, tile.level));
+	}
+	else
+		hotkeySwitchMapLevel(); // Validated two-level transition preserves the current camera.
+	return true;
+}
+#endif
 
 void AdventureMapInterface::deactivate()
 {
@@ -299,6 +430,16 @@ void AdventureMapInterface::tick(uint32_t msPassed)
 	// we want animations to be active during enemy turn but map itself to be non-interactive
 	// so call timer update directly on inactive element
 	widget->getMapView()->tick(msPassed);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	// Tile-rectangle camera changes are coalesced to at most ten cosmetic updates/sec.
+	thorViewportElapsed = std::min<std::uint32_t>(100, thorViewportElapsed + std::min<std::uint32_t>(msPassed, 100));
+	if(thorViewportElapsed >= 100 && thorViewportDirty && isActive()
+		&& ENGINE->windows().topWindow<AdventureMapInterface>().get() == this)
+	{
+		publishThorAdventureMap(thorContextStore().snapshot(), false);
+		thorViewportElapsed = 0;
+	}
+#endif
 }
 
 void AdventureMapInterface::handleMapScrollingUpdate(uint32_t timePassed)
@@ -457,6 +598,9 @@ void AdventureMapInterface::onHeroOrderChanged()
 
 void AdventureMapInterface::onMapTilesChanged(std::optional<FowTilesType> positions)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorMapDirty = true;
+#endif
 	if (positions)
 		widget->getMinimap()->updateTiles(*positions);
 	else
@@ -510,6 +654,9 @@ void AdventureMapInterface::onCurrentPlayerChanged(PlayerColor playerID)
 		return;
 
 	currentPlayerID = playerID;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorMapDirty = true;
+#endif
 	widget->setPlayerColor(playerID);
 }
 

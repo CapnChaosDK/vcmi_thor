@@ -30,6 +30,7 @@ namespace
 			&& lhs.windowSubjectId == rhs.windowSubjectId
 			&& lhs.heroes == rhs.heroes
 			&& lhs.towns == rhs.towns
+			&& lhs.adventureMap == rhs.adventureMap
 			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies
 			&& lhs.heroMeetingArtifacts == rhs.heroMeetingArtifacts
 			&& lhs.recruitment == rhs.recruitment;
@@ -65,6 +66,21 @@ namespace
 			context.heroes.clear();
 		if(context.contextId != ThorContextIds::ADVENTURE_MAP || context.towns.size() > THOR_MAX_TOWNS)
 			context.towns.clear();
+		if(context.contextId != ThorContextIds::ADVENTURE_MAP || !context.adventureMap || !context.adventureMap->valid()
+			|| std::any_of(context.adventureMap->markers.begin(), context.adventureMap->markers.end(),
+				[&](const auto & marker)
+				{
+					return marker.action == static_cast<int>(ThorAction::SELECT_HERO)
+						? std::none_of(context.heroes.begin(), context.heroes.end(),
+							[&](const auto & hero) { return hero.id == marker.id && hero.selected == marker.selected; })
+						: std::none_of(context.towns.begin(), context.towns.end(),
+							[&](const auto & town) { return town.id == marker.id && town.selected == marker.selected; });
+				}))
+		{
+			context.adventureMap.reset();
+			context.enabledActionMask &= ~(thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW)
+				| thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL));
+		}
 		if((context.contextId != ThorContextIds::ADVENTURE_MAP && context.contextId != ThorContextIds::HERO_WINDOW)
 			|| !isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))
 			context.heroPortraitAssetKey = 0;

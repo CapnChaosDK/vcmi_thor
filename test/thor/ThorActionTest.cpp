@@ -42,9 +42,12 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	for(int id = 50; id <= 57; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 57);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 59);
 	EXPECT_EQ(thorActionMask(ThorAction::WINDOW_CONFIRM), std::uint64_t{1} << 56);
-	EXPECT_EQ(thorActionFromId(58), std::nullopt);
+	EXPECT_EQ(thorActionFromId(58), ThorAction::ADVENTURE_CENTER_VIEW);
+	EXPECT_EQ(thorActionFromId(59), ThorAction::ADVENTURE_SET_MAP_LEVEL);
+	for(int id = 60; id <= 64; ++id)
+		EXPECT_EQ(thorActionFromId(id), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -259,11 +262,13 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	for(int id = 43; id <= 49; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
-	for(int id = 50; id <= 57; ++id)
+	for(int id = 50; id <= 59; ++id)
 		EXPECT_EQ(thorActionMask(static_cast<ThorAction>(id)), std::uint64_t{1} << (id - 1));
 	EXPECT_EQ(thorActionMask(ThorAction::TOWN_OPEN_SERVICE), std::uint64_t{1} << 52);
 	EXPECT_EQ(thorActionMask(ThorAction::TOWN_HALL_BUILD), std::uint64_t{1} << 53);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 57);
+	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW), std::uint64_t{1} << 57);
+	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL), std::uint64_t{1} << 58);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 59);
 }
 
 TEST(ThorActionTest, TownHallBuildUsesOneExactContextActionAndPublishedBuildableTarget)

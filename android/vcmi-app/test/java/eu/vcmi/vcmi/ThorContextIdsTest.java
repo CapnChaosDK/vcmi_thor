@@ -109,7 +109,7 @@ public class ThorContextIdsTest
 		assertEquals(8192, ThorActionIds.maskFor(ThorActionIds.SELECT_TOWN));
 		assertEquals(57, ThorActionIds.WINDOW_CONFIRM);
 		assertEquals(1L << 56, ThorActionIds.maskFor(ThorActionIds.WINDOW_CONFIRM));
-		assertEquals(57, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(59, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(-1, ThorActionIds.NO_TARGET);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
@@ -154,7 +154,7 @@ public class ThorContextIdsTest
         assertEquals(1L << 53, ThorActionIds.maskFor(ThorActionIds.TOWN_HALL_BUILD));
         assertEquals(1L << 54, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_EDIT));
         assertEquals(1L << 55, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_BUY));
-		assertEquals(57, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(59, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
 		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
 		assertEquals(43, ThorActionIds.CAMPAIGN_BROWSER_SELECT);
