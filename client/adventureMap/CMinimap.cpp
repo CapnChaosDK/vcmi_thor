@@ -10,6 +10,7 @@
 
 #include "StdInc.h"
 #include "CMinimap.h"
+#include "MinimapColor.h"
 
 #include "AdventureMapInterface.h"
 
@@ -33,37 +34,24 @@
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
 
-ColorRGBA CMinimapInstance::getTileColor(const int3 & pos, bool minimapShowHeroes) const
+ColorRGBA CMinimapInstance::getTileColor(const int3 & pos, bool minimapShowHeroes)
 {
 	const TerrainTile * tile = GAME->interface()->cb->getTile(pos, false);
 
-	// if tile is not visible it will be black on minimap
-	if(!tile)
-		return Colors::BLACK;
-
-	// if object at tile is owned - it will be colored as its owner
-	for (const ObjectInstanceID objectID : tile->blockingObjects)
+	return minimapTileColor(tile, Colors::BLACK, [minimapShowHeroes](ObjectInstanceID objectID) -> std::optional<ColorRGBA>
 	{
 		const auto * obj = GAME->interface()->cb->getObj(objectID);
-
-		if (obj)
-		{
-			PlayerColor player = obj->getOwner();
-			if(player == PlayerColor::NEUTRAL)
-				return graphics->neutralColor;
-
-			if (minimapShowHeroes && obj->ID == MapObjectID::HERO)
-				continue;
-
-			if (player.isValidPlayer())
-				return graphics->playerColors[player.getNum()];
-		}
-	}
-
-	if (tile->blocked() && !tile->visitable())
-		return tile->getTerrain()->minimapBlocked;
-	else
-		return tile->getTerrain()->minimapUnblocked;
+		if(!obj)
+			return std::nullopt;
+		const auto player = obj->getOwner();
+		if(player == PlayerColor::NEUTRAL)
+			return graphics->neutralColor;
+		if(minimapShowHeroes && obj->ID == MapObjectID::HERO)
+			return std::nullopt;
+		if(player.isValidPlayer())
+			return graphics->playerColors[player.getNum()];
+		return std::nullopt;
+	});
 }
 
 void CMinimapInstance::refreshTile(const int3 &tile, bool minimapShowHeroes)

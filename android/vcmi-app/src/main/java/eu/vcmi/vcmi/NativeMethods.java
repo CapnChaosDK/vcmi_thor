@@ -161,6 +161,27 @@ public class NativeMethods
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorAdventureMap(final long revision, final long contentRevision,
+            final int width, final int height, final int level, final int levels,
+            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        // Bound before cloning or queuing. Invalid packets explicitly clear the active surface.
+        final boolean bounded = ThorAdventureMap.dimensionsValid(width, height)
+                && (rgb == null || rgb.length == width * height * 3)
+                && markers != null && markers.length <= ThorAdventureMap.MAX_MARKERS * ThorAdventureMap.MARKER_FIELDS;
+        final byte[] copiedRgb = bounded && rgb != null ? rgb.clone() : null;
+        final int[] copiedMarkers = bounded ? markers.clone() : null;
+        ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorAdventureMap(
+                revision, bounded ? contentRevision : 0, width, height, level, levels,
+                vx, vy, vw, vh, copiedRgb, copiedMarkers));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorBrowser(final long revision, final int page, final int pageCount,
                                           final int[] targets, final String[] labels, final int[] flags)
     {

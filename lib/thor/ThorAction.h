@@ -75,10 +75,12 @@ enum class ThorAction : std::uint8_t
 	TOWN_HALL_BUILD = 54,
 	RECRUITMENT_EDIT = 55,
 	RECRUITMENT_BUY = 56,
-	WINDOW_CONFIRM = 57
+	WINDOW_CONFIRM = 57,
+	ADVENTURE_CENTER_VIEW = 58,
+	ADVENTURE_SET_MAP_LEVEL = 59
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::WINDOW_CONFIRM);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::ADVENTURE_SET_MAP_LEVEL);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -266,6 +268,9 @@ DLL_LINKAGE std::optional<ThorActionAcceptance> thorActionAcceptance(
 	const ThorActionRequest & request, ThorActionValidation validation, bool executed);
 
 DLL_LINKAGE ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context);
+DLL_LINKAGE ThorActionValidation validateThorAdventureMapRequest(const ThorActionRequest & request,
+	const ThorContextRecord & context, bool active, bool top, bool viewAuthority,
+	int width, int height, int levels, int currentLevel);
 DLL_LINKAGE ThorActionValidation validateThorHeroMeetingRedistributionRequest(
 	const ThorHeroMeetingRedistributionRequest & request, const ThorContextRecord & context);
 

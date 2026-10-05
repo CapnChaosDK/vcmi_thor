@@ -39,6 +39,10 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
     private final ThorVisualAssetReferences visualAssetReferences = new ThorVisualAssetReferences();
     private int adventureTab;
+    private ThorAdventureMap adventureMap = ThorAdventureMap.EMPTY;
+    private Bitmap adventureMapBitmap;
+    private long adventureMapRevision;
+    private ThorMapViewState mapViewState = new ThorMapViewState();
     private boolean started;
     private boolean resumed;
 
@@ -149,7 +153,12 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                 ? publishedHeroPortraitAssetKey : 0L;
         visualAssetReferences.updateContext(contextRevision, contextId, heroPortraitAssetKey);
         if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
+        {
             adventureTab = 0;
+            adventureMap = ThorAdventureMap.EMPTY;
+            adventureMapBitmap = null;
+            mapViewState = new ThorMapViewState();
+        }
         heroes = ThorHeroRoster.EMPTY;
         towns = ThorTownRoster.EMPTY;
         browser = ThorBrowserState.EMPTY;
@@ -181,6 +190,31 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey,
                     contextDetails,
                     enabledActionMask, activeActionMask);
+    }
+
+    void publishAdventureMap(final long revision, final long contentRevision,
+            final int width, final int height, final int level, final int levels,
+            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers)
+    {
+        if (revision != contextRevision || !ThorContextIds.ADVENTURE_MAP.equals(contextId))
+            return;
+        final ThorAdventureMap published = ThorAdventureMap.copyOf(adventureMap, contentRevision,
+                width, height, level, levels, vx, vy, vw, vh, rgb, markers);
+        if (!published.valid())
+            adventureMapBitmap = null;
+        else if (published.rgb != adventureMap.rgb)
+        {
+            final int[] pixels = new int[published.width * published.height];
+            for (int i = 0; i < pixels.length; ++i)
+                pixels[i] = 0xff000000 | ((published.rgb[i * 3] & 255) << 16)
+                        | ((published.rgb[i * 3 + 1] & 255) << 8) | (published.rgb[i * 3 + 2] & 255);
+            adventureMapBitmap = Bitmap.createBitmap(pixels, published.width, published.height, Bitmap.Config.ARGB_8888);
+        }
+        adventureMapRevision = revision;
+        adventureMap = published;
+        mapViewState.update(published);
+        if (presentation != null)
+            presentation.updateAdventureMap(adventureMap, adventureMapBitmap);
     }
 
     void publishBrowser(final long revision, final int page, final int pageCount,
@@ -353,11 +387,14 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.show();
             presentation = newPresentation;
             newPresentation.setAdventureTab(adventureTab);
+            newPresentation.setMapViewState(mapViewState.copy());
             newPresentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey,
                     contextDetails,
                     enabledActionMask, activeActionMask);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
+            newPresentation.updateAdventureMap(adventureMapRevision == contextRevision ? adventureMap : ThorAdventureMap.EMPTY,
+                    adventureMapRevision == contextRevision ? adventureMapBitmap : null);
             newPresentation.updateBrowser(browser);
             newPresentation.updateRecruitment(recruitment);
             newPresentation.updateHeroMeetingArmies(heroMeetingArmies);
@@ -400,6 +437,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
 
         final ThorSecondScreenPresentation oldPresentation = presentation;
         adventureTab = ThorContextIds.ADVENTURE_MAP.equals(contextId) ? oldPresentation.getAdventureTab() : 0;
+        mapViewState = ThorContextIds.ADVENTURE_MAP.equals(contextId)
+                ? oldPresentation.getMapViewState() : new ThorMapViewState();
         presentation = null;
         ++presentationSessionId;
         hapticState.resetTransientState();

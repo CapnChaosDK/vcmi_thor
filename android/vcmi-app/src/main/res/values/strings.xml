@@ -215,4 +215,15 @@
     <string name="data_folder_name">VCMI Data</string>
     <string name="shortcut_play">Play VCMI</string>
     <string name="shortcut_editor">Open VCMI Editor</string>
+    <string name="thor_tab_map">Map</string>
+    <string name="thor_map_fit">Fit</string>
+    <string name="thor_map_detail_two">Detail 2×</string>
+    <string name="thor_map_detail_four">Detail 4×</string>
+    <string name="thor_map_navigate">Navigate</string>
+    <string name="thor_map_pan">Pan lower</string>
+    <string name="thor_map_surface">Surface</string>
+    <string name="thor_map_underground">Underground</string>
+    <string name="thor_map_unavailable">Map unavailable</string>
+    <string name="thor_map_legend">● Hero · ■ Town · White ring: selected · White box: upper view</string>
+    <string name="thor_map_accessibility">Tap a hero or town marker to select. Tap or drag in Navigate to center the upper view once on release. Detail 2× and 4× enlarge the lower map. Pan lower moves only this map. White box shows the upper view; white ring marks selection.</string>
 </resources>

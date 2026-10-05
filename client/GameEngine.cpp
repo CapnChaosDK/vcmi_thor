@@ -254,7 +254,8 @@ void GameEngine::updateFrame()
 		bool executed = false;
 		if(context.contextId == ThorContextIds::ADVENTURE_MAP)
 		{
-			if(!adventureInt || !adventureInt->isActive())
+			if(!adventureInt || !adventureInt->isActive()
+				|| windows().topWindow<AdventureMapInterface>() != adventureInt)
 			{
 				logGlobal->debug("Thor action rejected: inactive Adventure Map");
 				continue;
@@ -265,11 +266,14 @@ void GameEngine::updateFrame()
 				logGlobal->debug("Thor action rejected: Adventure state changed");
 				continue;
 			}
-			executed = request->action == ThorAction::SELECT_HERO
-				? adventureInt->getAdventureShortcuts().selectThorHero(request->targetId)
-				: request->action == ThorAction::SELECT_TOWN
-					? adventureInt->getAdventureShortcuts().selectThorTown(request->targetId)
-					: adventureInt->getAdventureShortcuts().executeThorAction(request->action);
+			if(request->action == ThorAction::ADVENTURE_CENTER_VIEW || request->action == ThorAction::ADVENTURE_SET_MAP_LEVEL)
+				executed = adventureInt->executeThorMapAction(*request);
+			else if(request->action == ThorAction::SELECT_HERO)
+				executed = adventureInt->getAdventureShortcuts().selectThorHero(request->targetId);
+			else if(request->action == ThorAction::SELECT_TOWN)
+				executed = adventureInt->getAdventureShortcuts().selectThorTown(request->targetId);
+			else
+				executed = adventureInt->getAdventureShortcuts().executeThorAction(request->action);
 			if(executed)
 				adventureInt->updateThorActionState(true);
 		}

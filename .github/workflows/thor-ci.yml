@@ -91,6 +91,7 @@ jobs:
             lib/thor/ThorVisualAssetCache.cpp \
             test/thor/ThorContextTest.cpp \
             test/thor/ThorActionTest.cpp \
+            test/thor/ThorAdventureMapTest.cpp \
             test/thor/ThorRecruitmentTest.cpp \
             test/thor/ThorVisualAssetTest.cpp \
             test/googletest/googletest/src/gtest-all.cc \
@@ -248,6 +249,7 @@ jobs:
             ./gradlew --no-daemon :vcmi-app:testReleaseUnitTest \
               --tests eu.vcmi.vcmi.ThorContextIdsTest \
               --tests eu.vcmi.vcmi.ThorMainMenuTest \
+              --tests eu.vcmi.vcmi.ThorAdventureMapTest \
               --tests eu.vcmi.vcmi.ThorBrowserTest \
               --tests eu.vcmi.vcmi.ThorWindowNavigationTest \
               --tests eu.vcmi.vcmi.ThorTownServicesTest \

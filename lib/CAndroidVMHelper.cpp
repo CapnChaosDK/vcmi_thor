@@ -315,6 +315,51 @@ void CAndroidVMHelper::publishThorTowns(std::uint64_t revision, const std::vecto
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorAdventureMap(std::uint64_t revision, const ThorAdventureMap & map,
+	ThorMapViewport viewport, bool includeColors)
+{
+	// An invalid map is an explicit empty publication, never a partial/clipped raster.
+	const bool valid = map.valid();
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorAdventureMap", "(JJIIIIIIII[B[I)V",
+		[&](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jbyteArray colors = nullptr;
+			jintArray markers = env->NewIntArray(valid ? static_cast<jsize>(map.markers.size() * 6) : 0);
+			if(!markers)
+				return;
+			if(valid && includeColors)
+			{
+				colors = env->NewByteArray(static_cast<jsize>(map.rgb->size()));
+				if(!colors)
+				{
+					env->DeleteLocalRef(markers);
+					return;
+				}
+				env->SetByteArrayRegion(colors, 0, static_cast<jsize>(map.rgb->size()),
+					reinterpret_cast<const jbyte *>(map.rgb->data()));
+			}
+			if(valid)
+			{
+				viewport = clampThorMapViewport(viewport, map.width, map.height);
+				for(jsize index = 0; index < static_cast<jsize>(map.markers.size()); ++index)
+				{
+					const auto & marker = map.markers[index];
+					const jint data[] = {marker.action, marker.id, marker.tile.x, marker.tile.y,
+						marker.tile.level, marker.selected ? 1 : 0};
+					env->SetIntArrayRegion(markers, index * 6, 6, data);
+				}
+			}
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision),
+				static_cast<jlong>(valid ? map.contentRevision : 0), valid ? map.width : 0, valid ? map.height : 0,
+				valid ? map.level : 0, valid ? map.levels : 0,
+				valid ? viewport.x : 0, valid ? viewport.y : 0,
+				valid ? viewport.width : 0, valid ? viewport.height : 0, colors, markers);
+			if(colors)
+				env->DeleteLocalRef(colors);
+			env->DeleteLocalRef(markers);
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArmies",
