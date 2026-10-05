@@ -66,6 +66,7 @@ public:
 	void switchToTab(std::string name);
 	size_t getActiveTab() const;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::string thorActiveContextId() const;
 	void publishThorContext();
 	bool matchesThorContext(const ThorContextRecord & context);
 	bool executeThorAction(ThorAction action);
@@ -119,6 +120,13 @@ public:
 	void openLobby();
 	void hostTCP(EShortcut shortcut);
 	void joinTCP(EShortcut shortcut);
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context);
+	bool executeThorAction(ThorAction action);
+	#endif
 
 	/// Get all configured player names. The first name would always be present and initialized to its default value.
 	static std::vector<std::string> getPlayersNames();
@@ -144,6 +152,13 @@ public:
 
 	JoinScreen(ESelectionScreen ScreenType, const std::vector<std::string> & playerNames);
 	~JoinScreen();
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context);
+	bool executeThorAction(ThorAction action);
+	#endif
 
 	void onServerDiscovered(const DiscoveredServer & server) override;
 };
@@ -169,6 +184,13 @@ class CMultiPlayers : public WindowBase
 
 public:
 	CMultiPlayers(const std::vector<std::string> & playerNames, ESelectionScreen ScreenType, bool Host, ELoadMode LoadMode, EShortcut shortcut);
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context);
+	bool executeThorAction(ThorAction action);
+	#endif
 };
 
 /// Manages the configuration of pregame GUI elements like campaign screen, main menu, loading screen,...
@@ -205,7 +227,7 @@ public:
 	static void openLobby(ESelectionScreen screenType, bool host, const std::vector<std::string> & names, ELoadMode loadMode, bool battleMode, bool hotseatMode = false, std::string server = {}, ui16 port = 0);
 	static void openCampaignLobby(const std::string & campaignFileName, std::string campaignSet = "");
 	static void openCampaignLobby(std::shared_ptr<CampaignState> campaign);
-	static void startTutorial();
+	static void startTutorial(CMenuScreen * sourceMenu = nullptr);
 	static void openHighScoreScreen();
 	void openCampaignScreen(std::string name);
 
@@ -233,6 +255,13 @@ class CSimpleJoinScreen : public WindowBase
 
 public:
 	CSimpleJoinScreen(bool host = true, const std::string & server = {}, ui16 port = 0);
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(ThorAction action);
+	#endif
 };
 
 class CLoadingScreen : virtual public CWindowObject, virtual public Load::Progress

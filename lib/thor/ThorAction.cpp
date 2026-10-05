@@ -299,6 +299,18 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::TOWN_OPEN_SERVICE;
 	if(contextId == ThorContextIds::TOWN_HALL)
 		return action == ThorAction::TOWN_HALL_BUILD || action == ThorAction::WINDOW_CLOSE;
+	if(contextId == ThorContextIds::HIGH_SCORES)
+		return action == ThorAction::WINDOW_PREVIOUS || action == ThorAction::WINDOW_NEXT
+			|| action == ThorAction::WINDOW_CLOSE || action == ThorAction::WINDOW_CONFIRM;
+	if(contextId == ThorContextIds::MENU_QUIT_CONFIRMATION
+		|| contextId == ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION)
+		return action == ThorAction::WINDOW_CONFIRM || action == ThorAction::WINDOW_CLOSE;
+	if(contextId == ThorContextIds::TUTORIAL_MISSING_DIALOG)
+		return action == ThorAction::WINDOW_CLOSE;
+	if(contextId == ThorContextIds::MULTI_PLAYERS_NEW_GAME || contextId == ThorContextIds::MULTI_PLAYERS_LOAD_GAME
+		|| contextId == ThorContextIds::JOIN_SCREEN_NEW_GAME || contextId == ThorContextIds::JOIN_SCREEN_LOAD_GAME
+		|| contextId == ThorContextIds::SIMPLE_JOIN)
+		return action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::BUILD_CONFIRMATION)
 		return action == ThorAction::WINDOW_CONFIRM || action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK
@@ -385,6 +397,12 @@ std::optional<ThorMainMenuChoice> thorMainMenuChoice(const std::string & context
 		return std::nullopt;
 	if(contextId == ThorContextIds::MAIN_MENU_CREDITS)
 		return choice == 0 ? std::optional<ThorMainMenuChoice>{{0, "credits back"}} : std::nullopt;
+	if(contextId == ThorContextIds::MULTI_MODE_NEW_GAME || contextId == ThorContextIds::MULTI_MODE_LOAD_GAME)
+	{
+		constexpr std::array<std::string_view, 5> multiplayer{
+			"multi hotseat", "multi lobby", "multi host", "multi join", "multi cancel"};
+		return ThorMainMenuChoice{static_cast<std::size_t>(choice), multiplayer[choice]};
+	}
 	constexpr std::array<std::string_view, 5> main{"to new", "to load", "highscores", "to credits", "exit"};
 	constexpr std::array<std::string_view, 5> newGame{"start single", "start multi", "to campaign", "start tutorial", "to main"};
 	constexpr std::array<std::string_view, 5> loadGame{"load single", "load multi", "load campaign", "load tutorial", "to main"};

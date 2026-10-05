@@ -47,6 +47,8 @@
 #include "lobby/CBonusSelection.h"
 #include "mainmenu/CMainMenu.h"
 #include "mainmenu/CCampaignScreen.h"
+#include "mainmenu/CHighScoreScreen.h"
+#include "windows/InfoWindows.h"
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -343,6 +345,71 @@ void GameEngine::updateFrame()
 				continue;
 			}
 			executed = lobbyWindow->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::HIGH_SCORES)
+		{
+			auto highScoreWindow = windows().topWindow<CHighScoreScreen>();
+			if(!highScoreWindow || !highScoreWindow->matchesThorContext(context))
+				continue;
+			highScoreWindow->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+				continue;
+			executed = highScoreWindow->executeThorAction(request->action);
+		}
+		else if(context.contextId == ThorContextIds::MULTI_MODE_NEW_GAME
+			|| context.contextId == ThorContextIds::MULTI_MODE_LOAD_GAME)
+		{
+			auto multiMode = windows().topWindow<CMultiMode>();
+			if(!multiMode || !multiMode->matchesThorContext(context))
+				continue;
+			multiMode->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+				continue;
+			executed = multiMode->executeThorAction(request->action);
+		}
+		else if(context.contextId == ThorContextIds::MULTI_PLAYERS_NEW_GAME
+			|| context.contextId == ThorContextIds::MULTI_PLAYERS_LOAD_GAME)
+		{
+			auto playersWindow = windows().topWindow<CMultiPlayers>();
+			if(!playersWindow || !playersWindow->matchesThorContext(context))
+				continue;
+			playersWindow->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+				continue;
+			executed = playersWindow->executeThorAction(request->action);
+		}
+		else if(context.contextId == ThorContextIds::JOIN_SCREEN_NEW_GAME
+			|| context.contextId == ThorContextIds::JOIN_SCREEN_LOAD_GAME)
+		{
+			auto joinWindow = windows().topWindow<JoinScreen>();
+			if(!joinWindow || !joinWindow->matchesThorContext(context))
+				continue;
+			joinWindow->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+				continue;
+			executed = joinWindow->executeThorAction(request->action);
+		}
+		else if(context.contextId == ThorContextIds::SIMPLE_JOIN)
+		{
+			auto joinWindow = windows().topWindow<CSimpleJoinScreen>();
+			if(!joinWindow || !joinWindow->matchesThorContext(context))
+				continue;
+			joinWindow->publishThorContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+				continue;
+			executed = joinWindow->executeThorAction(request->action);
+		}
+		else if(context.contextId == ThorContextIds::MENU_QUIT_CONFIRMATION
+			|| context.contextId == ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION
+			|| context.contextId == ThorContextIds::TUTORIAL_MISSING_DIALOG)
+		{
+			auto infoWindow = windows().topWindow<CInfoWindow>();
+			if(!infoWindow || !infoWindow->matchesThorMenuModalContext(context))
+				continue;
+			infoWindow->publishThorMenuModalContext();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+				continue;
+			executed = infoWindow->executeThorMenuModalAction(request->action);
 		}
 		else if(thorMainMenuChoice(context.contextId, request->action))
 		{

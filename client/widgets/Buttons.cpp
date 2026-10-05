@@ -250,6 +250,16 @@ void CButton::block(bool on)
 		setState(on ? EButtonState::BLOCKED : EButtonState::NORMAL);
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CButton::invokeThorCallback()
+{
+	if(isBlocked())
+		return false;
+	callback();
+	return true;
+}
+#endif
+
 void CButton::onButtonClicked()
 {
 	// debug logging to figure out pressed button (and as result - player actions) in case of crash

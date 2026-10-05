@@ -89,6 +89,58 @@ public class ThorMainMenuTest
     }
 
     @Test
+    public void multiplayerHighScoresAndSimpleChildActionsAreBounded()
+    {
+        final String[] multiplayerContexts = {
+                ThorContextIds.MULTI_MODE_NEW_GAME, ThorContextIds.MULTI_MODE_LOAD_GAME
+        };
+        for (final String context : multiplayerContexts)
+        {
+            assertEquals(5, ThorMainMenuState.choiceCount(context));
+            assertEquals(R.string.thor_menu_hotseat, ThorMainMenuState.labelForControl(context, 1));
+            assertEquals(R.string.thor_menu_online_lobby, ThorMainMenuState.labelForControl(context, 2));
+            assertEquals(R.string.thor_menu_host_tcp, ThorMainMenuState.labelForControl(context, 3));
+            assertEquals(R.string.thor_menu_join_tcp, ThorMainMenuState.labelForControl(context, 4));
+            assertEquals(R.string.thor_lobby_back, ThorMainMenuState.labelForControl(context, 5));
+            for (int control = 1; control <= 5; ++control)
+                assertEquals(ThorActionIds.MAIN_MENU_CHOICE_1 + control - 1,
+                        ThorMainMenuState.actionForControl(context, control));
+        }
+
+        assertEquals(4, ThorMainMenuState.choiceCount(ThorContextIds.HIGH_SCORES));
+        assertEquals(ThorActionIds.WINDOW_PREVIOUS,
+                ThorMainMenuState.actionForControl(ThorContextIds.HIGH_SCORES, 1));
+        assertEquals(ThorActionIds.WINDOW_NEXT,
+                ThorMainMenuState.actionForControl(ThorContextIds.HIGH_SCORES, 2));
+        assertEquals(ThorActionIds.WINDOW_CONFIRM,
+                ThorMainMenuState.actionForControl(ThorContextIds.HIGH_SCORES, 3));
+        assertEquals(ThorActionIds.WINDOW_CLOSE,
+                ThorMainMenuState.actionForControl(ThorContextIds.HIGH_SCORES, 4));
+        assertEquals(R.string.thor_menu_campaign_scores,
+                ThorMainMenuState.labelForControl(ThorContextIds.HIGH_SCORES, 1));
+        assertEquals(R.string.thor_menu_scenario_scores,
+                ThorMainMenuState.labelForControl(ThorContextIds.HIGH_SCORES, 2));
+        assertEquals(R.string.thor_menu_exit,
+                ThorMainMenuState.labelForControl(ThorContextIds.HIGH_SCORES, 4));
+
+        final String[] simpleCloseContexts = {
+                ThorContextIds.MULTI_PLAYERS_NEW_GAME, ThorContextIds.MULTI_PLAYERS_LOAD_GAME,
+                ThorContextIds.JOIN_SCREEN_NEW_GAME, ThorContextIds.JOIN_SCREEN_LOAD_GAME,
+                ThorContextIds.SIMPLE_JOIN, ThorContextIds.TUTORIAL_MISSING_DIALOG
+        };
+        for (final String context : simpleCloseContexts)
+        {
+            assertEquals(1, ThorMainMenuState.choiceCount(context));
+            assertEquals(ThorActionIds.WINDOW_CLOSE, ThorMainMenuState.actionForControl(context, 1));
+            assertEquals(ThorActionIds.NONE, ThorMainMenuState.actionForControl(context, 2));
+        }
+        assertEquals(R.string.thor_menu_ok,
+                ThorMainMenuState.labelForControl(ThorContextIds.TUTORIAL_MISSING_DIALOG, 1));
+        assertEquals(0, ThorMainMenuState.choiceCount(ThorContextIds.MENU_QUIT_CONFIRMATION));
+        assertEquals(0, ThorMainMenuState.choiceCount(ThorContextIds.HIGH_SCORE_RESET_CONFIRMATION));
+    }
+
+    @Test
     public void gestureRequiresSameEnabledControlPointerRevisionAndSession()
     {
         final ThorMainMenuGesture gesture = new ThorMainMenuGesture();

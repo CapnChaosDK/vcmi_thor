@@ -80,6 +80,8 @@ public:
 	/// returns true if selected interface is on top
 	bool isTopWindow(std::shared_ptr<IShowActivatable> window) const;
 	bool isTopWindow(IShowActivatable * window) const;
+	/// True only when parent immediately under child is on the active window stack.
+	bool isTopWindowWithParent(IShowActivatable * child, IShowActivatable * parent) const;
 
 	/// returns top window if it matches requested class
 	template <typename T>

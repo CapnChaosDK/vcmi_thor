@@ -38,6 +38,11 @@
 #include "../../lib/mapObjects/Quest.h"
 #include "../../lib/mapObjects/MiscObjects.h"
 #include "../../lib/ConditionalWait.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/CAndroidVMHelper.h"
+#include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorContext.h"
+#endif
 
 CSelWindow::CSelWindow( const std::string & Text, PlayerColor player, int charperline, const std::vector<std::shared_ptr<CSelectableComponent>> & comps, const std::vector<std::pair<AnimationPath, CFunctionList<void()>>> & Buttons, QueryID askID)
 {
@@ -172,6 +177,128 @@ void CInfoWindow::showYesNoDialog(const std::string & text, const TCompsInfo & c
 
 	ENGINE->windows().pushWindow(temp);
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CInfoWindow::configureThorMenuModal(ThorMenuModalType type, IShowActivatable * sourceOwner, std::string sourceContext)
+{
+	thorMenuModalType = type;
+	thorMenuModalSourceOwner = sourceOwner;
+	thorMenuModalSourceContext = std::move(sourceContext);
+}
+
+void CInfoWindow::activate()
+{
+	WindowBase::activate();
+	if(thorMenuModalType != ThorMenuModalType::NONE)
+		publishThorMenuModalContext();
+}
+
+void CInfoWindow::deactivate()
+{
+	WindowBase::deactivate();
+	if(thorMenuModalType == ThorMenuModalType::NONE)
+		return;
+	thorActionQueue().clear();
+	ThorContextRecord context;
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, 0, 0);
+}
+
+void CInfoWindow::publishThorMenuModalContext()
+{
+	if(!ENGINE->windows().isTopWindow(this))
+		return;
+	ThorContextRecord context;
+	context.menuModalType = thorMenuModalType;
+	context.menuModalSourceContext = thorMenuModalSourceContext;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = thorMenuModalSourceOwner;
+	context.contextId = thorMenuModalType == ThorMenuModalType::QUIT_CONFIRMATION
+		? ThorContextIds::MENU_QUIT_CONFIRMATION
+		: thorMenuModalType == ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION
+			? ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION
+			: thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION
+				? ThorContextIds::TUTORIAL_MISSING_DIALOG : ThorContextIds::UNKNOWN;
+	const bool parentMatches = thorMenuModalSourceOwner
+		&& ENGINE->windows().isTopWindowWithParent(this, thorMenuModalSourceOwner);
+	if(thorMenuModalOwnerMatches(context, thorMenuModalType, thorMenuModalSourceContext,
+		this, thorMenuModalSourceOwner, isActive(), parentMatches))
+	{
+		const bool isConfirmation = thorMenuModalType == ThorMenuModalType::QUIT_CONFIRMATION
+			|| thorMenuModalType == ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION;
+		if((isConfirmation && buttons.size() == 2 && !buttons[0]->isBlocked() && !buttons[1]->isBlocked())
+			|| (thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION
+				&& buttons.size() == 1 && !buttons[0]->isBlocked()))
+		{
+			context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+			if(isConfirmation)
+				context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+			if(thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION)
+				context.title = text && text->label ? text->label->getText() : std::string();
+		}
+		else
+			context.contextId = ThorContextIds::UNKNOWN;
+	}
+	if(context.contextId == ThorContextIds::UNKNOWN)
+	{
+		context.menuModalType = ThorMenuModalType::NONE;
+		context.menuModalSourceContext.clear();
+		context.nativeOwnerToken = nullptr;
+		context.nativeParentToken = nullptr;
+	}
+	context = thorContextStore().publishNext(std::move(context));
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+}
+
+bool CInfoWindow::matchesThorMenuModalContext(const ThorContextRecord & context) const
+{
+	const bool parentMatches = thorMenuModalSourceOwner
+		&& ENGINE->windows().isTopWindowWithParent(const_cast<CInfoWindow *>(this), thorMenuModalSourceOwner);
+	return thorMenuModalOwnerMatches(context, thorMenuModalType, thorMenuModalSourceContext,
+		this, thorMenuModalSourceOwner, isActive(), parentMatches);
+}
+
+bool CInfoWindow::executeThorMenuModalAction(ThorAction action)
+{
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorMenuModalContext(context) || (context.enabledActionMask & thorActionMask(action)) == 0)
+		return false;
+	std::size_t buttonIndex = 0;
+	if(action == ThorAction::WINDOW_CLOSE)
+		buttonIndex = thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION ? 0 : 1;
+	else if(action != ThorAction::WINDOW_CONFIRM
+		|| thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION)
+		return false;
+	if(buttonIndex >= buttons.size())
+		return false;
+	auto button = buttons[buttonIndex];
+	return button && button->invokeThorCallback();
+}
+
+void CInfoWindow::showThorMenuConfirmation(const std::string & text, const CFunctionList<void()> & onYes,
+	const CFunctionList<void()> & onNo, ThorMenuModalType type, IShowActivatable * sourceOwner,
+	const std::string & sourceContext, PlayerColor player)
+{
+	std::vector<std::pair<AnimationPath, CFunctionList<void()>>> buttonInfo;
+	buttonInfo.emplace_back(AnimationPath::builtin("IOKAY.DEF"), nullptr);
+	buttonInfo.emplace_back(AnimationPath::builtin("ICANCEL.DEF"), nullptr);
+	auto window = std::make_shared<CInfoWindow>(text, player, TCompsInfo(), buttonInfo);
+	window->buttons[0]->addCallback(onYes);
+	window->buttons[1]->addCallback(onNo);
+	window->configureThorMenuModal(type, sourceOwner, sourceContext);
+	ENGINE->windows().pushWindow(window);
+}
+
+void CInfoWindow::showThorMenuInformation(const std::string & text, ThorMenuModalType type,
+	IShowActivatable * sourceOwner, const std::string & sourceContext, PlayerColor player)
+{
+	auto window = create(text, player, {});
+	window->configureThorMenuModal(type, sourceOwner, sourceContext);
+	ENGINE->windows().pushWindow(window);
+}
+#endif
 
 std::shared_ptr<CInfoWindow> CInfoWindow::create(const std::string & text, PlayerColor playerID, const TCompsInfo & components)
 {

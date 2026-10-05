@@ -10,6 +10,10 @@
 #pragma once
 
 #include "CWindowObject.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorContext.h"
+#endif
 #include "../gui/TextAlignment.h"
 #include "../../lib/FunctionList.h"
 
@@ -44,6 +48,19 @@ public:
 	std::shared_ptr<CTextBox> text;
 	std::shared_ptr<CComponentBox> components;
 	std::vector<std::shared_ptr<CButton>> buttons;
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	private:
+	ThorMenuModalType thorMenuModalType = ThorMenuModalType::NONE;
+	std::string thorMenuModalSourceContext;
+	IShowActivatable * thorMenuModalSourceOwner = nullptr;
+	void configureThorMenuModal(ThorMenuModalType type, IShowActivatable * sourceOwner, std::string sourceContext);
+	public:
+	void activate() override;
+	void deactivate() override;
+	void publishThorMenuModalContext();
+	bool matchesThorMenuModalContext(const ThorContextRecord & context) const;
+	bool executeThorMenuModalAction(ThorAction action);
+	#endif
 
 	void close() override;
 	void showAll(Canvas & to) override;
@@ -57,6 +74,13 @@ public:
 	//use only before the game starts! (showYesNoDialog in GAME->interface() must be used then)
 	static void showInfoDialog(const std::string & text, const TCompsInfo & components, PlayerColor player = PlayerColor(1));
 	static void showYesNoDialog(const std::string & text, const TCompsInfo & components, const CFunctionList<void()> & onYes, const CFunctionList<void()> & onNo, PlayerColor player = PlayerColor(1));
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	static void showThorMenuConfirmation(const std::string & text, const CFunctionList<void()> & onYes,
+		const CFunctionList<void()> & onNo, ThorMenuModalType type, IShowActivatable * sourceOwner,
+		const std::string & sourceContext, PlayerColor player = PlayerColor(1));
+	static void showThorMenuInformation(const std::string & text, ThorMenuModalType type,
+		IShowActivatable * sourceOwner, const std::string & sourceContext, PlayerColor player = PlayerColor(1));
+	#endif
 	static std::shared_ptr<CInfoWindow> create(const std::string & text, PlayerColor playerID = PlayerColor(1), const TCompsInfo & components = TCompsInfo());
 
 	/// create text from title and description: {title}\n\n description

@@ -97,6 +97,12 @@ bool WindowHandler::isTopWindow(IShowActivatable * window) const
 	return !windowsStack.empty() && windowsStack.back().get() == window;
 }
 
+bool WindowHandler::isTopWindowWithParent(IShowActivatable * child, IShowActivatable * parent) const
+{
+	return windowsStack.size() >= 2 && windowsStack.back().get() == child
+		&& windowsStack[windowsStack.size() - 2].get() == parent;
+}
+
 void WindowHandler::totalRedraw()
 {
 	totalRedrawRequested = true;

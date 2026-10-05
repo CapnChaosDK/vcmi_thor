@@ -427,6 +427,77 @@ TEST(ThorActionTest, MainMenuChoicesRequireExactContextSlotAndBuiltInCommand)
 	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
 }
 
+TEST(ThorActionTest, MultiplayerAndHighScoreMenusUseContextQualifiedExistingActions)
+{
+	const auto multiNew = ThorContextIds::MULTI_MODE_NEW_GAME;
+	const auto multiLoad = ThorContextIds::MULTI_MODE_LOAD_GAME;
+	for(const auto & context : {multiNew, multiLoad})
+	{
+		for(int index = 0; index < 5; ++index)
+		{
+			const auto action = static_cast<ThorAction>(static_cast<int>(ThorAction::MAIN_MENU_CHOICE_1) + index);
+			const auto choice = thorMainMenuChoice(context, action);
+			ASSERT_TRUE(choice);
+			EXPECT_EQ(choice->index, static_cast<std::size_t>(index));
+			EXPECT_TRUE(isThorActionAllowedInContext(action, context));
+		}
+	}
+	EXPECT_EQ(thorMainMenuChoice(multiNew, ThorAction::MAIN_MENU_CHOICE_1)->command, "multi hotseat");
+	EXPECT_EQ(thorMainMenuChoice(multiLoad, ThorAction::MAIN_MENU_CHOICE_5)->command, "multi cancel");
+	EXPECT_FALSE(thorMainMenuChoice(ThorContextIds::MAIN_MENU, ThorAction::WINDOW_CLOSE));
+
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_PREVIOUS, ThorContextIds::HIGH_SCORES));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_NEXT, ThorContextIds::HIGH_SCORES));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, ThorContextIds::HIGH_SCORES));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CLOSE, ThorContextIds::HIGH_SCORES));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, ThorContextIds::MAIN_MENU));
+	for(const auto & context : {ThorContextIds::MENU_QUIT_CONFIRMATION, ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION})
+	{
+		EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, context));
+		EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CLOSE, context));
+		EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::WINDOW_PREVIOUS, context));
+	}
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CLOSE, ThorContextIds::TUTORIAL_MISSING_DIALOG));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, ThorContextIds::TUTORIAL_MISSING_DIALOG));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::WINDOW_CLOSE, ThorContextIds::UNKNOWN));
+}
+
+TEST(ThorActionTest, HighScoreAndMenuModalRequestsRequireCurrentContextAndAvailability)
+{
+	ThorContextRecord context;
+	context.revision = 91;
+	context.contextId = ThorContextIds::HIGH_SCORES;
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_PREVIOUS)
+		| thorActionMask(ThorAction::WINDOW_NEXT) | thorActionMask(ThorAction::WINDOW_CONFIRM)
+		| thorActionMask(ThorAction::WINDOW_CLOSE);
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_PREVIOUS}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_NEXT}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CONFIRM}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({90, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::STALE_REVISION);
+	ThorContextRecord unknown;
+	unknown.revision = 91;
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CLOSE}, unknown), ThorActionValidation::WRONG_CONTEXT);
+
+	for(const auto contextId : {ThorContextIds::MENU_QUIT_CONFIRMATION, ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION})
+	{
+		context.contextId = contextId;
+		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CONFIRM) | thorActionMask(ThorAction::WINDOW_CLOSE);
+		EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CONFIRM}, context), ThorActionValidation::VALID);
+		EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::VALID);
+		EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_PREVIOUS}, context), ThorActionValidation::WRONG_CONTEXT);
+		context.enabledActionMask &= ~thorActionMask(ThorAction::WINDOW_CONFIRM);
+		EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CONFIRM}, context), ThorActionValidation::UNAVAILABLE);
+	}
+
+	context.contextId = ThorContextIds::TUTORIAL_MISSING_DIALOG;
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CONFIRM}, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::UNKNOWN;
+	EXPECT_EQ(validateThorActionRequest({91, ThorAction::WINDOW_CLOSE}, context), ThorActionValidation::WRONG_CONTEXT);
+}
+
 TEST(ThorActionTest, MainMenuNavigationTargetsRequireCanonicalUniqueTabs)
 {
 	const std::array<std::string, 5> builtIn{"main", "new", "load", "campaign", "credits"};

@@ -14,14 +14,43 @@ final class ThorMainMenuState
     {
         if (ThorContextIds.MAIN_MENU_CREDITS.equals(contextId))
             return 1;
+        if (ThorContextIds.HIGH_SCORES.equals(contextId))
+            return 4;
+        if (ThorContextIds.TUTORIAL_MISSING_DIALOG.equals(contextId)
+                || ThorContextIds.MULTI_PLAYERS_NEW_GAME.equals(contextId)
+                || ThorContextIds.MULTI_PLAYERS_LOAD_GAME.equals(contextId)
+                || ThorContextIds.JOIN_SCREEN_NEW_GAME.equals(contextId)
+                || ThorContextIds.JOIN_SCREEN_LOAD_GAME.equals(contextId)
+                || ThorContextIds.SIMPLE_JOIN.equals(contextId))
+            return 1;
         return ThorContextIds.MAIN_MENU.equals(contextId)
                 || ThorContextIds.MAIN_MENU_NEW_GAME.equals(contextId)
                 || ThorContextIds.MAIN_MENU_LOAD_GAME.equals(contextId)
-                || ThorContextIds.MAIN_MENU_CAMPAIGN.equals(contextId) ? MAX_CHOICES : 0;
+                || ThorContextIds.MAIN_MENU_CAMPAIGN.equals(contextId)
+                || ThorContextIds.MULTI_MODE_NEW_GAME.equals(contextId)
+                || ThorContextIds.MULTI_MODE_LOAD_GAME.equals(contextId) ? MAX_CHOICES : 0;
     }
 
     static int actionForControl(final String contextId, final int control)
     {
+        if (ThorContextIds.HIGH_SCORES.equals(contextId))
+        {
+            switch (control)
+            {
+                case 1: return ThorActionIds.WINDOW_PREVIOUS;
+                case 2: return ThorActionIds.WINDOW_NEXT;
+                case 3: return ThorActionIds.WINDOW_CONFIRM;
+                case 4: return ThorActionIds.WINDOW_CLOSE;
+                default: return ThorActionIds.NONE;
+            }
+        }
+        if (ThorContextIds.TUTORIAL_MISSING_DIALOG.equals(contextId)
+                || ThorContextIds.MULTI_PLAYERS_NEW_GAME.equals(contextId)
+                || ThorContextIds.MULTI_PLAYERS_LOAD_GAME.equals(contextId)
+                || ThorContextIds.JOIN_SCREEN_NEW_GAME.equals(contextId)
+                || ThorContextIds.JOIN_SCREEN_LOAD_GAME.equals(contextId)
+                || ThorContextIds.SIMPLE_JOIN.equals(contextId))
+            return control == 1 ? ThorActionIds.WINDOW_CLOSE : ThorActionIds.NONE;
         return control > CONTROL_NONE && control <= choiceCount(contextId)
                 ? ThorActionIds.MAIN_MENU_CHOICE_1 + control - 1 : ThorActionIds.NONE;
     }
@@ -64,6 +93,30 @@ final class ThorMainMenuState
                 default: return R.string.thor_lobby_back;
             }
         }
+        if (ThorContextIds.MULTI_MODE_NEW_GAME.equals(contextId)
+                || ThorContextIds.MULTI_MODE_LOAD_GAME.equals(contextId))
+        {
+            switch (control)
+            {
+                case 1: return R.string.thor_menu_hotseat;
+                case 2: return R.string.thor_menu_online_lobby;
+                case 3: return R.string.thor_menu_host_tcp;
+                case 4: return R.string.thor_menu_join_tcp;
+                default: return R.string.thor_lobby_back;
+            }
+        }
+        if (ThorContextIds.HIGH_SCORES.equals(contextId))
+        {
+            switch (control)
+            {
+                case 1: return R.string.thor_menu_campaign_scores;
+                case 2: return R.string.thor_menu_scenario_scores;
+                case 3: return R.string.thor_menu_reset_scores;
+                default: return R.string.thor_menu_exit;
+            }
+        }
+        if (ThorContextIds.TUTORIAL_MISSING_DIALOG.equals(contextId))
+            return R.string.thor_menu_ok;
         return R.string.thor_lobby_back;
     }
 
