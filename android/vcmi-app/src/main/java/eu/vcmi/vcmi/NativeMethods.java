@@ -276,6 +276,24 @@ public class NativeMethods
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorHeroManagement(final long revision, final int heroId, final String heroName,
+            final boolean locallyControllable, final int[] creatureIds, final int[] counts,
+            final String[] creatureNames, final long[] creatureVisualKeys, final int[] artifactPositions,
+            final int[] artifactFlags, final String[] artifactNames, final long[] artifactVisualKeys)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        final ThorHeroManagement management = ThorHeroManagement.copyOf(heroId, heroName, locallyControllable,
+                creatureIds, counts, creatureNames, creatureVisualKeys, artifactPositions, artifactFlags,
+                artifactNames, artifactVisualKeys);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorHeroManagement(revision, management));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorVisualAsset(final long revision, final long key, final int width, final int height,
                                               final byte[] encoded)
     {

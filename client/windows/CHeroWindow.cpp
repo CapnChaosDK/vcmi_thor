@@ -15,6 +15,7 @@
 #include "CHeroBackpackWindow.h"
 #include "CKingdomInterface.h"
 #include "CExchangeWindow.h"
+#include "../widgets/CArtifactsOfHeroMain.h"
 
 #include "../CPlayerInterface.h"
 
@@ -68,7 +69,64 @@ namespace
 			+ skillName(second) + " " + std::to_string(hero->getPrimSkillLevel(second));
 	}
 
-	void publishThorHeroContext(const CGHeroInstance * hero)
+	ThorHeroManagement thorHeroManagement(const CGHeroInstance * hero, const CArtifactsOfHeroMain * artifacts)
+	{
+		ThorHeroManagement result;
+		result.heroId = hero->id.getNum();
+		result.heroName = GAME->translator().translate(hero->getNameTextID());
+		result.locallyControllable = hero->tempOwner == GAME->interface()->playerID && GAME->interface()->makingTurn
+			&& hero->artifactsInBackpack.size() <= THOR_MAX_HERO_BACKPACK_ARTIFACTS;
+		for(std::size_t index = 0; index < result.armySlots.size(); ++index)
+		{
+			auto & slot = result.armySlots[index];
+			slot.armyId = result.heroId;
+			slot.slot = static_cast<int>(index);
+			if(const auto * stack = hero->getStackPtr(SlotID(static_cast<int>(index))))
+			{
+				slot.occupied = true;
+				slot.creatureId = stack->getCreatureID().getNum();
+				slot.creatureName = stack->getCreature()->getNamePluralTranslated();
+				slot.count = stack->getCount();
+				slot.visualAssetKey = thorCreatureVisualAssetKey(slot.creatureId);
+			}
+		}
+		if(!artifacts)
+			return result;
+		result.artifactSlots.reserve(std::min(THOR_HERO_MANAGEMENT_ARTIFACT_COUNT,
+			THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + hero->artifactsInBackpack.size()
+				+ (hero->artifactsInBackpack.size() < THOR_MAX_HERO_BACKPACK_ARTIFACTS ? 1 : 0)));
+		const auto append = [&](int position, bool backpack, const ArtSlotInfo * slotInfo)
+		{
+			ThorHeroMeetingArtifact slot;
+			slot.heroId = result.heroId;
+			slot.position = position;
+			slot.backpack = backpack;
+			slot.locked = slotInfo && slotInfo->locked;
+			if(const auto * artifact = artifacts->getArt(ArtifactPosition(position)))
+			{
+				slot.occupied = true;
+				slot.instanceId = artifact->getId().getNum();
+				slot.artifactTypeId = artifact->getTypeId().getNum();
+				slot.name = artifact->getType()->getNameTranslated();
+				if(artifact->isScroll() && artifact->getScrollSpellID().hasValue())
+					slot.name += " — " + artifact->getScrollSpellID().toSpell()->getNameTranslated();
+				slot.visualAssetKey = thorArtifactVisualAssetKey(slot.artifactTypeId);
+			}
+			result.artifactSlots.push_back(std::move(slot));
+		};
+		for(int position = 0; position < static_cast<int>(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT); ++position)
+			append(position, false, hero->getSlot(ArtifactPosition(position)));
+		const auto backpackCount = std::min(hero->artifactsInBackpack.size(), THOR_MAX_HERO_BACKPACK_ARTIFACTS);
+		for(std::size_t index = 0; index < backpackCount; ++index)
+			append(static_cast<int>(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + index), true,
+				&hero->artifactsInBackpack[index]);
+		if(backpackCount < THOR_MAX_HERO_BACKPACK_ARTIFACTS)
+			append(static_cast<int>(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + backpackCount), true, nullptr);
+		return result;
+	}
+
+	void publishThorHeroContext(const CGHeroInstance * hero, const CArtifactsOfHeroMain * artifacts,
+		bool invalidateActions = false, bool mutationsPending = false)
 	{
 		assert(hero);
 
@@ -80,6 +138,7 @@ namespace
 		ThorContextRecord context;
 		context.contextId = ThorContextIds::HERO_WINDOW;
 		context.windowSubjectId = hero->id.getNum();
+		context.heroManagement = thorHeroManagement(hero, artifacts);
 		const int serial = GAME->interface()->cb->getHeroSerial(hero, false);
 		const int count = std::min(GAME->interface()->cb->howManyHeroes(false), 8);
 		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
@@ -87,6 +146,9 @@ namespace
 			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_PREVIOUS);
 		if(thorHeroWindowAdjacentIndex(serial, count, ThorAction::WINDOW_NEXT))
 			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_NEXT);
+		if(context.heroManagement->locallyControllable && !invalidateActions && !mutationsPending)
+			context.enabledActionMask |= thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK)
+				| thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
 		context.heroPortraitAssetKey = thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum());
 		context.title = GAME->translator().translate(hero->getNameTextID());
 		context.status = levelAndClass.toString(&GAME->translator());
@@ -94,15 +156,32 @@ namespace
 		context.details[1] = thorHeroSkillLine(hero, PrimarySkill::SPELL_POWER, PrimarySkill::KNOWLEDGE);
 		context.details[2] = "Mana " + std::to_string(hero->mana) + " / " + std::to_string(hero->manaLimit())
 			+ " · Experience " + std::to_string(hero->exp) + " / "
-			+ std::to_string(LIBRARY->heroh->reqExp(hero->level + 1));
+			+ std::to_string(LIBRARY->heroh->reqExp(hero->level + 1))
+			+ " · " + GAME->translator().translate("core.heroscrn.4") + " "
+			+ std::to_string(hero->moraleVal()) + " · "
+			+ GAME->translator().translate("core.heroscrn.7") + " " + std::to_string(hero->luckVal());
+		std::string secondarySkills;
+		for(const auto & skillEntry : hero->secSkills)
+		{
+			const auto skill = skillEntry.first;
+			if(!secondarySkills.empty())
+				secondarySkills += " · ";
+			secondarySkills += skill.toEntity(LIBRARY)->getNameTranslated() + " "
+				+ GAME->translator().translate("core.skilllev", hero->getSecSkillLevel(skill) - 1);
+		}
+		context.details[3] = std::move(secondarySkills);
+		context.status += " · " + hero->getHeroType()->getSpecialtyNameTranslated();
 
 		const auto previous = thorContextStore().snapshot();
+		context.actionEpoch = previous.contextId == ThorContextIds::HERO_WINDOW
+			? previous.actionEpoch + (invalidateActions ? 1 : 0) : 0;
 		context = thorContextStore().publishNext(std::move(context));
 		if(context.revision != previous.revision)
 		{
 			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 				context.details, context.heroPortraitAssetKey);
 			CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
+			CAndroidVMHelper().publishThorHeroManagement(context.revision, *context.heroManagement);
 			publishThorVisualAssets(context);
 		}
 	}
@@ -136,10 +215,10 @@ bool CHeroWindow::matchesThorContext(const ThorContextRecord & context) const
 		curHero->id.getNum(), isActive(), true);
 }
 
-void CHeroWindow::updateThorActionState()
+void CHeroWindow::updateThorActionState(bool invalidateActions)
 {
 	if(isActive())
-		publishThorHeroContext(curHero);
+		publishThorHeroContext(curHero, arts.get(), invalidateActions, !pendingThorActionRequestIds.empty());
 }
 
 bool CHeroWindow::executeThorAction(const ThorActionRequest & request)
@@ -152,6 +231,75 @@ bool CHeroWindow::executeThorAction(const ThorActionRequest & request)
 		close();
 		return true;
 	}
+	if(request.action == ThorAction::HERO_WINDOW_TRANSFER_STACK)
+	{
+		const auto management = thorHeroManagement(curHero, arts.get());
+		const auto pair = decodeThorHeroArmyPair(request.targetId);
+		if(!context.heroManagement || !pair || management != *context.heroManagement)
+			return false;
+		CExchangeController controller(curHero->id, curHero->id);
+		if(!controller.canTransferStack(true, SlotID(pair->first), true, SlotID(pair->second)))
+		{
+			updateThorActionState(true);
+			updateThorActionState();
+			return false;
+		}
+		const int requestId = controller.transferStackRequest(true, SlotID(pair->first), true, SlotID(pair->second));
+		if(requestId <= 0)
+		{
+			updateThorActionState(true);
+			updateThorActionState();
+			return false;
+		}
+		pendingThorActionRequestIds.insert(requestId);
+		updateThorActionState(true);
+		return true;
+	}
+	if(request.action == ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT)
+	{
+		const auto management = thorHeroManagement(curHero, arts.get());
+		const auto pair = decodeThorHeroArtifactPair(request.targetId);
+		if(!context.heroManagement || !pair || !arts || management != *context.heroManagement
+			|| !context.heroManagement->locallyControllable)
+			return false;
+		const auto & source = context.heroManagement->artifactSlots[pair->first];
+		const auto & destination = context.heroManagement->artifactSlots[pair->second];
+		const auto sourcePosition = ArtifactPosition(source.position);
+		const auto destinationPosition = ArtifactPosition(destination.position);
+		const auto * sourceArtifact = curHero->getArt(sourcePosition);
+		const auto * destinationArtifact = curHero->getArt(destinationPosition);
+		const bool appendToBackpack = destination.backpack && !destinationArtifact;
+		const auto expectedAppend = ArtifactPosition(ArtifactPosition::BACKPACK_START + curHero->artifactsInBackpack.size());
+		if(!sourceArtifact || source.locked || destination.locked || getPickedArtifact() != nullptr
+			|| !GAME->interface()->makingTurn || curHero->tempOwner != GAME->interface()->playerID
+			|| sourceArtifact->getId().getNum() != source.instanceId
+			|| (destinationArtifact ? destinationArtifact->getId().getNum() : -1) != destination.instanceId
+			|| (appendToBackpack && (destinationPosition != expectedAppend
+				|| curHero->artifactsInBackpack.size() >= THOR_MAX_HERO_BACKPACK_ARTIFACTS))
+			|| vstd::contains(ArtifactUtils::unmovableSlots(), sourcePosition)
+			|| (destinationArtifact && vstd::contains(ArtifactUtils::unmovableSlots(), destinationPosition))
+			|| !sourceArtifact->getType()->isTradable()
+			|| (destinationArtifact && !destinationArtifact->getType()->isTradable())
+			|| sourceArtifact->isCombined() || (destinationArtifact && destinationArtifact->isCombined())
+			|| !sourceArtifact->canBePutAt(curHero, destinationPosition, destinationArtifact != nullptr)
+			|| (destinationArtifact && !destinationArtifact->canBePutAt(curHero, sourcePosition, true)))
+		{
+			updateThorActionState(true);
+			updateThorActionState();
+			return false;
+		}
+		const int requestId = GAME->interface()->cb->swapArtifactsRequest(ArtifactLocation(curHero->id, sourcePosition),
+			ArtifactLocation(curHero->id, destinationPosition));
+		if(requestId <= 0)
+		{
+			updateThorActionState(true);
+			updateThorActionState();
+			return false;
+		}
+		pendingThorActionRequestIds.insert(requestId);
+		updateThorActionState(true);
+		return true;
+	}
 	const int serial = GAME->interface()->cb->getHeroSerial(curHero, false);
 	const int count = std::min(GAME->interface()->cb->howManyHeroes(false), 8);
 	const auto target = thorHeroWindowAdjacentIndex(serial, count, request.action);
@@ -162,6 +310,17 @@ bool CHeroWindow::executeThorAction(const ThorActionRequest & request)
 		return false;
 	showHero(next);
 	return true;
+}
+
+void CHeroWindow::onThorActionRequestResult(int requestId)
+{
+	if(pendingThorActionRequestIds.erase(requestId) == 0)
+		return;
+	if(matchesThorContext(thorContextStore().snapshot()))
+	{
+		updateThorActionState(true);
+		updateThorActionState();
+	}
 }
 #endif
 
@@ -313,7 +472,7 @@ void CHeroWindow::activate()
 	CStatusbarWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorHeroContext(curHero);
+	updateThorActionState();
 #endif
 }
 
@@ -488,7 +647,7 @@ void CHeroWindow::updateArtifacts()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(isActive())
-		publishThorHeroContext(curHero);
+		updateThorActionState();
 #endif
 
 	redraw();
@@ -535,6 +694,9 @@ void CHeroWindow::updateGarrisons()
 {
 	garr->recreateSlots();
 	morale->set(curHero);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	updateThorActionState();
+#endif
 }
 
 bool CHeroWindow::holdsGarrison(const CArmedInstance * army)

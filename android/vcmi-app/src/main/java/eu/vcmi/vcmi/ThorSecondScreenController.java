@@ -34,6 +34,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
     private ThorBrowserState browser = ThorBrowserState.EMPTY;
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+    private ThorHeroManagement heroManagement = ThorHeroManagement.EMPTY;
     private ThorRecruitmentState recruitment = ThorRecruitmentState.EMPTY;
     private final ThorHeroMeetingArtifactCache heroMeetingArtifactCache = new ThorHeroMeetingArtifactCache();
     private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
@@ -164,6 +165,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         browser = ThorBrowserState.EMPTY;
         recruitment = ThorRecruitmentState.EMPTY;
         heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+        heroManagement = ThorHeroManagement.EMPTY;
         heroMeetingArtifactCache.reset(revision, contextId);
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
@@ -283,6 +285,15 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             presentation.updateHeroMeetingArtifacts(artifacts);
     }
 
+    void publishHeroManagement(final long revision, final ThorHeroManagement management)
+    {
+        if (revision != contextRevision || !ThorContextIds.HERO_WINDOW.equals(contextId))
+            return;
+        heroManagement = management.complete() ? management : ThorHeroManagement.EMPTY;
+        if (presentation != null)
+            presentation.updateHeroManagement(heroManagement);
+    }
+
     boolean hasVisualAsset(final long key)
     {
         return ThorVisualAssetKey.isValid(key) && visualAssets.knows(key);
@@ -301,7 +312,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private boolean referencesVisualAsset(final long revision, final long key)
     {
         return visualAssetReferences.references(revision, key, heroMeetingArmies,
-                heroMeetingArtifactCache.snapshot(), recruitment);
+                heroMeetingArtifactCache.snapshot(), recruitment, heroManagement);
     }
 
     private Bitmap decodeVisualAsset(final int width, final int height, final byte[] encoded)

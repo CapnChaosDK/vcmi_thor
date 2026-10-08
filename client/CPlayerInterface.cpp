@@ -1372,12 +1372,22 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 				exchangeWindow->onThorArtifactRequestResult(requestId, success);
 		}
 	};
+	const auto notifyHeroWindow = [](int requestId)
+	{
+		for(const auto & heroWindow : ENGINE->windows().findWindows<CHeroWindow>())
+			heroWindow->onThorActionRequestResult(requestId);
+	};
+	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
+		notifyHeroWindow(static_cast<int>(pa->requestID));
 	if(pa->packType == CTypeList::getInstance().getTypeID<RedistributeArmyStack>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, true);
 	if(pa->packType == CTypeList::getInstance().getTypeID<BulkExchangeArtifacts>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
 	if(pa->packType == CTypeList::getInstance().getTypeID<ExchangeArtifacts>(nullptr))
+	{
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
+		notifyHeroWindow(static_cast<int>(pa->requestID));
+	}
 	if(pa->packType == CTypeList::getInstance().getTypeID<AssembleArtifacts>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
 #endif

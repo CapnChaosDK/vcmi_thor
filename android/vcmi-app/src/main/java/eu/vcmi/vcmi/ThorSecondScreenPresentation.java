@@ -217,9 +217,20 @@ final class ThorSecondScreenPresentation extends Presentation
         private ThorRecruitmentState recruitment = ThorRecruitmentState.EMPTY;
         private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
         private ThorHeroMeetingArtifacts heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
+        private ThorHeroManagement heroManagement = ThorHeroManagement.EMPTY;
         private final ThorHeroMeetingModeState heroMeetingMode = new ThorHeroMeetingModeState();
         private int artifactPage;
         private int selectedArtifact = -1;
+        private int heroManagementTab;
+        private int heroManagementPage;
+        private int heroManagementOwnerId = -1;
+        private int selectedHeroArmySlot = -1;
+        private int selectedHeroArtifactSlot = -1;
+        private boolean heroManagementTouchSequence;
+        private boolean heroManagementTouchCancelled;
+        private int heroManagementPointerId = -1;
+        private long heroManagementTouchRevision;
+        private int heroManagementPressedTab = -1;
         private int adventureTab;
         private ThorAdventureMap adventureMap = ThorAdventureMap.EMPTY;
         private ThorMapInspection mapInspection;
@@ -353,6 +364,21 @@ final class ThorSecondScreenPresentation extends Presentation
                 towns = ThorTownRoster.EMPTY;
                 heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
                 heroMeetingArtifacts = ThorHeroMeetingArtifacts.EMPTY;
+                heroManagement = ThorHeroManagement.EMPTY;
+                if (!ThorContextIds.HERO_WINDOW.equals(contextId))
+                {
+                    heroManagementOwnerId = -1;
+                    heroManagementTab = 0;
+                    heroManagementPage = 0;
+                }
+                selectedHeroArmySlot = -1;
+                selectedHeroArtifactSlot = -1;
+                if (heroManagementTouchSequence)
+                    heroManagementTouchCancelled = true;
+                heroManagementTouchSequence = false;
+                heroManagementTouchCancelled = false;
+                heroManagementPointerId = -1;
+                heroManagementPressedTab = -1;
                 browser = ThorBrowserState.EMPTY;
                 recruitment = ThorRecruitmentState.EMPTY;
                 recruitmentPage = 0;
@@ -730,6 +756,27 @@ final class ThorSecondScreenPresentation extends Presentation
             invalidate();
         }
 
+        void updateHeroManagement(final ThorHeroManagement management)
+        {
+            heroManagementTouchCancelled = heroManagementTouchSequence;
+            selectedHeroArmySlot = -1;
+            selectedHeroArtifactSlot = -1;
+            final ThorHeroManagement updated = ThorContextIds.HERO_WINDOW.equals(contextId)
+                    && management.complete() ? management : ThorHeroManagement.EMPTY;
+            if (heroManagementOwnerId != updated.heroId)
+            {
+                heroManagementTab = 0;
+                heroManagementPage = 0;
+                heroManagementOwnerId = updated.heroId;
+            }
+            heroManagement = updated;
+            heroManagementPage = Math.min(heroManagementPage, heroManagementPageCount() - 1);
+            if (!heroManagementTouchSequence)
+                heroManagementTouchCancelled = false;
+            setContentDescription(commandDeckDescription());
+            invalidate();
+        }
+
         @Override
         protected void onDraw(final Canvas canvas)
         {
@@ -814,7 +861,7 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {
-                drawHeroDashboard(canvas, frame, dividerY, bevel, density);
+                drawHeroManagement(canvas, frame, dividerY, bevel, density);
                 drawWindowNavigation(canvas, frame, bevel, density);
             }
             else if (ThorContextIds.TOWN_WINDOW.equals(contextId))
@@ -932,6 +979,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.TOWN_WINDOW.equals(contextId) && (townServices.isActive()
                     || townServiceAt(event.getX(), event.getY()) != ThorTownServices.NONE))
                 return handleTownServiceTouch(event);
+            if (ThorContextIds.HERO_WINDOW.equals(contextId))
+                return handleHeroManagementTouch(event);
             if (ThorWindowNavigation.isWindow(contextId))
                 return handleWindowNavigationTouch(event);
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
@@ -2852,6 +2901,36 @@ final class ThorSecondScreenPresentation extends Presentation
         private void drawHeroDashboard(final Canvas canvas, final RectF frame, final float dividerY,
                                        final float bevel, final float density)
         {
+            drawHeroManagementHeader(canvas, frame, bevel, density);
+            drawHeroManagementTabs(canvas, frame, bevel, density);
+            paint.setColor(PARCHMENT_DARK);
+            final float detailsTop = dividerY + bevel * 3f;
+            final float detailsHeight = frame.top + frame.height() * 0.87f - detailsTop;
+            for (int index = 0; index < ThorContextDetails.COUNT; ++index)
+                drawFittedText(canvas, detailLines[index], frame.centerX(),
+                        detailsTop + detailsHeight * (index + 0.5f) / ThorContextDetails.COUNT,
+                        frame.width() * 0.84f, Math.min(29f * density, detailsHeight * 0.13f));
+        }
+
+        private void drawHeroManagement(final Canvas canvas, final RectF frame, final float dividerY,
+                                        final float bevel, final float density)
+        {
+            if (heroManagementTab == 0 || !heroManagement.complete())
+            {
+                drawHeroDashboard(canvas, frame, dividerY, bevel, density);
+                return;
+            }
+            drawHeroManagementHeader(canvas, frame, bevel, density);
+            drawHeroManagementTabs(canvas, frame, bevel, density);
+            if (heroManagementTab == 1)
+                drawHeroManagementArmy(canvas, frame, dividerY, bevel, density);
+            else
+                drawHeroManagementArtifacts(canvas, frame, dividerY, bevel, density);
+        }
+
+        private void drawHeroManagementHeader(final Canvas canvas, final RectF frame,
+                                              final float bevel, final float density)
+        {
             final float contentHeight = frame.height();
             paint.setStyle(Paint.Style.FILL);
             paint.setTextAlign(Paint.Align.CENTER);
@@ -2885,16 +2964,141 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(TEXT);
             drawFittedText(canvas, status, frame.centerX(), frame.top + contentHeight * 0.29f,
                     frame.width() * 0.8f, Math.min(28f * density, contentHeight * 0.052f));
+        }
 
-            paint.setColor(PARCHMENT_DARK);
-            final float detailsTop = dividerY + bevel * 3f;
-            final float detailsHeight = frame.top + frame.height() * 0.87f - detailsTop;
-            for (int index = 0; index < 3; ++index)
+        private void drawHeroManagementTabs(final Canvas canvas, final RectF frame,
+                                            final float bevel, final float density)
+        {
+            final int[] labels = {R.string.thor_hero_overview, R.string.thor_hero_army, R.string.thor_hero_artifacts};
+            for (int index = 0; index < labels.length; ++index)
             {
-                drawFittedText(canvas, detailLines[index], frame.centerX(),
-                        detailsTop + detailsHeight * (index + 0.5f) / 3f, frame.width() * 0.84f,
-                        Math.min(29f * density, detailsHeight * 0.16f));
+                final RectF bounds = heroManagementTabBounds(index, frame, bevel);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(heroManagementTab == index ? STONE_DARK : STONE_LIGHT);
+                canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(1f, bevel * 0.3f));
+                paint.setColor(heroManagementTab == index ? GOLD : PARCHMENT_DARK);
+                canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(TEXT);
+                drawFittedText(canvas, getContext().getString(labels[index]), bounds.centerX(), bounds.centerY(),
+                        bounds.width() * 0.9f, Math.min(20f * density, bounds.height() * 0.52f));
             }
+        }
+
+        private void drawHeroManagementArmy(final Canvas canvas, final RectF frame, final float dividerY,
+                                            final float bevel, final float density)
+        {
+            final RectF message = new RectF(frame.left + bevel * 3f, dividerY + bevel * 0.8f,
+                    frame.right - bevel * 3f, dividerY + bevel * 2.8f);
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, getContext().getString(R.string.thor_hero_army_help), message.centerX(),
+                    message.centerY(), message.width() * 0.94f, Math.min(20f * density, message.height() * 0.75f));
+            for (int slot = 0; slot < ThorHeroManagement.ARMY_SIZE; ++slot)
+            {
+                final RectF row = heroManagementArmyBounds(slot, frame, dividerY, bevel);
+                final boolean occupied = heroManagement.creatureIds[slot] >= 0;
+                final boolean selected = selectedHeroArmySlot == slot;
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(selected ? PARCHMENT_DARK : STONE_DARK);
+                canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(selected ? bevel * 0.8f : bevel * 0.3f);
+                paint.setColor(selected ? GOLD : STONE_LIGHT);
+                canvas.drawRoundRect(row, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(selected ? TEXT : (occupied ? TEXT : PARCHMENT_DARK));
+                final String value = occupied
+                        ? getContext().getString(R.string.thor_army_stack_value,
+                                heroManagement.creatureNames[slot], heroManagement.counts[slot])
+                        : getContext().getString(R.string.thor_army_empty);
+                if (occupied)
+                {
+                    final float iconSize = Math.min(row.height() * 0.76f, row.width() * 0.1f);
+                    final RectF icon = new RectF(row.left + bevel, row.centerY() - iconSize * 0.5f,
+                            row.left + bevel + iconSize, row.centerY() + iconSize * 0.5f);
+                    drawVisualAsset(canvas, heroManagement.creatureVisualAssetKeys[slot], icon);
+                    final float textLeft = icon.right + bevel;
+                    drawEllipsizedText(canvas, value, (textLeft + row.right) * 0.5f, row.centerY(),
+                            (row.right - textLeft) * 0.92f, Math.min(22f * density, row.height() * 0.52f));
+                }
+                else
+                    drawEllipsizedText(canvas, value, row.centerX(), row.centerY(), row.width() * 0.9f,
+                            Math.min(22f * density, row.height() * 0.52f));
+            }
+        }
+
+        private void drawHeroManagementArtifacts(final Canvas canvas, final RectF frame, final float dividerY,
+                                                 final float bevel, final float density)
+        {
+            if (!heroManagement.complete())
+                return;
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, getContext().getString(R.string.thor_hero_artifact_help), frame.centerX(),
+                    dividerY + bevel * 0.6f, frame.width() * 0.9f, Math.min(19f * density, bevel * 0.95f));
+            final int start = heroManagementPage * 6;
+            final int visible = Math.min(6, heroManagement.artifactPositions.length - start);
+            for (int row = 0; row < visible; ++row)
+            {
+                final int index = start + row;
+                final RectF bounds = heroManagementArtifactBounds(row, frame, dividerY, bevel);
+                final boolean occupied = (heroManagement.artifactFlags[index] & 1) != 0;
+                final boolean locked = (heroManagement.artifactFlags[index] & 2) != 0;
+                final boolean selected = selectedHeroArtifactSlot == index;
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(locked ? Color.rgb(76, 74, 67) : (selected ? PARCHMENT_DARK : STONE_DARK));
+                canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(selected ? bevel * 0.8f : bevel * 0.3f);
+                paint.setColor(selected ? GOLD : STONE_LIGHT);
+                canvas.drawRoundRect(bounds, bevel, bevel, paint);
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(occupied ? TEXT : PARCHMENT_DARK);
+                final String value = occupied ? heroManagement.artifactNames[index]
+                        : getContext().getString((heroManagement.artifactFlags[index] & 4) != 0
+                                ? R.string.thor_hero_backpack_empty : R.string.thor_hero_equipment_empty);
+                if (occupied)
+                {
+                    final float iconSize = Math.min(bounds.height() * 0.78f, bounds.width() * 0.1f);
+                    final RectF icon = new RectF(bounds.left + bevel, bounds.centerY() - iconSize * 0.5f,
+                            bounds.left + bevel + iconSize, bounds.centerY() + iconSize * 0.5f);
+                    drawVisualAsset(canvas, heroManagement.artifactVisualAssetKeys[index], icon);
+                    final float textLeft = icon.right + bevel;
+                    drawEllipsizedText(canvas, value, (textLeft + bounds.right) * 0.5f, bounds.centerY(),
+                            (bounds.right - textLeft) * 0.92f, Math.min(21f * density, bounds.height() * 0.5f));
+                }
+                else
+                    drawEllipsizedText(canvas, value, bounds.centerX(), bounds.centerY(), bounds.width() * 0.9f,
+                            Math.min(21f * density, bounds.height() * 0.5f));
+            }
+            final RectF previous = heroManagementPageBounds(false, frame, bevel);
+            final RectF next = heroManagementPageBounds(true, frame, bevel);
+            drawHeroManagementPageButton(canvas, previous,
+                    getContext().getString(R.string.thor_browser_previous_page), heroManagementPage > 0, density, bevel);
+            drawHeroManagementPageButton(canvas, next,
+                    getContext().getString(R.string.thor_browser_next_page),
+                    heroManagementPage + 1 < heroManagementPageCount(), density, bevel);
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, getContext().getString(R.string.thor_browser_page,
+                            heroManagementPage + 1, heroManagementPageCount()), frame.centerX(), previous.centerY(),
+                    previous.width() * 0.7f, Math.min(18f * density, previous.height() * 0.48f));
+        }
+
+        private void drawHeroManagementPageButton(final Canvas canvas, final RectF bounds, final String label,
+                                                  final boolean enabled, final float density, final float bevel)
+        {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
+            canvas.drawRoundRect(bounds, bevel, bevel, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(Math.max(1f, bevel * 0.3f));
+            paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
+            canvas.drawRoundRect(bounds, bevel, bevel, paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+            drawFittedText(canvas, label, bounds.centerX(), bounds.centerY(), bounds.width() * 0.88f,
+                    Math.min(16f * density, bounds.height() * 0.48f));
         }
 
         private void drawTownDashboard(final Canvas canvas, final RectF frame, final float dividerY,
@@ -3048,11 +3252,210 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setFakeBoldText(false);
         }
 
+        private RectF heroManagementTabBounds(final int tab, final RectF frame, final float bevel)
+        {
+            final float gap = Math.max(bevel * 0.7f, 6f);
+            final float width = (frame.width() - bevel * 6f - gap * 2f) / 3f;
+            final float left = frame.left + bevel * 3f + tab * (width + gap);
+            final float top = frame.top + frame.height() * 0.345f;
+            return new RectF(left, top, left + width, top + frame.height() * 0.045f);
+        }
+
+        private RectF heroManagementArmyBounds(final int slot, final RectF frame, final float dividerY,
+                                               final float bevel)
+        {
+            final float gap = Math.max(bevel * 0.45f, 4f);
+            final float top = dividerY + bevel * 3.4f;
+            final float bottom = frame.top + frame.height() * 0.85f;
+            final float height = (bottom - top - gap * (ThorHeroManagement.ARMY_SIZE - 1))
+                    / ThorHeroManagement.ARMY_SIZE;
+            final float rowTop = top + slot * (height + gap);
+            return new RectF(frame.left + bevel * 3f, rowTop, frame.right - bevel * 3f, rowTop + height);
+        }
+
+        private RectF heroManagementArtifactBounds(final int row, final RectF frame, final float dividerY,
+                                                   final float bevel)
+        {
+            final float gap = Math.max(bevel * 0.5f, 5f);
+            final float top = dividerY + bevel * 1.6f;
+            final float bottom = frame.top + frame.height() * 0.765f;
+            final float height = (bottom - top - gap * 5f) / 6f;
+            final float rowTop = top + row * (height + gap);
+            return new RectF(frame.left + bevel * 3f, rowTop, frame.right - bevel * 3f, rowTop + height);
+        }
+
+        private RectF heroManagementPageBounds(final boolean next, final RectF frame, final float bevel)
+        {
+            final float left = frame.left + bevel * 3f;
+            final float right = frame.right - bevel * 3f;
+            final float width = (right - left) * 0.29f;
+            final float top = frame.top + frame.height() * 0.785f;
+            final float bottom = frame.top + frame.height() * 0.85f;
+            return next ? new RectF(right - width, top, right, bottom) : new RectF(left, top, left + width, bottom);
+        }
+
+        private int heroManagementPageCount()
+        {
+            return Math.max(1, (heroManagement.artifactPositions.length + 5) / 6);
+        }
+
+        private int heroManagementArmyAt(final float x, final float y, final RectF frame,
+                                         final float dividerY, final float bevel)
+        {
+            for (int slot = 0; slot < ThorHeroManagement.ARMY_SIZE; ++slot)
+                if (heroManagementArmyBounds(slot, frame, dividerY, bevel).contains(x, y))
+                    return slot;
+            return -1;
+        }
+
+        private int heroManagementArtifactAt(final float x, final float y, final RectF frame,
+                                             final float dividerY, final float bevel)
+        {
+            final int first = heroManagementPage * 6;
+            final int count = Math.min(6, heroManagement.artifactPositions.length - first);
+            for (int row = 0; row < count; ++row)
+                if (heroManagementArtifactBounds(row, frame, dividerY, bevel).contains(x, y))
+                    return first + row;
+            return -1;
+        }
+
         private int windowNavigationControlAt(final float x, final float y)
         {
             final RectF frame = adventureFrame();
             return ThorWindowNavigation.controlAt(x - frame.left, y - frame.top,
                     frame.width(), frame.height());
+        }
+
+        private boolean handleHeroManagementTouch(final MotionEvent event)
+        {
+            final int action = event.getActionMasked();
+            if (windowNavigation.isActive())
+                return handleWindowNavigationTouch(event);
+            if (heroManagementTouchSequence)
+            {
+                if (!ThorContextIds.HERO_WINDOW.equals(contextId) || revision != heroManagementTouchRevision
+                        || event.getPointerCount() != 1 || event.getPointerId(0) != heroManagementPointerId
+                        || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP
+                        || action == MotionEvent.ACTION_CANCEL)
+                {
+                    heroManagementTouchCancelled = true;
+                    if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_POINTER_DOWN
+                            || action == MotionEvent.ACTION_POINTER_UP || action == MotionEvent.ACTION_UP)
+                        finishHeroManagementTouch(false, 0f, 0f);
+                    return true;
+                }
+                if (action == MotionEvent.ACTION_UP)
+                {
+                    finishHeroManagementTouch(!heroManagementTouchCancelled,
+                            event.getX(), event.getY());
+                    return true;
+                }
+                return true;
+            }
+            if (action != MotionEvent.ACTION_DOWN)
+                return true;
+            if (windowNavigationControlAt(event.getX(), event.getY()) >= 0)
+                return handleWindowNavigationTouch(event);
+            heroManagementTouchSequence = true;
+            heroManagementTouchCancelled = false;
+            heroManagementTouchRevision = revision;
+            heroManagementPointerId = event.getPointerId(0);
+            heroManagementPressedTab = -1;
+            for (int tab = 0; tab < 3; ++tab)
+                if (heroManagementTabBounds(tab, adventureFrame(), adventureBevel())
+                        .contains(event.getX(), event.getY()))
+                    heroManagementPressedTab = tab;
+            return true;
+        }
+
+        private void finishHeroManagementTouch(final boolean valid, final float x, final float y)
+        {
+            final int pressedTab = heroManagementPressedTab;
+            final long submittedRevision = heroManagementTouchRevision;
+            heroManagementTouchSequence = false;
+            heroManagementTouchCancelled = false;
+            heroManagementPointerId = -1;
+            heroManagementPressedTab = -1;
+            if (!valid || revision != submittedRevision || !ThorContextIds.HERO_WINDOW.equals(contextId))
+                return;
+            if (pressedTab >= 0 && heroManagementTabBounds(pressedTab, adventureFrame(), adventureBevel())
+                    .contains(x, y))
+            {
+                heroManagementTab = pressedTab;
+                selectedHeroArmySlot = -1;
+                selectedHeroArtifactSlot = -1;
+                setContentDescription(commandDeckDescription());
+                invalidate();
+                performClick();
+                return;
+            }
+            if (!heroManagement.complete())
+                return;
+            final RectF frame = adventureFrame();
+            final float bevel = adventureBevel();
+            final float dividerY = frame.top + frame.height() * ThorAdventureLayout.DIVIDER;
+            if (heroManagementTab == 1)
+            {
+                final int slot = heroManagementArmyAt(x, y, frame, dividerY, bevel);
+                if (slot < 0)
+                    return;
+                if (selectedHeroArmySlot < 0)
+                {
+                    if (heroManagement.creatureIds[slot] >= 0)
+                        selectedHeroArmySlot = slot;
+                }
+                else if (selectedHeroArmySlot == slot)
+                    selectedHeroArmySlot = -1;
+                else
+                {
+                    final int pair = ThorHeroManagementPair.encodeArmy(selectedHeroArmySlot, slot);
+                    selectedHeroArmySlot = -1;
+                    if (pair != ThorHeroManagementPair.INVALID
+                            && isActionEnabled(ThorActionIds.HERO_WINDOW_TRANSFER_STACK))
+                    {
+                        performClick();
+                        NativeMethods.submitThorAction(submittedRevision,
+                                ThorActionIds.HERO_WINDOW_TRANSFER_STACK, pair);
+                    }
+                }
+            }
+            else if (heroManagementTab == 2)
+            {
+                if (heroManagementPageBounds(false, frame, bevel).contains(x, y))
+                    heroManagementPage = Math.max(0, heroManagementPage - 1);
+                else if (heroManagementPageBounds(true, frame, bevel).contains(x, y))
+                    heroManagementPage = Math.min(heroManagementPageCount() - 1, heroManagementPage + 1);
+                else
+                {
+                    final int slot = heroManagementArtifactAt(x, y, frame, dividerY, bevel);
+                    if (slot >= 0)
+                    {
+                        final boolean occupied = (heroManagement.artifactFlags[slot] & 1) != 0;
+                        final boolean locked = (heroManagement.artifactFlags[slot] & 2) != 0;
+                        if (selectedHeroArtifactSlot < 0)
+                        {
+                            if (occupied && !locked)
+                                selectedHeroArtifactSlot = slot;
+                        }
+                        else if (selectedHeroArtifactSlot == slot)
+                            selectedHeroArtifactSlot = -1;
+                        else
+                        {
+                            final int pair = ThorHeroManagementPair.encodeArtifact(selectedHeroArtifactSlot, slot);
+                            selectedHeroArtifactSlot = -1;
+                            if (pair != ThorHeroManagementPair.INVALID && !locked
+                                    && isActionEnabled(ThorActionIds.HERO_WINDOW_TRANSFER_ARTIFACT))
+                            {
+                                performClick();
+                                NativeMethods.submitThorAction(submittedRevision,
+                                        ThorActionIds.HERO_WINDOW_TRANSFER_ARTIFACT, pair);
+                            }
+                        }
+                    }
+                }
+            }
+            setContentDescription(commandDeckDescription());
+            invalidate();
         }
 
         private boolean handleWindowNavigationTouch(final MotionEvent event)
@@ -4121,7 +4524,8 @@ final class ThorSecondScreenPresentation extends Presentation
             }
 
             if (ThorContextIds.HERO_WINDOW.equals(contextId))
-                return title + ". " + status + ". " + detailLines[0] + ". " + detailLines[1] + ". " + detailLines[2];
+                return title + ". " + status + ". " + detailLines[0] + ". " + detailLines[1] + ". "
+                        + detailLines[2] + (detailLines[3].isEmpty() ? "" : ". " + detailLines[3]);
 
             if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
                 return title + ". " + detailLines[0] + ". " + detailLines[1] + ". "

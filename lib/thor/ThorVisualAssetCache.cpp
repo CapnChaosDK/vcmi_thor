@@ -92,9 +92,29 @@ std::vector<std::uint64_t> collectThorContextVisualAssetKeys(const ThorContextRe
 		return result.size() <= THOR_MAX_RECRUITMENT_ROWS ? result : std::vector<std::uint64_t>{};
 	}
 
-	if((context.contextId == ThorContextIds::ADVENTURE_MAP || context.contextId == ThorContextIds::HERO_WINDOW)
-		&& isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))
-		return {context.heroPortraitAssetKey};
+	if(context.contextId == ThorContextIds::ADVENTURE_MAP || context.contextId == ThorContextIds::HERO_WINDOW)
+	{
+		std::vector<std::uint64_t> result;
+		std::unordered_set<std::uint64_t> seen;
+		const auto append = [&](std::uint64_t key)
+		{
+			if(result.size() < THOR_MAX_VISUAL_ASSET_KEYS
+				&& isThorVisualAssetKey(key) && seen.insert(key).second)
+				result.push_back(key);
+		};
+		if(isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))
+			append(context.heroPortraitAssetKey);
+		if(context.heroManagement)
+		{
+			for(const auto & slot : context.heroManagement->armySlots)
+				if(slot.occupied)
+					append(slot.visualAssetKey);
+			for(const auto & slot : context.heroManagement->artifactSlots)
+				if(slot.occupied)
+					append(slot.visualAssetKey);
+		}
+		return result;
+	}
 	return {};
 }
 

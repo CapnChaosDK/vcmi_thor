@@ -172,8 +172,14 @@ bool CExchangeController::canTransferStack(bool sourceLeft, SlotID sourceSlot, b
 bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
 	SlotID destinationSlot)
 {
+	return transferStackRequest(sourceLeft, sourceSlot, destinationLeft, destinationSlot) >= 0;
+}
+
+int CExchangeController::transferStackRequest(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
+	SlotID destinationSlot)
+{
 	if(!canTransferStack(sourceLeft, sourceSlot, destinationLeft, destinationSlot))
-		return false;
+		return -1;
 	const auto source = sourceLeft ? left : right;
 	const auto destination = destinationLeft ? left : right;
 	const auto * sourceStack = source->getStackPtr(sourceSlot);
@@ -182,24 +188,18 @@ bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool
 	if(!destinationStack && sourceIsLastRequiredStack)
 	{
 		const auto amount = sourceStack->getCount() - 1;
-		GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, amount);
-		return true;
+		return GAME->interface()->cb->splitStackRequest(source, destination, sourceSlot, destinationSlot, amount);
 	}
 	if(destinationStack && destinationStack->getCreature() == sourceStack->getCreature())
 	{
 		if(sourceIsLastRequiredStack)
 		{
 			const auto amount = sourceStack->getCount() - 1 + destinationStack->getCount();
-			GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, amount);
+			return GAME->interface()->cb->splitStackRequest(source, destination, sourceSlot, destinationSlot, amount);
 		}
-		else
-		{
-			GAME->interface()->cb->mergeStacks(source, destination, sourceSlot, destinationSlot);
-		}
-		return true;
+		return GAME->interface()->cb->mergeStacksRequest(source, destination, sourceSlot, destinationSlot);
 	}
-	GAME->interface()->cb->swapCreatures(source, destination, sourceSlot, destinationSlot);
-	return true;
+	return GAME->interface()->cb->swapCreaturesRequest(source, destination, sourceSlot, destinationSlot);
 }
 
 bool CExchangeController::canSplitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
