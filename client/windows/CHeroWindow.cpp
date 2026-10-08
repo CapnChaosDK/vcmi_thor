@@ -37,6 +37,7 @@
 #include "../../lib/CSkillHandler.h"
 #include "../../lib/GameLibrary.h"
 #include "../../lib/callback/CCallback.h"
+#include "../../lib/entities/artifact/CArtifact.h"
 #include "../../lib/entities/artifact/ArtifactUtils.h"
 #include "../../lib/entities/hero/CHeroHandler.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
