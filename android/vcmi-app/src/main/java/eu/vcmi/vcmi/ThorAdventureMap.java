@@ -13,11 +13,26 @@ final class ThorAdventureMap
     final int width, height, level, levels, viewportX, viewportY, viewportWidth, viewportHeight;
     final byte[] rgb;
     final int[] markers;
+    final int[] objects;
+    final String[] objectLabels;
+    final boolean objectsLimited;
+    static final int MAX_OBJECTS = 1024, OBJECT_FIELDS = 5, MAX_LABEL_BYTES = 256;
 
     private ThorAdventureMap(final long contentRevision, final int width, final int height,
             final int level, final int levels, final int vx, final int vy, final int vw, final int vh,
             final byte[] rgb, final int[] markers)
     {
+        this(contentRevision, width, height, level, levels, vx, vy, vw, vh, rgb, markers,
+                new int[0], new String[0], false);
+    }
+
+    private ThorAdventureMap(final long contentRevision, final int width, final int height,
+            final int level, final int levels, final int vx, final int vy, final int vw, final int vh,
+            final byte[] rgb, final int[] markers, final int[] objects, final String[] labels, final boolean limited)
+    {
+        this.objects = objects;
+        this.objectLabels = labels;
+        this.objectsLimited = limited;
         this.contentRevision = contentRevision;
         this.width = width;
         this.height = height;
@@ -85,6 +100,50 @@ final class ThorAdventureMap
             return EMPTY;
         return new ThorAdventureMap(contentRevision, width, height, level, levels, vx, vy, vw, vh,
                 content, markers.clone());
+    }
+
+    static boolean objectsBounded(final int[] objects, final String[] labels)
+    {
+        if (objects == null || labels == null || objects.length % OBJECT_FIELDS != 0
+                || objects.length > MAX_OBJECTS * OBJECT_FIELDS || labels.length != objects.length / OBJECT_FIELDS)
+            return false;
+        for (final String label : labels)
+        {
+            if (label == null || label.isEmpty() || label.length() > MAX_LABEL_BYTES
+                    || label.indexOf('\0') >= 0 || label.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > MAX_LABEL_BYTES)
+                return false;
+            for (int i = 0; i < label.length(); ++i)
+                if (Character.isHighSurrogate(label.charAt(i)))
+                {
+                    if (++i >= label.length() || !Character.isLowSurrogate(label.charAt(i))) return false;
+                }
+                else if (Character.isLowSurrogate(label.charAt(i))) return false;
+        }
+        return true;
+    }
+
+    static ThorAdventureMap copyOf(final ThorAdventureMap cached, final long contentRevision,
+            final int width, final int height, final int level, final int levels,
+            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers,
+            final int[] objects, final String[] labels, final boolean limited)
+    {
+        if (!objectsBounded(objects, labels))
+            return EMPTY;
+        int previous = -1;
+        for (int i = 0; i < objects.length; i += OBJECT_FIELDS)
+        {
+            if (objects[i] <= previous || objects[i + 1] < 0 || objects[i + 1] >= width
+                    || objects[i + 2] < 0 || objects[i + 2] >= height || objects[i + 3] != level
+                    || objects[i + 4] < 1 || objects[i + 4] > 5)
+                return EMPTY;
+            previous = objects[i];
+        }
+        final ThorAdventureMap map = copyOf(cached, contentRevision, width, height, level, levels,
+                vx, vy, vw, vh, rgb, markers);
+        if (!map.valid())
+            return EMPTY;
+        return new ThorAdventureMap(contentRevision, width, height, level, levels, vx, vy, vw, vh,
+                map.rgb, map.markers, objects.clone(), labels.clone(), limited);
     }
 
     boolean valid()

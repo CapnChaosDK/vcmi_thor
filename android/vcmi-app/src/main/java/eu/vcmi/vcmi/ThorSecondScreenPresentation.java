@@ -222,6 +222,9 @@ final class ThorSecondScreenPresentation extends Presentation
         private int selectedArtifact = -1;
         private int adventureTab;
         private ThorAdventureMap adventureMap = ThorAdventureMap.EMPTY;
+        private ThorMapInspection mapInspection;
+        private ThorMapTransform inspectionTransform;
+        private int inspectedCluster = -1;
         private Bitmap adventureMapBitmap;
         private ThorMapViewState mapViewState = new ThorMapViewState();
         private final ThorMapGesture mapGesture = new ThorMapGesture();
@@ -290,11 +293,13 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             super.onSizeChanged(width, height, oldWidth, oldHeight);
             mapGesture.cancel();
+            inspectedCluster = -1;
         }
 
         void clearTransientState()
         {
             mapGesture.cancel();
+            inspectedCluster = -1;
             adventureMap = ThorAdventureMap.EMPTY;
             adventureMapBitmap = null;
             heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
@@ -333,6 +338,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 mapGesture.cancel();
+                inspectedCluster = -1;
                 adventureMap = ThorAdventureMap.EMPTY;
                 adventureMapBitmap = null;
                 cancelLobbyScenarioTouch();
@@ -661,8 +667,14 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return;
-            if (map.level != adventureMap.level || map.contentRevision != adventureMap.contentRevision)
+            if (map.level != adventureMap.level || map.contentRevision != adventureMap.contentRevision
+                    || !java.util.Arrays.equals(map.objects, adventureMap.objects)
+                    || !java.util.Arrays.equals(map.objectLabels, adventureMap.objectLabels))
+            {
                 mapGesture.cancel();
+                mapInspection = null;
+                inspectedCluster = -1;
+            }
             adventureMap = map;
             adventureMapBitmap = bitmap;
             mapViewState.update(map);
@@ -884,6 +896,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     && hapticsToggleGesture.begin(hapticsToggleBounds().contains(event.getX(), event.getY())))
             {
                 mapGesture.cancel();
+                inspectedCluster = -1;
                 return true;
             }
             if (hapticsToggleGesture.isActive())
@@ -1027,6 +1040,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     if (tab >= 0)
                     {
                         mapGesture.cancel();
+                        inspectedCluster = -1;
                         adventureTab = tab;
                         setContentDescription(commandDeckDescription());
                         invalidate();
@@ -3211,7 +3225,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final int tab = tabAt(x, y);
             if (tab >= 0)
                 return 10 + tab;
-            for (int control = 0; control < 7; ++control)
+            for (int control = 0; control < 8; ++control)
                 if (mapControlEnabled(control) && mapControlBounds(control).contains(x, y))
                     return control;
             return -1;
@@ -3221,7 +3235,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (!adventureMap.valid())
                 return false;
-            if (control < 3)
+            if (control == 7 || control < 3)
                 return true;
             if (control < 5)
                 return mapViewState.zoom > 1;
@@ -3257,8 +3271,15 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             paint.setFakeBoldText(false);
             paint.setColor(TEXT);
-            drawFittedText(canvas, getContext().getString(R.string.thor_map_legend), frame.centerX(),
-                    frame.top + frame.height() * 0.525f, frame.width() * 0.9f, 14f * density);
+            final RectF filterBox = mapControlBounds(7);
+            paint.setColor(STONE_DARK);
+            canvas.drawRoundRect(filterBox, adventureBevel(), adventureBevel(), paint);
+            paint.setColor(TEXT);
+            final int[] filterLabels = {R.string.thor_map_filter_all, R.string.thor_map_filter_resources,
+                    R.string.thor_map_filter_mines, R.string.thor_map_filter_dwellings,
+                    R.string.thor_map_filter_travel, R.string.thor_map_filter_sites};
+            drawFittedText(canvas, getContext().getString(filterLabels[mapViewState.categoryFilter]),
+                    filterBox.centerX(), filterBox.centerY(), filterBox.width() * 0.9f, 14f * density);
             final ThorMapTransform transform = mapTransform();
             canvas.save();
             canvas.clipRect(transform.left, transform.top, transform.right, transform.bottom);
@@ -3274,6 +3295,27 @@ final class ThorSecondScreenPresentation extends Presentation
                     transform.screenX(adventureMap.viewportX + adventureMap.viewportWidth),
                     transform.screenY(adventureMap.viewportY + adventureMap.viewportHeight), paint);
             final float radius = Math.max(5f, 5f * density);
+            final ThorMapInspection clusters = inspection(transform, density);
+            for (int i = 0; i < clusters.size; ++i)
+            {
+                paint.setStyle(Paint.Style.FILL);
+                switch (clusters.category[i])
+                {
+                    case 1: paint.setColor(Color.rgb(112, 220, 100)); break;
+                    case 2: paint.setColor(Color.rgb(215, 161, 94)); break;
+                    case 3: paint.setColor(Color.rgb(232, 131, 190)); break;
+                    case 4: paint.setColor(Color.rgb(168, 141, 239)); break;
+                    default: paint.setColor(Color.rgb(245, 227, 139)); break;
+                }
+                if (clusters.count[i] > 1) paint.setColor(Color.LTGRAY);
+                canvas.drawCircle(clusters.x[i], clusters.y[i], radius * 1.4f, paint);
+                if (clusters.count[i] > 1)
+                {
+                    paint.setColor(Color.BLACK);
+                    drawFittedText(canvas, String.valueOf(clusters.count[i]), clusters.x[i], clusters.y[i],
+                            radius * 2.5f, radius * 1.8f);
+                }
+            }
             for (int i = 0; i < adventureMap.markers.length; i += ThorAdventureMap.MARKER_FIELDS)
             {
                 if (adventureMap.markers[i + 4] != adventureMap.level)
@@ -3296,6 +3338,30 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             canvas.restore();
             paint.setStyle(Paint.Style.FILL);
+            paint.setColor(TEXT);
+            final String info = inspectedCluster >= 0 && inspectedCluster < clusters.size
+                    ? (clusters.count[inspectedCluster] == 1
+                        ? adventureMap.objectLabels[clusters.row[inspectedCluster]]
+                        : getContext().getString(R.string.thor_map_cluster_info, clusters.count[inspectedCluster]))
+                    : getContext().getString(adventureMap.objectsLimited
+                        ? R.string.thor_map_inspection_limited : R.string.thor_map_inspection_hint);
+            drawEllipsizedText(canvas, info, frame.centerX(), frame.top + frame.height() * 0.34f,
+                    frame.width() * 0.93f, 16f * density);
+        }
+
+        private ThorMapInspection inspection(final ThorMapTransform transform, final float density)
+        {
+            if (mapInspection == null || inspectionTransform == null
+                    || transform.scale != inspectionTransform.scale
+                    || transform.originX != inspectionTransform.originX || transform.originY != inspectionTransform.originY
+                    || transform.left != inspectionTransform.left || transform.top != inspectionTransform.top
+                    || transform.right != inspectionTransform.right || transform.bottom != inspectionTransform.bottom)
+            {
+                mapInspection = new ThorMapInspection(adventureMap, transform, Math.max(8f, 8f * density), mapViewState.categoryFilter);
+                inspectionTransform = transform;
+                inspectedCluster = -1;
+            }
+            return mapInspection;
         }
 
         private boolean handleAdventureMapTouch(final MotionEvent event)
@@ -3303,6 +3369,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final int action = event.getActionMasked();
             if (action == MotionEvent.ACTION_DOWN)
             {
+                inspectedCluster = -1;
                 mapGesture.begin(revision, presentationSessionId, event.getPointerId(0), adventureMap.level,
                         mapViewState.modeKey(), mapControlAt(event.getX(), event.getY()), event.getX(), event.getY(),
                         mapTransform());
@@ -3315,6 +3382,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     || action == MotionEvent.ACTION_CANCEL)
             {
                 mapGesture.cancel();
+                inspectedCluster = -1;
                 return true;
             }
             if (action == MotionEvent.ACTION_MOVE)
@@ -3334,6 +3402,20 @@ final class ThorSecondScreenPresentation extends Presentation
             if (mapGesture.active() && mapGesture.moved() && mapGesture.control() < 0 && mapViewState.pan)
                 mapViewState.panFrom(mapGesture.transform, event.getX() - mapGesture.downX,
                         event.getY() - mapGesture.downY);
+            if (mapGesture.inspect(revision, presentationSessionId, event.getPointerId(0), event.getPointerCount(),
+                    adventureMap.level, mapViewState.modeKey(), sessionValidity != null
+                        && sessionValidity.isCurrent(presentationSessionId), event.getX(), event.getY(), touchSlop,
+                    event.getEventTime() - event.getDownTime()))
+            {
+                final float density = getResources().getDisplayMetrics().density;
+                final ThorMapInspection clusters = inspection(mapTransform(), density);
+                inspectedCluster = clusters.at(event.getX(), event.getY(), Math.max(14f, 14f * density));
+                setContentDescription(inspectedCluster >= 0 && clusters.count[inspectedCluster] == 1
+                        ? adventureMap.objectLabels[clusters.row[inspectedCluster]] : commandDeckDescription());
+                performClick();
+                invalidate();
+                return true;
+            }
             final ThorMapGesture.Release release = mapGesture.release(revision, presentationSessionId,
                     event.getPointerId(0), event.getPointerCount(), adventureMap.level, mapViewState.modeKey(),
                     sessionValidity != null && sessionValidity.isCurrent(presentationSessionId),
@@ -3345,6 +3427,12 @@ final class ThorSecondScreenPresentation extends Presentation
                 mapViewState.setZoom(release.localControl == 0 ? 1 : (release.localControl == 1 ? 2 : 4));
             else if (release.localControl >= 3 && release.localControl < 5)
                 mapViewState.pan = release.localControl == 4;
+            else if (release.localControl == 7)
+            {
+                mapViewState.categoryFilter = (mapViewState.categoryFilter + 1) % 6;
+                mapInspection = null;
+                inspectedCluster = -1;
+            }
             if (release.action != ThorActionIds.NONE)
                 NativeMethods.submitThorAction(revision, release.action, release.target);
             if (release.localControl >= 0 || release.action != ThorActionIds.NONE)
@@ -4126,7 +4214,13 @@ final class ThorSecondScreenPresentation extends Presentation
                                 : mapViewState.zoom == 2 ? R.string.thor_map_detail_two : R.string.thor_map_detail_four)
                         + ". " + getContext().getString(mapViewState.pan ? R.string.thor_map_pan : R.string.thor_map_navigate)
                         + ". " + getContext().getString(adventureMap.level == 1
-                                ? R.string.thor_map_underground : R.string.thor_map_surface);
+                                ? R.string.thor_map_underground : R.string.thor_map_surface)
+                        + ". " + getContext().getString(R.string.thor_map_inspection_hint)
+                        + (mapInspection != null && inspectedCluster >= 0 && inspectedCluster < mapInspection.size
+                            ? ". " + (mapInspection.count[inspectedCluster] == 1
+                                ? adventureMap.objectLabels[mapInspection.row[inspectedCluster]]
+                                : getContext().getString(R.string.thor_map_cluster_info, mapInspection.count[inspectedCluster]))
+                            : "");
 
             if (adventureTab == 1)
             {

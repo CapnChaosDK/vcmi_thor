@@ -385,3 +385,111 @@ TEST(ThorContextAdventureMapTest, ContentAndMarkerChangesInvalidateActionsWithou
 	context.adventureMap->level = 1;
 	EXPECT_GT(store.publishNext(context).revision, revealed.revision);
 }
+
+TEST(ThorContextAdventureMapTest, StationaryInformationRejectsUnsupportedCategoriesAndInvalidRecords)
+{
+	EXPECT_EQ(thorMapObjectCategory(Obj::RESOURCE), 1);
+	EXPECT_EQ(thorMapObjectCategory(Obj::MINE), 2);
+	EXPECT_EQ(thorMapObjectCategory(Obj::CREATURE_GENERATOR1), 3);
+	EXPECT_EQ(thorMapObjectCategory(Obj::SUBTERRANEAN_GATE), 4);
+	EXPECT_EQ(thorMapObjectCategory(Obj::LEARNING_STONE), 5);
+	EXPECT_EQ(thorMapObjectCategory(Obj::HERO), 0);
+	EXPECT_EQ(thorMapObjectCategory(Obj::TOWN), 0);
+	EXPECT_EQ(thorMapObjectCategory(Obj::EVENT), 0);
+	EXPECT_EQ(thorMapObjectCategory(MapObjectID(99999)), 0);
+	auto map = makeMap();
+	map.objects = {{7, {3, 4, 0}, 1, "Resource"}};
+	EXPECT_TRUE(map.valid());
+	for(const ThorMapObject invalid : {ThorMapObject{-1, {3, 4, 0}, 1, "Resource"},
+		ThorMapObject{7, {12, 4, 0}, 1, "Resource"}, ThorMapObject{7, {3, 4, 1}, 1, "Resource"},
+		ThorMapObject{7, {3, 4, 0}, 6, "Resource"}, ThorMapObject{7, {3, 4, 0}, 1, ""},
+		ThorMapObject{7, {3, 4, 0}, 1, std::string(257, 'a')},
+		ThorMapObject{7, {3, 4, 0}, 1, std::string("a\0b", 3)},
+		ThorMapObject{7, {3, 4, 0}, 1, std::string(1, static_cast<char>(0xff))}})
+	{
+		map.objects = {invalid};
+		EXPECT_FALSE(map.valid());
+	}
+	map.objects = {{7, {3, 4, 0}, 1, "Resource"}, {7, {4, 4, 0}, 1, "Other"}};
+	EXPECT_FALSE(map.valid());
+	map.objects = {{8, {3, 4, 0}, 1, "Resource"}, {7, {4, 4, 0}, 1, "Other"}};
+	EXPECT_FALSE(map.valid());
+	map.objects.clear();
+	for(int id = 0; id <= THOR_MAP_MAX_OBJECTS; ++id)
+		map.objects.push_back({id, {0, 0, 0}, 1, "Resource"});
+	EXPECT_FALSE(map.valid());
+	map.objects.pop_back();
+	EXPECT_TRUE(map.valid());
+}
+
+TEST(ThorContextAdventureMapTest, InformationChangesAdvanceRevisionWithoutPixelChurn)
+{
+	ThorContextStore store;
+	auto context = makeContext();
+	context.adventureMap->objects = {{7, {3, 4, 0}, 1, "Resource"}};
+	const auto first = store.publishNext(context);
+	auto changed = context;
+	changed.adventureMap->objects[0].label = "Resource (visited)";
+	const auto second = store.publishNext(changed);
+	EXPECT_GT(second.revision, first.revision);
+	EXPECT_EQ(second.adventureMap->rgb, first.adventureMap->rgb);
+	changed.adventureMap->objects.clear(); // visibility withdrawal/removal with identical colors
+	const auto withdrawn = store.publishNext(changed);
+	EXPECT_GT(withdrawn.revision, second.revision);
+	EXPECT_TRUE(withdrawn.adventureMap->objects.empty());
+	changed.adventureMap->objects = {{8, {4, 2, 0}, 2, "Mine"}};
+	const auto added = store.publishNext(changed);
+	EXPECT_GT(added.revision, withdrawn.revision);
+}
+
+TEST(ThorContextAdventureMapTest, ObjectLabelsValidateUnicodeWithoutTruncatingCodepoints)
+{
+	EXPECT_TRUE(thorMapObjectLabelValid(std::string("\xf0\x9f\x98\x80")));
+	EXPECT_TRUE(thorMapObjectLabelValid(std::string("\xe6\x97\xa5")));
+	EXPECT_FALSE(thorMapObjectLabelValid(std::string("\xc0\xaf")));
+	EXPECT_FALSE(thorMapObjectLabelValid(std::string("\xed\xa0\x80")));
+	EXPECT_FALSE(thorMapObjectLabelValid(std::string("\xf4\x90\x80\x80")));
+	EXPECT_FALSE(thorMapObjectLabelValid(std::string("\xf0\x9f")));
+}
+
+TEST(ThorContextAdventureMapTest, VisibilityGateWithdrawsFoggedObjectsBeforeReadingInformation)
+{
+	auto map = makeMap();
+	int labelsRead = 0;
+	auto label = [&]() { ++labelsRead; return std::string("Mine"); };
+	EXPECT_FALSE(appendThorMapObject(map, 1, {3, 2, 0}, 2, false, true, label));
+	EXPECT_FALSE(appendThorMapObject(map, 1, {3, 2, 0}, 2, true, false, label));
+	EXPECT_FALSE(appendThorMapObject(map, 1, {3, 2, 1}, 2, true, true, label));
+	EXPECT_FALSE(appendThorMapObject(map, 1, {3, 2, 0}, 0, true, true, label));
+	EXPECT_EQ(labelsRead, 0);
+	EXPECT_TRUE(map.objects.empty());
+	EXPECT_FALSE(appendThorMapObject(map, 1, {3, 2, 0}, 2, true, true, label));
+	EXPECT_EQ(labelsRead, 1);
+	ASSERT_EQ(map.objects.size(), 1);
+	EXPECT_EQ(map.objects.front().label, "Mine");
+	map.objects.clear(); // Rebuild the next visibility-safe immutable snapshot.
+	EXPECT_FALSE(appendThorMapObject(map, 1, {3, 2, 0}, 2, true, false, label));
+	EXPECT_EQ(labelsRead, 1);
+	EXPECT_TRUE(map.objects.empty());
+	EXPECT_FALSE(appendThorMapObject(map, 2, {4, 2, 0}, 2, true, true, [] { return std::string("Changed mine"); }));
+	EXPECT_EQ(map.objects.front().id, 2);
+	EXPECT_EQ(map.objects.front().label, "Changed mine");
+}
+
+TEST(ThorContextAdventureMapTest, StationaryPublicationLimitIsDeterministicAndDoesNotReadOverflowLabels)
+{
+	auto map = makeMap();
+	int labelsRead = 0;
+	auto label = [&]() { ++labelsRead; return std::string("Resource"); };
+	for(int id = 0; id < THOR_MAP_MAX_OBJECTS; ++id)
+		EXPECT_FALSE(appendThorMapObject(map, id, {0, 0, 0}, 1, true, true, label));
+	EXPECT_FALSE(map.objectsLimited);
+	EXPECT_TRUE(appendThorMapObject(map, THOR_MAP_MAX_OBJECTS, {0, 0, 0}, 1, true, true, label));
+	EXPECT_TRUE(map.objectsLimited);
+	EXPECT_EQ(labelsRead, THOR_MAP_MAX_OBJECTS);
+	EXPECT_EQ(map.objects.size(), THOR_MAP_MAX_OBJECTS);
+	EXPECT_EQ(map.objects.front().id, 0);
+	EXPECT_EQ(map.objects.back().id, THOR_MAP_MAX_OBJECTS - 1);
+	EXPECT_FALSE(appendThorMapObject(map, 0, {0, 0, 0}, 1, true, true, label));
+	EXPECT_EQ(labelsRead, THOR_MAP_MAX_OBJECTS);
+}

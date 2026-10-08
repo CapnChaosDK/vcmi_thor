@@ -4,6 +4,7 @@ package eu.vcmi.vcmi;
 final class ThorMapViewState
 {
     int zoom = 1;
+    int categoryFilter;
     boolean pan;
     float centerX, centerY;
     private int width, height, level = -1;
@@ -12,6 +13,7 @@ final class ThorMapViewState
     {
         final ThorMapViewState copy = new ThorMapViewState();
         copy.zoom = zoom;
+        copy.categoryFilter = categoryFilter;
         copy.pan = pan;
         copy.centerX = centerX;
         copy.centerY = centerY;
@@ -35,7 +37,7 @@ final class ThorMapViewState
         level = map.level;
     }
 
-    int modeKey() { return zoom * 2 + (pan ? 1 : 0); }
+    int modeKey() { return (zoom * 2 + (pan ? 1 : 0)) * 6 + categoryFilter; }
 
     void setZoom(final int value)
     {

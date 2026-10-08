@@ -8,6 +8,7 @@
  *
  */
 #pragma once
+#include <chrono>
 
 #include "../gui/CIntObject.h"
 #include "AdventureMapShortcuts.h"
@@ -80,6 +81,7 @@ private:
 	ThorMapViewport thorViewport;
 	ThorMapViewport thorLastViewport;
 	bool thorMapDirty = true;
+	std::chrono::steady_clock::time_point thorObjectsRefresh;
 	bool thorViewportDirty = true;
 	bool thorShowHeroes = false;
 	std::uint64_t thorLastContentRevision = 0;

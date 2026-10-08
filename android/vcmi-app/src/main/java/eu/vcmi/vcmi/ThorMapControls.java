@@ -5,6 +5,8 @@ final class ThorMapControls
 {
     static float[] bounds(final int control, final float width, final float height)
     {
+        if (control == 7)
+            return new float[]{width * 0.035f, height * 0.493f, width * 0.965f, height * 0.538f};
         final int columns = control < 5 ? 5 : 2;
         final int column = control < 5 ? control : control - 5;
         final float left = width * 0.035f;

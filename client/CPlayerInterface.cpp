@@ -1460,6 +1460,9 @@ void CPlayerInterface::beforeObjectPropertyChanged(const SetObjectProperty * sop
 void CPlayerInterface::objectPropertyChanged(const SetObjectProperty * sop)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	adventureInt->invalidateThorMap();
+#endif
 
 	if (sop->what == ObjProperty::OWNER)
 	{
@@ -1554,6 +1557,9 @@ void CPlayerInterface::showShipyardDialog(const IShipyard *obj)
 void CPlayerInterface::newObject( const CGObjectInstance * obj )
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	adventureInt->invalidateThorMap();
+#endif
 	//we might have built a boat in shipyard in opened town screen
 	if (obj->ID == Obj::BOAT
 		&& GAME->interface()->castleInt

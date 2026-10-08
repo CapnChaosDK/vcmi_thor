@@ -194,12 +194,13 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
 
     void publishAdventureMap(final long revision, final long contentRevision,
             final int width, final int height, final int level, final int levels,
-            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers)
+            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers,
+            final int[] objects, final String[] labels, final boolean limited)
     {
         if (revision != contextRevision || !ThorContextIds.ADVENTURE_MAP.equals(contextId))
             return;
         final ThorAdventureMap published = ThorAdventureMap.copyOf(adventureMap, contentRevision,
-                width, height, level, levels, vx, vy, vw, vh, rgb, markers);
+                width, height, level, levels, vx, vy, vw, vh, rgb, markers, objects, labels, limited);
         if (!published.valid())
             adventureMapBitmap = null;
         else if (published.rgb != adventureMap.rgb)
