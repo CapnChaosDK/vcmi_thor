@@ -79,7 +79,7 @@ final class ThorMapGesture
                 return new Release(ThorActionIds.NONE, ThorActionIds.NO_TARGET, pressedControl);
             if (!map.valid())
                 return Release.NONE;
-            if (pressedControl >= 0 && pressedControl < 5)
+            if (pressedControl == 7 || pressedControl >= 0 && pressedControl < 5)
                 return new Release(ThorActionIds.NONE, ThorActionIds.NO_TARGET, pressedControl);
             if (pressedControl >= 5 && pressedControl <= 6 && map.levels == 2
                     && map.level != pressedControl - 5
@@ -98,6 +98,18 @@ final class ThorMapGesture
         if ((enabledActions & ThorActionIds.maskFor(ThorActionIds.ADVENTURE_CENTER_VIEW)) != 0)
             return new Release(ThorActionIds.ADVENTURE_CENTER_VIEW, map.level * ThorAdventureMap.MAX_TILES + tile, -1);
         return Release.NONE;
+    }
+
+    /** A held map release is inspection only, including empty/ambiguous hits. */
+    boolean inspect(final long revision, final long session, final int pointer, final int count,
+            final int level, final int mode, final boolean validSession, final float x, final float y,
+            final float slop, final long heldMillis)
+    {
+        if (!matches(revision, session, pointer, count, level, mode, validSession)) return false;
+        move(x, y, slop);
+        if (!active || moved || control >= 0 || heldMillis < 500) return false;
+        cancel();
+        return true;
     }
 
     boolean active() { return active; }

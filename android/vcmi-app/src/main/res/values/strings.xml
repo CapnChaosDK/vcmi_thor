@@ -226,4 +226,13 @@
     <string name="thor_map_unavailable">Map unavailable</string>
     <string name="thor_map_legend">● Hero · ■ Town · White ring: selected · White box: upper view</string>
     <string name="thor_map_accessibility">Tap a hero or town marker to select. Tap or drag in Navigate to center the upper view once on release. Detail 2× and 4× enlarge the lower map. Pan lower moves only this map. White box shows the upper view; white ring marks selection.</string>
+    <string name="thor_map_inspection_hint">Hold a marker to inspect • Resources / Mines / Dwellings / Travel / Sites</string>
+    <string name="thor_map_inspection_limited">Hold to inspect • Showing the first 1024 visible objects</string>
+    <string name="thor_map_cluster_info">%1$d objects • Use Detail and Pan to separate markers</string>
+    <string name="thor_map_filter_all">Objects: All • Tap to filter</string>
+    <string name="thor_map_filter_resources">Objects: Resources • Tap to filter</string>
+    <string name="thor_map_filter_mines">Objects: Mines • Tap to filter</string>
+    <string name="thor_map_filter_dwellings">Objects: Dwellings • Tap to filter</string>
+    <string name="thor_map_filter_travel">Objects: Travel • Tap to filter</string>
+    <string name="thor_map_filter_sites">Objects: Sites • Tap to filter</string>
 </resources>

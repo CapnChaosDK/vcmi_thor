@@ -302,6 +302,7 @@ std::optional<ThorAdventureMap> AdventureMapInterface::buildThorAdventureMap()
 	// Reject unsupported rosters before allocating or resolving any map-sized colors.
 	if(!map.markersValid())
 		return std::nullopt;
+	const bool objectsDirty = thorMapDirty || shapeChanged || !thorMap || map.markers != thorMap->markers;
 	if(thorMapDirty || shapeChanged || thorShowHeroes != showHeroes || !map.rgb)
 	{
 		auto colors = std::make_shared<std::vector<std::uint8_t>>();
@@ -323,6 +324,33 @@ std::optional<ThorAdventureMap> AdventureMapInterface::buildThorAdventureMap()
 		thorShowHeroes = showHeroes;
 	}
 
+	const auto now = std::chrono::steady_clock::now();
+	if(objectsDirty || now - thorObjectsRefresh >= std::chrono::milliseconds(250))
+	{
+		thorObjectsRefresh = now;
+		// Resolve only callback-visible identities, with the anchor tile visible as well.
+		// Poll text-only changes at bounded cadence; fog/object events invalidate immediately.
+		map.objects.clear();
+		map.objectsLimited = false;
+		auto visible = GAME->interface()->cb->getAllVisitableObjs();
+		std::sort(visible.begin(), visible.end(), [](const auto * lhs, const auto * rhs) { return lhs->id < rhs->id; });
+		for(const auto * candidate : visible)
+		{
+			const auto * object = GAME->interface()->cb->getObj(candidate->id, false);
+			if(!object)
+				continue;
+			const int category = thorMapObjectCategory(object->ID);
+			const auto tile = object->visitablePos();
+			if(appendThorMapObject(map, object->id.getNum(), {tile.x, tile.y, tile.z}, category,
+				GAME->interface()->cb->isVisible(object), GAME->interface()->cb->getTile(tile, false) != nullptr, [&]()
+				{
+					const auto * hero = GAME->interface()->localState->getCurrentHero();
+					auto label = (hero ? object->getHoverText(hero) : object->getHoverText(GAME->interface()->playerID)).toString(&GAME->translator());
+					return thorMapObjectLabelValid(label) ? label : object->getObjectName().toString(&GAME->translator());
+				}))
+				break;
+		}
+	}
 	thorMap = map;
 	return map;
 }

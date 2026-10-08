@@ -163,7 +163,8 @@ public class NativeMethods
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorAdventureMap(final long revision, final long contentRevision,
             final int width, final int height, final int level, final int levels,
-            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers)
+            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers,
+            final int[] objects, final String[] labels, final boolean limited)
     {
         if (!BuildConfig.AYN_THOR_BUILD)
             return;
@@ -173,12 +174,15 @@ public class NativeMethods
         // Bound before cloning or queuing. Invalid packets explicitly clear the active surface.
         final boolean bounded = ThorAdventureMap.dimensionsValid(width, height)
                 && (rgb == null || rgb.length == width * height * 3)
-                && markers != null && markers.length <= ThorAdventureMap.MAX_MARKERS * ThorAdventureMap.MARKER_FIELDS;
+                && markers != null && markers.length <= ThorAdventureMap.MAX_MARKERS * ThorAdventureMap.MARKER_FIELDS
+                && ThorAdventureMap.objectsBounded(objects, labels);
         final byte[] copiedRgb = bounded && rgb != null ? rgb.clone() : null;
         final int[] copiedMarkers = bounded ? markers.clone() : null;
+        final int[] copiedObjects = bounded ? objects.clone() : null;
+        final String[] copiedLabels = bounded ? labels.clone() : null;
         ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorAdventureMap(
                 revision, bounded ? contentRevision : 0, width, height, level, levels,
-                vx, vy, vw, vh, copiedRgb, copiedMarkers));
+                vx, vy, vw, vh, copiedRgb, copiedMarkers, copiedObjects, copiedLabels, limited));
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

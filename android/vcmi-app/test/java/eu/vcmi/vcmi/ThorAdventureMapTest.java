@@ -320,4 +320,102 @@ public class ThorAdventureMapTest
         assertEquals(-1, ThorAdventureMap.encodeTarget(0, -1, 0));
         assertEquals(-1, ThorAdventureMap.encodeTarget(0, 0, 2));
     }
+
+    private ThorAdventureMap objects(final int[] data, final String[] labels)
+    {
+        return ThorAdventureMap.copyOf(ThorAdventureMap.EMPTY, 1, 20, 10, 0, 2,
+                0, 0, 20, 10, new byte[600], new int[0], data, labels, false);
+    }
+
+    @Test
+    public void objectPayloadBoundsAndImmutableCopy()
+    {
+        final int[] data = {1, 2, 2, 0, 1};
+        final String[] labels = {"Resource"};
+        final ThorAdventureMap map = objects(data, labels);
+        assertTrue(map.valid());
+        data[1] = 19; labels[0] = "changed";
+        assertEquals(2, map.objects[1]); assertEquals("Resource", map.objectLabels[0]);
+        assertFalse(objects(new int[]{1, 20, 2, 0, 1}, new String[]{"X"}).valid());
+        assertFalse(objects(new int[]{1, 2, 2, 1, 1}, new String[]{"X"}).valid());
+        assertFalse(objects(new int[]{1, 2, 2, 0, 6}, new String[]{"X"}).valid());
+        assertFalse(objects(new int[]{1, 2, 2, 0, 1, 1, 3, 2, 0, 1}, new String[]{"X", "Y"}).valid());
+        assertFalse(objects(new int[]{2, 2, 2, 0, 1, 1, 3, 2, 0, 1}, new String[]{"X", "Y"}).valid());
+        assertFalse(objects(new int[]{1}, new String[]{"X"}).valid());
+        assertFalse(objects(new int[]{1, 2, 2, 0, 1}, new String[]{""}).valid());
+        assertFalse(objects(new int[]{1, 2, 2, 0, 1}, new String[]{"a\0b"}).valid());
+        assertFalse(ThorAdventureMap.objectsBounded(new int[1025 * 5], new String[1025]));
+        assertFalse(ThorAdventureMap.objectsBounded(new int[5], new String[]{"\ud83d"}));
+        assertFalse(ThorAdventureMap.objectsBounded(new int[5], new String[]{"\ude00"}));
+        assertFalse(ThorAdventureMap.objectsBounded(new int[5], new String[]{"日".repeat(86)}));
+        assertTrue(ThorAdventureMap.objectsBounded(new int[5], new String[]{"😀".repeat(64)}));
+    }
+
+    @Test
+    public void clustersUseTransformedCentersAndFiltersAtAllZooms()
+    {
+        final ThorAdventureMap map = objects(new int[]{1, 2, 2, 0, 1, 2, 3, 2, 0, 2},
+                new String[]{"Resource", "Mine"});
+        for (int zoom : new int[]{1, 2, 4})
+        {
+            final ThorMapTransform transform = new ThorMapTransform(20, 10, 0, 0, 200, 100, zoom, 3, 3);
+            final ThorMapInspection clusters = new ThorMapInspection(map, transform, 8);
+            assertEquals(zoom == 1 ? 1 : 2, clusters.size);
+            if (zoom == 1) { assertEquals(2, clusters.count[0]); assertEquals(0, clusters.row[0]); }
+            final ThorMapInspection filtered = new ThorMapInspection(map, transform, 8, 2);
+            assertEquals(1, filtered.size); assertEquals(1, filtered.row[0]);
+            assertEquals(transform.screenX(3.5f), filtered.x[0], 0.001f);
+            assertEquals(transform.screenY(2.5f), filtered.y[0], 0.001f);
+            assertEquals(0, filtered.at(filtered.x[0], filtered.y[0], 10));
+        }
+    }
+
+    @Test
+    public void overlapChainsClusterDeterministicallyAndOffscreenEntriesStayInert()
+    {
+        final ThorAdventureMap map = objects(new int[]{1, 2, 2, 0, 1, 2, 3, 2, 0, 1, 3, 4, 2, 0, 1},
+                new String[]{"A", "B", "C"});
+        final ThorMapTransform fit = new ThorMapTransform(20, 10, 0, 0, 200, 100, 1, 10, 5);
+        final ThorMapInspection clusters = new ThorMapInspection(map, fit, 8);
+        assertEquals(1, clusters.size); assertEquals(3, clusters.count[0]); assertEquals(0, clusters.row[0]);
+        assertEquals(35, clusters.x[0], 0.001f);
+        final ThorMapTransform pan = new ThorMapTransform(20, 10, 0, 0, 200, 100, 4, 18, 8);
+        assertEquals(0, new ThorMapInspection(map, pan, 8).size);
+    }
+
+    @Test
+    public void inspectionConsumesHeldReleaseAndCancelsOnEveryIdentityBoundary()
+    {
+        final ThorMapGesture gesture = new ThorMapGesture();
+        final ThorMapTransform transform = new ThorMapTransform(20, 10, 0, 0, 200, 100, 1, 10, 5);
+        gesture.begin(1, 2, 3, 0, 0, -1, 20, 20, transform);
+        assertTrue(gesture.inspect(1, 2, 3, 1, 0, 0, true, 20, 20, 5, 500));
+        assertFalse(gesture.active());
+        assertFalse(gesture.inspect(1, 2, 3, 1, 0, 0, true, 20, 20, 5, 800));
+        final long[][] changes = {{2,2,3,1,0,0,1},{1,3,3,1,0,0,1},{1,2,4,1,0,0,1},
+                {1,2,3,2,0,0,1},{1,2,3,1,1,0,1},{1,2,3,1,0,1,1},{1,2,3,1,0,0,0}};
+        for (long[] c : changes)
+        {
+            gesture.begin(1, 2, 3, 0, 0, -1, 20, 20, transform);
+            assertFalse(gesture.inspect(c[0], c[1], (int)c[2], (int)c[3], (int)c[4], (int)c[5],
+                    c[6] == 1, 20, 20, 5, 800)); assertFalse(gesture.active());
+        }
+        gesture.begin(1, 2, 3, 0, 0, -1, 20, 20, transform);
+        assertFalse(gesture.inspect(1, 2, 3, 1, 0, 0, true, 40, 20, 5, 800));
+        gesture.cancel(); assertFalse(gesture.active());
+        gesture.begin(1, 2, 3, 0, 0, 7, 20, 20, transform);
+        assertFalse(gesture.inspect(1, 2, 3, 1, 0, 0, true, 20, 20, 5, 800));
+    }
+
+    @Test
+    public void withdrawalAndChangedInformationReplaceSnapshotWithoutPixelChurn()
+    {
+        final ThorAdventureMap map = objects(new int[]{1, 2, 2, 0, 1}, new String[]{"Resource"});
+        final ThorAdventureMap changed = ThorAdventureMap.copyOf(map, 1, 20, 10, 0, 2, 0, 0, 20, 10,
+                null, new int[0], new int[]{1, 3, 2, 0, 1}, new String[]{"Visited"}, false);
+        assertSame(map.rgb, changed.rgb); assertEquals("Visited", changed.objectLabels[0]);
+        final ThorAdventureMap withdrawn = ThorAdventureMap.copyOf(changed, 1, 20, 10, 0, 2, 0, 0, 20, 10,
+                null, new int[0], new int[0], new String[0], false);
+        assertTrue(withdrawn.valid()); assertEquals(0, withdrawn.objectLabels.length);
+    }
 }

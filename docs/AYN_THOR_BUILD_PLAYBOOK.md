@@ -63,7 +63,7 @@ The JSON receipt records the real candidate commit, run ID and number, package I
 ## Candidate and promotion flow
 
 ```text
-implementation on `ayn-thor-dual-screen`
+reviewed implementation branch from `ayn-thor-dual-screen`
     ↓
 local cheap checks
     ↓
@@ -92,11 +92,12 @@ git log --oneline -5
 git remote -v
 ```
 
-Make product, test, and documentation changes on `ayn-thor-dual-screen` after selecting and scoping the slice under `AGENTS.md`. Before candidate creation, run `git diff --check`, review the complete diff/stat, and do not discard unrelated work. Update the permanent candidate transport branch to the exact candidate tree:
+Make product, test, and documentation changes on a normal implementation branch based on the verified `ayn-thor-dual-screen` product tree after selecting and scoping the slice under `AGENTS.md`. Publish that reviewed implementation branch/PR to the fork before candidate handoff; the PR does not replace the permanent candidate push. Before candidate creation, run `git diff --check`, review the complete diff/stat, and do not discard unrelated work. Update the permanent candidate transport branch to the exact candidate tree:
 
 ```powershell
 git switch ci/thor-candidate-validation
-git merge --ff-only ayn-thor-dual-screen
+$reviewedImplementationSha = '<published-reviewed-implementation-sha>'
+git merge --ff-only $reviewedImplementationSha
 git push origin ci/thor-candidate-validation
 ```
 
@@ -104,7 +105,8 @@ The candidate branch is CI transport state, not validated product history. Prefe
 
 ```powershell
 git switch ci/thor-candidate-validation
-git reset --hard ayn-thor-dual-screen
+$reviewedImplementationSha = '<published-reviewed-implementation-sha>'
+git reset --hard $reviewedImplementationSha
 git push --force-with-lease origin ci/thor-candidate-validation
 ```
 

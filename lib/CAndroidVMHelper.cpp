@@ -8,6 +8,7 @@
  *
  */
 #include "CAndroidVMHelper.h"
+#include "texts/TextOperations.h"
 
 #include <bit>
 
@@ -320,7 +321,7 @@ void CAndroidVMHelper::publishThorAdventureMap(std::uint64_t revision, const Tho
 {
 	// An invalid map is an explicit empty publication, never a partial/clipped raster.
 	const bool valid = map.valid();
-	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorAdventureMap", "(JJIIIIIIII[B[I)V",
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorAdventureMap", "(JJIIIIIIII[B[I[I[Ljava/lang/String;Z)V",
 		[&](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
 			jbyteArray colors = nullptr;
@@ -349,14 +350,52 @@ void CAndroidVMHelper::publishThorAdventureMap(std::uint64_t revision, const Tho
 					env->SetIntArrayRegion(markers, index * 6, 6, data);
 				}
 			}
+			jclass stringClass = env->FindClass("java/lang/String");
+			const auto objectCount = valid ? static_cast<jsize>(map.objects.size()) : 0;
+			jintArray objects = env->NewIntArray(objectCount * 5);
+			jobjectArray labels = stringClass ? env->NewObjectArray(objectCount, stringClass, nullptr) : nullptr;
+			if(!objects || !labels)
+			{
+				if(colors) env->DeleteLocalRef(colors);
+				env->DeleteLocalRef(markers);
+				if(objects) env->DeleteLocalRef(objects);
+				if(labels) env->DeleteLocalRef(labels);
+				if(stringClass) env->DeleteLocalRef(stringClass);
+				return;
+			}
+			for(jsize index = 0; index < objectCount; ++index)
+			{
+				const auto & object = map.objects[index];
+				const jint data[] = {object.id, object.tile.x, object.tile.y, object.tile.level, object.category};
+				env->SetIntArrayRegion(objects, index * 5, 5, data);
+				std::vector<jchar> utf16;
+				for(std::size_t offset = 0; offset < object.label.size();)
+				{
+					const auto point = TextOperations::getUnicodeCodepoint(object.label.data() + offset, object.label.size() - offset);
+					if(point <= 0xffff)
+						utf16.push_back(static_cast<jchar>(point));
+					else
+					{
+						utf16.push_back(static_cast<jchar>(0xd800 + ((point - 0x10000) >> 10)));
+						utf16.push_back(static_cast<jchar>(0xdc00 + ((point - 0x10000) & 0x3ff)));
+					}
+					offset += TextOperations::getUnicodeCharacterSize(object.label[offset]);
+				}
+				jstring label = env->NewString(utf16.data(), static_cast<jsize>(utf16.size()));
+				env->SetObjectArrayElement(labels, index, label);
+				env->DeleteLocalRef(label);
+			}
 			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision),
 				static_cast<jlong>(valid ? map.contentRevision : 0), valid ? map.width : 0, valid ? map.height : 0,
 				valid ? map.level : 0, valid ? map.levels : 0,
 				valid ? viewport.x : 0, valid ? viewport.y : 0,
-				valid ? viewport.width : 0, valid ? viewport.height : 0, colors, markers);
+				valid ? viewport.width : 0, valid ? viewport.height : 0, colors, markers, objects, labels, static_cast<jboolean>(valid && map.objectsLimited));
 			if(colors)
 				env->DeleteLocalRef(colors);
 			env->DeleteLocalRef(markers);
+			env->DeleteLocalRef(objects);
+			env->DeleteLocalRef(labels);
+			env->DeleteLocalRef(stringClass);
 		}, true);
 }
 

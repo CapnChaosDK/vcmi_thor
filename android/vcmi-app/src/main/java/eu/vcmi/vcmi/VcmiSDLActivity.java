@@ -95,11 +95,12 @@ public class VcmiSDLActivity extends SDLActivity
 
     void publishThorAdventureMap(final long revision, final long contentRevision,
             final int width, final int height, final int level, final int levels,
-            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers)
+            final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers,
+            final int[] objects, final String[] labels, final boolean limited)
     {
         if (mThorSecondScreenController != null)
             mThorSecondScreenController.publishAdventureMap(revision, contentRevision, width, height,
-                    level, levels, vx, vy, vw, vh, rgb, markers);
+                    level, levels, vx, vy, vw, vh, rgb, markers, objects, labels, limited);
     }
 
     void publishThorBrowser(final long revision, final int page, final int pageCount,
