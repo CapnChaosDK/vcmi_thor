@@ -71,8 +71,9 @@ public final class ThorHeroManagementTest
         assertEquals(47, ThorHeroManagementPair.encodeArmy(6, 5));
         assertEquals(ThorHeroManagementPair.INVALID, ThorHeroManagementPair.encodeArmy(0, 0));
         assertEquals(ThorHeroManagementPair.INVALID, ThorHeroManagementPair.encodeArmy(7, 0));
-        assertEquals(ThorHeroManagement.ARTIFACT_COUNT + 1,
-                ThorHeroManagementPair.encodeArtifact(0, 1));
+        assertEquals(1, ThorHeroManagementPair.encodeArtifact(0, 1));
+        assertEquals(ThorHeroManagement.ARTIFACT_COUNT,
+                ThorHeroManagementPair.encodeArtifact(1, 0));
         final int lastPair = ThorHeroManagementPair.encodeArtifact(82, 81);
         assertEquals(82, lastPair / ThorHeroManagement.ARTIFACT_COUNT);
         assertEquals(81, lastPair % ThorHeroManagement.ARTIFACT_COUNT);

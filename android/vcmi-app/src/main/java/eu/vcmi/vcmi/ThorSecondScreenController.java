@@ -411,6 +411,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.updateRecruitment(recruitment);
             newPresentation.updateHeroMeetingArmies(heroMeetingArmies);
             newPresentation.updateHeroMeetingArtifacts(heroMeetingArtifactCache.snapshot());
+            newPresentation.updateHeroManagement(heroManagement);
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)

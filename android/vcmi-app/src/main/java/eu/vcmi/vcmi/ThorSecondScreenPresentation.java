@@ -137,6 +137,12 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateHeroMeetingArtifacts(artifacts);
     }
 
+    void updateHeroManagement(final ThorHeroManagement management)
+    {
+        if (foundationView != null)
+            foundationView.updateHeroManagement(management);
+    }
+
     void invalidateVisualAssets()
     {
         if (foundationView != null)
@@ -309,6 +315,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
         void clearTransientState()
         {
+            cancelHeroManagementTouch();
+            heroManagement = ThorHeroManagement.EMPTY;
             mapGesture.cancel();
             inspectedCluster = -1;
             adventureMap = ThorAdventureMap.EMPTY;
@@ -1888,6 +1896,7 @@ final class ThorSecondScreenPresentation extends Presentation
         @Override
         protected void onDetachedFromWindow()
         {
+            cancelHeroManagementTouch();
             removeCallbacks(heroMeetingLongPress);
             cancelLobbyScenarioTouch();
             buildConfirmationGesture.cancel();
@@ -1916,6 +1925,7 @@ final class ThorSecondScreenPresentation extends Presentation
             super.onWindowVisibilityChanged(visibility);
             if (visibility != View.VISIBLE)
             {
+                cancelHeroManagementTouch();
                 cancelLobbyScenarioTouch();
                 buildConfirmationGesture.cancel();
                 cancelMainMenuTouch();
@@ -3368,6 +3378,17 @@ final class ThorSecondScreenPresentation extends Presentation
             return true;
         }
 
+        private void cancelHeroManagementTouch()
+        {
+            heroManagementTouchSequence = false;
+            heroManagementTouchCancelled = false;
+            heroManagementPointerId = -1;
+            heroManagementTouchRevision = 0L;
+            heroManagementPressedTab = -1;
+            selectedHeroArmySlot = -1;
+            selectedHeroArtifactSlot = -1;
+        }
+
         private void finishHeroManagementTouch(final boolean valid, final float x, final float y)
         {
             final int pressedTab = heroManagementPressedTab;
@@ -3376,7 +3397,8 @@ final class ThorSecondScreenPresentation extends Presentation
             heroManagementTouchCancelled = false;
             heroManagementPointerId = -1;
             heroManagementPressedTab = -1;
-            if (!valid || revision != submittedRevision || !ThorContextIds.HERO_WINDOW.equals(contextId))
+            if (!valid || !sessionValidity.isCurrent(presentationSessionId)
+                    || revision != submittedRevision || !ThorContextIds.HERO_WINDOW.equals(contextId))
                 return;
             if (pressedTab >= 0 && heroManagementTabBounds(pressedTab, adventureFrame(), adventureBevel())
                     .contains(x, y))
