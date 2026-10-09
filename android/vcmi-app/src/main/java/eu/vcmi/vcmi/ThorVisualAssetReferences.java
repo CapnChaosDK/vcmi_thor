@@ -17,7 +17,8 @@ final class ThorVisualAssetReferences
     }
 
     boolean references(final long revision, final long key, final ThorHeroMeetingArmies armies,
-                       final ThorHeroMeetingArtifacts artifacts, final ThorRecruitmentState recruitment)
+                       final ThorHeroMeetingArtifacts artifacts, final ThorRecruitmentState recruitment,
+                       final ThorHeroManagement heroManagement)
     {
         if (revision != this.revision || !ThorVisualAssetKey.isValid(key))
             return false;
@@ -37,6 +38,16 @@ final class ThorVisualAssetReferences
             for (final long referenced : artifacts.visualAssetKeys)
                 if (referenced == key)
                     return true;
+        if (ThorContextIds.HERO_WINDOW.equals(contextId) && heroManagement != null
+                && heroManagement.heroId >= 0)
+        {
+            for (final long referenced : heroManagement.creatureVisualAssetKeys)
+                if (referenced == key)
+                    return true;
+            for (final long referenced : heroManagement.artifactVisualAssetKeys)
+                if (referenced == key)
+                    return true;
+        }
         if ((ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(contextId)
                 || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId))
                 && recruitment != null && recruitment.revision == revision)
@@ -49,6 +60,6 @@ final class ThorVisualAssetReferences
     boolean references(final long revision, final long key, final ThorHeroMeetingArmies armies,
                        final ThorHeroMeetingArtifacts artifacts)
     {
-        return references(revision, key, armies, artifacts, ThorRecruitmentState.EMPTY);
+        return references(revision, key, armies, artifacts, ThorRecruitmentState.EMPTY, ThorHeroManagement.EMPTY);
     }
 }

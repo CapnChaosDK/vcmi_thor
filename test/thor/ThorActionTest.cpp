@@ -42,13 +42,84 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	for(int id = 50; id <= 57; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 59);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 61);
 	EXPECT_EQ(thorActionMask(ThorAction::WINDOW_CONFIRM), std::uint64_t{1} << 56);
 	EXPECT_EQ(thorActionFromId(58), ThorAction::ADVENTURE_CENTER_VIEW);
 	EXPECT_EQ(thorActionFromId(59), ThorAction::ADVENTURE_SET_MAP_LEVEL);
-	for(int id = 60; id <= 64; ++id)
+	EXPECT_EQ(thorActionFromId(60), ThorAction::HERO_WINDOW_TRANSFER_STACK);
+	EXPECT_EQ(thorActionFromId(61), ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
+	for(int id = 62; id <= 64; ++id)
 		EXPECT_EQ(thorActionFromId(id), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
+}
+
+TEST(ThorActionTest, HeroWindowArmyAndArtifactPairsAreBounded)
+{
+	EXPECT_EQ(encodeThorHeroArmyPair(0, 1), 1);
+	EXPECT_EQ(decodeThorHeroArmyPair(1), std::pair(0, 1));
+	EXPECT_FALSE(encodeThorHeroArmyPair(0, 0));
+	EXPECT_FALSE(decodeThorHeroArmyPair(49));
+	EXPECT_EQ(encodeThorHeroArtifactPair(0, 1), 1);
+	EXPECT_EQ(decodeThorHeroArtifactPair(1), std::pair(0, 1));
+	const int lastArtifactPair = *encodeThorHeroArtifactPair(82, 81);
+	EXPECT_EQ(decodeThorHeroArtifactPair(lastArtifactPair), std::pair(82, 81));
+	EXPECT_FALSE(encodeThorHeroArtifactPair(0, 0));
+	EXPECT_FALSE(decodeThorHeroArtifactPair(static_cast<int>(THOR_HERO_MANAGEMENT_ARTIFACT_COUNT
+		* THOR_HERO_MANAGEMENT_ARTIFACT_COUNT)));
+}
+
+TEST(ThorActionTest, HeroWindowMutationsRequireVisibleLiveSnapshotSlots)
+{
+	ThorContextRecord context;
+	context.revision = 9;
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	context.windowSubjectId = 12;
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK)
+		| thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
+	ThorHeroManagement management;
+	management.heroId = 12;
+	management.locallyControllable = true;
+	for(std::size_t index = 0; index < management.armySlots.size(); ++index)
+	{
+		management.armySlots[index].armyId = 12;
+		management.armySlots[index].slot = static_cast<int>(index);
+	}
+	management.armySlots[0].occupied = true;
+	management.armySlots[0].creatureId = 4;
+	management.armySlots[0].count = 3;
+	management.artifactSlots.resize(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + 1);
+	for(std::size_t index = 0; index < management.artifactSlots.size(); ++index)
+	{
+		management.artifactSlots[index].heroId = 12;
+		management.artifactSlots[index].position = static_cast<int>(index);
+		management.artifactSlots[index].backpack = index >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT;
+	}
+	management.artifactSlots[0].occupied = true;
+	management.artifactSlots[0].instanceId = 91;
+	management.artifactSlots[0].artifactTypeId = 7;
+	management.artifactSlots[0].name = "Artifact";
+	context.heroManagement = management;
+
+	ThorActionRequest army{9, ThorAction::HERO_WINDOW_TRANSFER_STACK};
+	army.targetId = *encodeThorHeroArmyPair(0, 1);
+	EXPECT_EQ(validateThorActionRequest(army, context), ThorActionValidation::VALID);
+	army.targetId = *encodeThorHeroArmyPair(0, 2);
+	context.heroManagement->armySlots[2].slot = 1;
+	EXPECT_EQ(validateThorActionRequest(army, context), ThorActionValidation::INVALID_TARGET);
+	context.heroManagement->armySlots[2].slot = 2;
+	army.revision = 8;
+	EXPECT_EQ(validateThorActionRequest(army, context), ThorActionValidation::STALE_REVISION);
+
+	ThorActionRequest artifact{9, ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT};
+	artifact.targetId = *encodeThorHeroArtifactPair(0, 1);
+	EXPECT_EQ(validateThorActionRequest(artifact, context), ThorActionValidation::VALID);
+	artifact.targetId = *encodeThorHeroArtifactPair(0, 19);
+	EXPECT_EQ(validateThorActionRequest(artifact, context), ThorActionValidation::VALID);
+	artifact.targetId = *encodeThorHeroArtifactPair(0, 20);
+	EXPECT_EQ(validateThorActionRequest(artifact, context), ThorActionValidation::INVALID_TARGET);
+	artifact.targetId = *encodeThorHeroArtifactPair(0, 1);
+	context.heroManagement->artifactSlots[1].locked = true;
+	EXPECT_EQ(validateThorActionRequest(artifact, context), ThorActionValidation::INVALID_TARGET);
 }
 
 TEST(ThorActionTest, LobbyStartRequiresMatchingMapAndNativeAvailability)
@@ -268,7 +339,9 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::TOWN_HALL_BUILD), std::uint64_t{1} << 53);
 	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW), std::uint64_t{1} << 57);
 	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL), std::uint64_t{1} << 58);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 59);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK), std::uint64_t{1} << 59);
+	EXPECT_EQ(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT), std::uint64_t{1} << 60);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 61);
 }
 
 TEST(ThorActionTest, TownHallBuildUsesOneExactContextActionAndPublishedBuildableTarget)

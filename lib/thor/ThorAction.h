@@ -77,10 +77,12 @@ enum class ThorAction : std::uint8_t
 	RECRUITMENT_BUY = 56,
 	WINDOW_CONFIRM = 57,
 	ADVENTURE_CENTER_VIEW = 58,
-	ADVENTURE_SET_MAP_LEVEL = 59
+	ADVENTURE_SET_MAP_LEVEL = 59,
+	HERO_WINDOW_TRANSFER_STACK = 60,
+	HERO_WINDOW_TRANSFER_ARTIFACT = 61
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::ADVENTURE_SET_MAP_LEVEL);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -237,6 +239,12 @@ DLL_LINKAGE std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTran
 /// Action 21 encodes two distinct artifact row keys in [0, 47].
 DLL_LINKAGE std::optional<int> encodeThorHeroMeetingArtifactPair(int sourceKey, int destinationKey);
 DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroMeetingArtifactPair(int encodedPair);
+/// Hero Window action 61 encodes two distinct positions in the active hero's bounded 83-slot artifact view.
+DLL_LINKAGE std::optional<int> encodeThorHeroArtifactPair(int sourceSlot, int destinationSlot);
+DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroArtifactPair(int encodedPair);
+/// Hero Window action 60 encodes a source/destination pair in the active hero's seven-slot army.
+DLL_LINKAGE std::optional<int> encodeThorHeroArmyPair(int sourceSlot, int destinationSlot);
+DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroArmyPair(int encodedPair);
 
 /// Mirrors whether native bulkMoveArmy can produce at least one stack change for this published army snapshot.
 DLL_LINKAGE bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftToRight);

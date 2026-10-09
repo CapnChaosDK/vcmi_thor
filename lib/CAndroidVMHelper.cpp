@@ -504,6 +504,72 @@ void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, c
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorHeroManagement(std::uint64_t revision, const ThorHeroManagement & management)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroManagement",
+		"(JILjava/lang/String;Z[I[I[Ljava/lang/String;[J[I[I[Ljava/lang/String;[J)V",
+		[revision, &management](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			constexpr auto armySize = static_cast<jsize>(THOR_HERO_MEETING_ARMY_SIZE);
+			const auto artifactSize = static_cast<jsize>(management.artifactSlots.size());
+			jclass stringClass = env->FindClass("java/lang/String");
+			jstring heroName = env->NewStringUTF(management.heroName.c_str());
+			jintArray creatureIds = env->NewIntArray(armySize);
+			jintArray counts = env->NewIntArray(armySize);
+			jobjectArray creatureNames = env->NewObjectArray(armySize, stringClass, nullptr);
+			jlongArray creatureVisualKeys = env->NewLongArray(armySize);
+			jintArray positions = env->NewIntArray(artifactSize);
+			jintArray artifactFlags = env->NewIntArray(artifactSize);
+			jobjectArray artifactNames = env->NewObjectArray(artifactSize, stringClass, nullptr);
+			jlongArray artifactVisualKeys = env->NewLongArray(artifactSize);
+			std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> creatureIdValues{};
+			std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> countValues{};
+			std::array<jlong, THOR_HERO_MEETING_ARMY_SIZE> creatureVisualValues{};
+			std::vector<jint> positionValues(static_cast<std::size_t>(artifactSize));
+			std::vector<jint> artifactFlagValues(static_cast<std::size_t>(artifactSize));
+			std::vector<jlong> artifactVisualValues(static_cast<std::size_t>(artifactSize));
+			for(jsize index = 0; index < armySize; ++index)
+			{
+				const auto & slot = management.armySlots[index];
+				creatureIdValues[index] = slot.creatureId;
+				countValues[index] = slot.count;
+				creatureVisualValues[index] = static_cast<jlong>(slot.visualAssetKey);
+				jstring name = env->NewStringUTF(slot.creatureName.c_str());
+				env->SetObjectArrayElement(creatureNames, index, name);
+				env->DeleteLocalRef(name);
+			}
+			for(jsize index = 0; index < artifactSize; ++index)
+			{
+				const auto & slot = management.artifactSlots[index];
+				positionValues[index] = slot.position;
+				artifactFlagValues[index] = (slot.occupied ? 1 : 0) | (slot.locked ? 2 : 0) | (slot.backpack ? 4 : 0);
+				artifactVisualValues[index] = static_cast<jlong>(slot.visualAssetKey);
+				jstring name = env->NewStringUTF(slot.name.c_str());
+				env->SetObjectArrayElement(artifactNames, index, name);
+				env->DeleteLocalRef(name);
+			}
+			env->SetIntArrayRegion(creatureIds, 0, armySize, creatureIdValues.data());
+			env->SetIntArrayRegion(counts, 0, armySize, countValues.data());
+			env->SetLongArrayRegion(creatureVisualKeys, 0, armySize, creatureVisualValues.data());
+			env->SetIntArrayRegion(positions, 0, artifactSize, positionValues.data());
+			env->SetIntArrayRegion(artifactFlags, 0, artifactSize, artifactFlagValues.data());
+			env->SetLongArrayRegion(artifactVisualKeys, 0, artifactSize, artifactVisualValues.data());
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(management.heroId),
+				heroName, static_cast<jboolean>(management.locallyControllable), creatureIds, counts, creatureNames,
+				creatureVisualKeys, positions, artifactFlags, artifactNames, artifactVisualKeys);
+			env->DeleteLocalRef(heroName);
+			env->DeleteLocalRef(creatureIds);
+			env->DeleteLocalRef(counts);
+			env->DeleteLocalRef(creatureNames);
+			env->DeleteLocalRef(creatureVisualKeys);
+			env->DeleteLocalRef(positions);
+			env->DeleteLocalRef(artifactFlags);
+			env->DeleteLocalRef(artifactNames);
+			env->DeleteLocalRef(artifactVisualKeys);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 bool CAndroidVMHelper::hasThorVisualAsset(std::uint64_t key)
 {
 	bool cached = false;

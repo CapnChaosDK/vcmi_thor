@@ -96,23 +96,38 @@ void CCallback::endTurn()
 }
 int CCallback::swapCreatures(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
 {
-	ArrangeStacks pack(1,p1,p2,s1->id,s2->id,0);
-	sendRequest(pack);
+	swapCreaturesRequest(s1, s2, p1, p2);
 	return 0;
+}
+
+int CCallback::swapCreaturesRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
+{
+	ArrangeStacks pack(1,p1,p2,s1->id,s2->id,0);
+	return sendRequest(pack);
 }
 
 int CCallback::mergeStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
 {
-	ArrangeStacks pack(2,p1,p2,s1->id,s2->id,0);
-	sendRequest(pack);
+	mergeStacksRequest(s1, s2, p1, p2);
 	return 0;
+}
+
+int CCallback::mergeStacksRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
+{
+	ArrangeStacks pack(2,p1,p2,s1->id,s2->id,0);
+	return sendRequest(pack);
 }
 
 int CCallback::splitStack(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val)
 {
-	ArrangeStacks pack(3,p1,p2,s1->id,s2->id,val);
-	sendRequest(pack);
+	splitStackRequest(s1, s2, p1, p2, val);
 	return 0;
+}
+
+int CCallback::splitStackRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val)
+{
+	ArrangeStacks pack(3,p1,p2,s1->id,s2->id,val);
+	return sendRequest(pack);
 }
 
 int CCallback::redistributeStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,

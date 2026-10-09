@@ -33,6 +33,7 @@ namespace
 			&& lhs.adventureMap == rhs.adventureMap
 			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies
 			&& lhs.heroMeetingArtifacts == rhs.heroMeetingArtifacts
+			&& lhs.heroManagement == rhs.heroManagement
 			&& lhs.recruitment == rhs.recruitment;
 	}
 
@@ -89,6 +90,8 @@ namespace
 			context.heroMeetingArmies.reset();
 			context.heroMeetingArtifacts.reset();
 		}
+		if(context.contextId != ThorContextIds::HERO_WINDOW)
+			context.heroManagement.reset();
 		if(context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
 			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING)
 			context.recruitment.reset();
@@ -254,8 +257,8 @@ namespace
 				context.heroMeetingArmies.reset();
 		}
 
-		if(!context.heroMeetingArtifacts)
-			return;
+		if(context.heroMeetingArtifacts)
+		{
 		auto & artifacts = *context.heroMeetingArtifacts;
 		if(artifacts.leftHeroId < 0 || artifacts.rightHeroId < 0 || artifacts.leftHeroId == artifacts.rightHeroId
 			|| artifacts.artifactSlots.size() != THOR_HERO_MEETING_ARTIFACT_COUNT)
@@ -284,6 +287,49 @@ namespace
 			{
 				slot.artifactTypeId = -1;
 				slot.visualAssetKey = 0;
+			}
+		}
+		}
+		if(context.heroManagement)
+		{
+			auto & hero = *context.heroManagement;
+			bool valid = context.contextId == ThorContextIds::HERO_WINDOW && hero.heroId >= 0
+				&& hero.heroId == context.windowSubjectId && hero.armySlots.size() == THOR_HERO_MEETING_ARMY_SIZE
+				&& hero.artifactSlots.size() >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT
+				&& hero.artifactSlots.size() <= THOR_HERO_MANAGEMENT_ARTIFACT_COUNT;
+			hero.heroName = thorBoundedText(std::move(hero.heroName));
+			for(std::size_t index = 0; valid && index < hero.armySlots.size(); ++index)
+			{
+				auto & slot = hero.armySlots[index];
+				valid = slot.armyId == hero.heroId && slot.slot == static_cast<int>(index) && slot.count >= 0
+					&& (slot.occupied ? slot.creatureId >= 0 && slot.count > 0
+						: slot.creatureId == -1 && slot.count == 0);
+				if(valid)
+				{
+					slot.creatureName = slot.occupied ? thorBoundedText(std::move(slot.creatureName)) : std::string{};
+					slot.visualAssetKey = slot.occupied ? thorCreatureVisualAssetKey(slot.creatureId) : 0;
+				}
+			}
+			for(std::size_t index = 0; valid && index < hero.artifactSlots.size(); ++index)
+			{
+				auto & slot = hero.artifactSlots[index];
+				const bool backpack = index >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT;
+				valid = slot.heroId == hero.heroId
+					&& slot.position == static_cast<int>(index)
+					&& slot.backpack == backpack
+					&& (slot.occupied ? slot.instanceId >= 0 && slot.artifactTypeId >= 0
+						: slot.name.empty() && slot.instanceId == -1);
+				if(valid)
+				{
+					slot.name = thorBoundedText(std::move(slot.name));
+					slot.visualAssetKey = slot.occupied ? thorArtifactVisualAssetKey(slot.artifactTypeId) : 0;
+				}
+			}
+			if(!valid)
+			{
+				context.heroManagement.reset();
+				context.enabledActionMask &= ~(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK)
+					| thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT));
 			}
 		}
 	}

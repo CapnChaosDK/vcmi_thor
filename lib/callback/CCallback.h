@@ -39,9 +39,12 @@ public:
 	int selectionMade(int selection, QueryID queryID) override;
 	int sendQueryReply(std::optional<int32_t> reply, QueryID queryID) override;
 	int swapCreatures(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override;
+	int swapCreaturesRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2);
 	int mergeOrSwapStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override; //first goes to the second
 	int mergeStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override; //first goes to the second
+	int mergeStacksRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2);
 	int splitStack(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val) override;
+	int splitStackRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val);
 	int redistributeStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
 		ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
 		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations) override;

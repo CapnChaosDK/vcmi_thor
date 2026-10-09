@@ -131,6 +131,9 @@ inline constexpr std::size_t THOR_HERO_MEETING_ARMY_SIZE = GameConstants::ARMY_S
 inline constexpr std::size_t THOR_HERO_MEETING_SLOT_KEY_COUNT = THOR_HERO_MEETING_ARMY_SIZE * 2;
 inline constexpr std::size_t THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT = 19;
 inline constexpr std::size_t THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT = 5;
+inline constexpr std::size_t THOR_MAX_HERO_BACKPACK_ARTIFACTS = 64;
+inline constexpr std::size_t THOR_HERO_MANAGEMENT_ARTIFACT_COUNT =
+	THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_MAX_HERO_BACKPACK_ARTIFACTS;
 inline constexpr std::size_t THOR_HERO_MEETING_ARTIFACT_COUNT =
 	(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT) * 2;
 inline constexpr std::size_t THOR_MAX_HERO_MEETING_VISUAL_ASSETS = THOR_HERO_MEETING_ARMY_SIZE * 2
@@ -309,6 +312,17 @@ struct DLL_LINKAGE ThorHeroMeetingArtifacts
 	bool operator==(const ThorHeroMeetingArtifacts &) const = default;
 };
 
+/// Bounded, single-hero view for the active Hero Window. It never includes hidden heroes.
+struct DLL_LINKAGE ThorHeroManagement
+{
+	int heroId = -1;
+	std::string heroName;
+	bool locallyControllable = false;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> armySlots;
+	std::vector<ThorHeroMeetingArtifact> artifactSlots;
+	bool operator==(const ThorHeroManagement &) const = default;
+};
+
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
 {
@@ -333,6 +347,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::vector<std::string> browserNativeKeys;
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
+	std::optional<ThorHeroManagement> heroManagement;
 	std::optional<ThorRecruitmentSnapshot> recruitment;
 	std::uint64_t heroPortraitAssetKey = 0;
 	/// Native-only SelectionTab state token. Never passed through JNI.

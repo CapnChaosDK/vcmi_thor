@@ -127,6 +127,13 @@
     <string name="thor_action_end_turn">End Turn</string>
     <string name="thor_context_hero">Hero</string>
     <string name="thor_context_hero_status">Review hero details</string>
+    <string name="thor_hero_overview">Overview</string>
+    <string name="thor_hero_army">Army</string>
+    <string name="thor_hero_artifacts">Artifacts</string>
+    <string name="thor_hero_army_help">Select a stack, then its destination. The game checks every move.</string>
+    <string name="thor_hero_artifact_help">Select an artifact, then a destination. Locked and incompatible slots stay protected.</string>
+    <string name="thor_hero_equipment_empty">Empty equipment slot</string>
+    <string name="thor_hero_backpack_empty">Empty backpack slot</string>
     <string name="thor_context_town">Town</string>
     <string name="thor_context_town_status">Review town details</string>
     <string name="thor_town_income">Income</string>

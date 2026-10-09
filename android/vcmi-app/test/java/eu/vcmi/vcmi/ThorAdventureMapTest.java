@@ -307,14 +307,15 @@ public class ThorAdventureMapTest
     {
         assertEquals(58, ThorActionIds.ADVENTURE_CENTER_VIEW);
         assertEquals(59, ThorActionIds.ADVENTURE_SET_MAP_LEVEL);
-        assertEquals(59, ThorActionIds.MAX_ACTION_ID);
+        assertEquals(61, ThorActionIds.MAX_ACTION_ID);
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 58));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 59));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 13));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 14));
         assertEquals(1L << 57, ThorActionIds.maskFor(58));
         assertEquals(1L << 58, ThorActionIds.maskFor(59));
-        assertEquals(0, ThorActionIds.maskFor(60));
+        assertEquals(1L << 59, ThorActionIds.maskFor(60));
+        assertEquals(1L << 60, ThorActionIds.maskFor(61));
         assertEquals(524287, ThorAdventureMap.encodeTarget(511, 511, 1));
         assertEquals(-1, ThorAdventureMap.encodeTarget(512, 0, 0));
         assertEquals(-1, ThorAdventureMap.encodeTarget(0, -1, 0));
