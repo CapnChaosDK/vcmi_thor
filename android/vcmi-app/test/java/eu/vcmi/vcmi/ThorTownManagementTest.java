@@ -48,7 +48,7 @@ public class ThorTownManagementTest
                 EMPTY_IDS, EMPTY_COUNTS, EMPTY_NAMES, EMPTY_IDS, EMPTY_COUNTS, EMPTY_NAMES);
         assertTrue(town.complete());
         assertFalse(town.locallyControllable);
-        assertArrayEquals(new int[7], town.visitingCreatureIds);
+        assertArrayEquals(EMPTY_IDS, town.visitingCreatureIds);
     }
 
     @Test

@@ -177,7 +177,7 @@ namespace
 		context.browserPage = 0;
 		context.browserPageCount = 1;
 		context.browserEntries = thorTownServices(town);
-		if(context.townManagement && context.townManagement->locallyControllable && owner->pendingThorArmyRequestId < 0)
+		if(context.townManagement && context.townManagement->locallyControllable && !owner->hasPendingThorArmyRequest())
 		{
 			CExchangeController exchange(context.townManagement->garrisonArmyId >= 0 ? town->getUpperArmy() : nullptr,
 				town->getVisitingHero());
@@ -1909,7 +1909,7 @@ void CCastleInterface::onThorActionRequestResult(int requestId)
 	pendingThorArmyRequestId = -1;
 	const auto submittedRevision = pendingThorArmyActionRevision;
 	pendingThorArmyActionRevision = 0;
-	if(isActive() && ENGINE->windows().topWindow<CCastleInterface>() == this)
+	if(isActive() && ENGINE->windows().topWindow<CCastleInterface>().get() == this)
 		updateThorActionState();
 	CAndroidVMHelper().acknowledgeThorAction(thorContextStore().snapshot().revision,
 		ThorAction::TOWN_WINDOW_TRANSFER_STACK, submittedRevision);

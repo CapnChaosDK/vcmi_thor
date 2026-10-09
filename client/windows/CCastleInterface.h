@@ -274,6 +274,7 @@ public:
 	void updateThorActionState();
 	bool executeThorAction(const ThorActionRequest & request);
 	void onThorActionRequestResult(int requestId);
+	bool hasPendingThorArmyRequest() const { return pendingThorArmyRequestId >= 0; }
 #endif
 
 	void castleTeleport(int where);

@@ -3020,14 +3020,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
             paint.setFakeBoldText(false);
             paint.setColor(TEXT);
-            final String ownerStatus = townManagement.townId >= 0
-                    ? getContext().getString(R.string.thor_town_owned_by_you)
-                    : getContext().getString(R.string.thor_town_not_owned_by_you);
-            drawFittedText(canvas, status + " · " + ownerStatus, frame.centerX(), frame.top + contentHeight * 0.25f,
+            drawFittedText(canvas, status, frame.centerX(), frame.top + contentHeight * 0.29f,
                     frame.width() * 0.8f, Math.min(28f * density, contentHeight * 0.052f));
-
-            if (townManagementTab != 0)
-                return;
         }
 
         private void drawHeroManagementTabs(final Canvas canvas, final RectF frame,
@@ -3323,8 +3317,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     frame.width() * 0.82f, Math.min(42f * density, contentHeight * 0.075f));
 
             paint.setFakeBoldText(false);
-            drawFittedText(canvas, status, frame.centerX(), frame.top + contentHeight * 0.29f,
+            final String ownerStatus = townManagement.townId >= 0
+                    ? getContext().getString(R.string.thor_town_owned_by_you)
+                    : getContext().getString(R.string.thor_town_not_owned_by_you);
+            drawFittedText(canvas, status + " · " + ownerStatus, frame.centerX(), frame.top + contentHeight * 0.25f,
                     frame.width() * 0.8f, Math.min(28f * density, contentHeight * 0.052f));
+
+            if (townManagementTab != 0)
+                return;
 
             final String[] labels = {
                     getContext().getString(R.string.thor_town_income),
