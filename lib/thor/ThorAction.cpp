@@ -67,6 +67,30 @@ std::optional<std::pair<int, int>> decodeThorHeroArmyPair(int encodedPair)
 	return std::pair{source, destination};
 }
 
+std::optional<int> encodeThorTownArmyPair(bool sourceIsVisiting, int sourceSlot, bool destinationIsVisiting, int destinationSlot)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+	if(sourceSlot < 0 || destinationSlot < 0 || sourceSlot >= count || destinationSlot >= count)
+		return std::nullopt;
+	const int sourceKey = (sourceIsVisiting ? count : 0) + sourceSlot;
+	const int destinationKey = (destinationIsVisiting ? count : 0) + destinationSlot;
+	if(sourceKey == destinationKey)
+		return std::nullopt;
+	return sourceKey * count * 2 + destinationKey;
+}
+
+std::optional<ThorTownArmyPair> decodeThorTownArmyPair(int encodedPair)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+	if(encodedPair < 0 || encodedPair >= 4 * count * count)
+		return std::nullopt;
+	const int sourceKey = encodedPair / (count * 2);
+	const int destinationKey = encodedPair % (count * 2);
+	if(sourceKey == destinationKey)
+		return std::nullopt;
+	return ThorTownArmyPair{sourceKey >= count, destinationKey >= count, sourceKey % count, destinationKey % count};
+}
+
 std::optional<int> encodeThorHeroMeetingTransferPair(int sourceKey, int destinationKey)
 {
 	constexpr int slotKeyCount = static_cast<int>(THOR_HERO_MEETING_SLOT_KEY_COUNT);
@@ -285,6 +309,7 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 	case static_cast<int>(ThorAction::ADVENTURE_SET_MAP_LEVEL): return ThorAction::ADVENTURE_SET_MAP_LEVEL;
 	case static_cast<int>(ThorAction::HERO_WINDOW_TRANSFER_STACK): return ThorAction::HERO_WINDOW_TRANSFER_STACK;
 	case static_cast<int>(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT): return ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT;
+	case static_cast<int>(ThorAction::TOWN_WINDOW_TRANSFER_STACK): return ThorAction::TOWN_WINDOW_TRANSFER_STACK;
 	default:
 		return std::nullopt;
 	}
@@ -343,7 +368,7 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 			|| action == ThorAction::HERO_WINDOW_TRANSFER_STACK || action == ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT;
 	if(contextId == ThorContextIds::TOWN_WINDOW)
 		return (action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE)
-			|| action == ThorAction::TOWN_OPEN_SERVICE;
+			|| action == ThorAction::TOWN_OPEN_SERVICE || action == ThorAction::TOWN_WINDOW_TRANSFER_STACK;
 	if(contextId == ThorContextIds::TOWN_HALL)
 		return action == ThorAction::TOWN_HALL_BUILD || action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::HIGH_SCORES)
@@ -617,6 +642,7 @@ bool isThorActionHapticDeferredUntilServerResult(ThorAction action)
 {
 	return action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK
 		|| action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT
+		|| action == ThorAction::TOWN_WINDOW_TRANSFER_STACK
 		|| thorBulkArtifactOperation(action).has_value();
 }
 
@@ -827,6 +853,22 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		const auto & source = context.heroManagement->artifactSlots[pair->first];
 		const auto & destination = context.heroManagement->artifactSlots[pair->second];
 		if(!source.occupied || source.locked || destination.locked)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::TOWN_WINDOW_TRANSFER_STACK)
+	{
+		if(!context.townManagement || !context.townManagement->locallyControllable
+			|| request.sourceArmyId != -1 || request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto pair = decodeThorTownArmyPair(request.targetId);
+		if(!pair)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto & town = *context.townManagement;
+		const auto & source = pair->sourceIsVisiting ? town.visitingSlots[pair->sourceSlot] : town.garrisonSlots[pair->sourceSlot];
+		const auto & destination = pair->destinationIsVisiting ? town.visitingSlots[pair->destinationSlot] : town.garrisonSlots[pair->destinationSlot];
+		if(!source.occupied || source.slot != pair->sourceSlot || destination.slot != pair->destinationSlot
+			|| destination.armyId < 0)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK)

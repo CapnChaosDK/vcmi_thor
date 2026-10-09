@@ -113,7 +113,9 @@ public class ThorContextIdsTest
 		assertEquals(61, ThorActionIds.HERO_WINDOW_TRANSFER_ARTIFACT);
 		assertEquals(1L << 59, ThorActionIds.maskFor(ThorActionIds.HERO_WINDOW_TRANSFER_STACK));
 		assertEquals(1L << 60, ThorActionIds.maskFor(ThorActionIds.HERO_WINDOW_TRANSFER_ARTIFACT));
-		assertEquals(61, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(62, ThorActionIds.TOWN_WINDOW_TRANSFER_STACK);
+		assertEquals(1L << 61, ThorActionIds.maskFor(ThorActionIds.TOWN_WINDOW_TRANSFER_STACK));
+		assertEquals(62, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(-1, ThorActionIds.NO_TARGET);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
@@ -158,7 +160,7 @@ public class ThorContextIdsTest
         assertEquals(1L << 53, ThorActionIds.maskFor(ThorActionIds.TOWN_HALL_BUILD));
         assertEquals(1L << 54, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_EDIT));
         assertEquals(1L << 55, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_BUY));
-		assertEquals(61, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(62, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
 		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
 		assertEquals(43, ThorActionIds.CAMPAIGN_BROWSER_SELECT);

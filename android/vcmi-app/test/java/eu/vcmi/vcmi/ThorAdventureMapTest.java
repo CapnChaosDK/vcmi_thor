@@ -307,7 +307,7 @@ public class ThorAdventureMapTest
     {
         assertEquals(58, ThorActionIds.ADVENTURE_CENTER_VIEW);
         assertEquals(59, ThorActionIds.ADVENTURE_SET_MAP_LEVEL);
-        assertEquals(61, ThorActionIds.MAX_ACTION_ID);
+        assertEquals(62, ThorActionIds.MAX_ACTION_ID);
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 58));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 59));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 13));

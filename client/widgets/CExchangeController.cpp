@@ -20,8 +20,13 @@
 #include "../../lib/mapObjects/army/CStackInstance.h"
 
 CExchangeController::CExchangeController(ObjectInstanceID hero1, ObjectInstanceID hero2)
-	: left(GAME->interface()->cb->getHero(hero1))
-	, right(GAME->interface()->cb->getHero(hero2))
+	: CExchangeController(GAME->interface()->cb->getHero(hero1), GAME->interface()->cb->getHero(hero2))
+{
+}
+
+CExchangeController::CExchangeController(const CArmedInstance * army1, const CArmedInstance * army2)
+	: left(army1)
+	, right(army2)
 {
 }
 

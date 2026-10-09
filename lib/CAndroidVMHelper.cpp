@@ -570,6 +570,52 @@ void CAndroidVMHelper::publishThorHeroManagement(std::uint64_t revision, const T
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorTownManagement(std::uint64_t revision, const ThorTownManagement & management)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorTownManagement",
+		"(JIIILjava/lang/String;Z[I[I[Ljava/lang/String;[I[I[Ljava/lang/String;)V",
+		[revision, &management](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto fill = [env](const auto & slots, jintArray & ids, jintArray & counts, jobjectArray & names)
+			{
+				constexpr auto size = static_cast<jsize>(THOR_HERO_MEETING_ARMY_SIZE);
+				std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> creatureIds{};
+				std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> creatureCounts{};
+				jclass stringClass = env->FindClass("java/lang/String");
+				ids = env->NewIntArray(size);
+				counts = env->NewIntArray(size);
+				names = env->NewObjectArray(size, stringClass, nullptr);
+				for(jsize index = 0; index < size; ++index)
+				{
+					creatureIds[index] = slots[index].occupied ? slots[index].creatureId : -1;
+					creatureCounts[index] = slots[index].occupied ? slots[index].count : 0;
+					jstring name = env->NewStringUTF(slots[index].occupied ? slots[index].creatureName.c_str() : "");
+					env->SetObjectArrayElement(names, index, name);
+					env->DeleteLocalRef(name);
+				}
+				env->SetIntArrayRegion(ids, 0, size, creatureIds.data());
+				env->SetIntArrayRegion(counts, 0, size, creatureCounts.data());
+				env->DeleteLocalRef(stringClass);
+			};
+			jintArray garrisonIds, garrisonCounts, visitingIds, visitingCounts;
+			jobjectArray garrisonNames, visitingNames;
+			fill(management.garrisonSlots, garrisonIds, garrisonCounts, garrisonNames);
+			fill(management.visitingSlots, visitingIds, visitingCounts, visitingNames);
+			jstring heroName = env->NewStringUTF(management.visitingHeroName.c_str());
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), management.townId,
+				management.garrisonArmyId, management.visitingHeroId, heroName,
+				static_cast<jboolean>(management.locallyControllable), garrisonIds, garrisonCounts, garrisonNames,
+				visitingIds, visitingCounts, visitingNames);
+			env->DeleteLocalRef(heroName);
+			env->DeleteLocalRef(garrisonIds);
+			env->DeleteLocalRef(garrisonCounts);
+			env->DeleteLocalRef(garrisonNames);
+			env->DeleteLocalRef(visitingIds);
+			env->DeleteLocalRef(visitingCounts);
+			env->DeleteLocalRef(visitingNames);
+		}, true);
+}
+
 bool CAndroidVMHelper::hasThorVisualAsset(std::uint64_t key)
 {
 	bool cached = false;

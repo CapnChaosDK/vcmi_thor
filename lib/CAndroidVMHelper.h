@@ -61,6 +61,7 @@ public:
 	void publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies);
 	void publishThorHeroMeetingArtifacts(std::uint64_t revision, const ThorHeroMeetingArtifacts & artifacts);
 	void publishThorHeroManagement(std::uint64_t revision, const ThorHeroManagement & management);
+	void publishThorTownManagement(std::uint64_t revision, const ThorTownManagement & management);
 	bool hasThorVisualAsset(std::uint64_t key);
 	void publishThorVisualAsset(std::uint64_t revision, const ThorVisualAssetPayload & payload);
 

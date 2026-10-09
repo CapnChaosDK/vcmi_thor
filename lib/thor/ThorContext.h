@@ -323,6 +323,19 @@ struct DLL_LINKAGE ThorHeroManagement
 	bool operator==(const ThorHeroManagement &) const = default;
 };
 
+/// Bounded Town garrison and visiting-hero armies for the active Town Window.
+struct DLL_LINKAGE ThorTownManagement
+{
+	int townId = -1;
+	int garrisonArmyId = -1;
+	int visitingHeroId = -1;
+	std::string visitingHeroName;
+	bool locallyControllable = false;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> garrisonSlots;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> visitingSlots;
+	bool operator==(const ThorTownManagement &) const = default;
+};
+
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
 {
@@ -348,6 +361,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
 	std::optional<ThorHeroManagement> heroManagement;
+	std::optional<ThorTownManagement> townManagement;
 	std::optional<ThorRecruitmentSnapshot> recruitment;
 	std::uint64_t heroPortraitAssetKey = 0;
 	/// Native-only SelectionTab state token. Never passed through JNI.

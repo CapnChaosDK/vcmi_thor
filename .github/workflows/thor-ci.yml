@@ -266,6 +266,7 @@ jobs:
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactCacheTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingVisualAssetTest \
               --tests eu.vcmi.vcmi.ThorHeroManagementTest \
+              --tests eu.vcmi.vcmi.ThorTownManagementTest \
               --tests eu.vcmi.vcmi.ThorVisualAssetCacheTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingModeStateTest \
               --tests eu.vcmi.vcmi.ThorHapticStateTest

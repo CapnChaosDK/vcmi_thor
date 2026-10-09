@@ -79,10 +79,11 @@ enum class ThorAction : std::uint8_t
 	ADVENTURE_CENTER_VIEW = 58,
 	ADVENTURE_SET_MAP_LEVEL = 59,
 	HERO_WINDOW_TRANSFER_STACK = 60,
-	HERO_WINDOW_TRANSFER_ARTIFACT = 61
+	HERO_WINDOW_TRANSFER_ARTIFACT = 61,
+	TOWN_WINDOW_TRANSFER_STACK = 62
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::TOWN_WINDOW_TRANSFER_STACK);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -245,6 +246,16 @@ DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroArtifactPair(int en
 /// Hero Window action 60 encodes a source/destination pair in the active hero's seven-slot army.
 DLL_LINKAGE std::optional<int> encodeThorHeroArmyPair(int sourceSlot, int destinationSlot);
 DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroArmyPair(int encodedPair);
+DLL_LINKAGE std::optional<int> encodeThorTownArmyPair(bool sourceIsVisiting, int sourceSlot, bool destinationIsVisiting, int destinationSlot);
+struct DLL_LINKAGE ThorTownArmyPair
+{
+	bool sourceIsVisiting;
+	bool destinationIsVisiting;
+	int sourceSlot;
+	int destinationSlot;
+	bool operator==(const ThorTownArmyPair &) const = default;
+};
+DLL_LINKAGE std::optional<ThorTownArmyPair> decodeThorTownArmyPair(int encodedPair);
 
 /// Mirrors whether native bulkMoveArmy can produce at least one stack change for this published army snapshot.
 DLL_LINKAGE bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftToRight);
