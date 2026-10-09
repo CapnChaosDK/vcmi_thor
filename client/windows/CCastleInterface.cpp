@@ -80,6 +80,7 @@ namespace
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
+#include "../thor/ThorVisualAssetPublisher.h"
 
 namespace
 {
@@ -108,7 +109,44 @@ namespace
 		};
 	}
 
-	void publishThorTownContext(const CCastleInterface * owner)
+	ThorTownManagement thorTownManagement(const CGTownInstance * town)
+	{
+		ThorTownManagement result;
+		result.townId = town->id.getNum();
+		const auto * garrison = town->getUpperArmy();
+		const auto * visiting = town->getVisitingHero();
+		if(visiting && visiting->tempOwner != GAME->interface()->playerID)
+			visiting = nullptr;
+		result.garrisonArmyId = garrison ? garrison->id.getNum() : -1;
+		result.visitingHeroId = visiting ? visiting->id.getNum() : -1;
+		result.visitingHeroName = thorHeroName(visiting);
+		result.locallyControllable = result.garrisonArmyId >= 0 && visiting
+			&& town->tempOwner == GAME->interface()->playerID && visiting->tempOwner == GAME->interface()->playerID
+			&& GAME->interface()->makingTurn;
+		const auto fill = [](const CArmedInstance * army, auto & slots)
+		{
+			for(std::size_t index = 0; index < slots.size(); ++index)
+			{
+				auto & slot = slots[index];
+				slot.armyId = army ? army->id.getNum() : -1;
+				slot.slot = static_cast<int>(index);
+				if(army)
+					if(const auto * stack = army->getStackPtr(SlotID(static_cast<int>(index))))
+					{
+						slot.occupied = true;
+						slot.creatureId = stack->getCreatureID().getNum();
+						slot.creatureName = stack->getCreature()->getNamePluralTranslated();
+						slot.count = stack->getCount();
+						slot.visualAssetKey = thorCreatureVisualAssetKey(slot.creatureId);
+					}
+			}
+		};
+		fill(garrison, result.garrisonSlots);
+		fill(visiting, result.visitingSlots);
+		return result;
+	}
+
+	void publishThorTownContext(const CCastleInterface * owner, bool invalidateActions = false)
 	{
 		const auto * town = owner->town;
 		assert(town);
@@ -125,18 +163,40 @@ namespace
 			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_NEXT);
 		context.title = GAME->translator().translate(town->getNameTextID());
 		context.status = town->getFaction()->getNameTranslated();
+		if(town->tempOwner == GAME->interface()->playerID)
+			context.townManagement = thorTownManagement(town);
 		context.details[0] = std::to_string(town->dailyIncome()[EGameResID::GOLD]);
-		context.details[1] = std::to_string(town->built) + " / " + std::to_string(
-			GAME->interface()->cb->getSettings().getInteger(EGameSettings::TOWNS_BUILDINGS_PER_TURN_CAP));
+		const int townHallLevel = town->hasBuilt(BuildingID::CAPITOL) ? 4
+			: town->hasBuilt(BuildingID::CITY_HALL) ? 3 : town->hasBuilt(BuildingID::TOWN_HALL) ? 2
+			: town->hasBuilt(BuildingID::VILLAGE_HALL) ? 1 : 0;
+		context.details[1] = std::to_string(townHallLevel) + ":" + std::to_string(town->built) + ":"
+			+ std::to_string(GAME->interface()->cb->getSettings().getInteger(
+				EGameSettings::TOWNS_BUILDINGS_PER_TURN_CAP));
 		context.details[2] = thorHeroName(town->getVisitingHero());
 		context.details[3] = thorHeroName(town->getGarrisonHero());
 		context.browserPage = 0;
 		context.browserPageCount = 1;
 		context.browserEntries = thorTownServices(town);
+		if(context.townManagement && context.townManagement->locallyControllable && owner->pendingThorArmyRequestId < 0)
+		{
+			CExchangeController exchange(context.townManagement->garrisonArmyId >= 0 ? town->getUpperArmy() : nullptr,
+				town->getVisitingHero());
+			bool canTransfer = false;
+			for(int source = 0; source < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE) && !canTransfer; ++source)
+				for(int destination = 0; destination < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE) && !canTransfer; ++destination)
+					canTransfer = exchange.canTransferStack(true, SlotID(source), true, SlotID(destination))
+						|| exchange.canTransferStack(false, SlotID(source), false, SlotID(destination))
+						|| exchange.canTransferStack(true, SlotID(source), false, SlotID(destination))
+						|| exchange.canTransferStack(false, SlotID(source), true, SlotID(destination));
+			if(canTransfer)
+				context.enabledActionMask |= thorActionMask(ThorAction::TOWN_WINDOW_TRANSFER_STACK);
+		}
 		if(std::ranges::any_of(context.browserEntries, [](const auto & entry) { return entry.enabled; }))
 			context.enabledActionMask |= thorActionMask(ThorAction::TOWN_OPEN_SERVICE);
 
 		const auto previous = thorContextStore().snapshot();
+		context.actionEpoch = previous.contextId == ThorContextIds::TOWN_WINDOW
+			? previous.actionEpoch + (invalidateActions ? 1 : 0) : 0;
 		context = thorContextStore().publishNext(std::move(context));
 		if(context.revision != previous.revision)
 		{
@@ -144,6 +204,8 @@ namespace
 				context.details);
 			CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
 			CAndroidVMHelper().publishThorBrowser(context.revision, 0, 1, context.browserEntries);
+			if(context.townManagement)
+				CAndroidVMHelper().publishThorTownManagement(context.revision, *context.townManagement);
 		}
 	}
 }
@@ -1796,6 +1858,36 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 		}
 		return true;
 	}
+	if(request.action == ThorAction::TOWN_WINDOW_TRANSFER_STACK)
+	{
+		if(pendingThorArmyRequestId >= 0 || town->tempOwner != GAME->interface()->playerID
+			|| !GAME->interface()->makingTurn || !context.townManagement)
+		{
+			publishThorTownContext(this, true);
+			return false;
+		}
+		const auto live = thorTownManagement(town);
+		const auto pair = decodeThorTownArmyPair(request.targetId);
+		const auto * visiting = town->getVisitingHero();
+		if(!pair || live != *context.townManagement || !live.locallyControllable || !visiting
+			|| visiting->tempOwner != GAME->interface()->playerID)
+		{
+			publishThorTownContext(this, true);
+			return false;
+		}
+		CExchangeController exchange(town->getUpperArmy(), visiting);
+		const int requestId = exchange.transferStackRequest(!pair->sourceIsVisiting,
+			SlotID(pair->sourceSlot), !pair->destinationIsVisiting, SlotID(pair->destinationSlot));
+		if(requestId <= 0)
+		{
+			publishThorTownContext(this, true);
+			return false;
+		}
+		pendingThorArmyRequestId = requestId;
+		pendingThorArmyActionRevision = context.revision;
+		publishThorTownContext(this);
+		return true;
+	}
 	const int selected = townlist->getSelectedIndex();
 	const int count = static_cast<int>(GAME->interface()->localState->getOwnedTowns().size());
 	if(request.action == ThorAction::WINDOW_PREVIOUS && selected <= 0)
@@ -1808,6 +1900,19 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 	else
 		townlist->selectNext();
 	return true;
+}
+
+void CCastleInterface::onThorActionRequestResult(int requestId)
+{
+	if(pendingThorArmyRequestId != requestId)
+		return;
+	pendingThorArmyRequestId = -1;
+	const auto submittedRevision = pendingThorArmyActionRevision;
+	pendingThorArmyActionRevision = 0;
+	if(isActive() && ENGINE->windows().topWindow<CCastleInterface>() == this)
+		updateThorActionState();
+	CAndroidVMHelper().acknowledgeThorAction(thorContextStore().snapshot().revision,
+		ThorAction::TOWN_WINDOW_TRANSFER_STACK, submittedRevision);
 }
 #endif
 

@@ -64,7 +64,8 @@ final class ThorActionIds
     static final int ADVENTURE_SET_MAP_LEVEL = 59;
     static final int HERO_WINDOW_TRANSFER_STACK = 60;
     static final int HERO_WINDOW_TRANSFER_ARTIFACT = 61;
-    static final int MAX_ACTION_ID = HERO_WINDOW_TRANSFER_ARTIFACT;
+    static final int TOWN_WINDOW_TRANSFER_STACK = 62;
+    static final int MAX_ACTION_ID = TOWN_WINDOW_TRANSFER_STACK;
     static final int LOCAL_CONTROL = -1;
     static final int NO_TARGET = -1;
 

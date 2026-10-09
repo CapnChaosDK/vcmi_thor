@@ -42,15 +42,74 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	for(int id = 50; id <= 57; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 61);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 62);
 	EXPECT_EQ(thorActionMask(ThorAction::WINDOW_CONFIRM), std::uint64_t{1} << 56);
 	EXPECT_EQ(thorActionFromId(58), ThorAction::ADVENTURE_CENTER_VIEW);
 	EXPECT_EQ(thorActionFromId(59), ThorAction::ADVENTURE_SET_MAP_LEVEL);
 	EXPECT_EQ(thorActionFromId(60), ThorAction::HERO_WINDOW_TRANSFER_STACK);
 	EXPECT_EQ(thorActionFromId(61), ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
-	for(int id = 62; id <= 64; ++id)
+	EXPECT_EQ(thorActionFromId(62), ThorAction::TOWN_WINDOW_TRANSFER_STACK);
+	EXPECT_EQ(thorActionMask(ThorAction::TOWN_WINDOW_TRANSFER_STACK), std::uint64_t{1} << 61);
+	for(int id = 63; id <= 64; ++id)
 		EXPECT_EQ(thorActionFromId(id), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
+}
+
+TEST(ThorActionTest, TownArmyPairsEncodeDirectionAndBoundBothSlots)
+{
+	EXPECT_EQ(encodeThorTownArmyPair(false, 0, false, 1), 1);
+	EXPECT_EQ(encodeThorTownArmyPair(false, 6, true, 6), 97);
+	EXPECT_EQ(encodeThorTownArmyPair(true, 0, false, 0), 98);
+	EXPECT_EQ(encodeThorTownArmyPair(true, 6, true, 5), 194);
+	EXPECT_EQ(decodeThorTownArmyPair(194), (ThorTownArmyPair{true, true, 6, 5}));
+	EXPECT_FALSE(encodeThorTownArmyPair(false, -1, false, 0));
+	EXPECT_FALSE(encodeThorTownArmyPair(false, 0, true, 7));
+	EXPECT_FALSE(encodeThorTownArmyPair(false, 0, false, 0));
+	EXPECT_FALSE(decodeThorTownArmyPair(196));
+}
+
+TEST(ThorActionTest, TownArmyTransferRequiresCurrentTownSnapshotAndOccupiedSource)
+{
+	ThorContextRecord context;
+	context.revision = 11;
+	context.contextId = ThorContextIds::TOWN_WINDOW;
+	context.windowSubjectId = 9;
+	context.enabledActionMask = thorActionMask(ThorAction::TOWN_WINDOW_TRANSFER_STACK);
+	ThorTownManagement management;
+	management.townId = 9;
+	management.garrisonArmyId = 11;
+	management.visitingHeroId = 12;
+	management.locallyControllable = true;
+	for(int slot = 0; slot < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE); ++slot)
+	{
+		management.garrisonSlots[slot].armyId = 11;
+		management.garrisonSlots[slot].slot = slot;
+		management.visitingSlots[slot].armyId = 12;
+		management.visitingSlots[slot].slot = slot;
+	}
+	management.garrisonSlots[0].occupied = true;
+	management.garrisonSlots[0].creatureId = 3;
+	management.garrisonSlots[0].count = 5;
+	management.garrisonSlots[0].creatureName = "Troops";
+	context.townManagement = management;
+	const auto target = *encodeThorTownArmyPair(false, 0, true, 0);
+	EXPECT_EQ(validateThorActionRequest({11, ThorAction::TOWN_WINDOW_TRANSFER_STACK, target}, context),
+		ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({10, ThorAction::TOWN_WINDOW_TRANSFER_STACK, target}, context),
+		ThorActionValidation::STALE_REVISION);
+	const auto sameArmyMove = *encodeThorTownArmyPair(false, 0, false, 1);
+	EXPECT_EQ(validateThorActionRequest({11, ThorAction::TOWN_WINDOW_TRANSFER_STACK, sameArmyMove}, context),
+		ThorActionValidation::VALID);
+	const auto emptySource = *encodeThorTownArmyPair(true, 0, false, 0);
+	EXPECT_EQ(validateThorActionRequest({11, ThorAction::TOWN_WINDOW_TRANSFER_STACK, emptySource}, context),
+		ThorActionValidation::INVALID_TARGET);
+	context.townManagement->visitingSlots[0].armyId = -1;
+	EXPECT_EQ(validateThorActionRequest({11, ThorAction::TOWN_WINDOW_TRANSFER_STACK, target}, context),
+		ThorActionValidation::INVALID_TARGET);
+	context.townManagement->visitingSlots[0].armyId = 12;
+	context.townManagement->locallyControllable = false;
+	EXPECT_EQ(validateThorActionRequest({11, ThorAction::TOWN_WINDOW_TRANSFER_STACK, target}, context),
+		ThorActionValidation::INVALID_TARGET);
 }
 
 TEST(ThorActionTest, HeroWindowArmyAndArtifactPairsAreBounded)
@@ -341,7 +400,8 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL), std::uint64_t{1} << 58);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK), std::uint64_t{1} << 59);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT), std::uint64_t{1} << 60);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 61);
+	EXPECT_EQ(thorActionMask(ThorAction::TOWN_WINDOW_TRANSFER_STACK), std::uint64_t{1} << 61);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 62);
 }
 
 TEST(ThorActionTest, TownHallBuildUsesOneExactContextActionAndPublishedBuildableTarget)

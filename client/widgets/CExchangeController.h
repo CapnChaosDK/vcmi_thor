@@ -16,6 +16,7 @@ class CExchangeController
 {
 public:
 	CExchangeController(ObjectInstanceID hero1, ObjectInstanceID hero2);
+	CExchangeController(const CArmedInstance * army1, const CArmedInstance * army2);
 	bool swapArmy();
 	void moveArmy(bool leftToRight, std::optional<SlotID> heldSlot);
 	void moveStack(bool leftToRight, SlotID sourceSlot);
@@ -36,6 +37,6 @@ public:
 	int moveArtifacts(bool leftToRight, bool equipped, bool baclpack);
 
 private:
-	const CGHeroInstance * left;
-	const CGHeroInstance * right;
+	const CArmedInstance * left;
+	const CArmedInstance * right;
 };

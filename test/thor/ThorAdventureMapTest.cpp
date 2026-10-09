@@ -69,9 +69,9 @@ TEST(ThorContextAdventureMapTest, NavigationIdentifiersPreserveMaskAndFreeBudget
 	EXPECT_EQ(static_cast<int>(ThorAction::ADVENTURE_SET_MAP_LEVEL), 59);
 	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW), std::uint64_t{1} << 57);
 	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL), std::uint64_t{1} << 58);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 61);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 62);
 	EXPECT_LE(THOR_MAX_ACTION_ID, std::numeric_limits<std::uint64_t>::digits);
-	for(int id = 62; id <= 64; ++id)
+	for(int id = 63; id <= 64; ++id)
 		EXPECT_FALSE(thorActionFromId(id));
 	for(const auto action : {ThorAction::ADVENTURE_CENTER_VIEW, ThorAction::ADVENTURE_SET_MAP_LEVEL})
 	{
