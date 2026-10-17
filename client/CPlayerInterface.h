@@ -84,6 +84,9 @@ class CPlayerInterface : public CGameInterface
 
 	std::unique_ptr<HeroMovementController> movementController;
 	std::unique_ptr<PathfinderCache> pathfinderCache;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::uint64_t thorPathsGeneration = 0;
+#endif
 public: // TODO: make private
 	std::unique_ptr<ArtifactsUIController> artifactController;
 	std::shared_ptr<Environment> env;
@@ -238,6 +241,14 @@ public: // public interface for use by client via GAME->interface() access
 
 	/// True while a hero walks a path, including the pauses between single steps
 	bool isHeroMoving() const;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool thorMovementBlocked() const;
+	bool requestThorMovementStop();
+	bool canThorMovementStop() const;
+	bool isThorMovementStopping() const;
+	std::uint64_t getThorMovementSequence() const;
+	std::uint64_t getThorPathsGeneration() const { return thorPathsGeneration; }
+#endif
 
 	///returns true if all events are processed internally
 	bool capturedAllEvents();

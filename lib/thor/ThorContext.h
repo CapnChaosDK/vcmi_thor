@@ -13,6 +13,7 @@
 
 #include "../constants/NumericConstants.h"
 #include "ThorAdventureMap.h"
+#include "ThorAdventureRoute.h"
 
 namespace ThorContextIds
 {
@@ -131,6 +132,9 @@ inline constexpr std::size_t THOR_HERO_MEETING_ARMY_SIZE = GameConstants::ARMY_S
 inline constexpr std::size_t THOR_HERO_MEETING_SLOT_KEY_COUNT = THOR_HERO_MEETING_ARMY_SIZE * 2;
 inline constexpr std::size_t THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT = 19;
 inline constexpr std::size_t THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT = 5;
+inline constexpr std::size_t THOR_MAX_HERO_BACKPACK_ARTIFACTS = 64;
+inline constexpr std::size_t THOR_HERO_MANAGEMENT_ARTIFACT_COUNT =
+	THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_MAX_HERO_BACKPACK_ARTIFACTS;
 inline constexpr std::size_t THOR_HERO_MEETING_ARTIFACT_COUNT =
 	(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT + THOR_HERO_MEETING_BACKPACK_ARTIFACT_COUNT) * 2;
 inline constexpr std::size_t THOR_MAX_HERO_MEETING_VISUAL_ASSETS = THOR_HERO_MEETING_ARMY_SIZE * 2
@@ -309,6 +313,30 @@ struct DLL_LINKAGE ThorHeroMeetingArtifacts
 	bool operator==(const ThorHeroMeetingArtifacts &) const = default;
 };
 
+/// Bounded, single-hero view for the active Hero Window. It never includes hidden heroes.
+struct DLL_LINKAGE ThorHeroManagement
+{
+	int heroId = -1;
+	std::string heroName;
+	bool locallyControllable = false;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> armySlots;
+	std::vector<ThorHeroMeetingArtifact> artifactSlots;
+	bool operator==(const ThorHeroManagement &) const = default;
+};
+
+/// Bounded Town garrison and visiting-hero armies for the active Town Window.
+struct DLL_LINKAGE ThorTownManagement
+{
+	int townId = -1;
+	int garrisonArmyId = -1;
+	int visitingHeroId = -1;
+	std::string visitingHeroName;
+	bool locallyControllable = false;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> garrisonSlots;
+	std::array<ThorHeroMeetingSlot, THOR_HERO_MEETING_ARMY_SIZE> visitingSlots;
+	bool operator==(const ThorTownManagement &) const = default;
+};
+
 /// Immutable, read-only context payload reserved for the Thor command deck.
 struct DLL_LINKAGE ThorContextRecord
 {
@@ -333,6 +361,8 @@ struct DLL_LINKAGE ThorContextRecord
 	std::vector<std::string> browserNativeKeys;
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;
 	std::optional<ThorHeroMeetingArtifacts> heroMeetingArtifacts;
+	std::optional<ThorHeroManagement> heroManagement;
+	std::optional<ThorTownManagement> townManagement;
 	std::optional<ThorRecruitmentSnapshot> recruitment;
 	std::uint64_t heroPortraitAssetKey = 0;
 	/// Native-only SelectionTab state token. Never passed through JNI.
@@ -345,6 +375,8 @@ struct DLL_LINKAGE ThorContextRecord
 	const void * nativeOwnerToken = nullptr;
 	const void * nativeParentToken = nullptr;
 	std::optional<ThorAdventureMap> adventureMap;
+	std::optional<ThorAdventureRoute> adventureRoute;
+	std::uint64_t adventureMovementSequence = 0; // Native only, revision-bound controller journey.
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

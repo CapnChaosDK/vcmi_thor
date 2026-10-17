@@ -17,6 +17,7 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/thor/ThorAction.h"
+#include "../../lib/pathfinder/CGPathNode.h"
 #endif
 
 class CGObjectInstance;
@@ -86,6 +87,23 @@ private:
 	bool thorShowHeroes = false;
 	std::uint64_t thorLastContentRevision = 0;
 	std::uint32_t thorViewportElapsed = 0;
+	std::optional<CGPath> thorPreview;
+	std::optional<ThorAdventureRoute> thorRoute;
+	int thorPreviewHeroId = -1;
+	ThorMapTile thorPreviewDestination{-1, -1, -1};
+	bool thorPreviewChanged = false;
+	std::uint64_t thorPreviewGeneration = 0;
+	std::uint64_t thorPreviewSavedRevision = 0;
+	int thorPreviewBonusVersion = 0;
+	int thorVerifiedHeroId = -1;
+	int thorVerifiedBonusVersion = 0;
+	std::uint64_t thorVerifiedGeneration = 0;
+	std::chrono::steady_clock::time_point thorActionPublication;
+	std::optional<ThorAdventureRoute> buildThorAdventureRoute();
+	const CGHeroInstance * thorSelectedHero() const;
+	bool thorMovementAuthority() const;
+	void clearThorPreview();
+	void planThorRoute(const CGHeroInstance * hero, ThorMapTile destination, bool changed = false);
 	std::optional<ThorAdventureMap> buildThorAdventureMap();
 	void publishThorAdventureMap(const ThorContextRecord & context, bool force);
 #endif
@@ -146,6 +164,7 @@ public:
 	void updateThorActionState(bool invalidateActions = false);
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	bool executeThorMapAction(const ThorActionRequest & request);
+	bool executeThorMovementAction(const ThorActionRequest & request);
 	void invalidateThorMap() { thorMapDirty = true; }
 #endif
 

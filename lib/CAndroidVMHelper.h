@@ -58,8 +58,11 @@ public:
 	void publishThorTowns(std::uint64_t revision, const std::vector<ThorTownEntry> & towns);
 	void publishThorAdventureMap(std::uint64_t revision, const ThorAdventureMap & map,
 		ThorMapViewport viewport, bool includeColors);
+	void publishThorAdventureRoute(std::uint64_t revision, const std::optional<ThorAdventureRoute> & route);
 	void publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies);
 	void publishThorHeroMeetingArtifacts(std::uint64_t revision, const ThorHeroMeetingArtifacts & artifacts);
+	void publishThorHeroManagement(std::uint64_t revision, const ThorHeroManagement & management);
+	void publishThorTownManagement(std::uint64_t revision, const ThorTownManagement & management);
 	bool hasThorVisualAsset(std::uint64_t key);
 	void publishThorVisualAsset(std::uint64_t revision, const ThorVisualAssetPayload & payload);
 

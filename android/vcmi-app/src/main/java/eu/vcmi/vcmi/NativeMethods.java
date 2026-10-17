@@ -161,6 +161,17 @@ public class NativeMethods
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorAdventureRoute(final long revision, final int[] header, final int[] nodes)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity)) return;
+        // Validate bounds before cloning or scheduling; invalid/empty publication withdraws the route.
+        final ThorAdventureRoute route = ThorAdventureRoute.copyOf(header, nodes);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorAdventureRoute(revision, route));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorAdventureMap(final long revision, final long contentRevision,
             final int width, final int height, final int level, final int levels,
             final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers,
@@ -273,6 +284,42 @@ public class NativeMethods
                 heroNames, positions, flags, names, visualAssetKeys);
         ((VcmiSDLActivity) ctx).runOnUiThread(() ->
                 ((VcmiSDLActivity) ctx).publishThorHeroMeetingArtifacts(revision, artifacts));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorHeroManagement(final long revision, final int heroId, final String heroName,
+            final boolean locallyControllable, final int[] creatureIds, final int[] counts,
+            final String[] creatureNames, final long[] creatureVisualKeys, final int[] artifactPositions,
+            final int[] artifactFlags, final String[] artifactNames, final long[] artifactVisualKeys)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        final ThorHeroManagement management = ThorHeroManagement.copyOf(heroId, heroName, locallyControllable,
+                creatureIds, counts, creatureNames, creatureVisualKeys, artifactPositions, artifactFlags,
+                artifactNames, artifactVisualKeys);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorHeroManagement(revision, management));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorTownManagement(final long revision, final int townId, final int garrisonArmyId,
+            final int visitingHeroId, final String visitingHeroName, final boolean locallyControllable,
+            final int[] garrisonIds, final int[] garrisonCounts, final String[] garrisonNames,
+            final int[] visitingIds, final int[] visitingCounts, final String[] visitingNames)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD)
+            return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity))
+            return;
+        final ThorTownManagement management = ThorTownManagement.copyOf(townId, garrisonArmyId, visitingHeroId,
+                visitingHeroName, locallyControllable, garrisonIds, garrisonCounts, garrisonNames,
+                visitingIds, visitingCounts, visitingNames);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                ((VcmiSDLActivity) ctx).publishThorTownManagement(revision, management));
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

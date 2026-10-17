@@ -36,6 +36,9 @@ void PlayerLocalState::setSpellbookSettings(const PlayerSpellbookSetting & newSe
 
 void PlayerLocalState::setPath(const CGHeroInstance * h, const CGPath & path)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	++thorPathRevision;
+#endif
 	paths[h] = path;
 	synchronizeState();
 }
@@ -56,6 +59,9 @@ bool PlayerLocalState::setPath(const CGHeroInstance * h, const int3 & destinatio
 	CGPath path;
 	if(!owner.getPathsInfo(h)->getPath(path, destination, layer))
 	{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		++thorPathRevision;
+#endif
 		paths.erase(h); //invalidate previously possible path if selected (before other hero blocked only path / fly spell expired)
 		synchronizeState();
 		return false;
@@ -72,6 +78,9 @@ void PlayerLocalState::removeLastNode(const CGHeroInstance * h)
 		return;
 
 	auto & path = paths[h];
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	++thorPathRevision;
+#endif
 	path.nodes.pop_back();
 	if(path.nodes.size() < 2) //if it was the last one, remove entire path and path with only one tile is not a real path
 		erasePath(h);
@@ -79,6 +88,9 @@ void PlayerLocalState::removeLastNode(const CGHeroInstance * h)
 
 void PlayerLocalState::erasePath(const CGHeroInstance * h)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	++thorPathRevision;
+#endif
 	paths.erase(h);
 	adventureInt->onHeroChanged(h);
 	synchronizeState();

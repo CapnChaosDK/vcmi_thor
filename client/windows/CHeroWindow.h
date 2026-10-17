@@ -17,6 +17,7 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/thor/ThorAction.h"
+#include <unordered_set>
 #endif
 
 class CGHeroInstance;
@@ -95,6 +96,9 @@ class CHeroWindow : public CStatusbarWindow, public IGarrisonHolder, public CWin
 
 	std::shared_ptr<CGarrisonInt> garr;
 	std::shared_ptr<CArtifactsOfHeroMain> arts;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::unordered_set<int> pendingThorActionRequestIds;
+#endif
 
 	std::vector<std::shared_ptr<CLabel>> labels;
 
@@ -110,8 +114,9 @@ public:
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	bool matchesThorContext(const ThorContextRecord & context) const;
-	void updateThorActionState();
+	void updateThorActionState(bool invalidateActions = false);
 	bool executeThorAction(const ThorActionRequest & request);
+	void onThorActionRequestResult(int requestId);
 #endif
 	void showHero(const CGHeroInstance * hero);
 

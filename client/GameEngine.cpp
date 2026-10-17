@@ -266,7 +266,10 @@ void GameEngine::updateFrame()
 				logGlobal->debug("Thor action rejected: Adventure state changed");
 				continue;
 			}
-			if(request->action == ThorAction::ADVENTURE_CENTER_VIEW || request->action == ThorAction::ADVENTURE_SET_MAP_LEVEL)
+			if(request->action == ThorAction::ADVENTURE_PLAN_ROUTE || request->action == ThorAction::ADVENTURE_ROUTE_COMMAND
+				|| request->action == ThorAction::MOVE_HERO)
+				executed = adventureInt->executeThorMovementAction(*request);
+			else if(request->action == ThorAction::ADVENTURE_CENTER_VIEW || request->action == ThorAction::ADVENTURE_SET_MAP_LEVEL)
 				executed = adventureInt->executeThorMapAction(*request);
 			else if(request->action == ThorAction::SELECT_HERO)
 				executed = adventureInt->getAdventureShortcuts().selectThorHero(request->targetId);

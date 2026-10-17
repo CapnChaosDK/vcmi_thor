@@ -39,6 +39,9 @@ class PlayerLocalState
 	const CArmedInstance * currentSelection;
 
 	std::map<const CGHeroInstance *, CGPath> paths; //maps hero => selected path in adventure map
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::uint64_t thorPathRevision = 0;
+#endif
 	std::vector<const CGHeroInstance *> sleepingHeroes; //if hero is in here, he's sleeping
 	std::vector<const CGHeroInstance *> wanderingHeroes; //our heroes on the adventure map (not the garrisoned ones)
 	std::vector<const CGTownInstance *> ownedTowns; //our towns on the adventure map
@@ -81,6 +84,9 @@ public:
 	void removeLastNode(const CGHeroInstance * h);
 	void erasePath(const CGHeroInstance * h);
 	void verifyPath(const CGHeroInstance * h);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::uint64_t getThorPathRevision() const { return thorPathRevision; }
+#endif
 
 	/// Returns currently selected object
 	const CGHeroInstance * getCurrentHero() const;

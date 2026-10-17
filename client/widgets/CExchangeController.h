@@ -16,12 +16,14 @@ class CExchangeController
 {
 public:
 	CExchangeController(ObjectInstanceID hero1, ObjectInstanceID hero2);
+	CExchangeController(const CArmedInstance * army1, const CArmedInstance * army2);
 	bool swapArmy();
 	void moveArmy(bool leftToRight, std::optional<SlotID> heldSlot);
 	void moveStack(bool leftToRight, SlotID sourceSlot);
 	bool canMoveStack(bool leftToRight, SlotID sourceSlot) const;
 	bool canTransferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot) const;
 	bool transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
+	int transferStackRequest(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
 	bool canSplitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
 		int amount) const;
 	bool splitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
@@ -35,6 +37,6 @@ public:
 	int moveArtifacts(bool leftToRight, bool equipped, bool baclpack);
 
 private:
-	const CGHeroInstance * left;
-	const CGHeroInstance * right;
+	const CArmedInstance * left;
+	const CArmedInstance * right;
 };

@@ -31,8 +31,12 @@ namespace
 			&& lhs.heroes == rhs.heroes
 			&& lhs.towns == rhs.towns
 			&& lhs.adventureMap == rhs.adventureMap
+			&& lhs.adventureRoute == rhs.adventureRoute
+			&& lhs.adventureMovementSequence == rhs.adventureMovementSequence
 			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies
 			&& lhs.heroMeetingArtifacts == rhs.heroMeetingArtifacts
+			&& lhs.heroManagement == rhs.heroManagement
+			&& lhs.townManagement == rhs.townManagement
 			&& lhs.recruitment == rhs.recruitment;
 	}
 
@@ -81,6 +85,18 @@ namespace
 			context.enabledActionMask &= ~(thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW)
 				| thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL));
 		}
+		if(context.contextId != ThorContextIds::ADVENTURE_MAP || !context.adventureMap
+			|| !context.adventureRoute || !context.adventureRoute->valid()
+			|| context.adventureRoute->heroId != context.selectedHeroId
+			|| context.adventureRoute->width != context.adventureMap->width
+			|| context.adventureRoute->height != context.adventureMap->height
+			|| context.adventureRoute->levels != context.adventureMap->levels)
+		{
+			context.adventureRoute.reset();
+			context.adventureMovementSequence = 0;
+			context.enabledActionMask &= ~(thorActionMask(ThorAction::ADVENTURE_PLAN_ROUTE)
+				| thorActionMask(ThorAction::ADVENTURE_ROUTE_COMMAND));
+		}
 		if((context.contextId != ThorContextIds::ADVENTURE_MAP && context.contextId != ThorContextIds::HERO_WINDOW)
 			|| !isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))
 			context.heroPortraitAssetKey = 0;
@@ -89,6 +105,8 @@ namespace
 			context.heroMeetingArmies.reset();
 			context.heroMeetingArtifacts.reset();
 		}
+		if(context.contextId != ThorContextIds::HERO_WINDOW)
+			context.heroManagement.reset();
 		if(context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
 			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING)
 			context.recruitment.reset();
@@ -254,8 +272,8 @@ namespace
 				context.heroMeetingArmies.reset();
 		}
 
-		if(!context.heroMeetingArtifacts)
-			return;
+		if(context.heroMeetingArtifacts)
+		{
 		auto & artifacts = *context.heroMeetingArtifacts;
 		if(artifacts.leftHeroId < 0 || artifacts.rightHeroId < 0 || artifacts.leftHeroId == artifacts.rightHeroId
 			|| artifacts.artifactSlots.size() != THOR_HERO_MEETING_ARTIFACT_COUNT)
@@ -284,6 +302,85 @@ namespace
 			{
 				slot.artifactTypeId = -1;
 				slot.visualAssetKey = 0;
+			}
+		}
+		}
+		if(context.heroManagement)
+		{
+			auto & hero = *context.heroManagement;
+			bool valid = context.contextId == ThorContextIds::HERO_WINDOW && hero.heroId >= 0
+				&& hero.heroId == context.windowSubjectId && hero.armySlots.size() == THOR_HERO_MEETING_ARMY_SIZE
+				&& hero.artifactSlots.size() >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT
+				&& hero.artifactSlots.size() <= THOR_HERO_MANAGEMENT_ARTIFACT_COUNT;
+			hero.heroName = thorBoundedText(std::move(hero.heroName));
+			for(std::size_t index = 0; valid && index < hero.armySlots.size(); ++index)
+			{
+				auto & slot = hero.armySlots[index];
+				valid = slot.armyId == hero.heroId && slot.slot == static_cast<int>(index) && slot.count >= 0
+					&& (slot.occupied ? slot.creatureId >= 0 && slot.count > 0
+						: slot.creatureId == -1 && slot.count == 0);
+				if(valid)
+				{
+					slot.creatureName = slot.occupied ? thorBoundedText(std::move(slot.creatureName)) : std::string{};
+					slot.visualAssetKey = slot.occupied ? thorCreatureVisualAssetKey(slot.creatureId) : 0;
+				}
+			}
+			for(std::size_t index = 0; valid && index < hero.artifactSlots.size(); ++index)
+			{
+				auto & slot = hero.artifactSlots[index];
+				const bool backpack = index >= THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT;
+				valid = slot.heroId == hero.heroId
+					&& slot.position == static_cast<int>(index)
+					&& slot.backpack == backpack
+					&& (slot.occupied ? slot.instanceId >= 0 && slot.artifactTypeId >= 0
+						: slot.name.empty() && slot.instanceId == -1);
+				if(valid)
+				{
+					slot.name = thorBoundedText(std::move(slot.name));
+					slot.visualAssetKey = slot.occupied ? thorArtifactVisualAssetKey(slot.artifactTypeId) : 0;
+				}
+			}
+			if(!valid)
+			{
+				context.heroManagement.reset();
+				context.enabledActionMask &= ~(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK)
+					| thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT));
+			}
+		}
+		if(context.contextId != ThorContextIds::TOWN_WINDOW)
+			context.townManagement.reset();
+		if(context.townManagement)
+		{
+			auto & town = *context.townManagement;
+			bool valid = context.contextId == ThorContextIds::TOWN_WINDOW && town.townId >= 0
+				&& town.townId == context.windowSubjectId && town.garrisonArmyId >= 0
+				&& (town.visitingHeroId < 0 || town.visitingHeroId != town.garrisonArmyId);
+			town.visitingHeroName = thorBoundedText(std::move(town.visitingHeroName));
+			for(std::size_t index = 0; valid && index < THOR_HERO_MEETING_ARMY_SIZE; ++index)
+			{
+				auto & garrison = town.garrisonSlots[index];
+				valid = garrison.armyId == town.garrisonArmyId && garrison.slot == static_cast<int>(index)
+					&& garrison.count >= 0 && (garrison.occupied ? garrison.creatureId >= 0 && garrison.count > 0
+						: garrison.creatureId == -1 && garrison.count == 0);
+				if(valid)
+				{
+					garrison.creatureName = garrison.occupied ? thorBoundedText(std::move(garrison.creatureName)) : std::string{};
+					garrison.visualAssetKey = garrison.occupied ? thorCreatureVisualAssetKey(garrison.creatureId) : 0;
+				}
+				auto & visiting = town.visitingSlots[index];
+				valid = valid && visiting.armyId == town.visitingHeroId && visiting.slot == static_cast<int>(index)
+					&& visiting.count >= 0 && (visiting.occupied ? town.visitingHeroId >= 0 && visiting.creatureId >= 0
+						&& visiting.count > 0 : visiting.creatureId == -1 && visiting.count == 0);
+				if(valid)
+				{
+					visiting.creatureName = visiting.occupied ? thorBoundedText(std::move(visiting.creatureName)) : std::string{};
+					visiting.visualAssetKey = visiting.occupied ? thorCreatureVisualAssetKey(visiting.creatureId) : 0;
+				}
+			}
+			if(!valid)
+			{
+				context.townManagement.reset();
+				context.enabledActionMask &= ~thorActionMask(ThorAction::TOWN_WINDOW_TRANSFER_STACK);
 			}
 		}
 	}

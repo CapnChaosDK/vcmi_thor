@@ -122,6 +122,29 @@ TEST(ThorVisualAssetTest, ContextAssetReferencesStayWithinTheirSemanticSurface)
 	EXPECT_TRUE(collectThorContextVisualAssetKeys(adventure).empty());
 }
 
+TEST(ThorVisualAssetTest, HeroWindowAssetsKeepBoundedRowsWithoutRequiringAPortrait)
+{
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	ThorHeroManagement management;
+	for(std::size_t index = 0; index < management.armySlots.size(); ++index)
+	{
+		management.armySlots[index].occupied = true;
+		management.armySlots[index].visualAssetKey = thorCreatureVisualAssetKey(static_cast<int>(index));
+	}
+	management.artifactSlots.resize(THOR_HERO_MANAGEMENT_ARTIFACT_COUNT);
+	for(std::size_t index = 0; index < management.artifactSlots.size(); ++index)
+	{
+		management.artifactSlots[index].occupied = true;
+		management.artifactSlots[index].visualAssetKey = thorArtifactVisualAssetKey(static_cast<int>(index));
+	}
+	context.heroManagement = std::move(management);
+
+	const auto keys = collectThorContextVisualAssetKeys(context);
+	ASSERT_EQ(keys.size(), THOR_MAX_VISUAL_ASSET_KEYS);
+	EXPECT_EQ(keys.front(), thorCreatureVisualAssetKey(0));
+}
+
 TEST(ThorVisualAssetTest, AssetCollectionFailsClosedOnTooManySlotsOrInvalidKeys)
 {
 	const auto armies = armiesWithOneCreature(thorCreatureVisualAssetKey(1));

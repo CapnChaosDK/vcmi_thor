@@ -25,6 +25,72 @@ std::optional<std::pair<int, int>> decodeThorHeroMeetingArtifactPair(int encoded
 	return std::pair{source, destination};
 }
 
+std::optional<int> encodeThorHeroArtifactPair(int sourceSlot, int destinationSlot)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MANAGEMENT_ARTIFACT_COUNT);
+	if(sourceSlot < 0 || destinationSlot < 0 || sourceSlot >= count || destinationSlot >= count
+		|| sourceSlot == destinationSlot)
+		return std::nullopt;
+	return sourceSlot * count + destinationSlot;
+}
+
+std::optional<std::pair<int, int>> decodeThorHeroArtifactPair(int encodedPair)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MANAGEMENT_ARTIFACT_COUNT);
+	if(encodedPair < 0 || encodedPair >= count * count)
+		return std::nullopt;
+	const int source = encodedPair / count;
+	const int destination = encodedPair % count;
+	if(!encodeThorHeroArtifactPair(source, destination))
+		return std::nullopt;
+	return std::pair{source, destination};
+}
+
+std::optional<int> encodeThorHeroArmyPair(int sourceSlot, int destinationSlot)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+	if(sourceSlot < 0 || destinationSlot < 0 || sourceSlot >= count || destinationSlot >= count
+		|| sourceSlot == destinationSlot)
+		return std::nullopt;
+	return sourceSlot * count + destinationSlot;
+}
+
+std::optional<std::pair<int, int>> decodeThorHeroArmyPair(int encodedPair)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+	if(encodedPair < 0 || encodedPair >= count * count)
+		return std::nullopt;
+	const int source = encodedPair / count;
+	const int destination = encodedPair % count;
+	if(!encodeThorHeroArmyPair(source, destination))
+		return std::nullopt;
+	return std::pair{source, destination};
+}
+
+std::optional<int> encodeThorTownArmyPair(bool sourceIsVisiting, int sourceSlot, bool destinationIsVisiting, int destinationSlot)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+	if(sourceSlot < 0 || destinationSlot < 0 || sourceSlot >= count || destinationSlot >= count)
+		return std::nullopt;
+	const int sourceKey = (sourceIsVisiting ? count : 0) + sourceSlot;
+	const int destinationKey = (destinationIsVisiting ? count : 0) + destinationSlot;
+	if(sourceKey == destinationKey)
+		return std::nullopt;
+	return sourceKey * count * 2 + destinationKey;
+}
+
+std::optional<ThorTownArmyPair> decodeThorTownArmyPair(int encodedPair)
+{
+	constexpr int count = static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE);
+	if(encodedPair < 0 || encodedPair >= 4 * count * count)
+		return std::nullopt;
+	const int sourceKey = encodedPair / (count * 2);
+	const int destinationKey = encodedPair % (count * 2);
+	if(sourceKey == destinationKey)
+		return std::nullopt;
+	return ThorTownArmyPair{sourceKey >= count, destinationKey >= count, sourceKey % count, destinationKey % count};
+}
+
 std::optional<int> encodeThorHeroMeetingTransferPair(int sourceKey, int destinationKey)
 {
 	constexpr int slotKeyCount = static_cast<int>(THOR_HERO_MEETING_SLOT_KEY_COUNT);
@@ -241,6 +307,11 @@ std::optional<ThorAction> thorActionFromId(int actionId)
 	case static_cast<int>(ThorAction::WINDOW_CONFIRM): return ThorAction::WINDOW_CONFIRM;
 	case static_cast<int>(ThorAction::ADVENTURE_CENTER_VIEW): return ThorAction::ADVENTURE_CENTER_VIEW;
 	case static_cast<int>(ThorAction::ADVENTURE_SET_MAP_LEVEL): return ThorAction::ADVENTURE_SET_MAP_LEVEL;
+	case static_cast<int>(ThorAction::HERO_WINDOW_TRANSFER_STACK): return ThorAction::HERO_WINDOW_TRANSFER_STACK;
+	case static_cast<int>(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT): return ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT;
+	case static_cast<int>(ThorAction::TOWN_WINDOW_TRANSFER_STACK): return ThorAction::TOWN_WINDOW_TRANSFER_STACK;
+	case static_cast<int>(ThorAction::ADVENTURE_PLAN_ROUTE): return ThorAction::ADVENTURE_PLAN_ROUTE;
+	case static_cast<int>(ThorAction::ADVENTURE_ROUTE_COMMAND): return ThorAction::ADVENTURE_ROUTE_COMMAND;
 	default:
 		return std::nullopt;
 	}
@@ -295,10 +366,11 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 	if(contextId == ThorContextIds::ADVENTURE_MAP)
 		return isThorActionAllowedInAdventureMap(action);
 	if(contextId == ThorContextIds::HERO_WINDOW)
-		return action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE;
+		return (action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE)
+			|| action == ThorAction::HERO_WINDOW_TRANSFER_STACK || action == ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT;
 	if(contextId == ThorContextIds::TOWN_WINDOW)
 		return (action >= ThorAction::WINDOW_PREVIOUS && action <= ThorAction::WINDOW_CLOSE)
-			|| action == ThorAction::TOWN_OPEN_SERVICE;
+			|| action == ThorAction::TOWN_OPEN_SERVICE || action == ThorAction::TOWN_WINDOW_TRANSFER_STACK;
 	if(contextId == ThorContextIds::TOWN_HALL)
 		return action == ThorAction::TOWN_HALL_BUILD || action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::HIGH_SCORES)
@@ -529,7 +601,9 @@ bool isThorActionAllowedInAdventureMap(ThorAction action)
 		|| action == ThorAction::SELECT_HERO
 		|| action == ThorAction::SELECT_TOWN
 		|| action == ThorAction::ADVENTURE_CENTER_VIEW
-		|| action == ThorAction::ADVENTURE_SET_MAP_LEVEL;
+		|| action == ThorAction::ADVENTURE_SET_MAP_LEVEL
+		|| action == ThorAction::ADVENTURE_PLAN_ROUTE
+		|| action == ThorAction::ADVENTURE_ROUTE_COMMAND;
 }
 
 std::optional<ThorBulkArtifactOperation> thorBulkArtifactOperation(ThorAction action)
@@ -572,6 +646,7 @@ bool isThorActionHapticDeferredUntilServerResult(ThorAction action)
 {
 	return action == ThorAction::HERO_MEETING_REDISTRIBUTE_STACK
 		|| action == ThorAction::HERO_MEETING_TRANSFER_ARTIFACT
+		|| action == ThorAction::TOWN_WINDOW_TRANSFER_STACK
 		|| thorBulkArtifactOperation(action).has_value();
 }
 
@@ -625,6 +700,37 @@ ThorActionValidation validateThorAdventureMapRequest(const ThorActionRequest & r
 	return ThorActionValidation::VALID;
 }
 
+ThorActionValidation validateThorAdventureMovementRequest(const ThorActionRequest & request,
+	const ThorContextRecord & context, const ThorAdventureMovementAuthority & live)
+{
+	const auto validation = validateThorActionRequest(request, context);
+	if(validation != ThorActionValidation::VALID)
+		return validation;
+	if(request.action != ThorAction::ADVENTURE_PLAN_ROUTE && request.action != ThorAction::ADVENTURE_ROUTE_COMMAND
+		&& request.action != ThorAction::MOVE_HERO)
+		return ThorActionValidation::WRONG_CONTEXT;
+	if(!live.active || !live.top || !live.makingTurn || !live.localPlayer || live.spectator
+		|| !live.ownedWanderingHero || live.dialogBusy)
+		return ThorActionValidation::UNAVAILABLE;
+	if(!context.adventureMap || !context.adventureRoute || !context.adventureRoute->valid())
+		return ThorActionValidation::INVALID_TARGET;
+	const auto & route = *context.adventureRoute;
+	const bool stop = request.action == ThorAction::ADVENTURE_ROUTE_COMMAND
+		&& request.targetId == static_cast<int>(ThorRouteCommand::STOP);
+	if(!thorMapDimensionsValid(live.width, live.height, live.levels)
+		|| live.width != route.width || live.height != route.height || live.levels != route.levels
+		|| live.currentLevel != context.adventureMap->level || live.heroId != route.heroId
+		|| live.heroId != context.selectedHeroId
+		|| live.movementSequence != context.adventureMovementSequence
+		|| (!stop && (live.position != route.start || live.movement != route.movement)))
+		return ThorActionValidation::INVALID_TARGET;
+	if(stop ? (!live.moving || !live.canStop) : (live.moving || live.animating))
+		return ThorActionValidation::UNAVAILABLE;
+	if(request.action == ThorAction::MOVE_HERO && !(route.flags & THOR_ROUTE_CAN_CONTINUE))
+		return ThorActionValidation::UNAVAILABLE;
+	return ThorActionValidation::VALID;
+}
+
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)
 {
 	if(!thorActionFromId(static_cast<int>(request.action)))
@@ -635,17 +741,32 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::WRONG_CONTEXT;
 	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
 		return ThorActionValidation::UNAVAILABLE;
-	if(request.action == ThorAction::ADVENTURE_CENTER_VIEW || request.action == ThorAction::ADVENTURE_SET_MAP_LEVEL)
+	if(request.action == ThorAction::ADVENTURE_ROUTE_COMMAND)
+	{
+		if(!context.adventureRoute || !context.adventureRoute->valid()
+			|| context.adventureRoute->heroId != context.selectedHeroId
+			|| !context.adventureRoute->commandAllowed(request.targetId)
+			|| request.sourceArmyId != -1 || request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1
+			|| request.recruitmentOperation != ThorRecruitmentOperation::NONE)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	else if(request.action == ThorAction::ADVENTURE_CENTER_VIEW || request.action == ThorAction::ADVENTURE_SET_MAP_LEVEL
+		|| request.action == ThorAction::ADVENTURE_PLAN_ROUTE)
 	{
 		if(!context.adventureMap || !context.adventureMap->valid() || request.sourceArmyId != -1
 			|| request.sourceSlot != -1 || request.destinationArmyId != -1 || request.destinationSlot != -1
 			|| request.amount != -1 || request.recruitmentOperation != ThorRecruitmentOperation::NONE)
 			return ThorActionValidation::INVALID_TARGET;
 		const auto & map = *context.adventureMap;
-		if(request.action == ThorAction::ADVENTURE_CENTER_VIEW)
+		if(request.action == ThorAction::ADVENTURE_CENTER_VIEW || request.action == ThorAction::ADVENTURE_PLAN_ROUTE)
 		{
 			const auto tile = decodeThorMapTile(request.targetId);
 			if(!tile || !thorMapTileValid(*tile, map.width, map.height, map.levels) || tile->level != map.level)
+				return ThorActionValidation::INVALID_TARGET;
+			if(request.action == ThorAction::ADVENTURE_PLAN_ROUTE && (!context.adventureRoute
+				|| !context.adventureRoute->valid() || context.selectedHeroId < 0
+				|| context.adventureRoute->heroId != context.selectedHeroId))
 				return ThorActionValidation::INVALID_TARGET;
 		}
 		else if(request.targetId < 0 || request.targetId >= map.levels || request.targetId == map.level)
@@ -752,6 +873,52 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			? std::any_of(context.heroes.begin(), context.heroes.end(), [&](const auto & hero) { return hero.id == request.targetId; })
 			: std::any_of(context.towns.begin(), context.towns.end(), [&](const auto & town) { return town.id == request.targetId; });
 		if(!hasTarget)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::HERO_WINDOW_TRANSFER_STACK)
+	{
+		if(!context.heroManagement || !context.heroManagement->locallyControllable
+			|| request.sourceArmyId != -1 || request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto pair = decodeThorHeroArmyPair(request.targetId);
+		if(!pair)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto & source = context.heroManagement->armySlots[pair->first];
+		const auto & destination = context.heroManagement->armySlots[pair->second];
+		if(!source.occupied || source.armyId != context.heroManagement->heroId || source.slot != pair->first
+			|| destination.armyId != context.heroManagement->heroId || destination.slot != pair->second)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT)
+	{
+		if(!context.heroManagement || !context.heroManagement->locallyControllable
+			|| request.sourceArmyId != -1 || request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto pair = decodeThorHeroArtifactPair(request.targetId);
+		if(!pair || static_cast<std::size_t>(pair->first) >= context.heroManagement->artifactSlots.size()
+			|| static_cast<std::size_t>(pair->second) >= context.heroManagement->artifactSlots.size())
+			return ThorActionValidation::INVALID_TARGET;
+		const auto & source = context.heroManagement->artifactSlots[pair->first];
+		const auto & destination = context.heroManagement->artifactSlots[pair->second];
+		if(!source.occupied || source.locked || destination.locked)
+			return ThorActionValidation::INVALID_TARGET;
+	}
+	if(request.action == ThorAction::TOWN_WINDOW_TRANSFER_STACK)
+	{
+		if(!context.townManagement || !context.townManagement->locallyControllable
+			|| request.sourceArmyId != -1 || request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto pair = decodeThorTownArmyPair(request.targetId);
+		if(!pair)
+			return ThorActionValidation::INVALID_TARGET;
+		const auto & town = *context.townManagement;
+		const auto & source = pair->sourceIsVisiting ? town.visitingSlots[pair->sourceSlot] : town.garrisonSlots[pair->sourceSlot];
+		const auto & destination = pair->destinationIsVisiting ? town.visitingSlots[pair->destinationSlot] : town.garrisonSlots[pair->destinationSlot];
+		if(!source.occupied || source.slot != pair->sourceSlot || destination.slot != pair->destinationSlot
+			|| destination.armyId < 0)
 			return ThorActionValidation::INVALID_TARGET;
 	}
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK)

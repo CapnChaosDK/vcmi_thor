@@ -34,11 +34,14 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
     private ThorBrowserState browser = ThorBrowserState.EMPTY;
     private ThorHeroMeetingArmies heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+    private ThorHeroManagement heroManagement = ThorHeroManagement.EMPTY;
+    private ThorTownManagement townManagement = ThorTownManagement.EMPTY;
     private ThorRecruitmentState recruitment = ThorRecruitmentState.EMPTY;
     private final ThorHeroMeetingArtifactCache heroMeetingArtifactCache = new ThorHeroMeetingArtifactCache();
     private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
     private final ThorVisualAssetReferences visualAssetReferences = new ThorVisualAssetReferences();
     private int adventureTab;
+    private final ThorAdventureRouteState adventureRouteState = new ThorAdventureRouteState();
     private ThorAdventureMap adventureMap = ThorAdventureMap.EMPTY;
     private Bitmap adventureMapBitmap;
     private long adventureMapRevision;
@@ -147,6 +150,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextRevision = revision;
         contextId = id == null || id.isEmpty() ? ThorContextIds.UNKNOWN : id;
         hapticState.updateContext(revision, contextId);
+        adventureRouteState.updateContext(revision, contextId);
         heroPortraitAssetKey = (ThorContextIds.ADVENTURE_MAP.equals(contextId)
                 || ThorContextIds.HERO_WINDOW.equals(contextId))
                 && ThorVisualAssetKey.isHeroPortrait(publishedHeroPortraitAssetKey)
@@ -164,6 +168,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         browser = ThorBrowserState.EMPTY;
         recruitment = ThorRecruitmentState.EMPTY;
         heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
+        heroManagement = ThorHeroManagement.EMPTY;
+        townManagement = ThorTownManagement.EMPTY;
         heroMeetingArtifactCache.reset(revision, contextId);
         contextTitle = title == null ? "" : title;
         contextStatus = status == null ? "" : status;
@@ -190,6 +196,12 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey,
                     contextDetails,
                     enabledActionMask, activeActionMask);
+    }
+
+    void publishAdventureRoute(final long revision, final ThorAdventureRoute route)
+    {
+        if (adventureRouteState.publish(revision, route) && presentation != null)
+            presentation.updateAdventureRoute(adventureRouteState.current());
     }
 
     void publishAdventureMap(final long revision, final long contentRevision,
@@ -283,6 +295,24 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             presentation.updateHeroMeetingArtifacts(artifacts);
     }
 
+    void publishHeroManagement(final long revision, final ThorHeroManagement management)
+    {
+        if (revision != contextRevision || !ThorContextIds.HERO_WINDOW.equals(contextId))
+            return;
+        heroManagement = management.complete() ? management : ThorHeroManagement.EMPTY;
+        if (presentation != null)
+            presentation.updateHeroManagement(heroManagement);
+    }
+
+    void publishTownManagement(final long revision, final ThorTownManagement management)
+    {
+        if (revision != contextRevision || !ThorContextIds.TOWN_WINDOW.equals(contextId))
+            return;
+        townManagement = management.complete() ? management : ThorTownManagement.EMPTY;
+        if (presentation != null)
+            presentation.updateTownManagement(townManagement);
+    }
+
     boolean hasVisualAsset(final long key)
     {
         return ThorVisualAssetKey.isValid(key) && visualAssets.knows(key);
@@ -301,7 +331,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private boolean referencesVisualAsset(final long revision, final long key)
     {
         return visualAssetReferences.references(revision, key, heroMeetingArmies,
-                heroMeetingArtifactCache.snapshot(), recruitment);
+                heroMeetingArtifactCache.snapshot(), recruitment, heroManagement);
     }
 
     private Bitmap decodeVisualAsset(final int width, final int height, final byte[] encoded)
@@ -394,12 +424,15 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     enabledActionMask, activeActionMask);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
+            newPresentation.updateAdventureRoute(adventureRouteState.current());
             newPresentation.updateAdventureMap(adventureMapRevision == contextRevision ? adventureMap : ThorAdventureMap.EMPTY,
                     adventureMapRevision == contextRevision ? adventureMapBitmap : null);
             newPresentation.updateBrowser(browser);
             newPresentation.updateRecruitment(recruitment);
             newPresentation.updateHeroMeetingArmies(heroMeetingArmies);
             newPresentation.updateHeroMeetingArtifacts(heroMeetingArtifactCache.snapshot());
+            newPresentation.updateHeroManagement(heroManagement);
+            newPresentation.updateTownManagement(townManagement);
             Log.i(LOG_TAG, "Companion presentation opened on display " + targetDisplay.getDisplayId());
         }
         catch (final RuntimeException exception)

@@ -62,6 +62,16 @@ final class ThorMapGesture
             final int releaseControl, final ThorAdventureMap map, final boolean pan,
             final long enabledActions, final float markerRadius, final float slop)
     {
+        return release(revision, session, pointer, count, level, mode, validSession, x, y,
+                releaseControl, map, pan, false, ThorAdventureRoute.EMPTY, enabledActions, markerRadius, slop, 0);
+    }
+
+    Release release(final long revision, final long session, final int pointer, final int count,
+            final int level, final int mode, final boolean validSession, final float x, final float y,
+            final int releaseControl, final ThorAdventureMap map, final boolean pan, final boolean plan,
+            final ThorAdventureRoute route, final long enabledActions, final float markerRadius,
+            final float slop, final long heldMillis)
+    {
         if (!matches(revision, session, pointer, count, level, mode, validSession))
             return Release.NONE;
         move(x, y, slop);
@@ -71,6 +81,7 @@ final class ThorMapGesture
         final boolean dragged = moved;
         final ThorMapTransform mapping = transform;
         cancel();
+        if (heldMillis >= 500) return Release.NONE;
         if (pressedControl >= 0)
         {
             if (dragged || pressedControl != releaseControl)
@@ -79,7 +90,13 @@ final class ThorMapGesture
                 return new Release(ThorActionIds.NONE, ThorActionIds.NO_TARGET, pressedControl);
             if (!map.valid())
                 return Release.NONE;
-            if (pressedControl == 7 || pressedControl >= 0 && pressedControl < 5)
+            final int command = route.fits(map) ? route.commandForControl(pressedControl, enabledActions) : 0;
+            if (command != 0)
+                return new Release(ThorActionIds.ADVENTURE_ROUTE_COMMAND, command, -1);
+            if (pressedControl == 24 && route.fits(map) && route.allows(ThorAdventureRoute.CAN_CONTINUE)
+                    && (enabledActions & ThorActionIds.maskFor(ThorActionIds.MOVE_HERO)) != 0)
+                return new Release(ThorActionIds.MOVE_HERO, ThorActionIds.NO_TARGET, -1);
+            if (pressedControl == 8 || pressedControl == 7 || pressedControl >= 0 && pressedControl < 5)
                 return new Release(ThorActionIds.NONE, ThorActionIds.NO_TARGET, pressedControl);
             if (pressedControl >= 5 && pressedControl <= 6 && map.levels == 2
                     && map.level != pressedControl - 5
@@ -87,14 +104,19 @@ final class ThorMapGesture
                 return new Release(ThorActionIds.ADVENTURE_SET_MAP_LEVEL, pressedControl - 5, -1);
             return Release.NONE;
         }
-        if (!map.valid() || (pan && dragged))
+        if (!map.valid() || ((pan || plan) && dragged))
             return Release.NONE;
         final int tile = mapping.tileAt(x, y);
         if (tile < 0)
             return Release.NONE;
         final int marker = !dragged ? map.markerAt(mapping, x, y, markerRadius) : -1;
-        if (marker >= 0 && (enabledActions & ThorActionIds.maskFor(map.markers[marker])) != 0)
+        if (marker >= 0 && !plan
+                && (enabledActions & ThorActionIds.maskFor(map.markers[marker])) != 0)
             return new Release(map.markers[marker], map.markers[marker + 1], -1);
+        if (plan)
+            return (enabledActions & ThorActionIds.maskFor(ThorActionIds.ADVENTURE_PLAN_ROUTE)) != 0
+                    ? new Release(ThorActionIds.ADVENTURE_PLAN_ROUTE, map.level * ThorAdventureMap.MAX_TILES + tile, -1)
+                    : Release.NONE;
         if ((enabledActions & ThorActionIds.maskFor(ThorActionIds.ADVENTURE_CENTER_VIEW)) != 0)
             return new Release(ThorActionIds.ADVENTURE_CENTER_VIEW, map.level * ThorAdventureMap.MAX_TILES + tile, -1);
         return Release.NONE;

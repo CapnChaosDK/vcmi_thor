@@ -307,14 +307,15 @@ public class ThorAdventureMapTest
     {
         assertEquals(58, ThorActionIds.ADVENTURE_CENTER_VIEW);
         assertEquals(59, ThorActionIds.ADVENTURE_SET_MAP_LEVEL);
-        assertEquals(59, ThorActionIds.MAX_ACTION_ID);
+        assertEquals(64, ThorActionIds.MAX_ACTION_ID);
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 58));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 59));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 13));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, 14));
         assertEquals(1L << 57, ThorActionIds.maskFor(58));
         assertEquals(1L << 58, ThorActionIds.maskFor(59));
-        assertEquals(0, ThorActionIds.maskFor(60));
+        assertEquals(1L << 59, ThorActionIds.maskFor(60));
+        assertEquals(1L << 60, ThorActionIds.maskFor(61));
         assertEquals(524287, ThorAdventureMap.encodeTarget(511, 511, 1));
         assertEquals(-1, ThorAdventureMap.encodeTarget(512, 0, 0));
         assertEquals(-1, ThorAdventureMap.encodeTarget(0, -1, 0));
@@ -418,4 +419,196 @@ public class ThorAdventureMapTest
                 null, new int[0], new int[0], new String[0], false);
         assertTrue(withdrawn.valid()); assertEquals(0, withdrawn.objectLabels.length);
     }
+    private int[] routeHeader(final int state, final int flags, final int count)
+    {
+        return new int[]{42, state, flags, 20, 10, 2, 1, 2, 0, 3, 2, 0, 200, 1500, 1, 1200, count};
+    }
+
+    private int[] routeNodes()
+    {
+        return new int[]{1, 2, 0, 0, 200, 0, 0, 2, 2, 0, 0, 100, 0, 3, 3, 2, 0, 1, 1200, 0, 3};
+    }
+
+    @Test
+    public void routeSnapshotValidatesGeometryIdentityOrderingAndCopiesAllArrays()
+    {
+        final int[] header = routeHeader(2, 3, 3), nodes = routeNodes();
+        final ThorAdventureRoute route = ThorAdventureRoute.copyOf(header, nodes);
+        assertTrue(route.valid()); assertTrue(route.preview()); assertEquals(3, route.size());
+        header[0] = 7; nodes[0] = 9;
+        assertEquals(42, route.value(0)); assertEquals(1, route.node(0, 0));
+        assertTrue(route.fits(map(20, 10, 0, new int[0])));
+        assertFalse(route.fits(map(10, 20, 0, new int[0])));
+        assertFalse(ThorAdventureRoute.copyOf(new int[0], new int[0]).valid());
+        assertFalse(ThorAdventureRoute.copyOf(null, null).valid());
+        assertFalse(ThorAdventureRoute.copyOf(routeHeader(2, 3, 3), new int[4097 * 7]).valid());
+        for (final int[] malformed : new int[][]{{0,-2},{1,12},{2,64},{3,513},{5,3},{6,20},{8,2},{9,20},{12,-1},{14,256},{16,2}})
+        {
+            final int[] bad = routeHeader(2, 3, 3); bad[malformed[0]] = malformed[1];
+            assertFalse(ThorAdventureRoute.copyOf(bad, routeNodes()).valid());
+        }
+        for (final int[] malformed : new int[][]{{0,2},{2,2},{3,-1},{4,-1},{5,5},{6,10},{14,19},{17,-1}})
+        {
+            final int[] bad = routeNodes(); bad[malformed[0]] = malformed[1];
+            assertFalse(ThorAdventureRoute.copyOf(routeHeader(2, 3, 3), bad).valid());
+        }
+        final int[] idle = routeHeader(1, 0, 0);
+        idle[9] = idle[10] = idle[11] = idle[14] = idle[15] = -1;
+        assertTrue(ThorAdventureRoute.copyOf(idle, new int[0]).valid());
+        idle[0] = -1; idle[1] = 0; idle[6] = idle[7] = idle[8] = -1;
+        idle[12] = idle[13] = 0;
+        assertTrue(ThorAdventureRoute.copyOf(idle, new int[0]).valid());
+        for (final int moving : new int[]{5, 6})
+        {
+            final int[] awaitingAck = routeHeader(moving, moving == 5 ? 8 : 0, 0);
+            awaitingAck[14] = awaitingAck[15] = -1;
+            assertTrue(ThorAdventureRoute.copyOf(awaitingAck, new int[0]).valid());
+        }
+    }
+
+    @Test
+    public void routeRenderEdgesNeverInventPortalLayerOrMapLevelSegments()
+    {
+        ThorAdventureRoute route = ThorAdventureRoute.copyOf(routeHeader(2, 3, 3), routeNodes());
+        assertTrue(route.connects(1, 0)); assertTrue(route.connects(2, 0));
+        assertFalse(route.connects(0, 0)); assertFalse(route.connects(1, 1));
+        for (int action = 7; action <= 9; ++action)
+        {
+            final int[] nodes = routeNodes(); nodes[13] = action;
+            route = ThorAdventureRoute.copyOf(routeHeader(2, 3, 3), nodes);
+            assertTrue(route.valid()); assertFalse(route.connects(1, 0));
+        }
+        for (final int[] special : new int[][]{{7,12},{9,1},{12,1}})
+        {
+            final int[] nodes = routeNodes(); nodes[special[0]] = special[1];
+            route = ThorAdventureRoute.copyOf(routeHeader(2, 3, 3), nodes);
+            assertTrue(route.valid()); assertFalse(route.connects(1, 0));
+        }
+        final int[] header = routeHeader(2, 35, 4097);
+        header[3] = header[4] = 512;
+        final int[] prefix = new int[4096 * 7];
+        for (int i = 0; i < prefix.length; i += 7)
+        {
+            prefix[i] = 1; prefix[i + 1] = 2; prefix[i + 4] = 200; prefix[i + 6] = 3;
+        }
+        route = ThorAdventureRoute.copyOf(header, prefix);
+        assertTrue(route.valid()); assertTrue(route.allows(ThorAdventureRoute.TRUNCATED));
+        assertEquals(1, route.commandForControl(20, Long.MIN_VALUE));
+        header[2] = 3;
+        assertFalse(ThorAdventureRoute.copyOf(header, prefix).valid());
+    }
+
+    @Test
+    public void routeStateWithdrawsOnContextRevisionAndRestoresOnlyCurrentImmutableSnapshot()
+    {
+        final ThorAdventureRoute route = ThorAdventureRoute.copyOf(routeHeader(2, 3, 3), routeNodes());
+        final ThorAdventureRouteState state = new ThorAdventureRouteState();
+        state.updateContext(7, ThorContextIds.ADVENTURE_MAP);
+        assertFalse(state.publish(6, route)); assertFalse(state.current().valid());
+        assertTrue(state.publish(7, route)); assertSame(route, state.current());
+        // Recreated display may take this immutable state, never a gesture from its predecessor.
+        state.updateContext(7, ThorContextIds.ADVENTURE_MAP); assertSame(route, state.current());
+        state.updateContext(8, ThorContextIds.ADVENTURE_MAP); assertFalse(state.current().valid());
+        assertFalse(state.publish(7, route)); assertTrue(state.publish(8, route));
+        state.updateContext(9, ThorContextIds.HERO_WINDOW); assertFalse(state.current().valid());
+        assertFalse(state.publish(9, route));
+        state.updateContext(10, ThorContextIds.ADVENTURE_MAP); assertFalse(state.current().valid());
+        assertTrue(state.publish(10, route)); assertTrue(state.publish(10, ThorAdventureRoute.EMPTY));
+        assertFalse(state.current().valid());
+    }
+
+    private ThorMapGesture.Release movementRelease(final ThorMapGesture gesture, final ThorAdventureMap map,
+            final boolean plan, final int control, final float x, final float y,
+            final ThorAdventureRoute route, final long mask, final long held)
+    {
+        return gesture.release(7, 8, 3, 1, map.level, 4, true, x, y, control,
+                map, false, plan, route, mask, 10, 10, held);
+    }
+
+    @Test
+    public void planEveryTileIncludingHeroMarkersPreviewsWhileNavigateStillSelects()
+    {
+        final ThorAdventureMap map = map(20, 10, 0, new int[]{13, 42, 10, 5, 0, 1});
+        final ThorMapTransform fit = new ThorMapTransform(20, 10, 0, 0, 400, 200, 1, 10, 5);
+        final ThorMapGesture gesture = new ThorMapGesture();
+        final long mask = ThorActionIds.maskFor(63) | ThorActionIds.maskFor(58) | ThorActionIds.maskFor(13);
+        gesture.begin(7, 8, 3, 0, 4, -1, 50, 50, fit);
+        ThorMapGesture.Release result = movementRelease(gesture, map, true, -1, 50, 50, ThorAdventureRoute.EMPTY, mask, 100);
+        assertEquals(63, result.action); assertEquals(2 * 512 + 2, result.target);
+        gesture.begin(7, 8, 3, 0, 4, -1, 210, 110, fit);
+        result = movementRelease(gesture, map, true, -1, 210, 110, ThorAdventureRoute.EMPTY, mask, 100);
+        assertEquals(63, result.action); assertEquals(5 * 512 + 10, result.target);
+        gesture.begin(7, 8, 3, 0, 4, -1, 210, 110, fit);
+        result = movementRelease(gesture, map, false, -1, 210, 110, ThorAdventureRoute.EMPTY, mask, 100);
+        assertEquals(13, result.action); assertEquals(42, result.target);
+        gesture.begin(7, 8, 3, 0, 4, -1, 50, 50, fit);
+        assertEquals(0, movementRelease(gesture, map, true, -1, 80, 50, ThorAdventureRoute.EMPTY, mask, 100).action);
+        gesture.begin(7, 8, 3, 0, 4, -1, 50, 50, fit);
+        assertEquals(0, movementRelease(gesture, map, true, -1, 50, 50, ThorAdventureRoute.EMPTY, mask, 500).action);
+        gesture.begin(7, 8, 3, 0, 4, -1, 50, 50, fit);
+        assertEquals(58, movementRelease(gesture, map, false, -1, 50, 50, ThorAdventureRoute.EMPTY, mask, 100).action);
+        gesture.begin(7, 8, 3, 0, 4, -1, 50, 50, fit);
+        assertEquals(0, movementRelease(gesture, map, true, -1, 50, 50, ThorAdventureRoute.EMPTY, 0, 100).action);
+    }
+
+    @Test
+    public void routeCommandsRequireNativeFlagSignedMaskSameControlAndFreshTap()
+    {
+        final ThorAdventureMap map = map(20, 10, 0, new int[0]);
+        final ThorMapTransform fit = new ThorMapTransform(20, 10, 0, 0, 400, 200, 1, 10, 5);
+        final ThorMapGesture gesture = new ThorMapGesture();
+        final long mask = Long.MIN_VALUE | ThorActionIds.maskFor(6);
+        assertTrue(mask < 0); assertEquals(Long.MIN_VALUE, ThorActionIds.maskFor(64));
+        assertEquals(1L << 62, ThorActionIds.maskFor(63)); assertEquals(0L, ThorActionIds.maskFor(65));
+        for (int control = 20; control <= 24; ++control)
+        {
+            final int state = control <= 21 ? 2 : control == 23 ? 5 : 4;
+            final int flag = control == 24 ? 16 : 1 << (control - 20);
+            final ThorAdventureRoute route = ThorAdventureRoute.copyOf(routeHeader(state, flag, 3), routeNodes());
+            assertTrue(route.valid());
+            gesture.begin(7, 8, 3, 0, 4, control, 50, 50, fit);
+            final ThorMapGesture.Release result = movementRelease(gesture, map, false, control, 50, 50, route, mask, 100);
+            assertEquals(control == 24 ? 6 : 64, result.action);
+            assertEquals(control == 24 ? -1 : control - 19, result.target);
+            assertEquals(0, movementRelease(gesture, map, false, control, 50, 50, route, mask, 100).action);
+            for (int invalid = 0; invalid < 5; ++invalid)
+            {
+                gesture.begin(7, 8, 3, 0, 4, control, 50, 50, fit);
+                final ThorMapGesture.Release rejected = movementRelease(gesture, map, false,
+                        invalid == 0 ? 19 : control, invalid == 1 ? 80 : 50, 50,
+                        invalid == 2 ? ThorAdventureRoute.EMPTY : route, invalid == 3 ? 0 : mask,
+                        invalid == 4 ? 500 : 100);
+                assertEquals(0, rejected.action);
+            }
+        }
+        final ThorAdventureRoute disabled = ThorAdventureRoute.copyOf(routeHeader(2, 0, 3), routeNodes());
+        for (int control = 20; control <= 24; ++control)
+        {
+            gesture.begin(7, 8, 3, 0, 4, control, 50, 50, fit);
+            assertEquals(0, movementRelease(gesture, map, false, control, 50, 50, disabled, mask, 100).action);
+        }
+    }
+
+    @Test
+    public void movementControlsFitMeasuredDisplayWithoutTabMapOrControlOverlap()
+    {
+        final int[] controls = {0,1,2,3,4,5,6,7,8,20,21,22,23,24};
+        for (int i = 0; i < controls.length; ++i)
+        {
+            final float[] box = ThorMapControls.bounds(controls[i], 1080, 1240);
+            assertTrue(box[2] - box[0] >= 190); assertTrue(box[3] - box[1] >= 65);
+            assertTrue(box[1] >= 1240 * 0.36f); assertTrue(box[3] <= 1240 * 0.55f);
+            for (int j = 0; j < i; ++j)
+            {
+                final float[] other = ThorMapControls.bounds(controls[j], 1080, 1240);
+                assertTrue(box[0] >= other[2] || other[0] >= box[2] || box[1] >= other[3] || other[1] >= box[3]);
+            }
+        }
+        final ThorMapViewState view = new ThorMapViewState();
+        final int navigate = view.modeKey(); view.plan = true;
+        assertNotEquals(navigate, view.modeKey()); assertTrue(view.copy().plan);
+        view.plan = false; view.pan = true;
+        assertNotEquals(navigate, view.modeKey());
+    }
+
 }

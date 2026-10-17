@@ -243,6 +243,10 @@ class CCastleInterface final : public CStatusbarWindow, public IGarrisonHolder, 
 	std::shared_ptr<CIntObject> townRadialArea;
 
 	std::vector<std::shared_ptr<CCreaInfo>> creainfo;//small icons of creatures (bottom-left corner);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	int pendingThorArmyRequestId = -1;
+	std::uint64_t pendingThorArmyActionRevision = 0;
+#endif
 
 public:
 	std::shared_ptr<CTownList> townlist;
@@ -269,6 +273,8 @@ public:
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	void updateThorActionState();
 	bool executeThorAction(const ThorActionRequest & request);
+	void onThorActionRequestResult(int requestId);
+	bool hasPendingThorArmyRequest() const { return pendingThorArmyRequestId >= 0; }
 #endif
 
 	void castleTeleport(int where);

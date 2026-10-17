@@ -77,10 +77,15 @@ enum class ThorAction : std::uint8_t
 	RECRUITMENT_BUY = 56,
 	WINDOW_CONFIRM = 57,
 	ADVENTURE_CENTER_VIEW = 58,
-	ADVENTURE_SET_MAP_LEVEL = 59
+	ADVENTURE_SET_MAP_LEVEL = 59,
+	HERO_WINDOW_TRANSFER_STACK = 60,
+	HERO_WINDOW_TRANSFER_ARTIFACT = 61,
+	TOWN_WINDOW_TRANSFER_STACK = 62,
+	ADVENTURE_PLAN_ROUTE = 63,
+	ADVENTURE_ROUTE_COMMAND = 64
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::ADVENTURE_SET_MAP_LEVEL);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::ADVENTURE_ROUTE_COMMAND);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -183,6 +188,16 @@ struct DLL_LINKAGE ThorActionRequest
 	ThorRecruitmentOperation recruitmentOperation = ThorRecruitmentOperation::NONE;
 };
 
+/// Live MainGUI authority, resolved from the actual Adventure owner before dispatch.
+struct DLL_LINKAGE ThorAdventureMovementAuthority
+{
+	bool active = false, top = false, makingTurn = false, localPlayer = false, spectator = false;
+	bool ownedWanderingHero = false, dialogBusy = false, moving = false, animating = false, canStop = false;
+	int heroId = -1, width = 0, height = 0, levels = 0, currentLevel = 0, movement = 0;
+	ThorMapTile position{-1, -1, -1};
+	std::uint64_t movementSequence = 0;
+};
+
 /// One destination in a bounded Hero Meeting redistribution plan.
 struct DLL_LINKAGE ThorHeroMeetingRedistributionTarget
 {
@@ -237,6 +252,22 @@ DLL_LINKAGE std::optional<ThorHeroMeetingTransferPair> decodeThorHeroMeetingTran
 /// Action 21 encodes two distinct artifact row keys in [0, 47].
 DLL_LINKAGE std::optional<int> encodeThorHeroMeetingArtifactPair(int sourceKey, int destinationKey);
 DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroMeetingArtifactPair(int encodedPair);
+/// Hero Window action 61 encodes two distinct positions in the active hero's bounded 83-slot artifact view.
+DLL_LINKAGE std::optional<int> encodeThorHeroArtifactPair(int sourceSlot, int destinationSlot);
+DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroArtifactPair(int encodedPair);
+/// Hero Window action 60 encodes a source/destination pair in the active hero's seven-slot army.
+DLL_LINKAGE std::optional<int> encodeThorHeroArmyPair(int sourceSlot, int destinationSlot);
+DLL_LINKAGE std::optional<std::pair<int, int>> decodeThorHeroArmyPair(int encodedPair);
+DLL_LINKAGE std::optional<int> encodeThorTownArmyPair(bool sourceIsVisiting, int sourceSlot, bool destinationIsVisiting, int destinationSlot);
+struct DLL_LINKAGE ThorTownArmyPair
+{
+	bool sourceIsVisiting;
+	bool destinationIsVisiting;
+	int sourceSlot;
+	int destinationSlot;
+	bool operator==(const ThorTownArmyPair &) const = default;
+};
+DLL_LINKAGE std::optional<ThorTownArmyPair> decodeThorTownArmyPair(int encodedPair);
 
 /// Mirrors whether native bulkMoveArmy can produce at least one stack change for this published army snapshot.
 DLL_LINKAGE bool canThorHeroMeetingMoveArmy(const ThorHeroMeetingArmies & armies, bool leftToRight);
@@ -271,6 +302,8 @@ DLL_LINKAGE ThorActionValidation validateThorActionRequest(const ThorActionReque
 DLL_LINKAGE ThorActionValidation validateThorAdventureMapRequest(const ThorActionRequest & request,
 	const ThorContextRecord & context, bool active, bool top, bool viewAuthority,
 	int width, int height, int levels, int currentLevel);
+DLL_LINKAGE ThorActionValidation validateThorAdventureMovementRequest(const ThorActionRequest & request,
+	const ThorContextRecord & context, const ThorAdventureMovementAuthority & authority);
 DLL_LINKAGE ThorActionValidation validateThorHeroMeetingRedistributionRequest(
 	const ThorHeroMeetingRedistributionRequest & request, const ThorContextRecord & context);
 

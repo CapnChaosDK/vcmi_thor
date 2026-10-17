@@ -5,7 +5,7 @@ final class ThorMapViewState
 {
     int zoom = 1;
     int categoryFilter;
-    boolean pan;
+    boolean pan, plan;
     float centerX, centerY;
     private int width, height, level = -1;
 
@@ -15,6 +15,7 @@ final class ThorMapViewState
         copy.zoom = zoom;
         copy.categoryFilter = categoryFilter;
         copy.pan = pan;
+        copy.plan = plan;
         copy.centerX = centerX;
         copy.centerY = centerY;
         copy.width = width;
@@ -37,7 +38,7 @@ final class ThorMapViewState
         level = map.level;
     }
 
-    int modeKey() { return (zoom * 2 + (pan ? 1 : 0)) * 6 + categoryFilter; }
+    int modeKey() { return (zoom * 3 + (plan ? 2 : pan ? 1 : 0)) * 6 + categoryFilter; }
 
     void setZoom(final int value)
     {

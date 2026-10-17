@@ -190,7 +190,37 @@ std::shared_ptr<const CPathsInfo> CPlayerInterface::getPathsInfo(const CGHeroIns
 void CPlayerInterface::invalidatePaths()
 {
 	pathfinderCache->invalidatePaths();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	++thorPathsGeneration;
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CPlayerInterface::thorMovementBlocked() const
+{
+	return showingDialog->isBusy() || !dialogs.empty() || levelUpChainPendingContinuation;
+}
+
+bool CPlayerInterface::requestThorMovementStop()
+{
+	return movementController->requestMovementStop();
+}
+
+bool CPlayerInterface::canThorMovementStop() const
+{
+	return movementController->canRequestMovementStop();
+}
+
+bool CPlayerInterface::isThorMovementStopping() const
+{
+	return movementController->isMovementStopping();
+}
+
+std::uint64_t CPlayerInterface::getThorMovementSequence() const
+{
+	return movementController->getMovementSequence();
+}
+#endif
 
 void CPlayerInterface::closeAllDialogs()
 {
@@ -1372,12 +1402,29 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 				exchangeWindow->onThorArtifactRequestResult(requestId, success);
 		}
 	};
+	const auto notifyHeroWindow = [](int requestId)
+	{
+		for(const auto & heroWindow : ENGINE->windows().findWindows<CHeroWindow>())
+			heroWindow->onThorActionRequestResult(requestId);
+	};
+	const auto notifyTownWindow = [](int requestId)
+	{
+		for(const auto & townWindow : ENGINE->windows().findWindows<CCastleInterface>())
+			townWindow->onThorActionRequestResult(requestId);
+	};
+	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
+		notifyHeroWindow(static_cast<int>(pa->requestID));
+	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
+		notifyTownWindow(static_cast<int>(pa->requestID));
 	if(pa->packType == CTypeList::getInstance().getTypeID<RedistributeArmyStack>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, true);
 	if(pa->packType == CTypeList::getInstance().getTypeID<BulkExchangeArtifacts>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
 	if(pa->packType == CTypeList::getInstance().getTypeID<ExchangeArtifacts>(nullptr))
+	{
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
+		notifyHeroWindow(static_cast<int>(pa->requestID));
+	}
 	if(pa->packType == CTypeList::getInstance().getTypeID<AssembleArtifacts>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
 #endif

@@ -109,7 +109,15 @@ public class ThorContextIdsTest
 		assertEquals(8192, ThorActionIds.maskFor(ThorActionIds.SELECT_TOWN));
 		assertEquals(57, ThorActionIds.WINDOW_CONFIRM);
 		assertEquals(1L << 56, ThorActionIds.maskFor(ThorActionIds.WINDOW_CONFIRM));
-		assertEquals(59, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(60, ThorActionIds.HERO_WINDOW_TRANSFER_STACK);
+		assertEquals(61, ThorActionIds.HERO_WINDOW_TRANSFER_ARTIFACT);
+		assertEquals(1L << 59, ThorActionIds.maskFor(ThorActionIds.HERO_WINDOW_TRANSFER_STACK));
+		assertEquals(1L << 60, ThorActionIds.maskFor(ThorActionIds.HERO_WINDOW_TRANSFER_ARTIFACT));
+		assertEquals(62, ThorActionIds.TOWN_WINDOW_TRANSFER_STACK);
+        assertEquals(63, ThorActionIds.ADVENTURE_PLAN_ROUTE);
+        assertEquals(64, ThorActionIds.ADVENTURE_ROUTE_COMMAND);
+		assertEquals(1L << 61, ThorActionIds.maskFor(ThorActionIds.TOWN_WINDOW_TRANSFER_STACK));
+		assertEquals(64, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(-1, ThorActionIds.NO_TARGET);
         assertEquals(1, ThorActionIds.maskFor(ThorActionIds.OPEN_KINGDOM_OVERVIEW));
         assertEquals(2, ThorActionIds.maskFor(ThorActionIds.OPEN_QUEST_LOG));
@@ -154,7 +162,7 @@ public class ThorContextIdsTest
         assertEquals(1L << 53, ThorActionIds.maskFor(ThorActionIds.TOWN_HALL_BUILD));
         assertEquals(1L << 54, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_EDIT));
         assertEquals(1L << 55, ThorActionIds.maskFor(ThorActionIds.RECRUITMENT_BUY));
-		assertEquals(59, ThorActionIds.MAX_ACTION_ID);
+		assertEquals(64, ThorActionIds.MAX_ACTION_ID);
 		assertEquals(36, ThorActionIds.CAMPAIGN_PREVIOUS_SCENARIO);
 		assertEquals(42, ThorActionIds.CAMPAIGN_BACK);
 		assertEquals(43, ThorActionIds.CAMPAIGN_BROWSER_SELECT);
@@ -183,7 +191,7 @@ public class ThorContextIdsTest
 		assertEquals(1L << 30, ThorActionIds.maskFor(31));
 		assertEquals(0L, ThorActionIds.bitForActionId(65));
 		assertEquals(0, ThorActionIds.maskFor(99));
-		for (int id = 1; id <= 30; ++id)
+		for (int id = 1; id <= 64; ++id)
 			assertEquals(1L << (id - 1), ThorActionIds.maskFor(id));
     }
 

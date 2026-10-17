@@ -399,6 +399,39 @@ void CAndroidVMHelper::publishThorAdventureMap(std::uint64_t revision, const Tho
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorAdventureRoute(std::uint64_t revision,
+	const std::optional<ThorAdventureRoute> & route)
+{
+	const bool valid = route && route->valid();
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorAdventureRoute", "(J[I[I)V",
+		[&](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jintArray header = env->NewIntArray(valid ? 17 : 0);
+			jintArray nodes = env->NewIntArray(valid ? static_cast<jsize>(route->nodes.size() * 7) : 0);
+			if(header && nodes)
+			{
+				if(valid)
+				{
+					const auto & r = *route;
+					const jint values[] = {r.heroId, static_cast<int>(r.state), r.flags, r.width, r.height, r.levels,
+						r.start.x, r.start.y, r.start.level, r.destination.x, r.destination.y, r.destination.level,
+						r.movement, r.limit, r.arrivalTurns, r.arrivalRemains, r.totalNodes};
+					env->SetIntArrayRegion(header, 0, 17, values);
+					for(jsize i = 0; i < static_cast<jsize>(r.nodes.size()); ++i)
+					{
+						const auto & node = r.nodes[i];
+						const jint data[] = {node.tile.x, node.tile.y, node.tile.level, node.turns,
+							node.moveRemains, node.layer, node.action};
+						env->SetIntArrayRegion(nodes, i * 7, 7, data);
+					}
+				}
+				env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), header, nodes);
+			}
+			if(header) env->DeleteLocalRef(header);
+			if(nodes) env->DeleteLocalRef(nodes);
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArmies",
@@ -501,6 +534,118 @@ void CAndroidVMHelper::publishThorHeroMeetingArtifacts(std::uint64_t revision, c
 			env->DeleteLocalRef(names);
 			env->DeleteLocalRef(visualKeys);
 			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
+void CAndroidVMHelper::publishThorHeroManagement(std::uint64_t revision, const ThorHeroManagement & management)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroManagement",
+		"(JILjava/lang/String;Z[I[I[Ljava/lang/String;[J[I[I[Ljava/lang/String;[J)V",
+		[revision, &management](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			constexpr auto armySize = static_cast<jsize>(THOR_HERO_MEETING_ARMY_SIZE);
+			const auto artifactSize = static_cast<jsize>(management.artifactSlots.size());
+			jclass stringClass = env->FindClass("java/lang/String");
+			jstring heroName = env->NewStringUTF(management.heroName.c_str());
+			jintArray creatureIds = env->NewIntArray(armySize);
+			jintArray counts = env->NewIntArray(armySize);
+			jobjectArray creatureNames = env->NewObjectArray(armySize, stringClass, nullptr);
+			jlongArray creatureVisualKeys = env->NewLongArray(armySize);
+			jintArray positions = env->NewIntArray(artifactSize);
+			jintArray artifactFlags = env->NewIntArray(artifactSize);
+			jobjectArray artifactNames = env->NewObjectArray(artifactSize, stringClass, nullptr);
+			jlongArray artifactVisualKeys = env->NewLongArray(artifactSize);
+			std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> creatureIdValues{};
+			std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> countValues{};
+			std::array<jlong, THOR_HERO_MEETING_ARMY_SIZE> creatureVisualValues{};
+			std::vector<jint> positionValues(static_cast<std::size_t>(artifactSize));
+			std::vector<jint> artifactFlagValues(static_cast<std::size_t>(artifactSize));
+			std::vector<jlong> artifactVisualValues(static_cast<std::size_t>(artifactSize));
+			for(jsize index = 0; index < armySize; ++index)
+			{
+				const auto & slot = management.armySlots[index];
+				creatureIdValues[index] = slot.creatureId;
+				countValues[index] = slot.count;
+				creatureVisualValues[index] = static_cast<jlong>(slot.visualAssetKey);
+				jstring name = env->NewStringUTF(slot.creatureName.c_str());
+				env->SetObjectArrayElement(creatureNames, index, name);
+				env->DeleteLocalRef(name);
+			}
+			for(jsize index = 0; index < artifactSize; ++index)
+			{
+				const auto & slot = management.artifactSlots[index];
+				positionValues[index] = slot.position;
+				artifactFlagValues[index] = (slot.occupied ? 1 : 0) | (slot.locked ? 2 : 0) | (slot.backpack ? 4 : 0);
+				artifactVisualValues[index] = static_cast<jlong>(slot.visualAssetKey);
+				jstring name = env->NewStringUTF(slot.name.c_str());
+				env->SetObjectArrayElement(artifactNames, index, name);
+				env->DeleteLocalRef(name);
+			}
+			env->SetIntArrayRegion(creatureIds, 0, armySize, creatureIdValues.data());
+			env->SetIntArrayRegion(counts, 0, armySize, countValues.data());
+			env->SetLongArrayRegion(creatureVisualKeys, 0, armySize, creatureVisualValues.data());
+			env->SetIntArrayRegion(positions, 0, artifactSize, positionValues.data());
+			env->SetIntArrayRegion(artifactFlags, 0, artifactSize, artifactFlagValues.data());
+			env->SetLongArrayRegion(artifactVisualKeys, 0, artifactSize, artifactVisualValues.data());
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(management.heroId),
+				heroName, static_cast<jboolean>(management.locallyControllable), creatureIds, counts, creatureNames,
+				creatureVisualKeys, positions, artifactFlags, artifactNames, artifactVisualKeys);
+			env->DeleteLocalRef(heroName);
+			env->DeleteLocalRef(creatureIds);
+			env->DeleteLocalRef(counts);
+			env->DeleteLocalRef(creatureNames);
+			env->DeleteLocalRef(creatureVisualKeys);
+			env->DeleteLocalRef(positions);
+			env->DeleteLocalRef(artifactFlags);
+			env->DeleteLocalRef(artifactNames);
+			env->DeleteLocalRef(artifactVisualKeys);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
+void CAndroidVMHelper::publishThorTownManagement(std::uint64_t revision, const ThorTownManagement & management)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorTownManagement",
+		"(JIIILjava/lang/String;Z[I[I[Ljava/lang/String;[I[I[Ljava/lang/String;)V",
+		[revision, &management](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			const auto fill = [env](const auto & slots, jintArray & ids, jintArray & counts, jobjectArray & names)
+			{
+				constexpr auto size = static_cast<jsize>(THOR_HERO_MEETING_ARMY_SIZE);
+				std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> creatureIds{};
+				std::array<jint, THOR_HERO_MEETING_ARMY_SIZE> creatureCounts{};
+				jclass stringClass = env->FindClass("java/lang/String");
+				ids = env->NewIntArray(size);
+				counts = env->NewIntArray(size);
+				names = env->NewObjectArray(size, stringClass, nullptr);
+				for(jsize index = 0; index < size; ++index)
+				{
+					creatureIds[index] = slots[index].occupied ? slots[index].creatureId : -1;
+					creatureCounts[index] = slots[index].occupied ? slots[index].count : 0;
+					jstring name = env->NewStringUTF(slots[index].occupied ? slots[index].creatureName.c_str() : "");
+					env->SetObjectArrayElement(names, index, name);
+					env->DeleteLocalRef(name);
+				}
+				env->SetIntArrayRegion(ids, 0, size, creatureIds.data());
+				env->SetIntArrayRegion(counts, 0, size, creatureCounts.data());
+				env->DeleteLocalRef(stringClass);
+			};
+			jintArray garrisonIds, garrisonCounts, visitingIds, visitingCounts;
+			jobjectArray garrisonNames, visitingNames;
+			fill(management.garrisonSlots, garrisonIds, garrisonCounts, garrisonNames);
+			fill(management.visitingSlots, visitingIds, visitingCounts, visitingNames);
+			jstring heroName = env->NewStringUTF(management.visitingHeroName.c_str());
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), management.townId,
+				management.garrisonArmyId, management.visitingHeroId, heroName,
+				static_cast<jboolean>(management.locallyControllable), garrisonIds, garrisonCounts, garrisonNames,
+				visitingIds, visitingCounts, visitingNames);
+			env->DeleteLocalRef(heroName);
+			env->DeleteLocalRef(garrisonIds);
+			env->DeleteLocalRef(garrisonCounts);
+			env->DeleteLocalRef(garrisonNames);
+			env->DeleteLocalRef(visitingIds);
+			env->DeleteLocalRef(visitingCounts);
+			env->DeleteLocalRef(visitingNames);
 		}, true);
 }
 

@@ -11,6 +11,54 @@ TEST(ThorContextStoreTest, StartsUnknown)
 	EXPECT_EQ(context.contextId, "UNKNOWN");
 }
 
+TEST(ThorContextStoreTest, HeroManagementIsBoundToTheActiveHeroAndVisibleSlots)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::HERO_WINDOW;
+	context.windowSubjectId = 12;
+	context.enabledActionMask = thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK)
+		| thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
+	ThorHeroManagement hero;
+	hero.heroId = 12;
+	hero.heroName = std::string(160, 'H');
+	for(std::size_t index = 0; index < hero.armySlots.size(); ++index)
+	{
+		hero.armySlots[index].armyId = 12;
+		hero.armySlots[index].slot = static_cast<int>(index);
+	}
+	hero.armySlots[0].occupied = true;
+	hero.armySlots[0].creatureId = 4;
+	hero.armySlots[0].count = 9;
+	hero.armySlots[0].creatureName = std::string(160, 'C');
+	hero.artifactSlots.resize(THOR_HERO_MEETING_EQUIPPED_ARTIFACT_COUNT);
+	for(std::size_t index = 0; index < hero.artifactSlots.size(); ++index)
+	{
+		hero.artifactSlots[index].heroId = 12;
+		hero.artifactSlots[index].position = static_cast<int>(index);
+	}
+	hero.artifactSlots[0].occupied = true;
+	hero.artifactSlots[0].instanceId = 17;
+	hero.artifactSlots[0].artifactTypeId = 3;
+	hero.artifactSlots[0].name = std::string(160, 'A');
+	context.heroManagement = hero;
+	const auto published = store.publishNext(context);
+	ASSERT_TRUE(published.heroManagement);
+	EXPECT_EQ(published.heroManagement->heroId, 12);
+	EXPECT_LE(published.heroManagement->heroName.size(), 128);
+	EXPECT_LE(published.heroManagement->armySlots[0].creatureName.size(), 128);
+	EXPECT_LE(published.heroManagement->artifactSlots[0].name.size(), 128);
+	EXPECT_EQ(store.publishNext(context).revision, published.revision);
+	context.heroManagement->armySlots[0].count = 10;
+	EXPECT_EQ(store.publishNext(context).revision, published.revision + 1);
+
+	context.windowSubjectId = 13;
+	const auto invalid = store.publishNext(context);
+	EXPECT_FALSE(invalid.heroManagement);
+	EXPECT_EQ(invalid.enabledActionMask & (thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK)
+		| thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT)), 0);
+}
+
 TEST(ThorContextStoreTest, BuildConfirmationRetainsTownAndBuildingIdentity)
 {
 	ThorContextStore store;

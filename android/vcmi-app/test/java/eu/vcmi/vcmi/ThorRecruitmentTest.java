@@ -187,10 +187,10 @@ public class ThorRecruitmentTest
         final ThorVisualAssetReferences references = new ThorVisualAssetReferences();
         references.updateContext(recruitment.revision, ThorContextIds.TOWN_RECRUITMENT_QUICK, 0L);
         assertTrue(references.references(recruitment.revision, ThorVisualAssetKey.forCreature(21),
-                ThorHeroMeetingArmies.EMPTY, ThorHeroMeetingArtifacts.EMPTY, recruitment));
+                ThorHeroMeetingArmies.EMPTY, ThorHeroMeetingArtifacts.EMPTY, recruitment, ThorHeroManagement.EMPTY));
         assertFalse(references.references(recruitment.revision + 1, ThorVisualAssetKey.forCreature(21),
-                ThorHeroMeetingArmies.EMPTY, ThorHeroMeetingArtifacts.EMPTY, recruitment));
+                ThorHeroMeetingArmies.EMPTY, ThorHeroMeetingArtifacts.EMPTY, recruitment, ThorHeroManagement.EMPTY));
         assertFalse(references.references(recruitment.revision, ThorVisualAssetKey.forCreature(22),
-                ThorHeroMeetingArmies.EMPTY, ThorHeroMeetingArtifacts.EMPTY, recruitment));
+                ThorHeroMeetingArmies.EMPTY, ThorHeroMeetingArtifacts.EMPTY, recruitment, ThorHeroManagement.EMPTY));
     }
 }

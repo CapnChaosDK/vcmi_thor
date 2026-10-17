@@ -269,6 +269,26 @@ void HeroMovementController::requestMovementAbort()
 		endMove(currentlyMovingHero);
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool HeroMovementController::requestMovementStop()
+{
+	if(!canRequestMovementStop())
+		return false;
+	stoppingMovement = true;
+	return true;
+}
+
+bool HeroMovementController::canRequestMovementStop() const
+{
+	return duringMovement && !stoppingMovement && !waitingForQueryApplyReply;
+}
+
+bool HeroMovementController::isMovementStopping() const
+{
+	return duringMovement && stoppingMovement;
+}
+#endif
+
 void HeroMovementController::endMove(const CGHeroInstance * hero)
 {
 	assert(duringMovement == true);
@@ -348,6 +368,9 @@ bool HeroMovementController::canHeroStopAtNode(const CGPathNode & node) const
 void HeroMovementController::requestMovementStart(const CGHeroInstance * h, const CGPath & path)
 {
 	assert(duringMovement == false);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	++movementSequence;
+#endif
 
 	duringMovement = true;
 	currentlyMovingHero = h;

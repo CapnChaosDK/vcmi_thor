@@ -11,6 +11,7 @@
 
 #include "../../lib/thor/ThorAction.h"
 #include "../../lib/thor/ThorAdventureMap.h"
+#include "../../lib/thor/ThorAdventureRoute.h"
 #include "../../client/adventureMap/MinimapColor.h"
 
 #include <limits>
@@ -69,10 +70,10 @@ TEST(ThorContextAdventureMapTest, NavigationIdentifiersPreserveMaskAndFreeBudget
 	EXPECT_EQ(static_cast<int>(ThorAction::ADVENTURE_SET_MAP_LEVEL), 59);
 	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW), std::uint64_t{1} << 57);
 	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL), std::uint64_t{1} << 58);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 59);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 64);
 	EXPECT_LE(THOR_MAX_ACTION_ID, std::numeric_limits<std::uint64_t>::digits);
-	for(int id = 60; id <= 64; ++id)
-		EXPECT_FALSE(thorActionFromId(id));
+	for(int id = 63; id <= 64; ++id)
+		EXPECT_TRUE(thorActionFromId(id));
 	for(const auto action : {ThorAction::ADVENTURE_CENTER_VIEW, ThorAction::ADVENTURE_SET_MAP_LEVEL})
 	{
 		EXPECT_TRUE(isThorActionAllowedInAdventureMap(action));
@@ -492,4 +493,280 @@ TEST(ThorContextAdventureMapTest, StationaryPublicationLimitIsDeterministicAndDo
 	EXPECT_EQ(map.objects.back().id, THOR_MAP_MAX_OBJECTS - 1);
 	EXPECT_FALSE(appendThorMapObject(map, 0, {0, 0, 0}, 1, true, true, label));
 	EXPECT_EQ(labelsRead, THOR_MAP_MAX_OBJECTS);
+}
+
+namespace
+{
+	struct RouteCoordinate
+	{
+		int x, y, z;
+		bool operator==(const RouteCoordinate &) const = default;
+	};
+	struct RouteSourceNode
+	{
+		RouteCoordinate coord;
+		EPathfindingLayer layer = EPathfindingLayer::LAND;
+		int turns = 0;
+		int moveRemains = 0;
+		int action = 3; // NORMAL, matching CGPathNode's wire representation.
+		int accessible = 1;
+		float cost = 0;
+		int predecessor = 0; // Deliberately excluded from semantic path equality.
+	};
+	struct RouteSource
+	{
+		std::vector<RouteSourceNode> nodes;
+	};
+	RouteSource makeRouteSource()
+	{
+		// Native destination-first storage, with a later-turn subterranean teleport.
+		return {{{{9, 6, 1}, EPathfindingLayer::LAND, 1, 800, 7, 1, 1.25f},
+			{{2, 2, 0}, EPathfindingLayer::LAND, 0, 100, 3, 1, 0.75f},
+			{{1, 2, 0}, EPathfindingLayer::LAND, 0, 1000, 0, 1, 0}}};
+	}
+	ThorAdventureRoute makeRoute(ThorRouteState state = ThorRouteState::PREVIEW)
+	{
+		ThorAdventureRoute route;
+		route.heroId = 4;
+		route.state = state;
+		route.width = 12;
+		route.height = 8;
+		route.levels = 2;
+		route.movement = 1000;
+		route.limit = 1500;
+		thorRouteSetPath(route, makeRouteSource());
+		return route;
+	}
+}
+
+TEST(ThorContextAdventureRouteTest, ProjectionUsesNativeOrderingTurnsAndSpecialTransitionMetadata)
+{
+	const auto source = makeRouteSource();
+	auto route = makeRoute();
+	ASSERT_TRUE(route.valid());
+	ASSERT_EQ(route.nodes.size(), 3);
+	EXPECT_EQ(route.start, (ThorMapTile{1, 2, 0}));
+	EXPECT_EQ(route.destination, (ThorMapTile{9, 6, 1}));
+	EXPECT_EQ(route.nodes.front().tile, route.start);
+	EXPECT_EQ(route.nodes.back().tile, route.destination);
+	EXPECT_EQ(route.nodes[1].moveRemains, 100);
+	EXPECT_EQ(route.nodes.back().turns, 1);
+	EXPECT_EQ(route.nodes.back().action, 7);
+	EXPECT_EQ(route.arrivalTurns, 1);
+	EXPECT_EQ(route.arrivalRemains, 800);
+	EXPECT_EQ(route.totalNodes, 3);
+	EXPECT_EQ(source.nodes.front().coord, (RouteCoordinate{9, 6, 1}));
+	// Water budgets can exceed the current land limit, and are not geometric cost.
+	for(const auto layer : {EPathfindingLayer::SAIL, EPathfindingLayer::WATER,
+		EPathfindingLayer::AVIATE, EPathfindingLayer::AIR})
+	{
+		auto special = source;
+		special.nodes.front().layer = layer;
+		special.nodes.front().moveRemains = 4000;
+		special.nodes.front().action = 1;
+		ASSERT_TRUE(thorRouteSetPath(route, special));
+		EXPECT_TRUE(route.valid());
+		EXPECT_EQ(route.nodes.back().layer, layer);
+		EXPECT_EQ(route.arrivalRemains, 4000);
+	}
+}
+
+TEST(ThorContextAdventureRouteTest, FullSemanticComparisonDetectsChangedPathAndIgnoresHeapBookkeeping)
+{
+	const auto source = makeRouteSource();
+	EXPECT_TRUE(thorRoutePathsEqual(source, source));
+	auto changed = source;
+	changed.nodes[1].predecessor = 99;
+	EXPECT_TRUE(thorRoutePathsEqual(source, changed));
+	changed = source;
+	changed.nodes.pop_back();
+	EXPECT_FALSE(thorRoutePathsEqual(source, changed));
+	for(int field = 0; field < 8; ++field)
+	{
+		changed = source;
+		auto & node = changed.nodes[1];
+		switch(field)
+		{
+			case 0: ++node.coord.x; break;
+			case 1: ++node.coord.z; break;
+			case 2: node.layer = EPathfindingLayer::SAIL; break;
+			case 3: ++node.turns; break;
+			case 4: ++node.moveRemains; break;
+			case 5: ++node.action; break;
+			case 6: ++node.accessible; break;
+			case 7: node.cost += 0.125f; break;
+		}
+		EXPECT_FALSE(thorRoutePathsEqual(source, changed));
+	}
+}
+
+TEST(ThorContextAdventureRouteTest, EverySemanticCommandRequiresItsSpecificStateAndFlag)
+{
+	for(int state = 0; state <= static_cast<int>(ThorRouteState::CHANGED); ++state)
+	{
+		auto route = makeRoute(static_cast<ThorRouteState>(state));
+		for(int command = 1; command <= 4; ++command)
+		{
+			route.flags = 1 << (command - 1);
+			const bool expected = (command == 1 && (route.state == ThorRouteState::PREVIEW || route.state == ThorRouteState::CHANGED))
+				|| (command == 2 && (route.state == ThorRouteState::PREVIEW || route.state == ThorRouteState::CHANGED))
+				|| (command == 3 && (route.state == ThorRouteState::COMMITTED || route.state == ThorRouteState::READY_NEXT_TURN
+					|| route.state == ThorRouteState::PAUSED || route.state == ThorRouteState::INTERRUPTED))
+				|| (command == 4 && route.state == ThorRouteState::MOVING);
+			EXPECT_EQ(route.commandAllowed(command), expected) << state << ":" << command;
+		}
+	}
+	auto route = makeRoute();
+	route.flags = THOR_ROUTE_CAN_CONFIRM | THOR_ROUTE_CAN_CANCEL;
+	EXPECT_TRUE(route.commandAllowed(static_cast<int>(ThorRouteCommand::CONFIRM)));
+	EXPECT_TRUE(route.commandAllowed(static_cast<int>(ThorRouteCommand::CANCEL_PREVIEW)));
+	for(int invalid : {-1, 0, 5, 63, 64, std::numeric_limits<int>::max()})
+		EXPECT_FALSE(route.commandAllowed(invalid));
+	route.flags = 0;
+	EXPECT_FALSE(route.commandAllowed(static_cast<int>(ThorRouteCommand::CONFIRM)));
+	route.flags = THOR_ROUTE_CAN_CONFIRM | 64;
+	EXPECT_FALSE(route.valid());
+	EXPECT_FALSE(route.commandAllowed(static_cast<int>(ThorRouteCommand::CONFIRM)));
+}
+
+TEST(ThorContextAdventureRouteTest, NoHeroIdleUnreachableAndTerminalStatesRemainDistinct)
+{
+	ThorAdventureRoute route;
+	route.width = 12;
+	route.height = 8;
+	route.levels = 2;
+	ASSERT_TRUE(route.valid());
+	route.heroId = 4;
+	EXPECT_FALSE(route.valid());
+	route.state = ThorRouteState::IDLE;
+	route.start = {1, 2, 0};
+	EXPECT_TRUE(route.valid());
+	route.state = ThorRouteState::UNREACHABLE;
+	route.destination = {9, 6, 1};
+	route.flags = THOR_ROUTE_CAN_CANCEL;
+	EXPECT_TRUE(route.valid());
+	EXPECT_TRUE(route.commandAllowed(static_cast<int>(ThorRouteCommand::CANCEL_PREVIEW)));
+	EXPECT_FALSE(route.commandAllowed(static_cast<int>(ThorRouteCommand::CONFIRM)));
+	for(const auto state : {ThorRouteState::FINISHED, ThorRouteState::INTERRUPTED, ThorRouteState::CHANGED,
+		ThorRouteState::MOVING, ThorRouteState::STOPPING})
+	{
+		route.state = state;
+		route.flags = 0;
+		EXPECT_TRUE(route.valid()); // A last destination may explain the interruption.
+	}
+	route.state = ThorRouteState::PREVIEW;
+	EXPECT_FALSE(route.valid());
+	route.state = static_cast<ThorRouteState>(12);
+	EXPECT_FALSE(route.valid());
+	route.state = static_cast<ThorRouteState>(-1);
+	EXPECT_FALSE(route.valid());
+}
+
+TEST(ThorContextAdventureRouteTest, ArrivalAndProgressMetadataRejectMalformedOrInconsistentPayloads)
+{
+	const auto original = makeRoute();
+	for(int field = 0; field < 17; ++field)
+	{
+		auto route = original;
+		switch(field)
+		{
+			case 0: route.width = 513; break;
+			case 1: route.height = 0; break;
+			case 2: route.levels = 3; break;
+			case 3: route.heroId = -1; break;
+			case 4: route.start.x = -1; break;
+			case 5: route.destination.level = 2; break;
+			case 6: route.movement = -1; break;
+			case 7: route.limit = -1; break;
+			case 8: route.arrivalTurns = 255; break;
+			case 9: --route.arrivalRemains; break;
+			case 10: --route.totalNodes; break;
+			case 11: route.nodes[1].turns = 2; break;
+			case 12: route.nodes[1].moveRemains = -1; break;
+			case 13: route.nodes[1].layer = EPathfindingLayer::WRONG; break;
+			case 14: route.nodes[1].action = 10; break;
+			case 15: route.nodes.front().turns = 1; break;
+			case 16: ++route.nodes.back().tile.x; break;
+		}
+		EXPECT_FALSE(route.valid()) << field;
+	}
+}
+
+TEST(ThorContextAdventureRouteTest, TruncationIsExplicitPrefixWithFullNativeArrivalAndComparison)
+{
+	auto route = makeRoute();
+	route.width = 512;
+	route.height = 512;
+	RouteSource source;
+	for(int index = THOR_ROUTE_MAX_NODES + 1; index >= 0; --index)
+		source.nodes.push_back({{index % 512, index / 512, 0}, EPathfindingLayer::LAND,
+			index / 1000, 900 - index % 900, 3, 1, static_cast<float>(index)});
+	ASSERT_TRUE(thorRouteSetPath(route, source));
+	ASSERT_TRUE(route.valid());
+	EXPECT_EQ(route.nodes.size(), THOR_ROUTE_MAX_NODES);
+	EXPECT_EQ(route.totalNodes, THOR_ROUTE_MAX_NODES + 2);
+	EXPECT_TRUE(route.flags & THOR_ROUTE_TRUNCATED);
+	EXPECT_NE(route.nodes.back().tile, route.destination);
+	EXPECT_EQ(route.arrivalTurns, source.nodes.front().turns);
+	auto changedTail = source;
+	--changedTail.nodes.front().moveRemains;
+	EXPECT_FALSE(thorRoutePathsEqual(source, changedTail));
+	auto other = route;
+	ASSERT_TRUE(thorRouteSetPath(other, changedTail));
+	EXPECT_EQ(route.nodes, other.nodes); // Confirmation cannot compare just this prefix.
+	EXPECT_NE(route.arrivalRemains, other.arrivalRemains);
+	other = route;
+	other.flags &= ~THOR_ROUTE_TRUNCATED;
+	EXPECT_FALSE(other.valid());
+	other = route;
+	other.nodes.pop_back();
+	EXPECT_FALSE(other.valid());
+	other = makeRoute();
+	other.flags |= THOR_ROUTE_TRUNCATED;
+	EXPECT_FALSE(other.valid());
+	// Exactly the transport cap remains a complete route, including its endpoint.
+	source.nodes.erase(source.nodes.begin(), source.nodes.begin() + 2);
+	ASSERT_EQ(source.nodes.size(), THOR_ROUTE_MAX_NODES);
+	ASSERT_TRUE(thorRouteSetPath(route, source));
+	EXPECT_TRUE(route.valid());
+	EXPECT_FALSE(route.flags & THOR_ROUTE_TRUNCATED);
+	EXPECT_EQ(route.nodes.back().tile, route.destination);
+}
+
+TEST(ThorContextAdventureRouteTest, ProjectionRejectsInvalidPathsIncludingOmittedTailBeforePublication)
+{
+	const auto original = makeRouteSource();
+	for(int field = 0; field < 10; ++field)
+	{
+		auto source = original;
+		switch(field)
+		{
+			case 0: source.nodes.clear(); break;
+			case 1: source.nodes.resize(1); break;
+			case 2: source.nodes.front().coord.z = 2; break;
+			case 3: source.nodes.front().coord.x = 12; break;
+			case 4: source.nodes.front().turns = 255; break;
+			case 5: source.nodes[1].turns = 2; break;
+			case 6: source.nodes.front().moveRemains = -1; break;
+			case 7: source.nodes.front().layer = EPathfindingLayer::AUTO; break;
+			case 8: source.nodes.front().action = -1; break;
+			case 9: source.nodes.back().turns = 1; break;
+		}
+		auto route = makeRoute();
+		EXPECT_FALSE(thorRouteSetPath(route, source)) << field;
+		EXPECT_TRUE(route.nodes.empty());
+		EXPECT_EQ(route.totalNodes, 0);
+		EXPECT_EQ(route.arrivalTurns, -1);
+	}
+	auto route = makeRoute();
+	RouteSource excessive;
+	excessive.nodes.resize(route.width * route.height * route.levels * EPathfindingLayer::NUM_LAYERS + 1);
+	EXPECT_FALSE(thorRouteSetPath(route, excessive));
+	route.width = 512;
+	route.height = 512;
+	RouteSource tail;
+	tail.nodes.resize(THOR_ROUTE_MAX_NODES + 1, original.nodes.back());
+	tail.nodes.front().turns = 255;
+	EXPECT_FALSE(thorRouteSetPath(route, tail));
+	EXPECT_TRUE(route.nodes.empty());
 }
