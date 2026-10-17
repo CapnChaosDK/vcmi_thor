@@ -179,17 +179,21 @@ TEST(ThorActionMovementTest, StopUsesNativePendingPredicateDuringAnimationAndRej
 	live.moving = live.animating = live.canStop = true;
 	const ThorActionRequest stop{7, ThorAction::ADVENTURE_ROUTE_COMMAND, 4};
 	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::VALID);
+	// With the published origin still current, movement alone prevents planning.
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_PLAN_ROUTE, 0}, context, live),
+		ThorActionValidation::UNAVAILABLE);
 	// Cosmetic progress can advance within a coalesced publication window. Stop
 	// binds the selected hero/controller, while Confirm binds the exact origin.
 	++live.position.x;
 	live.movement = 50;
 	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::VALID);
+	// Planning remains origin-bound even though Stop tolerates coalesced progress.
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_PLAN_ROUTE, 0}, context, live),
+		ThorActionValidation::INVALID_TARGET);
 	// Ending and restarting the same hero's travel creates another native journey.
 	++live.movementSequence;
 	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::INVALID_TARGET);
 	--live.movementSequence;
-	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_PLAN_ROUTE, 0}, context, live),
-		ThorActionValidation::UNAVAILABLE);
 	live.canStop = false;
 	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::UNAVAILABLE);
 	context.adventureRoute->state = ThorRouteState::STOPPING;
