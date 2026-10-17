@@ -399,6 +399,39 @@ void CAndroidVMHelper::publishThorAdventureMap(std::uint64_t revision, const Tho
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorAdventureRoute(std::uint64_t revision,
+	const std::optional<ThorAdventureRoute> & route)
+{
+	const bool valid = route && route->valid();
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorAdventureRoute", "(J[I[I)V",
+		[&](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jintArray header = env->NewIntArray(valid ? 17 : 0);
+			jintArray nodes = env->NewIntArray(valid ? static_cast<jsize>(route->nodes.size() * 7) : 0);
+			if(header && nodes)
+			{
+				if(valid)
+				{
+					const auto & r = *route;
+					const jint values[] = {r.heroId, static_cast<int>(r.state), r.flags, r.width, r.height, r.levels,
+						r.start.x, r.start.y, r.start.level, r.destination.x, r.destination.y, r.destination.level,
+						r.movement, r.limit, r.arrivalTurns, r.arrivalRemains, r.totalNodes};
+					env->SetIntArrayRegion(header, 0, 17, values);
+					for(jsize i = 0; i < static_cast<jsize>(r.nodes.size()); ++i)
+					{
+						const auto & node = r.nodes[i];
+						const jint data[] = {node.tile.x, node.tile.y, node.tile.level, node.turns,
+							node.moveRemains, node.layer, node.action};
+						env->SetIntArrayRegion(nodes, i * 7, 7, data);
+					}
+				}
+				env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), header, nodes);
+			}
+			if(header) env->DeleteLocalRef(header);
+			if(nodes) env->DeleteLocalRef(nodes);
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorHeroMeetingArmies(std::uint64_t revision, const ThorHeroMeetingArmies & armies)
 {
 	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorHeroMeetingArmies",

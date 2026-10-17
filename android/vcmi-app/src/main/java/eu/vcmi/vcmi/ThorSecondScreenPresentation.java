@@ -96,6 +96,12 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.updateTowns(roster);
     }
 
+    void updateAdventureRoute(final ThorAdventureRoute route)
+    {
+        if (foundationView != null)
+            foundationView.updateAdventureRoute(route);
+    }
+
     void updateAdventureMap(final ThorAdventureMap map, final Bitmap bitmap)
     {
         if (foundationView != null)
@@ -245,6 +251,9 @@ final class ThorSecondScreenPresentation extends Presentation
         private long heroManagementTouchRevision;
         private int heroManagementPressedTab = -1;
         private int adventureTab;
+        private final android.graphics.DashPathEffect routePreviewEffect =
+                new android.graphics.DashPathEffect(new float[]{12f, 8f}, 0);
+        private ThorAdventureRoute adventureRoute = ThorAdventureRoute.EMPTY;
         private ThorAdventureMap adventureMap = ThorAdventureMap.EMPTY;
         private ThorMapInspection mapInspection;
         private ThorMapTransform inspectionTransform;
@@ -336,6 +345,7 @@ final class ThorSecondScreenPresentation extends Presentation
             townManagement = ThorTownManagement.EMPTY;
             mapGesture.cancel();
             inspectedCluster = -1;
+            adventureRoute = ThorAdventureRoute.EMPTY;
             adventureMap = ThorAdventureMap.EMPTY;
             adventureMapBitmap = null;
             heroMeetingArmies = ThorHeroMeetingArmies.EMPTY;
@@ -377,6 +387,7 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 mapGesture.cancel();
                 inspectedCluster = -1;
+                adventureRoute = ThorAdventureRoute.EMPTY;
                 adventureMap = ThorAdventureMap.EMPTY;
                 adventureMapBitmap = null;
                 cancelLobbyScenarioTouch();
@@ -716,6 +727,15 @@ final class ThorSecondScreenPresentation extends Presentation
             recruitment = publishedRecruitment;
             recruitmentPage = Math.min(recruitmentPage, recruitment.pageCount() - 1);
             recruitmentGesture.cancel();
+            invalidate();
+        }
+
+        void updateAdventureRoute(final ThorAdventureRoute route)
+        {
+            if (!ThorContextIds.ADVENTURE_MAP.equals(contextId)) return;
+            mapGesture.cancel();
+            adventureRoute = route;
+            setContentDescription(commandDeckDescription());
             invalidate();
         }
 
@@ -3939,7 +3959,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final RectF frame = adventureFrame();
             return new ThorMapTransform(adventureMap.width, adventureMap.height,
-                    frame.left + frame.width() * 0.035f, frame.top + frame.height() * 0.54f,
+                    frame.left + frame.width() * 0.035f, frame.top + frame.height() * 0.64f,
                     frame.right - frame.width() * 0.035f, frame.bottom - frame.height() * 0.06f,
                     mapViewState.zoom, mapViewState.centerX, mapViewState.centerY);
         }
@@ -3949,7 +3969,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final int tab = tabAt(x, y);
             if (tab >= 0)
                 return 10 + tab;
-            for (int control = 0; control < 8; ++control)
+            for (final int control : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 21, 22, 23, 24})
                 if (mapControlEnabled(control) && mapControlBounds(control).contains(x, y))
                     return control;
             return -1;
@@ -3959,10 +3979,13 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (!adventureMap.valid())
                 return false;
-            if (control == 7 || control < 3)
-                return true;
-            if (control < 5)
-                return mapViewState.zoom > 1;
+            if (control >= 20 && control <= 23)
+                return adventureRoute.fits(adventureMap) && adventureRoute.commandForControl(control, enabledActionMask) != 0;
+            if (control == 24)
+                return adventureRoute.fits(adventureMap) && adventureRoute.allows(ThorAdventureRoute.CAN_CONTINUE)
+                        && isActionEnabled(ThorActionIds.MOVE_HERO);
+            if (control == 8 || control == 3 || control == 7 || control < 3) return true;
+            if (control == 4) return mapViewState.zoom > 1;
             return adventureMap.levels == 2 && adventureMap.level != control - 5
                     && isActionEnabled(ThorActionIds.ADVENTURE_SET_MAP_LEVEL);
         }
@@ -3979,13 +4002,15 @@ final class ThorSecondScreenPresentation extends Presentation
                         frame.centerY(), frame.width() * 0.8f, 24f * density);
                 return;
             }
-            for (int control = 0; control < (adventureMap.levels == 2 ? 7 : 5); ++control)
+            for (final int control : new int[]{0, 1, 2, 3, 4, 8, 5, 6, 20, 21, 22, 23, 24})
             {
+                if ((control == 5 || control == 6) && adventureMap.levels != 2) continue;
                 final RectF box = mapControlBounds(control);
                 final boolean selected = control == 0 && mapViewState.zoom == 1
                         || control == 1 && mapViewState.zoom == 2 || control == 2 && mapViewState.zoom == 4
-                        || control == 3 && !mapViewState.pan || control == 4 && mapViewState.pan
-                        || control >= 5 && adventureMap.level == control - 5;
+                        || control == 3 && !mapViewState.pan && !mapViewState.plan || control == 4 && mapViewState.pan
+                        || control == 8 && mapViewState.plan
+                        || (control == 5 || control == 6) && adventureMap.level == control - 5;
                 paint.setColor(selected ? PARCHMENT_DARK : STONE_DARK);
                 canvas.drawRoundRect(box, adventureBevel(), adventureBevel(), paint);
                 paint.setColor(mapControlEnabled(control) || selected ? TEXT : STONE_LIGHT);
@@ -4004,6 +4029,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     R.string.thor_map_filter_travel, R.string.thor_map_filter_sites};
             drawFittedText(canvas, getContext().getString(filterLabels[mapViewState.categoryFilter]),
                     filterBox.centerX(), filterBox.centerY(), filterBox.width() * 0.9f, 14f * density);
+            drawRouteStatus(canvas, frame, density);
             final ThorMapTransform transform = mapTransform();
             canvas.save();
             canvas.clipRect(transform.left, transform.top, transform.right, transform.bottom);
@@ -4040,6 +4066,7 @@ final class ThorSecondScreenPresentation extends Presentation
                             radius * 2.5f, radius * 1.8f);
                 }
             }
+            drawAdventureRoute(canvas, transform, density);
             for (int i = 0; i < adventureMap.markers.length; i += ThorAdventureMap.MARKER_FIELDS)
             {
                 if (adventureMap.markers[i + 4] != adventureMap.level)
@@ -4071,6 +4098,106 @@ final class ThorSecondScreenPresentation extends Presentation
                         ? R.string.thor_map_inspection_limited : R.string.thor_map_inspection_hint);
             drawEllipsizedText(canvas, info, frame.centerX(), frame.top + frame.height() * 0.34f,
                     frame.width() * 0.93f, 16f * density);
+        }
+
+        private String routeStatusText()
+        {
+            if (!adventureRoute.fits(adventureMap)) return getContext().getString(R.string.thor_route_no_hero);
+            final int[] labels = {R.string.thor_route_no_hero, R.string.thor_route_idle,
+                    R.string.thor_route_preview, R.string.thor_route_unreachable, R.string.thor_route_committed,
+                    R.string.thor_route_moving, R.string.thor_route_stopping, R.string.thor_route_next_turn,
+                    R.string.thor_route_paused, R.string.thor_route_finished, R.string.thor_route_interrupted,
+                    R.string.thor_route_changed};
+            return getContext().getString(labels[adventureRoute.value(1)])
+                    + (adventureRoute.allows(ThorAdventureRoute.TRUNCATED)
+                        ? getContext().getString(R.string.thor_route_truncated) : "");
+        }
+
+        private String routePositionText()
+        {
+            if (!adventureRoute.fits(adventureMap) || adventureRoute.value(0) < 0) return "";
+            final String currentLevel = getContext().getString(adventureRoute.value(8) == 1
+                    ? R.string.thor_map_underground : R.string.thor_map_surface);
+            return getContext().getString(R.string.thor_route_movement, adventureRoute.value(6), adventureRoute.value(7),
+                    currentLevel, adventureRoute.value(12), adventureRoute.value(13));
+        }
+
+        private String routeDestinationText()
+        {
+            if (!adventureRoute.fits(adventureMap) || adventureRoute.value(9) < 0) return "";
+            final String destinationLevel = getContext().getString(adventureRoute.value(11) == 1
+                    ? R.string.thor_map_underground : R.string.thor_map_surface);
+            return getContext().getString(R.string.thor_route_destination,
+                    adventureRoute.value(9), adventureRoute.value(10), destinationLevel)
+                    + (adventureRoute.value(14) >= 0
+                        ? " • " + getContext().getString(R.string.thor_route_arrival,
+                            adventureRoute.value(14), adventureRoute.value(15)) : "");
+        }
+
+        private String routeMetadataText()
+        {
+            return routePositionText() + " • " + routeDestinationText();
+        }
+
+        private void drawRouteStatus(final Canvas canvas, final RectF frame, final float density)
+        {
+            paint.setColor(TEXT);
+            paint.setTextAlign(Paint.Align.CENTER);
+            drawFittedText(canvas, routeStatusText(), frame.centerX(), frame.top + frame.height() * 0.565f,
+                    frame.width() * 0.93f, 17f * density);
+            drawFittedText(canvas, routePositionText(), frame.centerX(), frame.top + frame.height() * 0.594f,
+                    frame.width() * 0.93f, 15f * density);
+            drawFittedText(canvas, routeDestinationText(), frame.centerX(), frame.top + frame.height() * 0.621f,
+                    frame.width() * 0.93f, 14f * density);
+            drawFittedText(canvas, getContext().getString(R.string.thor_route_legend), frame.centerX(),
+                    frame.top + frame.height() * 0.963f, frame.width() * 0.93f, 12f * density);
+        }
+
+        private void drawAdventureRoute(final Canvas canvas, final ThorMapTransform transform, final float density)
+        {
+            if (!adventureRoute.fits(adventureMap)) return;
+            final boolean preview = adventureRoute.preview();
+            final float radius = Math.max(4f, 3f * density);
+            for (int i = 0; i < adventureRoute.size(); ++i)
+            {
+                if (adventureRoute.node(i, 2) != adventureMap.level) continue;
+                final float x = transform.screenX(adventureRoute.node(i, 0) + 0.5f);
+                final float y = transform.screenY(adventureRoute.node(i, 1) + 0.5f);
+                paint.setColor(adventureRoute.node(i, 3) > 0 ? Color.LTGRAY
+                        : preview ? Color.CYAN : Color.rgb(100, 245, 100));
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(Math.max(3f, 2f * density));
+                if (adventureRoute.connects(i, adventureMap.level))
+                {
+                    if (preview) paint.setPathEffect(routePreviewEffect);
+                    canvas.drawLine(transform.screenX(adventureRoute.node(i - 1, 0) + 0.5f),
+                            transform.screenY(adventureRoute.node(i - 1, 1) + 0.5f), x, y, paint);
+                    paint.setPathEffect(null);
+                }
+                // Every discontinuity is explicit, including portal and map-level endpoints.
+                if (i == 0 || !adventureRoute.connects(i, adventureMap.level)
+                        || i + 1 == adventureRoute.size() || !adventureRoute.connects(i + 1, adventureMap.level))
+                    canvas.drawRect(x - radius, y - radius, x + radius, y + radius, paint);
+                if (i > 0 && adventureRoute.node(i, 3) != adventureRoute.node(i - 1, 3))
+                {
+                    paint.setStyle(Paint.Style.FILL);
+                    canvas.drawCircle(x, y, radius * 1.5f, paint);
+                    paint.setColor(Color.BLACK);
+                    drawFittedText(canvas, "+" + adventureRoute.node(i, 3), x, y, radius * 3f, radius * 2f);
+                }
+            }
+            if (adventureRoute.value(9) >= 0 && adventureRoute.value(11) == adventureMap.level)
+            {
+                final float x = transform.screenX(adventureRoute.value(9) + 0.5f);
+                final float y = transform.screenY(adventureRoute.value(10) + 0.5f);
+                paint.setColor(preview ? Color.CYAN : Color.rgb(100, 245, 100));
+                paint.setStyle(Paint.Style.STROKE);
+                canvas.drawCircle(x, y, radius * 2f, paint);
+                canvas.drawLine(x - radius * 3f, y, x + radius * 3f, y, paint);
+                canvas.drawLine(x, y - radius * 3f, x, y + radius * 3f, paint);
+            }
+            paint.setStyle(Paint.Style.FILL);
+            paint.setPathEffect(null);
         }
 
         private ThorMapInspection inspection(final ThorMapTransform transform, final float density)
@@ -4144,13 +4271,18 @@ final class ThorSecondScreenPresentation extends Presentation
                     event.getPointerId(0), event.getPointerCount(), adventureMap.level, mapViewState.modeKey(),
                     sessionValidity != null && sessionValidity.isCurrent(presentationSessionId),
                     event.getX(), event.getY(), mapControlAt(event.getX(), event.getY()), adventureMap,
-                    mapViewState.pan, enabledActionMask, Math.max(10f, 10f * getResources().getDisplayMetrics().density), touchSlop);
-            if (release.localControl >= 10)
+                    mapViewState.pan, mapViewState.plan, adventureRoute, enabledActionMask,
+                    Math.max(10f, 10f * getResources().getDisplayMetrics().density), touchSlop,
+                    event.getEventTime() - event.getDownTime());
+            if (release.localControl >= 10 && release.localControl <= 13)
                 adventureTab = release.localControl - 10;
             else if (release.localControl >= 0 && release.localControl < 3)
                 mapViewState.setZoom(release.localControl == 0 ? 1 : (release.localControl == 1 ? 2 : 4));
-            else if (release.localControl >= 3 && release.localControl < 5)
+            else if (release.localControl == 3 || release.localControl == 4 || release.localControl == 8)
+            {
                 mapViewState.pan = release.localControl == 4;
+                mapViewState.plan = release.localControl == 8;
+            }
             else if (release.localControl == 7)
             {
                 mapViewState.categoryFilter = (mapViewState.categoryFilter + 1) % 6;
@@ -4937,10 +5069,13 @@ final class ThorSecondScreenPresentation extends Presentation
                                 : R.string.thor_map_accessibility) + ". "
                         + getContext().getString(mapViewState.zoom == 1 ? R.string.thor_map_fit
                                 : mapViewState.zoom == 2 ? R.string.thor_map_detail_two : R.string.thor_map_detail_four)
-                        + ". " + getContext().getString(mapViewState.pan ? R.string.thor_map_pan : R.string.thor_map_navigate)
+                        + ". " + getContext().getString(mapViewState.plan ? R.string.thor_map_plan
+                                : mapViewState.pan ? R.string.thor_map_pan : R.string.thor_map_navigate)
                         + ". " + getContext().getString(adventureMap.level == 1
                                 ? R.string.thor_map_underground : R.string.thor_map_surface)
                         + ". " + getContext().getString(R.string.thor_map_inspection_hint)
+                        + ". " + routeStatusText() + ". " + routeMetadataText()
+                        + ". " + getContext().getString(R.string.thor_route_controls_accessibility)
                         + (mapInspection != null && inspectedCluster >= 0 && inspectedCluster < mapInspection.size
                             ? ". " + (mapInspection.count[inspectedCluster] == 1
                                 ? adventureMap.objectLabels[mapInspection.row[inspectedCluster]]

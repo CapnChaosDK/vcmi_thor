@@ -161,6 +161,17 @@ public class NativeMethods
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void publishThorAdventureRoute(final long revision, final int[] header, final int[] nodes)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity)) return;
+        // Validate bounds before cloning or scheduling; invalid/empty publication withdraws the route.
+        final ThorAdventureRoute route = ThorAdventureRoute.copyOf(header, nodes);
+        ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorAdventureRoute(revision, route));
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
     public static void publishThorAdventureMap(final long revision, final long contentRevision,
             final int width, final int height, final int level, final int levels,
             final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers,

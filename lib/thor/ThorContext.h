@@ -13,6 +13,7 @@
 
 #include "../constants/NumericConstants.h"
 #include "ThorAdventureMap.h"
+#include "ThorAdventureRoute.h"
 
 namespace ThorContextIds
 {
@@ -374,6 +375,8 @@ struct DLL_LINKAGE ThorContextRecord
 	const void * nativeOwnerToken = nullptr;
 	const void * nativeParentToken = nullptr;
 	std::optional<ThorAdventureMap> adventureMap;
+	std::optional<ThorAdventureRoute> adventureRoute;
+	std::uint64_t adventureMovementSequence = 0; // Native only, revision-bound controller journey.
 };
 
 /// Thread-safe latest-record handoff. Consumers must discard revisions older than their last render.

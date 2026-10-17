@@ -222,6 +222,17 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 		return;
 
 	const auto * hero = GAME->interface()->localState->getCurrentHero();
+	const auto now = std::chrono::steady_clock::now();
+	// Movement can advance on every frame. Bound JNI traffic and give release-only
+	// Stop gestures a stable rendered revision, while commands/lifecycle remain immediate.
+	if(!invalidateActions && hero && thorMovementAuthority() && !GAME->interface()->thorMovementBlocked()
+		&& GAME->interface()->isHeroMoving() && previous.adventureRoute
+		&& previous.adventureMovementSequence == GAME->interface()->getThorMovementSequence()
+		&& previous.adventureRoute->heroId == hero->id.getNum()
+		&& previous.adventureRoute->state == (GAME->interface()->isThorMovementStopping()
+			? ThorRouteState::STOPPING : ThorRouteState::MOVING)
+		&& now - thorActionPublication < std::chrono::milliseconds(250))
+		return;
 	ThorContextRecord context = previous;
 	context.enabledActionMask = shortcuts->getThorActionMask();
 	context.activeActionMask = shortcuts->getThorActiveActionMask();
@@ -230,6 +241,24 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	context.heroes = shortcuts->getThorHeroes();
 	context.towns = shortcuts->getThorTowns();
 	context.adventureMap = buildThorAdventureMap();
+	context.adventureRoute = buildThorAdventureRoute();
+	context.adventureMovementSequence = GAME->interface()->getThorMovementSequence();
+	const bool moving = GAME->interface()->isHeroMoving();
+	const bool blocked = GAME->interface()->thorMovementBlocked();
+	// Thor is consumed before SDL's capturedAllEvents gate. Keep conflicting lower
+	// commands out of that otherwise blocked input path while a move is in flight.
+	if(moving || blocked || GAME->map().hasOngoingAnimations() || !thorMovementAuthority())
+		context.enabledActionMask = 0;
+	if(context.adventureRoute)
+	{
+		const auto & route = *context.adventureRoute;
+		if(route.heroId >= 0 && !moving && !blocked && !GAME->map().hasOngoingAnimations())
+			context.enabledActionMask |= thorActionMask(ThorAction::ADVENTURE_PLAN_ROUTE);
+		if(route.flags & (THOR_ROUTE_CAN_CONFIRM | THOR_ROUTE_CAN_CANCEL | THOR_ROUTE_CAN_CLEAR | THOR_ROUTE_CAN_STOP))
+			context.enabledActionMask |= thorActionMask(ThorAction::ADVENTURE_ROUTE_COMMAND);
+		if(!(route.flags & THOR_ROUTE_CAN_CONTINUE))
+			context.enabledActionMask &= ~thorActionMask(ThorAction::MOVE_HERO);
+	}
 	if(context.adventureMap && shortcuts->optionInMapView() && GAME->interface()->makingTurn
 		&& currentPlayerID == GAME->interface()->playerID && !settings["session"]["spectate"].Bool())
 	{
@@ -244,6 +273,7 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	context = thorContextStore().publishNext(std::move(context));
 	if(context.revision == previous.revision)
 		return;
+	thorActionPublication = now;
 
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status, {},
 		context.heroPortraitAssetKey);
@@ -251,6 +281,7 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 	publishThorAdventureMap(context, true);
+	CAndroidVMHelper().publishThorAdventureRoute(context.revision, context.adventureRoute);
 	publishThorVisualAssets(context);
 #else
 	(void)invalidateActions;
@@ -258,6 +289,281 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 }
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool AdventureMapInterface::thorMovementAuthority() const
+{
+	return isActive() && ENGINE->windows().topWindow<AdventureMapInterface>().get() == this
+		&& shortcuts->optionInMapView() && GAME->interface()->makingTurn
+		&& currentPlayerID == GAME->interface()->playerID && !settings["session"]["spectate"].Bool();
+}
+
+const CGHeroInstance * AdventureMapInterface::thorSelectedHero() const
+{
+	const auto * selected = GAME->interface()->localState->getCurrentHero();
+	if(!selected)
+		return nullptr;
+	const auto * hero = GAME->interface()->cb->getHero(selected->id);
+	const auto & roster = GAME->interface()->localState->getWanderingHeroes();
+	if(hero != selected || hero->tempOwner != GAME->interface()->playerID
+		|| roster.size() > THOR_MAX_HEROES || std::find(roster.begin(), roster.end(), hero) == roster.end())
+		return nullptr;
+	return hero;
+}
+
+void AdventureMapInterface::clearThorPreview()
+{
+	if(thorRoute && (thorRoute->state == ThorRouteState::PREVIEW || thorRoute->state == ThorRouteState::UNREACHABLE
+		|| thorRoute->state == ThorRouteState::CHANGED))
+		thorRoute.reset();
+	thorPreview.reset();
+	thorPreviewHeroId = -1;
+	thorPreviewDestination = {-1, -1, -1};
+	thorPreviewChanged = false;
+}
+
+void AdventureMapInterface::planThorRoute(const CGHeroInstance * hero, ThorMapTile destination, bool changed)
+{
+	clearThorPreview();
+	thorPreviewHeroId = hero->id.getNum();
+	thorPreviewDestination = destination;
+	thorPreviewChanged = changed;
+	thorPreviewGeneration = GAME->interface()->getThorPathsGeneration();
+	thorPreviewSavedRevision = GAME->interface()->localState->getThorPathRevision();
+	thorPreviewBonusVersion = hero->getTreeVersion();
+	const int3 tile(destination.x, destination.y, destination.level);
+	if(!GAME->interface()->cb->isVisible(tile))
+		return;
+	EPathfindingLayer layer = EPathfindingLayer::AUTO;
+	if(hero->inBoat() && hero->getBoat()->layer == EPathfindingLayer::AVIATE)
+		layer = EPathfindingLayer::AVIATE;
+	CGPath path;
+	if(GAME->interface()->getPathsInfo(hero)->getPath(path, tile, layer) && path.hasNextNode())
+		thorPreview = std::move(path);
+}
+
+std::optional<ThorAdventureRoute> AdventureMapInterface::buildThorAdventureRoute()
+{
+	if(!thorMap || !thorMovementAuthority())
+	{
+		clearThorPreview();
+		return std::nullopt;
+	}
+	auto * player = GAME->interface();
+	auto & local = *player->localState;
+	const auto * hero = thorSelectedHero();
+	ThorAdventureRoute route;
+	route.width = thorMap->width;
+	route.height = thorMap->height;
+	route.levels = thorMap->levels;
+	if(!hero)
+	{
+		clearThorPreview();
+		thorRoute = route;
+		return route;
+	}
+	route.heroId = hero->id.getNum();
+	const auto position = hero->visitablePos();
+	route.start = {position.x, position.y, position.z};
+	route.movement = hero->movementPointsRemaining();
+	route.limit = hero->movementPointsLimit();
+	route.state = ThorRouteState::IDLE;
+	const bool moving = player->isHeroMoving();
+	const bool busy = player->thorMovementBlocked();
+	const bool idle = !moving && !busy && !GAME->map().hasOngoingAnimations();
+	if(thorPreviewHeroId != route.heroId || moving || busy
+		|| (thorPreviewHeroId >= 0 && thorPreviewSavedRevision != local.getThorPathRevision()))
+		clearThorPreview();
+	if(idle && thorPreviewHeroId >= 0
+		&& (thorPreviewGeneration != player->getThorPathsGeneration()
+			|| thorPreviewBonusVersion != hero->getTreeVersion()
+			|| (thorPreview && (thorPreview->startPos() != position
+				|| thorPreview->currNode().moveRemains != route.movement))))
+		planThorRoute(hero, thorPreviewDestination, true);
+	if(thorPreviewHeroId >= 0)
+	{
+		route.destination = thorPreviewDestination;
+		route.state = ThorRouteState::UNREACHABLE;
+		route.flags = idle ? THOR_ROUTE_CAN_CANCEL : 0;
+		if(thorPreview && thorRouteSetPath(route, *thorPreview))
+		{
+			route.state = thorPreviewChanged ? ThorRouteState::CHANGED : ThorRouteState::PREVIEW;
+			if(idle)
+				route.flags |= THOR_ROUTE_CAN_CONFIRM;
+		}
+	}
+	else
+	{
+		// Refresh saved native paths only after pathfinder invalidation/bonus or turn
+		// changes. In-flight movement owns and advances its path without recalculation.
+		if(idle && local.hasPath(hero) && (thorVerifiedHeroId != route.heroId
+			|| thorVerifiedGeneration != player->getThorPathsGeneration()
+			|| thorVerifiedBonusVersion != hero->getTreeVersion()
+			|| (thorRoute && thorRoute->heroId == route.heroId && thorRoute->movement != route.movement)))
+			local.verifyPath(hero);
+		if(idle)
+		{
+			thorVerifiedHeroId = route.heroId;
+			thorVerifiedGeneration = player->getThorPathsGeneration();
+			thorVerifiedBonusVersion = hero->getTreeVersion();
+		}
+		if(local.hasPath(hero) && thorRouteSetPath(route, local.getPath(hero)))
+		{
+			route.state = moving ? (player->isThorMovementStopping() ? ThorRouteState::STOPPING : ThorRouteState::MOVING)
+				: (local.getPath(hero).nextNode().turns > 0 ? ThorRouteState::READY_NEXT_TURN : ThorRouteState::COMMITTED);
+			if(!moving && thorRoute && thorRoute->heroId == route.heroId
+				&& (thorRoute->state == ThorRouteState::MOVING || thorRoute->state == ThorRouteState::STOPPING
+					|| thorRoute->state == ThorRouteState::PAUSED) && local.getPath(hero).nextNode().turns == 0)
+				route.state = ThorRouteState::PAUSED;
+			if(idle)
+			{
+				route.flags |= THOR_ROUTE_CAN_CLEAR;
+				if(shortcuts->optionHeroCanMove())
+					route.flags |= THOR_ROUTE_CAN_CONTINUE;
+			}
+			if(!busy && player->canThorMovementStop())
+				route.flags |= THOR_ROUTE_CAN_STOP;
+		}
+		else if(thorRoute && thorRoute->heroId == route.heroId
+			&& thorMapTileValid(thorRoute->destination, route.width, route.height, route.levels))
+		{
+			route.destination = thorRoute->destination;
+			route.state = route.start == route.destination ? ThorRouteState::FINISHED : ThorRouteState::INTERRUPTED;
+			// The final tile may have consumed the path before its server acknowledgement.
+			if(moving)
+			{
+				route.state = player->isThorMovementStopping() ? ThorRouteState::STOPPING : ThorRouteState::MOVING;
+				if(!busy && player->canThorMovementStop())
+					route.flags = THOR_ROUTE_CAN_STOP;
+			}
+		}
+	}
+	if(!route.valid())
+		return std::nullopt;
+	thorRoute = route;
+	return route;
+}
+
+bool AdventureMapInterface::executeThorMovementAction(const ThorActionRequest & request)
+{
+	const auto context = thorContextStore().snapshot();
+	if(validateThorActionRequest(request, context) != ThorActionValidation::VALID
+		|| !thorMovementAuthority())
+		return false;
+	const auto * hero = thorSelectedHero();
+	if(!hero)
+		return false;
+	auto * player = GAME->interface();
+	auto & local = *player->localState;
+	// Preserve the established Actions-tab continuation on maps outside the lower
+	// raster/route transport bounds; it still uses native ownership and predicates.
+	if(request.action == ThorAction::MOVE_HERO && !context.adventureRoute)
+	{
+		if(player->isHeroMoving() || player->thorMovementBlocked() || GAME->map().hasOngoingAnimations()
+			|| !local.hasPath(hero))
+			return false;
+		local.verifyPath(hero);
+		if(!local.hasPath(hero) || !shortcuts->optionHeroCanMove())
+		{
+			updateThorActionState(true);
+			return false;
+		}
+		return shortcuts->executeThorAction(ThorAction::MOVE_HERO);
+	}
+	if(!context.adventureMap || !context.adventureRoute || hero->id.getNum() != context.adventureRoute->heroId)
+		return false;
+	const auto size = player->cb->getMapSize();
+	const auto position = hero->visitablePos();
+	ThorAdventureMovementAuthority authority;
+	authority.active = isActive();
+	authority.top = ENGINE->windows().topWindow<AdventureMapInterface>().get() == this;
+	authority.makingTurn = player->makingTurn && shortcuts->optionInMapView();
+	authority.localPlayer = currentPlayerID == player->playerID;
+	authority.spectator = settings["session"]["spectate"].Bool();
+	authority.ownedWanderingHero = true; // Re-resolved above, never inferred from Java.
+	authority.dialogBusy = player->thorMovementBlocked();
+	authority.moving = player->isHeroMoving();
+	authority.animating = GAME->map().hasOngoingAnimations();
+	authority.canStop = player->canThorMovementStop();
+	authority.heroId = hero->id.getNum();
+	authority.width = size.x;
+	authority.height = size.y;
+	authority.levels = size.z;
+	authority.currentLevel = mapViewCenter.z;
+	authority.movement = hero->movementPointsRemaining();
+	authority.position = {position.x, position.y, position.z};
+	authority.movementSequence = player->getThorMovementSequence();
+	if(validateThorAdventureMovementRequest(request, context, authority) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::ADVENTURE_ROUTE_COMMAND
+		&& request.targetId == static_cast<int>(ThorRouteCommand::STOP))
+		return !player->thorMovementBlocked() && player->requestThorMovementStop();
+	if(player->isHeroMoving() || player->thorMovementBlocked() || GAME->map().hasOngoingAnimations())
+		return false;
+	if(request.action == ThorAction::ADVENTURE_PLAN_ROUTE)
+	{
+		const auto destination = decodeThorMapTile(request.targetId);
+		if(!destination || !thorMapTileValid(*destination, size.x, size.y, size.z)
+			|| destination->level != mapViewCenter.z)
+			return false;
+		planThorRoute(hero, *destination);
+		return true;
+	}
+	if(request.action == ThorAction::MOVE_HERO)
+	{
+		if(thorPreviewHeroId >= 0 || !local.hasPath(hero))
+			return false;
+		local.verifyPath(hero);
+		if(!local.hasPath(hero) || !shortcuts->optionHeroCanMove())
+		{
+			updateThorActionState(true);
+			return false;
+		}
+		return shortcuts->executeThorAction(ThorAction::MOVE_HERO);
+	}
+	if(request.action != ThorAction::ADVENTURE_ROUTE_COMMAND)
+		return false;
+	switch(static_cast<ThorRouteCommand>(request.targetId))
+	{
+	case ThorRouteCommand::CANCEL_PREVIEW:
+		clearThorPreview();
+		return true;
+	case ThorRouteCommand::CLEAR_ROUTE:
+		if(thorPreviewHeroId >= 0 || !local.hasPath(hero))
+			return false;
+		local.erasePath(hero);
+		thorRoute.reset();
+		return true;
+	case ThorRouteCommand::CONFIRM:
+	{
+		if(!thorPreview || thorPreviewHeroId != hero->id.getNum())
+			return false;
+		CGPath fresh;
+		const auto destination = thorPreviewDestination;
+		const bool matches = thorPreview->startPos() == hero->visitablePos()
+			&& thorPreviewSavedRevision == local.getThorPathRevision()
+			&& player->cb->isVisible(int3(destination.x, destination.y, destination.level))
+			&& player->getPathsInfo(hero)->getPath(fresh,
+				int3(destination.x, destination.y, destination.level), thorPreview->endLayer())
+			&& fresh.hasNextNode() && thorRoutePathsEqual(*thorPreview, fresh);
+		if(!matches)
+		{
+			planThorRoute(hero, destination, true);
+			updateThorActionState(true);
+			return false;
+		}
+		// Commit only this freshly revalidated route. Future-turn starts are retained,
+		// never passed to the controller (which requires nextNode().turns == 0).
+		clearThorPreview();
+		local.setPath(hero, fresh);
+		onHeroChanged(hero);
+		if(fresh.nextNode().turns == 0)
+			player->moveHero(hero, local.getPath(hero));
+		return true;
+	}
+	default:
+		return false;
+	}
+}
+
 std::optional<ThorAdventureMap> AdventureMapInterface::buildThorAdventureMap()
 {
 	const auto size = GAME->interface()->cb->getMapSize();
@@ -407,7 +713,10 @@ void AdventureMapInterface::deactivate()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(wasActive)
+	{
+		clearThorPreview();
 		publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	}
 #endif
 }
 

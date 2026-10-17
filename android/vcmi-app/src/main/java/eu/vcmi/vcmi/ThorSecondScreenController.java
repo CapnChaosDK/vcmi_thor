@@ -41,6 +41,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private final ThorVisualAssetCache<Bitmap> visualAssets = new ThorVisualAssetCache<>();
     private final ThorVisualAssetReferences visualAssetReferences = new ThorVisualAssetReferences();
     private int adventureTab;
+    private final ThorAdventureRouteState adventureRouteState = new ThorAdventureRouteState();
     private ThorAdventureMap adventureMap = ThorAdventureMap.EMPTY;
     private Bitmap adventureMapBitmap;
     private long adventureMapRevision;
@@ -149,6 +150,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextRevision = revision;
         contextId = id == null || id.isEmpty() ? ThorContextIds.UNKNOWN : id;
         hapticState.updateContext(revision, contextId);
+        adventureRouteState.updateContext(revision, contextId);
         heroPortraitAssetKey = (ThorContextIds.ADVENTURE_MAP.equals(contextId)
                 || ThorContextIds.HERO_WINDOW.equals(contextId))
                 && ThorVisualAssetKey.isHeroPortrait(publishedHeroPortraitAssetKey)
@@ -194,6 +196,12 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey,
                     contextDetails,
                     enabledActionMask, activeActionMask);
+    }
+
+    void publishAdventureRoute(final long revision, final ThorAdventureRoute route)
+    {
+        if (adventureRouteState.publish(revision, route) && presentation != null)
+            presentation.updateAdventureRoute(adventureRouteState.current());
     }
 
     void publishAdventureMap(final long revision, final long contentRevision,
@@ -416,6 +424,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     enabledActionMask, activeActionMask);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
+            newPresentation.updateAdventureRoute(adventureRouteState.current());
             newPresentation.updateAdventureMap(adventureMapRevision == contextRevision ? adventureMap : ThorAdventureMap.EMPTY,
                     adventureMapRevision == contextRevision ? adventureMapBitmap : null);
             newPresentation.updateBrowser(browser);

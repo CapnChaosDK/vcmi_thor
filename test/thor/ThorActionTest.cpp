@@ -5,6 +5,228 @@
 #include <limits>
 #include <thread>
 
+namespace
+{
+	ThorContextRecord movementContext()
+	{
+		ThorContextRecord context;
+		context.revision = 7;
+		context.contextId = ThorContextIds::ADVENTURE_MAP;
+		context.selectedHeroId = 4;
+		context.heroes = {{4, "Hero", 100, 200, true, false}};
+		context.enabledActionMask = thorActionMask(ThorAction::ADVENTURE_PLAN_ROUTE)
+			| thorActionMask(ThorAction::ADVENTURE_ROUTE_COMMAND) | thorActionMask(ThorAction::MOVE_HERO)
+			| thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW);
+		ThorAdventureMap map;
+		map.width = 12;
+		map.height = 8;
+		map.levels = 2;
+		map.contentRevision = 1;
+		map.rgb = std::make_shared<const std::vector<std::uint8_t>>(12 * 8 * 3, 0);
+		context.adventureMap = map;
+		ThorAdventureRoute route;
+		route.heroId = 4;
+		route.state = ThorRouteState::PREVIEW;
+		route.flags = THOR_ROUTE_CAN_CONFIRM | THOR_ROUTE_CAN_CANCEL;
+		route.width = 12;
+		route.height = 8;
+		route.levels = 2;
+		route.start = {2, 3, 0};
+		route.destination = {4, 3, 0};
+		route.movement = 100;
+		route.limit = 200;
+		route.arrivalTurns = 1;
+		route.arrivalRemains = 150;
+		route.totalNodes = 3;
+		route.nodes = {{{2, 3, 0}, 0, 100, 0, 3}, {{3, 3, 0}, 0, 50, 0, 3}, {{4, 3, 0}, 1, 150, 0, 3}};
+		context.adventureRoute = route;
+		return context;
+	}
+
+	ThorAdventureMovementAuthority movementAuthority()
+	{
+		ThorAdventureMovementAuthority live;
+		live.active = live.top = live.makingTurn = live.localPlayer = live.ownedWanderingHero = true;
+		live.heroId = 4;
+		live.width = 12;
+		live.height = 8;
+		live.levels = 2;
+		live.movement = 100;
+		live.position = {2, 3, 0};
+		return live;
+	}
+}
+
+TEST(ThorActionMovementTest, SignBitActionsAreUniqueAndContextQualified)
+{
+	std::uint64_t all = 0;
+	for(int id = 1; id <= 64; ++id)
+	{
+		const auto action = thorActionFromId(id);
+		ASSERT_TRUE(action);
+		const auto mask = thorActionMask(*action);
+		EXPECT_EQ(all & mask, 0);
+		all |= mask;
+	}
+	EXPECT_EQ(all, std::numeric_limits<std::uint64_t>::max());
+	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_PLAN_ROUTE), std::uint64_t{1} << 62);
+	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_ROUTE_COMMAND), std::uint64_t{1} << 63);
+	const auto context = movementContext();
+	EXPECT_NE(context.enabledActionMask & (std::uint64_t{1} << 63), 0);
+	EXPECT_EQ(validateThorActionRequest({7, ThorAction::ADVENTURE_ROUTE_COMMAND, 1}, context), ThorActionValidation::VALID);
+	for(const auto * id : {ThorContextIds::UNKNOWN, ThorContextIds::HERO_WINDOW, ThorContextIds::TOWN_WINDOW,
+		ThorContextIds::BATTLE, ThorContextIds::MAIN_MENU})
+	{
+		EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::ADVENTURE_PLAN_ROUTE, id));
+		EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::ADVENTURE_ROUTE_COMMAND, id));
+	}
+}
+
+TEST(ThorActionMovementTest, PlansUseExactBoundedTileAndNoExtraPayload)
+{
+	const auto context = movementContext();
+	const auto live = movementAuthority();
+	ThorActionRequest request{7, ThorAction::ADVENTURE_PLAN_ROUTE, *encodeThorMapTile({11, 7, 0})};
+	EXPECT_EQ(validateThorAdventureMovementRequest(request, context, live), ThorActionValidation::VALID);
+	for(const auto target : {-1, 12, 8 * THOR_MAP_MAX_SIDE, THOR_MAP_MAX_TILES, THOR_MAP_MAX_TILES * 2})
+	{
+		request.targetId = target;
+		EXPECT_EQ(validateThorAdventureMovementRequest(request, context, live), ThorActionValidation::INVALID_TARGET);
+	}
+	request.targetId = *encodeThorMapTile({11, 7, 0});
+	request.amount = 1;
+	EXPECT_EQ(validateThorAdventureMovementRequest(request, context, live), ThorActionValidation::INVALID_TARGET);
+}
+
+TEST(ThorActionMovementTest, LiveAuthorityRejectsWrongOwnerTurnSpectatorBusyAndMoving)
+{
+	const auto context = movementContext();
+	const ThorActionRequest request{7, ThorAction::ADVENTURE_ROUTE_COMMAND, 1};
+	const auto good = movementAuthority();
+	EXPECT_EQ(validateThorAdventureMovementRequest(request, context, good), ThorActionValidation::VALID);
+	for(const auto member : {&ThorAdventureMovementAuthority::active, &ThorAdventureMovementAuthority::top,
+		&ThorAdventureMovementAuthority::makingTurn, &ThorAdventureMovementAuthority::localPlayer,
+		&ThorAdventureMovementAuthority::ownedWanderingHero})
+	{
+		auto live = good;
+		live.*member = false;
+		EXPECT_EQ(validateThorAdventureMovementRequest(request, context, live), ThorActionValidation::UNAVAILABLE);
+	}
+	for(const auto member : {&ThorAdventureMovementAuthority::spectator, &ThorAdventureMovementAuthority::dialogBusy,
+		&ThorAdventureMovementAuthority::moving, &ThorAdventureMovementAuthority::animating})
+	{
+		auto live = good;
+		live.*member = true;
+		EXPECT_EQ(validateThorAdventureMovementRequest(request, context, live), ThorActionValidation::UNAVAILABLE);
+	}
+}
+
+TEST(ThorActionMovementTest, ConfirmationBindsHeroPositionMovementShapeLevelAndRevision)
+{
+	const auto context = movementContext();
+	const ThorActionRequest request{7, ThorAction::ADVENTURE_ROUTE_COMMAND, 1};
+	const auto good = movementAuthority();
+	for(const auto member : {&ThorAdventureMovementAuthority::heroId, &ThorAdventureMovementAuthority::width,
+		&ThorAdventureMovementAuthority::height, &ThorAdventureMovementAuthority::levels,
+		&ThorAdventureMovementAuthority::currentLevel, &ThorAdventureMovementAuthority::movement})
+	{
+		auto live = good;
+		++(live.*member);
+		EXPECT_EQ(validateThorAdventureMovementRequest(request, context, live), ThorActionValidation::INVALID_TARGET);
+	}
+	auto moved = good;
+	++moved.position.x;
+	EXPECT_EQ(validateThorAdventureMovementRequest(request, context, moved), ThorActionValidation::INVALID_TARGET);
+	auto stale = request;
+	--stale.revision;
+	EXPECT_EQ(validateThorAdventureMovementRequest(stale, context, good), ThorActionValidation::STALE_REVISION);
+	auto changed = context;
+	changed.selectedHeroId = 5;
+	EXPECT_EQ(validateThorAdventureMovementRequest(request, changed, good), ThorActionValidation::INVALID_TARGET);
+	changed.adventureRoute.reset();
+	EXPECT_EQ(validateThorAdventureMovementRequest(request, changed, good), ThorActionValidation::INVALID_TARGET);
+}
+
+TEST(ThorActionMovementTest, TypedCommandsCannotConfusePreviewClearAndStop)
+{
+	auto context = movementContext();
+	const auto live = movementAuthority();
+	for(const auto target : {-1, 0, 3, 4, 5, std::numeric_limits<int>::max()})
+		EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_ROUTE_COMMAND, target}, context, live),
+			ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_ROUTE_COMMAND, 2}, context, live),
+		ThorActionValidation::VALID);
+	context.adventureRoute->state = ThorRouteState::COMMITTED;
+	context.adventureRoute->flags = THOR_ROUTE_CAN_CLEAR | THOR_ROUTE_CAN_CONTINUE;
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_ROUTE_COMMAND, 1}, context, live),
+		ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_ROUTE_COMMAND, 2}, context, live),
+		ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_ROUTE_COMMAND, 3}, context, live),
+		ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::MOVE_HERO}, context, live), ThorActionValidation::VALID);
+	context.adventureRoute->state = ThorRouteState::READY_NEXT_TURN;
+	context.adventureRoute->flags = THOR_ROUTE_CAN_CLEAR;
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::MOVE_HERO}, context, live), ThorActionValidation::UNAVAILABLE);
+}
+
+TEST(ThorActionMovementTest, StopUsesNativePendingPredicateDuringAnimationAndRejectsRepeats)
+{
+	auto context = movementContext();
+	context.adventureRoute->state = ThorRouteState::MOVING;
+	context.adventureRoute->flags = THOR_ROUTE_CAN_STOP;
+	auto live = movementAuthority();
+	live.moving = live.animating = live.canStop = true;
+	const ThorActionRequest stop{7, ThorAction::ADVENTURE_ROUTE_COMMAND, 4};
+	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::VALID);
+	// Cosmetic progress can advance within a coalesced publication window. Stop
+	// binds the selected hero/controller, while Confirm binds the exact origin.
+	++live.position.x;
+	live.movement = 50;
+	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::VALID);
+	// Ending and restarting the same hero's travel creates another native journey.
+	++live.movementSequence;
+	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::INVALID_TARGET);
+	--live.movementSequence;
+	EXPECT_EQ(validateThorAdventureMovementRequest({7, ThorAction::ADVENTURE_PLAN_ROUTE, 0}, context, live),
+		ThorActionValidation::UNAVAILABLE);
+	live.canStop = false;
+	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::UNAVAILABLE);
+	context.adventureRoute->state = ThorRouteState::STOPPING;
+	context.adventureRoute->flags = 0;
+	EXPECT_EQ(validateThorAdventureMovementRequest(stop, context, live), ThorActionValidation::INVALID_TARGET);
+}
+
+TEST(ThorActionMovementTest, SemanticRouteEpochSuppressesDuplicateConfirmAndKeepsRasterIdentity)
+{
+	ThorContextStore store;
+	auto context = movementContext();
+	context = store.publishNext(context);
+	ASSERT_TRUE(context.adventureRoute);
+	const auto rgb = context.adventureMap->rgb;
+	ThorActionRequest request{context.revision, ThorAction::ADVENTURE_ROUTE_COMMAND, 1};
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	++context.actionEpoch;
+	context.adventureRoute->state = ThorRouteState::MOVING;
+	context.adventureRoute->flags = THOR_ROUTE_CAN_STOP;
+	context = store.publishNext(context);
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(context.adventureMap->rgb, rgb);
+	const auto previous = context.revision;
+	++context.adventureMovementSequence;
+	context = store.publishNext(context);
+	EXPECT_GT(context.revision, previous);
+	const auto journeyRevision = context.revision;
+	context.adventureRoute->movement = 50;
+	context = store.publishNext(context);
+	EXPECT_GT(context.revision, journeyRevision);
+	EXPECT_EQ(context.adventureMap->rgb, rgb);
+	context.contextId = ThorContextIds::UNKNOWN;
+	context = store.publishNext(context);
+	EXPECT_FALSE(context.adventureRoute);
+	EXPECT_EQ(context.enabledActionMask & thorActionMask(ThorAction::ADVENTURE_ROUTE_COMMAND), 0);
+}
+
 TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 {
 	EXPECT_EQ(thorActionFromId(0), std::nullopt);
@@ -42,7 +264,7 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
 	for(int id = 50; id <= 57; ++id)
 		EXPECT_EQ(thorActionFromId(id), static_cast<ThorAction>(id));
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 62);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 64);
 	EXPECT_EQ(thorActionMask(ThorAction::WINDOW_CONFIRM), std::uint64_t{1} << 56);
 	EXPECT_EQ(thorActionFromId(58), ThorAction::ADVENTURE_CENTER_VIEW);
 	EXPECT_EQ(thorActionFromId(59), ThorAction::ADVENTURE_SET_MAP_LEVEL);
@@ -50,8 +272,9 @@ TEST(ThorActionTest, MapsOnlyStablePublicIdentifiers)
 	EXPECT_EQ(thorActionFromId(61), ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT);
 	EXPECT_EQ(thorActionFromId(62), ThorAction::TOWN_WINDOW_TRANSFER_STACK);
 	EXPECT_EQ(thorActionMask(ThorAction::TOWN_WINDOW_TRANSFER_STACK), std::uint64_t{1} << 61);
-	for(int id = 63; id <= 64; ++id)
-		EXPECT_EQ(thorActionFromId(id), std::nullopt);
+	EXPECT_EQ(thorActionFromId(63), ThorAction::ADVENTURE_PLAN_ROUTE);
+	EXPECT_EQ(thorActionFromId(64), ThorAction::ADVENTURE_ROUTE_COMMAND);
+	EXPECT_EQ(thorActionFromId(65), std::nullopt);
 	EXPECT_EQ(thorActionFromId(-1), std::nullopt);
 }
 
@@ -401,7 +624,7 @@ TEST(ThorActionTest, GameplayActionsUseExplicitMasks)
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_STACK), std::uint64_t{1} << 59);
 	EXPECT_EQ(thorActionMask(ThorAction::HERO_WINDOW_TRANSFER_ARTIFACT), std::uint64_t{1} << 60);
 	EXPECT_EQ(thorActionMask(ThorAction::TOWN_WINDOW_TRANSFER_STACK), std::uint64_t{1} << 61);
-	EXPECT_EQ(THOR_MAX_ACTION_ID, 62);
+	EXPECT_EQ(THOR_MAX_ACTION_ID, 64);
 }
 
 TEST(ThorActionTest, TownHallBuildUsesOneExactContextActionAndPublishedBuildableTarget)

@@ -29,6 +29,9 @@ class HeroMovementController
 	bool duringMovement = false;
 	/// movement was requested to be terminated, e.g. by player or due to inability to move
 	bool stoppingMovement = false;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::uint64_t movementSequence = 0;
+#endif
 
 	bool waitingForQueryApplyReply = false;
 
@@ -70,4 +73,11 @@ public:
 	// UI handlers
 	void requestMovementStart(const CGHeroInstance * h, const CGPath & path);
 	void requestMovementAbort();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	/// UI stop waits for the in-flight batch and a legal stopping node.
+	bool requestMovementStop();
+	bool canRequestMovementStop() const;
+	bool isMovementStopping() const;
+	std::uint64_t getMovementSequence() const { return movementSequence; }
+#endif
 };

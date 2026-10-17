@@ -80,10 +80,12 @@ enum class ThorAction : std::uint8_t
 	ADVENTURE_SET_MAP_LEVEL = 59,
 	HERO_WINDOW_TRANSFER_STACK = 60,
 	HERO_WINDOW_TRANSFER_ARTIFACT = 61,
-	TOWN_WINDOW_TRANSFER_STACK = 62
+	TOWN_WINDOW_TRANSFER_STACK = 62,
+	ADVENTURE_PLAN_ROUTE = 63,
+	ADVENTURE_ROUTE_COMMAND = 64
 };
 
-inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::TOWN_WINDOW_TRANSFER_STACK);
+inline constexpr std::uint8_t THOR_MAX_ACTION_ID = static_cast<std::uint8_t>(ThorAction::ADVENTURE_ROUTE_COMMAND);
 static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 	"Thor action IDs must fit in the 64-bit action-mask contract");
 
@@ -184,6 +186,16 @@ struct DLL_LINKAGE ThorActionRequest
 	int destinationSlot = -1;
 	int amount = -1;
 	ThorRecruitmentOperation recruitmentOperation = ThorRecruitmentOperation::NONE;
+};
+
+/// Live MainGUI authority, resolved from the actual Adventure owner before dispatch.
+struct DLL_LINKAGE ThorAdventureMovementAuthority
+{
+	bool active = false, top = false, makingTurn = false, localPlayer = false, spectator = false;
+	bool ownedWanderingHero = false, dialogBusy = false, moving = false, animating = false, canStop = false;
+	int heroId = -1, width = 0, height = 0, levels = 0, currentLevel = 0, movement = 0;
+	ThorMapTile position{-1, -1, -1};
+	std::uint64_t movementSequence = 0;
 };
 
 /// One destination in a bounded Hero Meeting redistribution plan.
@@ -290,6 +302,8 @@ DLL_LINKAGE ThorActionValidation validateThorActionRequest(const ThorActionReque
 DLL_LINKAGE ThorActionValidation validateThorAdventureMapRequest(const ThorActionRequest & request,
 	const ThorContextRecord & context, bool active, bool top, bool viewAuthority,
 	int width, int height, int levels, int currentLevel);
+DLL_LINKAGE ThorActionValidation validateThorAdventureMovementRequest(const ThorActionRequest & request,
+	const ThorContextRecord & context, const ThorAdventureMovementAuthority & authority);
 DLL_LINKAGE ThorActionValidation validateThorHeroMeetingRedistributionRequest(
 	const ThorHeroMeetingRedistributionRequest & request, const ThorContextRecord & context);
 

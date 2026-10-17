@@ -807,6 +807,7 @@ set(lib_MAIN_HEADERS
 	CAndroidVMHelper.h
 	thor/ThorAction.h
 	thor/ThorAdventureMap.h
+	thor/ThorAdventureRoute.h
 	thor/ThorContext.h
 	thor/ThorVisualAssetCache.h
 	CBonusTypeHandler.h

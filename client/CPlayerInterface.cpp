@@ -190,7 +190,37 @@ std::shared_ptr<const CPathsInfo> CPlayerInterface::getPathsInfo(const CGHeroIns
 void CPlayerInterface::invalidatePaths()
 {
 	pathfinderCache->invalidatePaths();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	++thorPathsGeneration;
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CPlayerInterface::thorMovementBlocked() const
+{
+	return showingDialog->isBusy() || !dialogs.empty() || levelUpChainPendingContinuation;
+}
+
+bool CPlayerInterface::requestThorMovementStop()
+{
+	return movementController->requestMovementStop();
+}
+
+bool CPlayerInterface::canThorMovementStop() const
+{
+	return movementController->canRequestMovementStop();
+}
+
+bool CPlayerInterface::isThorMovementStopping() const
+{
+	return movementController->isMovementStopping();
+}
+
+std::uint64_t CPlayerInterface::getThorMovementSequence() const
+{
+	return movementController->getMovementSequence();
+}
+#endif
 
 void CPlayerInterface::closeAllDialogs()
 {

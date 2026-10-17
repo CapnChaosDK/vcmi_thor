@@ -31,6 +31,8 @@ namespace
 			&& lhs.heroes == rhs.heroes
 			&& lhs.towns == rhs.towns
 			&& lhs.adventureMap == rhs.adventureMap
+			&& lhs.adventureRoute == rhs.adventureRoute
+			&& lhs.adventureMovementSequence == rhs.adventureMovementSequence
 			&& lhs.heroMeetingArmies == rhs.heroMeetingArmies
 			&& lhs.heroMeetingArtifacts == rhs.heroMeetingArtifacts
 			&& lhs.heroManagement == rhs.heroManagement
@@ -82,6 +84,18 @@ namespace
 			context.adventureMap.reset();
 			context.enabledActionMask &= ~(thorActionMask(ThorAction::ADVENTURE_CENTER_VIEW)
 				| thorActionMask(ThorAction::ADVENTURE_SET_MAP_LEVEL));
+		}
+		if(context.contextId != ThorContextIds::ADVENTURE_MAP || !context.adventureMap
+			|| !context.adventureRoute || !context.adventureRoute->valid()
+			|| context.adventureRoute->heroId != context.selectedHeroId
+			|| context.adventureRoute->width != context.adventureMap->width
+			|| context.adventureRoute->height != context.adventureMap->height
+			|| context.adventureRoute->levels != context.adventureMap->levels)
+		{
+			context.adventureRoute.reset();
+			context.adventureMovementSequence = 0;
+			context.enabledActionMask &= ~(thorActionMask(ThorAction::ADVENTURE_PLAN_ROUTE)
+				| thorActionMask(ThorAction::ADVENTURE_ROUTE_COMMAND));
 		}
 		if((context.contextId != ThorContextIds::ADVENTURE_MAP && context.contextId != ThorContextIds::HERO_WINDOW)
 			|| !isThorHeroPortraitVisualAssetKey(context.heroPortraitAssetKey))

@@ -93,6 +93,12 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishActionState(revision, enabledActionMask, activeActionMask);
     }
 
+    void publishThorAdventureRoute(final long revision, final ThorAdventureRoute route)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.publishAdventureRoute(revision, route);
+    }
+
     void publishThorAdventureMap(final long revision, final long contentRevision,
             final int width, final int height, final int level, final int levels,
             final int vx, final int vy, final int vw, final int vh, final byte[] rgb, final int[] markers,

@@ -244,7 +244,7 @@
     <string name="thor_map_underground">Underground</string>
     <string name="thor_map_unavailable">Map unavailable</string>
     <string name="thor_map_legend">● Hero · ■ Town · White ring: selected · White box: upper view</string>
-    <string name="thor_map_accessibility">Tap a hero or town marker to select. Tap or drag in Navigate to center the upper view once on release. Detail 2× and 4× enlarge the lower map. Pan lower moves only this map. White box shows the upper view; white ring marks selection.</string>
+    <string name="thor_map_accessibility">Navigate or Pan: tap a hero or town marker to select. Plan: tap any destination tile, including a hero or town, to preview travel. Select your hero in Navigate or Heroes. Tap or drag in Navigate to center the upper view once on release. Detail 2× and 4× enlarge the lower map. Pan lower moves only this map. White box shows the upper view; white ring marks selection.</string>
     <string name="thor_map_inspection_hint">Hold a marker to inspect • Resources / Mines / Dwellings / Travel / Sites</string>
     <string name="thor_map_inspection_limited">Hold to inspect • Showing the first 1024 visible objects</string>
     <string name="thor_map_cluster_info">%1$d objects • Use Detail and Pan to separate markers</string>
@@ -254,4 +254,28 @@
     <string name="thor_map_filter_dwellings">Objects: Dwellings • Tap to filter</string>
     <string name="thor_map_filter_travel">Objects: Travel • Tap to filter</string>
     <string name="thor_map_filter_sites">Objects: Sites • Tap to filter</string>
+    <string name="thor_map_plan">Plan</string>
+    <string name="thor_route_confirm">Confirm</string>
+    <string name="thor_route_cancel">Cancel preview</string>
+    <string name="thor_route_clear">Clear route</string>
+    <string name="thor_route_stop">Stop</string>
+    <string name="thor_route_continue">Continue</string>
+    <string name="thor_route_no_hero">Select an owned hero to plan travel</string>
+    <string name="thor_route_idle">Plan: tap a destination; movement starts only after Confirm</string>
+    <string name="thor_route_preview">Preview ready • Confirm to move</string>
+    <string name="thor_route_unreachable">Destination unreachable • Choose another tile</string>
+    <string name="thor_route_committed">Saved route • Continue when available</string>
+    <string name="thor_route_moving">Moving along saved route</string>
+    <string name="thor_route_stopping">Stopping safely after the current movement step</string>
+    <string name="thor_route_next_turn">Movement exhausted • End turn normally, then Continue</string>
+    <string name="thor_route_paused">Movement paused • Continue when available</string>
+    <string name="thor_route_finished">Destination reached</string>
+    <string name="thor_route_interrupted">Route interrupted • Check the upper game and replan</string>
+    <string name="thor_route_changed">Route changed • Review the new preview and Confirm again</string>
+    <string name="thor_route_truncated"> • Route drawing limited; confirmation uses the full native route</string>
+    <string name="thor_route_movement">(%1$d,%2$d) %3$s • Movement %4$d / %5$d</string>
+    <string name="thor_route_destination">To %1$d,%2$d %3$s</string>
+    <string name="thor_route_arrival">Arrival +%1$d turns • %2$d points left</string>
+    <string name="thor_route_legend">Dashed cyan: preview • Green: saved • Gray: future • +: turn boundary • ⊕ destination • □ transition / segment end</string>
+    <string name="thor_route_controls_accessibility">Plan selects a destination without moving. Confirm starts the native route. Cancel preview preserves the saved route. Clear removes it. Stop requests safe interruption. Continue follows the saved route when enabled.</string>
 </resources>
