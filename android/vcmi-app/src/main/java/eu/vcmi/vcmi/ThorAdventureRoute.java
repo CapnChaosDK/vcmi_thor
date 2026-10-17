@@ -105,17 +105,4 @@ final class ThorAdventureRoute
                 && Math.max(Math.abs(node(index, 0) - node(index - 1, 0)),
                         Math.abs(node(index, 1) - node(index - 1, 1))) == 1;
     }
-
-    int commandForControl(final int control, final long mask)
-    {
-        if ((mask & ThorActionIds.maskFor(ThorActionIds.ADVENTURE_ROUTE_COMMAND)) == 0) return 0;
-        switch (control)
-        {
-            case ThorMapControls.CONFIRM: return allows(CAN_CONFIRM) ? CONFIRM : 0;
-            case ThorMapControls.CANCEL_PREVIEW: return allows(CAN_CANCEL) ? CANCEL_PREVIEW : 0;
-            case ThorMapControls.CLEAR_ROUTE: return allows(CAN_CLEAR) ? CLEAR_ROUTE : 0;
-            case ThorMapControls.STOP: return allows(CAN_STOP) ? STOP : 0;
-            default: return 0;
-        }
-    }
 }

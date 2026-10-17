@@ -3979,11 +3979,8 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (!adventureMap.valid())
                 return false;
-            if (control >= 20 && control <= 23)
-                return adventureRoute.fits(adventureMap) && adventureRoute.commandForControl(control, enabledActionMask) != 0;
-            if (control == 24)
-                return adventureRoute.fits(adventureMap) && adventureRoute.allows(ThorAdventureRoute.CAN_CONTINUE)
-                        && isActionEnabled(ThorActionIds.MOVE_HERO);
+            if (control >= ThorMapControls.CONFIRM && control <= ThorMapControls.CONTINUE)
+                return ThorMapControls.routeAction(control, adventureMap, adventureRoute, enabledActionMask) != ThorActionIds.NONE;
             if (control == 8 || control == 3 || control == 7 || control < 3) return true;
             if (control == 4) return mapViewState.zoom > 1;
             return adventureMap.levels == 2 && adventureMap.level != control - 5

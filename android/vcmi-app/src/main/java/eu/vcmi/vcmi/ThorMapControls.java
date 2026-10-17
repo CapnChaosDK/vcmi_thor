@@ -5,6 +5,37 @@ final class ThorMapControls
 {
     static final int PLAN = 8, CONFIRM = 20, CANCEL_PREVIEW = 21, CLEAR_ROUTE = 22, STOP = 23, CONTINUE = 24;
 
+    /** One native-authorized mapping shared by rendering and release handling. */
+    static int routeAction(final int control, final ThorAdventureMap map,
+            final ThorAdventureRoute route, final long mask)
+    {
+        final int flag;
+        switch (control)
+        {
+            case CONFIRM: flag = ThorAdventureRoute.CAN_CONFIRM; break;
+            case CANCEL_PREVIEW: flag = ThorAdventureRoute.CAN_CANCEL; break;
+            case CLEAR_ROUTE: flag = ThorAdventureRoute.CAN_CLEAR; break;
+            case STOP: flag = ThorAdventureRoute.CAN_STOP; break;
+            case CONTINUE: flag = ThorAdventureRoute.CAN_CONTINUE; break;
+            default: return ThorActionIds.NONE;
+        }
+        final int action = control == CONTINUE ? ThorActionIds.MOVE_HERO : ThorActionIds.ADVENTURE_ROUTE_COMMAND;
+        return route.fits(map) && route.allows(flag) && (mask & ThorActionIds.maskFor(action)) != 0
+                ? action : ThorActionIds.NONE;
+    }
+
+    static int routeTarget(final int control)
+    {
+        switch (control)
+        {
+            case CONFIRM: return ThorAdventureRoute.CONFIRM;
+            case CANCEL_PREVIEW: return ThorAdventureRoute.CANCEL_PREVIEW;
+            case CLEAR_ROUTE: return ThorAdventureRoute.CLEAR_ROUTE;
+            case STOP: return ThorAdventureRoute.STOP;
+            default: return ThorActionIds.NO_TARGET;
+        }
+    }
+
     static float[] bounds(final int control, final float width, final float height)
     {
         final int columns, column;
