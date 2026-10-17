@@ -31,9 +31,11 @@ Use these sources by responsibility:
 | Completed work | Git history plus the candidate/device receipts recorded in the backlog and playbook |
 
 Before Thor work, read this file, the backlog's current state/roadmap/latest slice,
-the playbook, and the relevant discovery sections. Read the complete detailed
-documents whenever selecting an unspecified slice, changing architecture, preparing
-a candidate, or updating historical status.
+the playbook, and the relevant discovery sections. Start with task-relevant sections;
+expand to complete detailed documents when selecting an unspecified slice, changing
+architecture, preparing a candidate, or updating historical status requires it.
+Avoid rereading unchanged history or re-investigating established architecture
+without a concrete reason.
 
 If sources disagree, do not silently choose convenient text. Check current code,
 tests, workflow behavior, and recent history; prefer the newest explicit repository
@@ -82,6 +84,40 @@ unrelated cleanup, and enormous multi-feature rewrites. A larger slice is approp
 when tightly coupled components have one contract and are safer to implement and test
 together. Separate independent behavior that has distinct failure modes or hardware
 acceptance criteria.
+
+## Usage-efficient development
+
+This is a personal project with a limited Codex usage allowance. Treat model
+reasoning, tool calls, cloud execution, and delegated-agent work as costs.
+Optimize for the lowest reasonable total usage that delivers a *complete*
+feature without weakening quality, CI, safety, or hardware-validation gates.
+
+- Keep slices feature-complete; reduce cost by reusing established owners,
+  contracts, tests, and UI components rather than omitting necessary behavior.
+- Use targeted discovery and a concise implementation plan. Expand investigation
+  only for missing evidence or concrete risks; do not repeatedly read unrelated
+  history or rediscover architecture already documented and verified.
+- Prefer one primary agent. Launch additional subagents only for narrowly scoped,
+  genuinely independent work whose benefit justifies duplicated context and cost.
+  Never automatically create parallel architecture, Android, protocol, and review
+  agents for each slice.
+- Retain an independent, critical review of the finished diff. Prefer one separate
+  review pass by the primary agent; use a delegated reviewer when material risk
+  warrants it. Repeat review and tests when findings require remediation.
+- Run the cheapest focused checks during implementation. Reserve a full ARM64
+  candidate build for a reviewed, coherent change, then rerun it after actual
+  failures as needed. Preserve all required CI gates and cache safety.
+- Avoid speculative abstractions, unrelated refactoring, redundant documentation,
+  and repeated tests that add no new evidence. Never hide a known failure to save
+  time or usage.
+- If a task's likely resource cost is unusually high, explain the tradeoff early
+  and propose a smaller *complete* capability or an efficient validation sequence;
+  never silently deliver a half-finished feature.
+- When the user chooses a model, recommend GPT-6.1 Sol with Medium reasoning as the
+  usual starting point for a well-specified substantial slice. Use High effort only
+  for difficult architecture, concurrency, or debugging, and consider GPT-6 Astra
+  for exceptional problems. These are preferences, not assumptions about available
+  models, automated model switching, pricing, or enforceable usage caps.
 
 ## Mandatory Thor workflow
 
@@ -158,17 +194,17 @@ summary of the initial diff is not an independent review.
 
 ## Delegation
 
-When the active environment supports agents or delegation, use a strong independent
-reasoning/review role for architecture and final review, and a cost-efficient
-implementation role for a well-specified coding task, mechanical remediation, or
-documentation when useful. Keep architecture/review independent from implementation
-where practical. Prefer sequential handoffs—design → implementation → review →
-remediation → documentation. Do not let agents concurrently edit the same mutable
-files unless genuinely independent worktrees and reconciliation are available.
+Delegation is optional, not the default. Use one primary agent for discovery,
+design, implementation, focused tests, and remediation. Conduct a separate,
+critical review of the completed diff before delivery; a well-separated self-review
+is acceptable. Delegate a focused independent architecture or release review when
+complexity or failure risk justifies its additional usage, rather than automatically
+spawning multiple investigators and reviewers.
 
-Delegation is optional when it adds coordination risk or the task is small. If model
-selection or subagents are unavailable, perform the same phases sequentially in the
-current agent. Never assume a named model will exist.
+When delegation clearly helps, give agents distinct, bounded scopes, avoid repeated
+repository discovery and duplicated context, and prefer sequential handoffs. Do not
+let agents concurrently edit shared mutable files unless isolated worktrees and
+deliberate reconciliation are available. Never assume a named model will exist.
 
 ## Validation ladder
 
