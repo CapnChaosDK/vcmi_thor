@@ -90,12 +90,9 @@ final class ThorMapGesture
                 return new Release(ThorActionIds.NONE, ThorActionIds.NO_TARGET, pressedControl);
             if (!map.valid())
                 return Release.NONE;
-            final int command = route.fits(map) ? route.commandForControl(pressedControl, enabledActions) : 0;
-            if (command != 0)
-                return new Release(ThorActionIds.ADVENTURE_ROUTE_COMMAND, command, -1);
-            if (pressedControl == 24 && route.fits(map) && route.allows(ThorAdventureRoute.CAN_CONTINUE)
-                    && (enabledActions & ThorActionIds.maskFor(ThorActionIds.MOVE_HERO)) != 0)
-                return new Release(ThorActionIds.MOVE_HERO, ThorActionIds.NO_TARGET, -1);
+            final int action = ThorMapControls.routeAction(pressedControl, map, route, enabledActions);
+            if (action != ThorActionIds.NONE)
+                return new Release(action, ThorMapControls.routeTarget(pressedControl), -1);
             if (pressedControl == 8 || pressedControl == 7 || pressedControl >= 0 && pressedControl < 5)
                 return new Release(ThorActionIds.NONE, ThorActionIds.NO_TARGET, pressedControl);
             if (pressedControl >= 5 && pressedControl <= 6 && map.levels == 2

@@ -453,45 +453,36 @@ bool AdventureMapInterface::executeThorMovementAction(const ThorActionRequest & 
 		return false;
 	auto * player = GAME->interface();
 	auto & local = *player->localState;
-	// Preserve the established Actions-tab continuation on maps outside the lower
-	// raster/route transport bounds; it still uses native ownership and predicates.
-	if(request.action == ThorAction::MOVE_HERO && !context.adventureRoute)
-	{
-		if(player->isHeroMoving() || player->thorMovementBlocked() || GAME->map().hasOngoingAnimations()
-			|| !local.hasPath(hero))
-			return false;
-		local.verifyPath(hero);
-		if(!local.hasPath(hero) || !shortcuts->optionHeroCanMove())
-		{
-			updateThorActionState(true);
-			return false;
-		}
-		return shortcuts->executeThorAction(ThorAction::MOVE_HERO);
-	}
-	if(!context.adventureMap || !context.adventureRoute || hero->id.getNum() != context.adventureRoute->heroId)
-		return false;
 	const auto size = player->cb->getMapSize();
-	const auto position = hero->visitablePos();
-	ThorAdventureMovementAuthority authority;
-	authority.active = isActive();
-	authority.top = ENGINE->windows().topWindow<AdventureMapInterface>().get() == this;
-	authority.makingTurn = player->makingTurn && shortcuts->optionInMapView();
-	authority.localPlayer = currentPlayerID == player->playerID;
-	authority.spectator = settings["session"]["spectate"].Bool();
-	authority.ownedWanderingHero = true; // Re-resolved above, never inferred from Java.
-	authority.dialogBusy = player->thorMovementBlocked();
-	authority.moving = player->isHeroMoving();
-	authority.animating = GAME->map().hasOngoingAnimations();
-	authority.canStop = player->canThorMovementStop();
-	authority.heroId = hero->id.getNum();
-	authority.width = size.x;
-	authority.height = size.y;
-	authority.levels = size.z;
-	authority.currentLevel = mapViewCenter.z;
-	authority.movement = hero->movementPointsRemaining();
-	authority.position = {position.x, position.y, position.z};
-	authority.movementSequence = player->getThorMovementSequence();
-	if(validateThorAdventureMovementRequest(request, context, authority) != ThorActionValidation::VALID)
+	if(context.adventureRoute)
+	{
+		if(!context.adventureMap || hero->id.getNum() != context.adventureRoute->heroId)
+			return false;
+		const auto position = hero->visitablePos();
+		ThorAdventureMovementAuthority authority;
+		authority.active = isActive();
+		authority.top = ENGINE->windows().topWindow<AdventureMapInterface>().get() == this;
+		authority.makingTurn = player->makingTurn && shortcuts->optionInMapView();
+		authority.localPlayer = currentPlayerID == player->playerID;
+		authority.spectator = settings["session"]["spectate"].Bool();
+		authority.ownedWanderingHero = true; // Re-resolved above, never inferred from Java.
+		authority.dialogBusy = player->thorMovementBlocked();
+		authority.moving = player->isHeroMoving();
+		authority.animating = GAME->map().hasOngoingAnimations();
+		authority.canStop = player->canThorMovementStop();
+		authority.heroId = hero->id.getNum();
+		authority.width = size.x;
+		authority.height = size.y;
+		authority.levels = size.z;
+		authority.currentLevel = mapViewCenter.z;
+		authority.movement = hero->movementPointsRemaining();
+		authority.position = {position.x, position.y, position.z};
+		authority.movementSequence = player->getThorMovementSequence();
+		if(validateThorAdventureMovementRequest(request, context, authority) != ThorActionValidation::VALID)
+			return false;
+	}
+	// Only legacy Actions-tab continuation can operate without lower-map data.
+	else if(request.action != ThorAction::MOVE_HERO)
 		return false;
 	if(request.action == ThorAction::ADVENTURE_ROUTE_COMMAND
 		&& request.targetId == static_cast<int>(ThorRouteCommand::STOP))
@@ -509,7 +500,7 @@ bool AdventureMapInterface::executeThorMovementAction(const ThorActionRequest & 
 	}
 	if(request.action == ThorAction::MOVE_HERO)
 	{
-		if(thorPreviewHeroId >= 0 || !local.hasPath(hero))
+		if((context.adventureRoute && thorPreviewHeroId >= 0) || !local.hasPath(hero))
 			return false;
 		local.verifyPath(hero);
 		if(!local.hasPath(hero) || !shortcuts->optionHeroCanMove())

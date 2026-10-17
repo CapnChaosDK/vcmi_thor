@@ -493,7 +493,8 @@ public class ThorAdventureMapTest
         }
         route = ThorAdventureRoute.copyOf(header, prefix);
         assertTrue(route.valid()); assertTrue(route.allows(ThorAdventureRoute.TRUNCATED));
-        assertEquals(1, route.commandForControl(20, Long.MIN_VALUE));
+        assertEquals(64, ThorMapControls.routeAction(20, map(512, 512, 0, new int[0]), route, Long.MIN_VALUE));
+        assertEquals(1, ThorMapControls.routeTarget(20));
         header[2] = 3;
         assertFalse(ThorAdventureRoute.copyOf(header, prefix).valid());
     }
@@ -566,6 +567,13 @@ public class ThorAdventureMapTest
             final int flag = control == 24 ? 16 : 1 << (control - 20);
             final ThorAdventureRoute route = ThorAdventureRoute.copyOf(routeHeader(state, flag, 3), routeNodes());
             assertTrue(route.valid());
+            assertEquals(control == 24 ? 6 : 64, ThorMapControls.routeAction(control, map, route, mask));
+            // A different semantic action must not enable this control, even with a valid route.
+            final long wrongAction = ThorActionIds.maskFor(control == 24 ? 64 : 6);
+            assertEquals(0, ThorMapControls.routeAction(control, map, route, wrongAction));
+            assertEquals(0, ThorMapControls.routeAction(control, map(21, 10, 0, new int[0]), route, mask));
+            assertEquals(0, ThorMapControls.routeAction(19, map, route, mask));
+            assertEquals(0, ThorMapControls.routeAction(25, map, route, mask));
             gesture.begin(7, 8, 3, 0, 4, control, 50, 50, fit);
             final ThorMapGesture.Release result = movementRelease(gesture, map, false, control, 50, 50, route, mask, 100);
             assertEquals(control == 24 ? 6 : 64, result.action);
