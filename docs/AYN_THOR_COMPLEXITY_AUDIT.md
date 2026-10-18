@@ -344,3 +344,11 @@ APK SHA-256 `a99d26f234cf409271584cd5f1c29d87cf933ff0d44198c51d38c3c6af3ee833`.
 Installed bytes were independently verified; behavior is user-reported. Status is
 `hardware validated`; earlier pending statements are historical. Merge and branch
 cleanup are explicitly authorized; their completion receipt belongs in the backlog.
+
+Slice 48 promotion: at the user's request, PR #38 merged as
+`b70179ddc01f591f0e21c0108fbf1a357fe4f6eb` after final-head preflight
+`39139502515` passed. The merged product/build tree matches the exact hardware-
+tested candidate; differences are validation documentation only. The merged Slice
+48 branch was deleted locally/remotely, and product/permanent-candidate branches
+were retained. See the backlog cleanup receipt. Earlier open/pending merge text
+is historical; no additional architectural slice was started.
