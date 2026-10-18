@@ -74,16 +74,27 @@ require a new approval round for an otherwise unambiguous next slice.
 
 ## Slice sizing
 
-A good slice delivers one coherent user-visible capability, its required supporting
-refactoring, focused automated coverage, resulting-state documentation, candidate
-readiness, and an actionable hardware checklist. It should be reviewable but
-substantial enough that CI packaging and physical verification are worthwhile.
+Each implementation slice should normally deliver one significant, end-to-end
+user-visible capability or one complete, coherent technical/safety boundary. Apply
+this default when selecting the next feature, executing an existing feature prompt,
+scoping maintenance or cleanup, planning validation, and recommending follow-up work.
+Include the required supporting refactoring, focused automated coverage,
+resulting-state documentation, and applicable candidate/hardware readiness. Substance
+comes from completing a coherent capability, not from diff size.
+
+Keep closely related buttons/menu actions, native/Android/JNI integration,
+validation/error handling, required cleanup, tests, and documentation in the same
+slice. For example, a Town service includes all actions, states, navigation,
+confirmation, error handling, UI integration, and focused tests needed to complete
+that service; an entry point alone is not a complete service.
 
 Avoid artificial one-file or micro-slices, speculative future architecture,
 unrelated cleanup, and enormous multi-feature rewrites. A larger slice is appropriate
 when tightly coupled components have one contract and are safer to implement and test
-together. Separate independent behavior that has distinct failure modes or hardware
-acceptance criteria.
+together. Separate independent capabilities when their contracts and validation
+justify it; distinct failure cases within one capability do not by themselves
+justify micro-slices. If a genuine blocker forces separation, explain the dependency
+and identify a smaller but still complete capability.
 
 ## Usage-efficient development
 
@@ -94,6 +105,7 @@ feature without weakening quality, CI, safety, or hardware-validation gates.
 
 - Keep slices feature-complete; reduce cost by reusing established owners,
   contracts, tests, and UI components rather than omitting necessary behavior.
+  Group required implementation and cleanup in one coherent PR where practical.
 - Use targeted discovery and a concise implementation plan. Expand investigation
   only for missing evidence or concrete risks; do not repeatedly read unrelated
   history or rediscover architecture already documented and verified.
@@ -104,16 +116,17 @@ feature without weakening quality, CI, safety, or hardware-validation gates.
 - Retain an independent, critical review of the finished diff. Prefer one separate
   review pass by the primary agent; use a delegated reviewer when material risk
   warrants it. Repeat review and tests when findings require remediation.
-- Run the cheapest focused checks during implementation. Reserve a full ARM64
-  candidate build for a reviewed, coherent change, then rerun it after actual
-  failures as needed. Preserve all required CI gates and cache safety.
+- Follow the validation ladder: focused checks during implementation, consolidated
+  regressions before publication, and one reviewed, integrated candidate per slice
+  where possible. Failed candidates still require correction and rebuilding;
+  a one-build preference never overrides required gates or cache safety.
 - Avoid speculative abstractions, unrelated refactoring, redundant documentation,
   and repeated tests that add no new evidence. Never hide a known failure to save
   time or usage.
 - If a task's likely resource cost is unusually high, explain the tradeoff early
   and propose a smaller *complete* capability or an efficient validation sequence;
   never silently deliver a half-finished feature.
-- When the user chooses a model, recommend GPT-6.1 Sol with Medium reasoning as the
+- When recommending a model, suggest GPT-6.1 Sol with Medium reasoning as the
   usual starting point for a well-specified substantial slice. Use High effort only
   for difficult architecture, concurrency, or debugging, and consider GPT-6 Astra
   for exceptional problems. These are preferences, not assumptions about available
@@ -142,8 +155,15 @@ lifecycle; display attach/detach/recreation; controller/touch/upper-screen input
 failure, stale-request, overflow, and non-Thor fallback behavior; upstream
 compatibility; test strategy; and hardware checks.
 
-For significant work, publish a concise implementation plan before changes and keep
-it current. Do not wait for plan approval unless a stop condition applies.
+Before coding, review the complete user journey or technical boundary against the
+current implementation. Identify closely related missing behavior, all required
+integration work, and reusable components. Make acceptance criteria end-to-end and
+include expected failures and regression risks.
+
+For significant work, publish a concise implementation plan for the whole capability
+before changes and keep it current. Anticipate likely omissions and follow-up work
+so predictable parts are included initially. Do not wait for plan approval unless
+a stop condition applies.
 
 Thor invariants include:
 
@@ -178,8 +198,23 @@ drive-by formatting, generated output, secrets, binaries, and unrelated cleanup.
 
 ### Phase D — Independent self-review
 
-After implementation and tests, reread the entire diff as a release gate, preferably
-in a separate review pass or independent review role. Check:
+Before candidate publication or declaring implementation complete, explicitly record
+a feature-completeness checkpoint against the planned scope:
+
+- the intended journey or technical boundary is complete end-to-end, with all
+  closely related actions and enabled, disabled, pending, and error states;
+- navigation, cancellation, confirmation, context/revision changes, and lifecycle
+  transitions are handled, with native ownership and server authority preserved;
+- existing related behavior is preserved and necessary cleanup is incorporated;
+- tests cover complete behavior rather than only helpers, and documentation and
+  applicable hardware-validation instructions are ready.
+
+Close important gaps within the same slice; do not turn predictable omissions into
+the next micro-slice. Distinguish implementation evidence from CI/device behavior
+still awaiting validation; the checkpoint does not establish an unobserved pass.
+
+After implementation and focused tests, perform one separate, critical review of
+the entire diff as a release gate (a separate self-review pass is sufficient). Check:
 
 - functional correctness, acceptance criteria, edge cases, and regressions;
 - architecture/thread ownership, bounded transport, revalidation, and duplicated logic;
@@ -208,8 +243,8 @@ deliberate reconciliation are available. Never assume a named model will exist.
 
 ## Validation ladder
 
-Use the cheapest relevant checks first; do not rebuild the Android package after
-every edit:
+During implementation, reuse established test infrastructure and run the cheapest
+meaningful checks after relevant changes, not the entire suite after every edit:
 
 1. Syntax/resource/contract/static checks relevant to changed files.
 2. Focused native tests in `test/thor/`, focused Android JVM tests in
@@ -218,6 +253,16 @@ every edit:
    it practical.
 4. `git diff --check`.
 5. Diff stat, changed-file inventory, and complete diff review.
+
+Before candidate publication, complete the Phase D checkpoint, close known gaps,
+perform the separate full-diff review, and run the appropriate consolidated regression
+checks. Reuse valid earlier results; rerun affected checks after fixes or when new
+evidence warrants it. Reserve full ARM64 builds for reviewed, integrated candidates,
+not small intermediate changes that focused checks can validate. The CI policy's
+failure/correction/rebuild gates remain mandatory.
+
+For documentation-only changes, check scope, consistency, duplication, and the full
+diff; do not launch native/Gradle builds, ARM64 candidates, or hardware cycles.
 
 Use existing build directories and safe dependency/compiler/Gradle caches when
 compatible. Do not casually clear caches, rebuild dependencies, cache generated
@@ -282,8 +327,11 @@ controller input, live game-state publication/actions, window transitions,
 performance, or player-installed visuals requires a checksum-verified APK test on a
 real AYN Thor.
 
-For such slices, add a concise behavior-specific checklist covering the new happy
-path and failure path plus display toggle/reconnect, background/resume, context/modal
+For such slices, prepare one comprehensive but concise checklist for the complete
+capability and relevant regressions. Consolidate closely related behavior into one
+candidate/device cycle where possible, avoiding consecutive APK installations for
+predictable fragments of the same feature. Cover happy and failure paths plus
+display toggle/reconnect, background/resume, context/modal
 restoration, stale/rapid input, and upper touch/controller regressions as applicable.
 Report `awaiting hardware validation` until the user confirms the checklist for the
 exact candidate SHA and checksum. Never infer, fabricate, or mark a device pass from
@@ -325,7 +373,9 @@ Before completion:
 
 Do not claim to have committed, pushed, opened a PR, triggered CI, merged, promoted,
 or modified a remote unless that action actually succeeded. Do not push or merge
-unless instructions and available authenticated remotes permit it. Never rewrite
+unless instructions and available authenticated remotes permit it. Preserve PR
+review and obtain explicit user authorization before merging; feature implementation
+or PR creation alone does not authorize a merge. Never rewrite
 `ayn-thor-dual-screen`, releases, tags, or validated history. The candidate branch is
 the only narrowly resettable ref, under the playbook procedure.
 
@@ -345,8 +395,9 @@ selection among equally safe technical details do not require user approval.
 
 ## Completion contract
 
-A substantial Thor feature is done only when the coherent implementation and focused
-tests are complete; independent review findings are fixed; relevant documentation is
+A substantial Thor feature is done only when the Phase D feature-completeness
+checkpoint passes and the coherent implementation and focused tests are complete;
+independent review findings are fixed; relevant documentation is
 current; `git diff --check` passes; status/stat/full diff have been inspected; and CI
 status is reported or the exact candidate action is supplied. When the implementation
 has been published and authenticated remote access is available, "CI status reported"
