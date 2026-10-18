@@ -76,6 +76,26 @@
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorCommandNative(
+	JNIEnv * env, jclass, jlong revision, jintArray payload)
+{
+	if(revision <= 0 || !payload || env->GetArrayLength(payload) != 3)
+		return JNI_FALSE;
+	std::array<jint, 3> wire{};
+	env->GetIntArrayRegion(payload, 0, 3, wire.data());
+	if(env->ExceptionCheck())
+		return JNI_FALSE;
+	const std::array<int, 3> values{wire[0], wire[1], wire[2]};
+	const auto command = ThorExtended::decode(values);
+	if(!command)
+		return JNI_FALSE;
+	ThorActionRequest request;
+	request.revision = static_cast<std::uint64_t>(revision);
+	request.commandVersion = values[0];
+	request.commandId = *command;
+	return thorActionQueue().submit(request) ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActionNative(JNIEnv *, jclass, jlong revision, jint actionId, jint targetId)
 {
 	if(revision <= 0)

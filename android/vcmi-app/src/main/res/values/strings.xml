@@ -278,4 +278,9 @@
     <string name="thor_route_arrival">Arrival +%1$d turns • %2$d points left</string>
     <string name="thor_route_legend">Dashed cyan: preview • Green: saved • Gray: future • +: turn boundary • ⊕ destination • □ transition / segment end</string>
     <string name="thor_route_controls_accessibility">Plan selects a destination without moving. Confirm starts the native route. Cancel preview preserves the saved route. Clear removes it. Stop requests safe interruption. Continue follows the saved route when enabled.</string>
+    <string name="thor_action_auto_start">Auto-combat</string>
+    <string name="thor_action_auto_stop">Stop auto-combat</string>
+    <string name="thor_action_cast_spell">Cast Spell</string>
+    <string name="thor_action_retreat">Retreat</string>
+    <string name="thor_action_surrender">Surrender</string>
 </resources>

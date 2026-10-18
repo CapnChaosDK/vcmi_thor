@@ -56,6 +56,32 @@ public class NativeMethods
 
     private static native void submitThorActionNative(long revision, int actionId, int targetId);
 
+    static boolean submitThorCommand(final long revision, final int command)
+    {
+        final int[] payload = ThorExtendedCommands.encode(ThorExtendedCommands.VERSION, command, -1);
+        if (!BuildConfig.AYN_THOR_BUILD || revision <= 0 || payload == null) return false;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity)) return false;
+        final VcmiSDLActivity activity = (VcmiSDLActivity) ctx;
+        activity.registerThorActionSubmission(revision, -command);
+        final boolean submitted = submitThorCommandNative(revision, payload);
+        if (!submitted) activity.cancelThorActionSubmission(revision, -command);
+        return submitted;
+    }
+
+    private static native boolean submitThorCommandNative(long revision, int[] payload);
+
+    public static void publishThorCommands(final long revision, final int version,
+                                           final int[] enabled, final int[] active)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final ThorExtendedCommands commands = ThorExtendedCommands.copyOf(version, enabled, active);
+        final Context ctx = context();
+        if (ctx instanceof VcmiSDLActivity)
+            ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                    ((VcmiSDLActivity) ctx).publishThorCommands(revision, commands));
+    }
+
     static boolean submitThorRecruitmentEdit(final long revision, final int targetId, final int operationId)
     {
         return BuildConfig.AYN_THOR_BUILD && submitThorRecruitmentEditNative(revision, targetId, operationId);

@@ -186,6 +186,9 @@ struct DLL_LINKAGE ThorActionRequest
 	int destinationSlot = -1;
 	int amount = -1;
 	ThorRecruitmentOperation recruitmentOperation = ThorRecruitmentOperation::NONE;
+	/// Zero retains the legacy envelope. Nonzero requires NONE and a V1 command.
+	int commandVersion = 0;
+	int commandId = 0;
 };
 
 /// Live MainGUI authority, resolved from the actual Adventure owner before dispatch.

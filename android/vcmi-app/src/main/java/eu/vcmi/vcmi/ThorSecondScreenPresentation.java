@@ -82,6 +82,16 @@ final class ThorSecondScreenPresentation extends Presentation
                     enabledActionMask, activeActionMask);
     }
 
+    void updateCommands(final ThorExtendedCommands commands)
+    {
+        if (foundationView != null)
+        {
+            foundationView.battleDeck.update(commands);
+            foundationView.invalidate();
+            foundationView.setContentDescription(foundationView.commandDeckDescription());
+        }
+    }
+
     void updateHeroes(final ThorHeroRoster roster)
     {
         if (foundationView != null)
@@ -217,6 +227,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private long heroPortraitAssetKey;
         private String contextId = ThorContextIds.UNKNOWN;
         private final String[] detailLines = new String[ThorContextDetails.COUNT];
+        private final ThorBattleDeck battleDeck = new ThorBattleDeck();
         private long enabledActionMask;
         private long activeActionMask;
         private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
@@ -324,12 +335,14 @@ final class ThorSecondScreenPresentation extends Presentation
         protected void onSizeChanged(final int width, final int height, final int oldWidth, final int oldHeight)
         {
             super.onSizeChanged(width, height, oldWidth, oldHeight);
+            battleDeck.cancel();
             mapGesture.cancel();
             inspectedCluster = -1;
         }
 
         void clearTransientState()
         {
+            battleDeck.reset();
             cancelHeroManagementTouch();
             heroManagement = ThorHeroManagement.EMPTY;
             townManagement = ThorTownManagement.EMPTY;
@@ -366,6 +379,7 @@ final class ThorSecondScreenPresentation extends Presentation
                            final String[] publishedDetails,
                            final long enabledActionMask, final long activeActionMask)
         {
+            if (revision != this.revision || !contextId.equals(this.contextId)) battleDeck.reset();
             final boolean retainMeetingArmies = ThorHeroMeetingGesture.retainsArmies(
                     this.revision, this.contextId, revision, contextId);
             // publishContext resets the mask to zero before the action-state callback for a new
@@ -991,7 +1005,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     drawAdventureActions(canvas, frame, dividerY, bevel, density);
             }
             else if (ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.BATTLE_TACTICS.equals(contextId))
-                drawBattleActions(canvas, frame, dividerY, bevel, density);
+                battleDeck.draw(canvas, paint, getContext(), contextId, enabledActionMask, presentationLayout(), density);
             drawHapticsToggle(canvas, density);
         }
 
@@ -1052,6 +1066,13 @@ final class ThorSecondScreenPresentation extends Presentation
                 return handleLobbyScenarioTouch(event);
             if (ThorMainMenuState.choiceCount(contextId) > 0)
                 return handleMainMenuTouch(event);
+            if (ThorBattleControls.isBattle(contextId))
+            {
+                if (battleDeck.touch(event, contextId, revision, presentationSessionId, enabledActionMask,
+                        presentationLayout(), sessionValidity != null && sessionValidity.isCurrent(presentationSessionId)))
+                    performClick();
+                return true;
+            }
             if (heroMeetingTouchSequence && action == MotionEvent.ACTION_DOWN)
             {
                 cancelHeroMeetingGesture();
@@ -4487,39 +4508,6 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setFakeBoldText(false);
         }
 
-        private void drawBattleActions(final Canvas canvas, final RectF frame, final float dividerY,
-                                       final float bevel, final float density)
-        {
-            final boolean tactics = ThorContextIds.BATTLE_TACTICS.equals(contextId);
-            final int[] actions = tactics
-                    ? new int[]{ThorActionIds.BATTLE_TACTICS_NEXT, ThorActionIds.BATTLE_TACTICS_END}
-                    : new int[]{ThorActionIds.BATTLE_WAIT, ThorActionIds.BATTLE_DEFEND};
-            final String[] labels = tactics
-                    ? new String[]{getContext().getString(R.string.thor_action_next_unit),
-                    getContext().getString(R.string.thor_action_start_battle)}
-                    : new String[]{getContext().getString(R.string.thor_action_wait),
-                    getContext().getString(R.string.thor_action_defend)};
-
-            for (int index = 0; index < actions.length; ++index)
-            {
-                final RectF button = battleActionBounds(index, frame, dividerY, bevel);
-                final boolean enabled = isActionEnabled(actions[index]);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
-                canvas.drawRoundRect(button, bevel, bevel, paint);
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(Math.max(2f, bevel * 0.4f));
-                paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
-                canvas.drawRoundRect(button, bevel, bevel, paint);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setFakeBoldText(enabled);
-                paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
-                drawFittedText(canvas, labels[index], button.centerX(), button.centerY(), button.width() * 0.84f,
-                        Math.min(34f * density, button.height() * 0.28f));
-            }
-            paint.setFakeBoldText(false);
-        }
-
         private RectF actionBounds(final int index, final RectF frame, final float dividerY, final float bevel)
         {
             final float gap = Math.max(bevel * 1.25f, 10f);
@@ -4760,17 +4748,6 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.BATTLE_TACTICS.equals(contextId);
             final float dividerY = frame.top + layout.contentHeight * (battleDashboard ? 0.55f
                     : ThorAdventureLayout.DIVIDER);
-            if (ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.BATTLE_TACTICS.equals(contextId))
-            {
-                final int[] actions = ThorContextIds.BATTLE_TACTICS.equals(contextId)
-                        ? new int[]{ThorActionIds.BATTLE_TACTICS_NEXT, ThorActionIds.BATTLE_TACTICS_END}
-                        : new int[]{ThorActionIds.BATTLE_WAIT, ThorActionIds.BATTLE_DEFEND};
-                for (int index = 0; index < actions.length; ++index)
-                    if (battleActionBounds(index, frame, dividerY, bevel).contains(x, y))
-                        return actions[index];
-                return ThorActionIds.NONE;
-            }
-
             final int[] actions = {
                     ThorActionIds.NEXT_HERO,
                     ThorActionIds.MOVE_HERO,
@@ -4785,18 +4762,6 @@ final class ThorSecondScreenPresentation extends Presentation
                 if (actionBounds(index, frame, dividerY, bevel).contains(x, y))
                     return actions[index];
             return ThorActionIds.NONE;
-        }
-
-        private RectF battleActionBounds(final int index, final RectF frame, final float dividerY, final float bevel)
-        {
-            final float gap = Math.max(bevel * 1.5f, 12f);
-            final float left = frame.left + bevel * 3f;
-            final float right = frame.right - bevel * 3f;
-            final float top = actionTop(frame, dividerY, bevel);
-            final float bottom = frame.bottom - bevel * 3f;
-            final float buttonHeight = (bottom - top - gap) / 2f;
-            final float buttonTop = top + index * (buttonHeight + gap);
-            return new RectF(left, buttonTop, right, buttonTop + buttonHeight);
         }
 
         private boolean isActionEnabled(final int actionId)
@@ -4878,8 +4843,7 @@ final class ThorSecondScreenPresentation extends Presentation
                         + getContext().getString(R.string.thor_battle_attack) + " " + battleValue(1) + ". "
                         + getContext().getString(R.string.thor_battle_defense) + " " + battleValue(2) + ". "
                         + getContext().getString(R.string.thor_battle_hp) + " " + battleValue(3) + ". "
-                        + getContext().getString(R.string.thor_action_wait) + ", "
-                        + getContext().getString(R.string.thor_action_defend);
+                        + battleDeck.description(getContext(), contextId);
 
             if (ThorContextIds.BATTLE_TACTICS.equals(contextId))
                 return title + ". " + getContext().getString(R.string.thor_context_battle_tactics_status) + ". "

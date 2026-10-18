@@ -60,6 +60,7 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorBattleControls.h"
 #include "../../lib/thor/ThorContext.h"
 #endif
 
@@ -985,6 +986,8 @@ void BattleWindow::updateThorActionState(bool invalidateActions)
 	const auto previous = thorContextStore().snapshot();
 	ThorContextRecord context = previous.contextId == contextId ? previous : ThorContextRecord{};
 	context.contextId = contextId;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = owner.curInt.get();
 	// A Battle context is reused between refreshes. Clear its unit snapshot before
 	// rebuilding it so a departed active stack can never leave stale information
 	// on the companion display.
@@ -1020,7 +1023,31 @@ void BattleWindow::updateThorActionState(bool invalidateActions)
 
 	const bool spellTargeting = owner.actionsController->heroSpellcastingModeActive()
 		|| owner.actionsController->creatureSpellcastingModeActive();
-	if(!thorUiBlocked && !owner.openingPlaying() && !spellTargeting)
+	const auto side = owner.getBattle()->battleGetMySide();
+	const bool local = side == BattleSide::ATTACKER || side == BattleSide::DEFENDER;
+	const auto hero = local ? owner.getBattle()->battleGetMyHero() : nullptr;
+	const bool canCast = hero && ([&]()
+	{
+		const auto problem = owner.getBattle()->battleCanCastSpell(hero, spells::Mode::HERO);
+		return problem == ESpellCastProblem::OK || problem == ESpellCastProblem::MAGIC_IS_BLOCKED;
+	})();
+	ThorExtended::BattleAvailability availability;
+	availability.owner = isThorCommandDeckOwner();
+	availability.local = local;
+	availability.opening = owner.openingPlaying();
+	availability.tactics = owner.isInTacticsMode();
+	availability.blocked = thorUiBlocked;
+	availability.targeting = spellTargeting;
+	availability.makingTurn = owner.makingTurn();
+	availability.autoOn = owner.curInt->isAutoFightOn;
+	availability.aiExists = static_cast<bool>(owner.curInt->autofightingAI);
+	availability.endWithConfirmation = settings["battle"]["endWithAutocombat"].Bool() && onlyOnePlayerHuman;
+	availability.canCast = canCast;
+	availability.canFlee = local && owner.getBattle()->battleCanFlee();
+	availability.canSurrender = local && owner.getBattle()->battleGetSurrenderCost() >= 0;
+	availability.criticalHero = local && ownHeroLossEndsScenario();
+	context.extendedCommands = ThorExtended::battleState(availability);
+	if(local && !thorUiBlocked && !owner.openingPlaying() && !spellTargeting)
 	{
 		if(owner.isInTacticsMode())
 		{
@@ -1039,6 +1066,7 @@ void BattleWindow::updateThorActionState(bool invalidateActions)
 	{
 		++context.actionEpoch;
 		context.enabledActionMask = 0;
+		context.extendedCommands.enabled.clear();
 	}
 	context = thorContextStore().publishNext(std::move(context));
 	if(context.revision == previous.revision)
@@ -1047,6 +1075,28 @@ void BattleWindow::updateThorActionState(bool invalidateActions)
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 		context.details);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	CAndroidVMHelper().publishThorCommands(context.revision, context.extendedCommands);
+}
+
+bool BattleWindow::executeThorCommand(int command)
+{
+	const auto context = thorContextStore().snapshot();
+	if(owner.isInTacticsMode() || !ThorExtended::battleOwnerMatches(context, this, owner.curInt.get(),
+		isActive(), ENGINE->windows().isTopWindow(this)) || !context.extendedCommands.allows(command))
+		return false;
+	updateThorActionState(true);
+	switch(command)
+	{
+	case ThorExtended::AUTO_START:
+	case ThorExtended::AUTO_STOP: bAutofightf(); break;
+	case ThorExtended::CAST_SPELL: bSpellf(); break;
+	case ThorExtended::RETREAT: bFleef(); break;
+	case ThorExtended::SURRENDER: bSurrenderf(); break;
+	default: return false;
+	}
+	// Auto-stop has no child window or mandatory server callback. Refresh its new state now.
+	updateThorActionState();
+	return true;
 }
 
 bool BattleWindow::executeThorAction(ThorAction action)

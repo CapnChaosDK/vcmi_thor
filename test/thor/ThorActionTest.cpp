@@ -1,6 +1,7 @@
 #include "StdInc.h"
 
 #include "../../lib/thor/ThorAction.h"
+#include "../../lib/thor/ThorBattleControls.h"
 
 #include <limits>
 #include <thread>
@@ -1744,4 +1745,133 @@ TEST(ThorActionQueueTest, ConcurrentSubmissionsRemainBounded)
 	EXPECT_EQ(queue.size(), 16);
 	queue.clear();
 	EXPECT_EQ(queue.size(), 0);
+}
+
+TEST(ThorActionExtended, EnvelopeAndAvailabilityBounds)
+{
+	EXPECT_EQ(ThorExtended::decode(std::array{1, 5, -1}), 5);
+	EXPECT_FALSE(ThorExtended::decode(std::array{2, 5, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, 6, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, 5, 0}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, 5}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, 5, -1, 0}));
+	ThorExtended::State state;
+	state.enabled = {1, 1};
+	EXPECT_FALSE(state.valid());
+	state.enabled.assign(17, 1);
+	EXPECT_FALSE(state.valid());
+	state.enabled = {6};
+	EXPECT_FALSE(state.valid());
+	state.enabled = {1}; state.version = 2;
+	EXPECT_FALSE(state.valid());
+	EXPECT_EQ(static_cast<int>(ThorAction::ADVENTURE_ROUTE_COMMAND), 64);
+	EXPECT_EQ(thorActionMask(ThorAction::ADVENTURE_ROUTE_COMMAND), std::uint64_t{1} << 63);
+	EXPECT_FALSE(thorActionFromId(65));
+}
+
+TEST(ThorActionExtended, RevisionOwnerContextAndOneShotEpoch)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BATTLE;
+	context.nativeOwnerToken = &store;
+	context.extendedCommands.enabled = {ThorExtended::CAST_SPELL};
+	context = store.publishNext(context);
+	ThorActionRequest request;
+	request.revision = context.revision;
+	request.commandVersion = 1;
+	request.commandId = ThorExtended::CAST_SPELL;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	ThorActionQueue queue;
+	EXPECT_TRUE(queue.submit(request)); EXPECT_TRUE(queue.submit(request));
+	EXPECT_TRUE(queue.pop());
+	++context.actionEpoch;
+	context = store.publishNext(context);
+	EXPECT_EQ(validateThorActionRequest(*queue.pop(), context), ThorActionValidation::STALE_REVISION);
+	request.revision = context.revision;
+	context.contextId = ThorContextIds::BATTLE_TACTICS;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::BATTLE;
+	context.nativeOwnerToken = nullptr;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+	context.nativeOwnerToken = &store;
+	request.sourceSlot = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.sourceSlot = -1; request.action = ThorAction::BATTLE_WAIT;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNKNOWN_ACTION);
+	request.action = ThorAction::NONE;
+	context.extendedCommands.enabled.clear();
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+}
+
+TEST(ThorActionExtended, NativeBattleEligibilityAndAutoTransitions)
+{
+	ThorExtended::BattleAvailability a;
+	a.owner = a.local = a.makingTurn = a.canCast = a.canFlee = a.canSurrender = true;
+	a.opening = a.blocked = a.criticalHero = false;
+	const auto ready = ThorExtended::battleState(a);
+	EXPECT_TRUE(ready.allows(ThorExtended::AUTO_START));
+	EXPECT_TRUE(ready.allows(ThorExtended::CAST_SPELL));
+	EXPECT_TRUE(ready.allows(ThorExtended::RETREAT));
+	EXPECT_TRUE(ready.allows(ThorExtended::SURRENDER));
+	a.autoOn = a.aiExists = a.blocked = true; a.makingTurn = false;
+	auto running = ThorExtended::battleState(a);
+	EXPECT_TRUE(running.allows(ThorExtended::AUTO_STOP));
+	EXPECT_FALSE(running.allows(ThorExtended::AUTO_START));
+	EXPECT_FALSE(running.allows(ThorExtended::CAST_SPELL));
+	a.endWithConfirmation = true;
+	EXPECT_FALSE(ThorExtended::battleState(a).allows(ThorExtended::AUTO_STOP));
+	a.endWithConfirmation = a.autoOn = false;
+	EXPECT_FALSE(ThorExtended::battleState(a).allows(ThorExtended::AUTO_START));
+	a.aiExists = a.blocked = false; a.makingTurn = true; a.criticalHero = true;
+	EXPECT_FALSE(ThorExtended::battleState(a).allows(ThorExtended::RETREAT));
+	EXPECT_FALSE(ThorExtended::battleState(a).allows(ThorExtended::SURRENDER));
+	a.criticalHero = false; a.canCast = a.canFlee = a.canSurrender = false;
+	EXPECT_EQ(ThorExtended::battleState(a).enabled, std::vector<int>{ThorExtended::AUTO_START});
+	for(int mode = 0; mode < 5; ++mode)
+	{
+		auto blocked = a;
+		if(mode == 0) blocked.local = false;
+		if(mode == 1) blocked.owner = false;
+		if(mode == 2) blocked.targeting = true;
+		if(mode == 3) blocked.tactics = true;
+		if(mode == 4) blocked.makingTurn = false;
+		EXPECT_TRUE(ThorExtended::battleState(blocked).enabled.empty());
+	}
+}
+
+TEST(ThorActionExtended, ChildRestorationAndInvalidPublicationFailClosed)
+{
+	ThorContextStore store;
+	ThorContextRecord battle;
+	battle.contextId = ThorContextIds::BATTLE;
+	battle.nativeOwnerToken = &store;
+	battle.extendedCommands.enabled = {ThorExtended::CAST_SPELL};
+	const auto before = store.publishNext(battle);
+	ThorContextRecord child;
+	child.contextId = ThorContextIds::UNKNOWN;
+	child.extendedCommands = battle.extendedCommands;
+	const auto hidden = store.publishNext(child);
+	EXPECT_TRUE(hidden.extendedCommands.enabled.empty());
+	const auto restored = store.publishNext(battle);
+	EXPECT_GT(restored.revision, before.revision);
+	EXPECT_TRUE(restored.extendedCommands.allows(ThorExtended::CAST_SPELL));
+	battle.extendedCommands.enabled.assign(17, 1);
+	EXPECT_TRUE(store.publishNext(battle).extendedCommands.enabled.empty());
+}
+
+TEST(ThorActionExtended, ExactWindowAndParticipantOwnership)
+{
+	int window = 0, participant = 0, other = 0;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BATTLE;
+	context.nativeOwnerToken = &window;
+	context.nativeParentToken = &participant;
+	EXPECT_TRUE(ThorExtended::battleOwnerMatches(context, &window, &participant, true, true));
+	EXPECT_FALSE(ThorExtended::battleOwnerMatches(context, &other, &participant, true, true));
+	EXPECT_FALSE(ThorExtended::battleOwnerMatches(context, &window, &other, true, true));
+	EXPECT_FALSE(ThorExtended::battleOwnerMatches(context, &window, &participant, false, true));
+	EXPECT_FALSE(ThorExtended::battleOwnerMatches(context, &window, &participant, true, false));
+	context.contextId = ThorContextIds::BATTLE_TACTICS;
+	EXPECT_FALSE(ThorExtended::battleOwnerMatches(context, &window, &participant, true, true));
 }
