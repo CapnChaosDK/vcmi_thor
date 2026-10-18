@@ -267,5 +267,6 @@ Slice 47 validation receipt (2026-10-18): exact candidate
 The artifact and installed APK were independently checksum-verified; APK SHA-256
 is `9f0b528bfd1918df37fa926575ca884ef328395a2c729de643314fa8bab619fa`.
 The user confirmed all five hardware checks passed on the installed AYN Thor APK.
-Status is `hardware validated`; PR #37 remains open and unmerged. See the backlog
-for the full receipt. These receipt-only updates do not change the tested build.
+Status is `hardware validated`; PR #37 merged at the user's request as
+`332ec554311dcee78d765dbcb265a5099bdeb524`, preserving the tested product/build
+tree. See the backlog for validation and branch-cleanup receipts. These receipt-only updates do not change the tested build.
