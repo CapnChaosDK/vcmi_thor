@@ -182,9 +182,10 @@ safety maintenance, not the number of runtime snapshots or the presentation's si
 - Action/JNI files are unchanged; existing Java stable-ID, signed-mask and browser
   row/footer-boundary tests pass. Separate complete diff self-review found no
   remaining behavior issue; `git diff --check` passed before publication.
-- Publish this branch/PR, then advance the permanent `ci/thor-candidate-validation`
-  to that exact SHA per the playbook. CI and device receipts belong in Slice 46 of
-  the backlog. No new hardware pass is claimed.
+- Exact candidate `de244e5600b41a717f195fdfc2798a073ec02531` passed Thor CI
+  run `39132783698`; downloaded checksums were verified and the user confirmed all
+  five device checks passed on 2026-10-18. See the Slice 46 backlog receipt. PR #36
+  remains open; subsequent changes are validation documentation only.
 
 Focused checksum-verified AYN Thor checklist:
 1. Main menu/New Game/campaign and confirmation taps execute once; cancel/back works.
