@@ -95,10 +95,11 @@ jobs:
             test/thor/ThorAdventureMapTest.cpp \
             test/thor/ThorRecruitmentTest.cpp \
             test/thor/ThorVisualAssetTest.cpp \
+            test/battle/BattleAnimationWaitTest.cpp \
             test/googletest/googletest/src/gtest-all.cc \
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
-          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*'
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:BattleAnimationWait*'
 
   arm64-candidate:
     name: Thor ARM64 candidate

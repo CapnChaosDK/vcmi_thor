@@ -12,6 +12,7 @@
 
 #include "BattleActionsController.h"
 #include "BattleAnimationClasses.h"
+#include "BattleAnimationWait.h"
 #include "BattleConsole.h"
 #include "BattleEffectsController.h"
 #include "BattleFieldController.h"
@@ -976,10 +977,16 @@ void BattleInterface::onAnimationsFinished()
 
 void BattleInterface::waitForAnimations()
 {
-	{
-		auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
-		ongoingAnimationsState.waitWhileBusy();
-	}
+	waitForBattleAnimations(
+		[this]()
+		{
+			// Reacquire the interface lock before inspecting or dispatching stages.
+			auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
+			ongoingAnimationsState.waitWhileBusy();
+		},
+		[this]() { return hasAnimations(); },
+		[this]() { return !awaitingEvents.empty(); },
+		[this]() { executeStagedAnimations(); });
 
 	assert(!hasAnimations());
 	assert(awaitingEvents.empty());
