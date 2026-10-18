@@ -158,7 +158,7 @@ artifact, receipt, package `is.xyz.vcmi.thor` and APK checksum before this check
    claiming that platform gate passed.
 
 Exact-SHA CI, installation and user-confirmed hardware receipts are recorded in
-the Slice 51 backlog record; Slice 51 is hardware validated and awaits promotion.
+the Slice 51 backlog record; Slice 51 is hardware validated and promoted via PR #41.
 Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically. Recommended
 next action is the army-transfer safety milestone, before more gameplay features
 or a larger upstream checkpoint; do not start it as part of Slice 51.
