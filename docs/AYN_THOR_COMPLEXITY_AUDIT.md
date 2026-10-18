@@ -260,3 +260,12 @@ toolchain); existing CI gates remain required. `git diff --check` passes. Exact 
 and hardware evidence belongs in the Slice 47 backlog receipt; no device result is
 inferred from these tests. The checklist covers all shared-frame consumers as well
 as menu layout/input, reconnect, resume, restoration and upper-input regressions.
+
+Slice 47 validation receipt (2026-10-18): exact candidate
+`f9ba6e6d8124cec6eeae418f2cd7bcac4380069c` passed both jobs in
+[Thor run 39134929591](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39134929591).
+The artifact and installed APK were independently checksum-verified; APK SHA-256
+is `9f0b528bfd1918df37fa926575ca884ef328395a2c729de643314fa8bab619fa`.
+The user confirmed all five hardware checks passed on the installed AYN Thor APK.
+Status is `hardware validated`; PR #37 remains open and unmerged. See the backlog
+for the full receipt. These receipt-only updates do not change the tested build.
