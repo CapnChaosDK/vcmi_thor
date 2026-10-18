@@ -58,7 +58,12 @@ public class NativeMethods
 
     static boolean submitThorCommand(final long revision, final int command)
     {
-        final int[] payload = ThorExtendedCommands.encode(ThorExtendedCommands.VERSION, command, -1);
+        return submitThorCommand(revision, command, -1);
+    }
+
+    static boolean submitThorCommand(final long revision, final int command, final int target)
+    {
+        final int[] payload = ThorExtendedCommands.encode(ThorExtendedCommands.VERSION, command, target);
         if (!BuildConfig.AYN_THOR_BUILD || revision <= 0 || payload == null) return false;
         final Context ctx = context();
         if (!(ctx instanceof VcmiSDLActivity)) return false;
@@ -70,6 +75,16 @@ public class NativeMethods
     }
 
     private static native boolean submitThorCommandNative(long revision, int[] payload);
+
+    public static void publishThorLobbyPlayers(final long revision, final int[] data, final String[] labels)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final ThorLobbyPlayers players = ThorLobbyPlayers.copyOf(data, labels);
+        final Context ctx = context();
+        if (ctx instanceof VcmiSDLActivity)
+            ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                    ((VcmiSDLActivity) ctx).publishThorLobbyPlayers(revision, players));
+    }
 
     public static void publishThorCommands(final long revision, final int version,
                                            final int[] enabled, final int[] active)

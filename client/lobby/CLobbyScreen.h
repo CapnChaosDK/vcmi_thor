@@ -44,6 +44,7 @@ public:
 	void refreshThorActionAvailability();
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	bool executeThorAction(const ThorActionRequest & request);
+	bool executeThorPlayerCommand(const ThorActionRequest & request);
 	void onThorLobbyAvailabilityChanged();
 #endif
 
@@ -57,6 +58,8 @@ private:
 	bool compatibilityFilterInitialized = false;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	bool thorDifficultyChangePending = false;
+	bool thorPlayerChangePending = false;
+	std::uint64_t thorPlayerActionEpoch = 0;
 	std::size_t thorSaveBrowserPage = 0;
 	std::uint64_t thorSaveBrowserListRevision = 0;
 #endif

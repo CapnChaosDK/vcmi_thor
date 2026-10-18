@@ -30,6 +30,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private final String[] contextDetails = new String[ThorContextDetails.COUNT];
     private long enabledActionMask;
     private long activeActionMask;
+    private ThorLobbyPlayers lobbyPlayers = ThorLobbyPlayers.EMPTY;
     private ThorExtendedCommands commands = ThorExtendedCommands.EMPTY;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
@@ -178,6 +179,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextDetails[1] = ThorContextDetails.orEmpty(detailLine2);
         contextDetails[2] = ThorContextDetails.orEmpty(detailLine3);
         contextDetails[3] = ThorContextDetails.orEmpty(detailLine4);
+        lobbyPlayers = ThorLobbyPlayers.EMPTY;
         commands = ThorExtendedCommands.EMPTY;
         enabledActionMask = 0;
         activeActionMask = 0;
@@ -185,6 +187,13 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         if (presentation != null)
             presentation.updateContext(contextRevision, contextId, contextTitle, contextStatus, heroPortraitAssetKey, contextDetails,
                     enabledActionMask, activeActionMask);
+    }
+
+    void publishLobbyPlayers(final long revision, final ThorLobbyPlayers state)
+    {
+        if (revision != contextRevision || !ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)) return;
+        lobbyPlayers = state;
+        if (presentation != null) presentation.updateLobbyPlayers(state);
     }
 
     void publishCommands(final long revision, final ThorExtendedCommands state)
@@ -432,6 +441,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     contextDetails,
                     enabledActionMask, activeActionMask);
             newPresentation.updateCommands(commands);
+            newPresentation.updateLobbyPlayers(lobbyPlayers);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);
             newPresentation.updateAdventureRoute(adventureRouteState.current());

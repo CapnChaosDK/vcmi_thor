@@ -283,4 +283,17 @@
     <string name="thor_action_cast_spell">Cast Spell</string>
     <string name="thor_action_retreat">Retreat</string>
     <string name="thor_action_surrender">Surrender</string>
+    <string name="thor_setup_scenario">Scenario</string>
+    <string name="thor_setup_players">Players</string>
+    <string name="thor_setup_assign">Change player assignment</string>
+    <string name="thor_setup_human">Human</string>
+    <string name="thor_setup_ai">AI</string>
+    <string name="thor_setup_local">Local</string>
+    <string name="thor_setup_faction">Faction</string>
+    <string name="thor_setup_hero">Hero</string>
+    <string name="thor_setup_bonus">Starting bonus</string>
+    <string name="thor_setup_pending">Waiting for lobby update...</string>
+    <string name="thor_setup_locked">Disabled options are fixed or require player authority.</string>
+    <string name="thor_setup_unavailable">Choose a standard scenario on the Scenario tab.</string>
+    <string name="thor_setup_readonly">Read-only: this mode or player does not permit edits.</string>
 </resources>

@@ -12,10 +12,11 @@ Never append action 65 or pass an extended ID to the legacy mask helper.
 
 The additive JNI request is `submitThorCommandNative(long revision, int[] payload)`.
 The payload is **exactly three integers**: `[version, command, target]`.
-V1 has version `1`; all current commands require target `-1`.
+V1 has version `1`; Battle IDs 1–5 require target `-1`. Player setup IDs 6–12
+require an explicit PlayerColor target 0–7. These target contracts are immutable.
 JNI checks positive revision, non-null/exact array length, version, known command
-and target **before** submitting to the existing 16-entry `ThorActionQueue`.
-Wrong versions, unknown IDs, extra/missing words, and any other target fail closed.
+and the command-specific target **before** submitting to the existing 16-entry `ThorActionQueue`.
+Wrong versions, unknown IDs, extra/missing words, and out-of-range/wrong-family targets fail closed.
 The return boolean means queued, never native execution or gameplay success.
 
 | V1 extended ID | Meaning | Native route |
@@ -25,12 +26,16 @@ The return boolean means queued, never native execution or gameplay success.
 | 3 | Cast Spell | `BattleWindow::bSpellf` |
 | 4 | Retreat | `BattleWindow::bFleef` |
 | 5 | Surrender | `BattleWindow::bSurrenderf` |
+| 6 | Cycle player assignment | `OptionsTab::onSetPlayerClicked` |
+| 7 / 8 | Previous / next faction | `setPlayerOption(TOWN, -1/+1, color)` |
+| 9 / 10 | Previous / next hero | `setPlayerOption(HERO, -1/+1, color)` |
+| 11 / 12 | Previous / next bonus | `setPlayerOption(BONUS, -1/+1, color)` |
 
 These IDs form a separate namespace; they are **not** new legacy mask bits.
 Start/Stop are distinct idempotent intents, never a remotely requested toggle.
 
 Availability is `publishThorCommands(revision, version, int[] enabled, int[] active)`.
-Each array has at most 16 unique, known IDs; invalid version, null/oversized arrays,
+Each array has at most 16 unique Battle IDs; invalid version, null/oversized arrays,
 unknown IDs or duplicates yield an empty state. Android copies arrays before UI
 posting and applies them only at the exact current Battle revision. Active ID 1
 means auto-combat is on; availability of ID 2 independently means it can be stopped.
@@ -39,7 +44,7 @@ Active IDs need not be enabled. No target collection or arbitrary strings/JSON e
 
 `ThorExtendedCommand.h` owns bounded protocol values/decoding. Battle eligibility
 is separate in `ThorBattleControls.h`. The internal queue envelope has legacy
-`action = NONE`, `commandVersion = 1`, `commandId` and all legacy target/payload
+`action = NONE`, `commandVersion = 1`, `commandId` and other legacy payload
 fields at their no-target defaults. Mixed legacy/extended envelopes are rejected.
 Version/ID zero defaults preserve all existing aggregate callers.
 
@@ -47,7 +52,8 @@ Version/ID zero defaults preserve all existing aggregate callers.
 
 The normalized context includes the lists in semantic equality; a list, owner,
 participant, active-unit, turn/targeting or action-epoch change invalidates the
-rendered revision. Non-Battle contexts clear extended availability. Battle keeps
+rendered revision. Non-Battle contexts clear the Battle availability lists. Player setup capabilities
+are carried per color in the atomic setup snapshot described below. Battle keeps
 native-only tokens for the exact BattleWindow and current player interface.
 Nothing sends pointers to Java.
 
@@ -93,6 +99,71 @@ the decoder only for explicitly supported targets. A change to envelope shape or
 incompatible target semantics requires another explicitly supported protocol version,
 never reinterpretation of V1. The 16-entry bound is a simultaneous availability
 budget, not a bit-mask ID limit. Do not migrate working legacy callers unnecessarily.
+
+## New Game player setup (Slice 50)
+
+`publishThorLobbyPlayers(revision, int[] data, String[] labels)` carries 0–8 unique
+PlayerColors. Each row has two integers `[color, flags]` and five UTF-8-safe labels
+of at most 256 bytes: color, assignment name, faction, hero, bonus. Flags are
+1 assignment, 2 faction, 4 hero, 8 bonus, 16 human, 32 local, 64 awaiting lobby
+refresh. Pending disables all player mutations. Null, malformed, duplicate,
+oversized or out-of-range payloads fail closed. Java copies before UI posting and
+only installs the exact current New Game scenario revision. Metadata and rows
+travel in ordered callbacks; rows are withdrawn on revision changes until the
+matching callback arrives. No row indexes, native identities, faction/hero rules,
+map paths or private opponent game state cross JNI.
+
+`OptionsTab` derives rows from current native StartInfo/PlayerInfo. Its existing
+name helper provides translated faction/hero/bonus labels, including Random/None.
+The host can configure AI slots. Guests can edit only their own color's options
+and cannot cycle assignments. Assignment follows the existing flag semantics:
+human-capable slots only, AI or more than one human. Fixed heroes, absent factions,
+random-faction heroes and unavailable choices use native upper-arrow restrictions.
+Server `optionNextCastle/Hero/Bonus` chooses legal values and applies random,
+hero uniqueness and artifact/resource restrictions. Nonstandard battle/random-map
+or campaign modes and non-lobby state are read-only on this surface.
+
+MainGUI resolves the exact top lobby and refreshes the snapshot before validating
+revision, epoch, current scenario/server map match, PlayerColor and per-row
+capability. `OptionsTab` independently rechecks live rules before invoking the
+original assignment callback or server option operation. One pending operation
+blocks player edits, difficulty, scenario navigation and Start; Back remains usable.
+The pending snapshot consumes an action epoch and invalidates queued duplicates.
+Only a real lobby state refresh or server rejection releases pending; no timer or
+optimistic option change is used. A queued command or dispatch feedback does not
+mean server acceptance. Upper controls remain available through normal native UI.
+
+Option/connection identities are native-only semantic revision inputs, so equal
+translated names cannot conceal a state change. Identical snapshots reuse the
+revision and skip the player callback. Scenario mismatch, modal ownership, leaving
+New Game, Load or gameplay withdraw the rows. Context/revision, pointer, cancel,
+resize, pause, detach and recreation clear held gestures. Local tabs/pages contain
+no gameplay state. Players shows one color at a time with Previous/Next and
+48dp-minimum buttons at the measured 1080×1240 / 369dpi lower-panel reference.
+Scenario retains its existing controls; both views expose Start/Back.
+
+### Slice 50 physical acceptance
+
+Use the exact successful candidate SHA/checksum receipt and the build playbook.
+
+1. Complete a standard local scenario → Players → permitted color assignment →
+   faction → hero → bonus → Scenario difficulty → Start journey using only the
+   lower display. Compare every acknowledged value with upper Options. Test both
+   cycling directions, wrap/Random, None, fixed heroes and single-faction maps.
+2. Check all playable colors, AI slots and at least two-human hot-seat assignment.
+   Compare flag behavior with upper controls. In network host/guest lobbies verify
+   host AI editing, guest-own options, locked remote slots and blocked guest
+   assignment. Verify unavailable artifact/resource bonuses remain native-limited.
+3. Rapid/double/alternating taps must apply one current request. Change scenario,
+   assignment or upper options while holding a lower edit; no stale action applies.
+   Exercise Back during pending, server rejection/disconnect and re-entry. Confirm
+   current data returns after acknowledgement and no optimistic value appears.
+4. Cancel/drag off/add a pointer. Toggle/reconnect the display, background/resume
+   and recreate during held/pending edits and child modals. Restore one current
+   deck with no replayed input, stale row or blocked-parent restoration.
+5. Recheck Load Game, campaign and random-map/advanced setup on the upper display,
+   Main Menu/confirmation restoration, upper touch/controller/keyboard and normal
+   single-display behavior; smoke-test Battle, Adventure, Hero and Town controls.
 
 ## Slice 49 hardware acceptance
 

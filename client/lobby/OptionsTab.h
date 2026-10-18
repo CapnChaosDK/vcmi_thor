@@ -17,6 +17,10 @@ struct PlayerSettings;
 struct PlayerInfo;
 enum class PlayerStartingBonus : int8_t;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorLobbyPlayer.h"
+#endif
+
 class CLabel;
 class CMultiLineLabel;
 class CFilledTexture;
@@ -43,6 +47,10 @@ public:
 	
 	OptionsTab();
 	void recreate();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::vector<ThorLobbyPlayer> thorPlayers(bool pending) const;
+	bool executeThorPlayerCommand(int command, int slot) const;
+#endif
 	void onSetPlayerClicked(const PlayerSettings & ps) const;
 	
 	enum SelType

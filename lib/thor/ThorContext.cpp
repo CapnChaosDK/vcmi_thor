@@ -18,6 +18,7 @@ namespace
 			&& lhs.enabledActionMask == rhs.enabledActionMask
 			&& lhs.activeActionMask == rhs.activeActionMask
 			&& lhs.extendedCommands == rhs.extendedCommands
+			&& lhs.lobbyPlayers == rhs.lobbyPlayers
 			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.campaignSelectionRevision == rhs.campaignSelectionRevision
 			&& lhs.browserPage == rhs.browserPage
@@ -58,13 +59,28 @@ namespace
 	{
 		if(context.contextId != ThorContextIds::BATTLE || !context.extendedCommands.valid())
 			context.extendedCommands = {};
+		if(context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO
+			|| context.lobbyPlayers.size() > PlayerColor::PLAYER_LIMIT_I)
+			context.lobbyPlayers.clear();
+		std::vector<int> playerSlots;
+		const bool validPlayers = std::all_of(context.lobbyPlayers.begin(), context.lobbyPlayers.end(), [&](const auto & player)
+		{
+			if(!player.valid() || std::find(playerSlots.begin(), playerSlots.end(), player.slot) != playerSlots.end()) return false;
+			playerSlots.push_back(player.slot);
+			return true;
+		});
+		if(!validPlayers) context.lobbyPlayers.clear();
+		for(auto & player : context.lobbyPlayers)
+			for(auto & label : player.labels)
+				label = thorBoundedText(std::move(label), 256);
 		context.title = thorBoundedText(std::move(context.title));
 		context.status = thorBoundedText(std::move(context.status));
 		context.menuModalSourceContext = thorBoundedText(std::move(context.menuModalSourceContext), 64);
 		if(context.menuModalType == ThorMenuModalType::NONE)
 		{
 			context.menuModalSourceContext.clear();
-			if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS)
+			if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS
+				&& context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
 			{
 				context.nativeOwnerToken = nullptr;
 				context.nativeParentToken = nullptr;

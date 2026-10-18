@@ -254,7 +254,13 @@ void GameEngine::updateFrame()
 			break;
 		}
 		bool executed = false;
-		if(request->commandVersion != 0)
+		if(request->commandVersion != 0 && ThorExtended::playerCommand(request->commandId))
+		{
+			auto lobby = windows().topWindow<CLobbyScreen>();
+			if(lobby && context.nativeOwnerToken == lobby.get())
+				executed = lobby->executeThorPlayerCommand(*request);
+		}
+		else if(request->commandVersion != 0)
 		{
 			auto battleWindow = windows().topWindow<BattleWindow>();
 			if(!battleWindow || context.nativeOwnerToken != battleWindow.get())

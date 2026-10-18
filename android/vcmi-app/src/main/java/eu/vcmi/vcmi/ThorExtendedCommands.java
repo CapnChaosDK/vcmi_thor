@@ -5,6 +5,8 @@ final class ThorExtendedCommands
 {
     static final int VERSION = 1, MAX_AVAILABLE = 16;
     static final int AUTO_START = 1, AUTO_STOP = 2, CAST_SPELL = 3, RETREAT = 4, SURRENDER = 5;
+    static final int PLAYER_SELECT = 6, FACTION_PREVIOUS = 7, FACTION_NEXT = 8,
+            HERO_PREVIOUS = 9, HERO_NEXT = 10, BONUS_PREVIOUS = 11, BONUS_NEXT = 12;
     static final ThorExtendedCommands EMPTY = new ThorExtendedCommands(new int[0], new int[0]);
     private final int[] enabled, active;
 
@@ -14,11 +16,11 @@ final class ThorExtendedCommands
         this.active = active;
     }
 
-    static boolean known(final int command) { return command >= AUTO_START && command <= SURRENDER; }
+    static boolean known(final int command) { return command >= AUTO_START && command <= BONUS_NEXT; }
 
     static int[] encode(final int version, final int command, final int target)
     {
-        return version == VERSION && known(command) && target == -1
+        return version == VERSION && known(command) && (command >= PLAYER_SELECT ? target >= 0 && target < 8 : target == -1)
                 ? new int[]{version, command, target} : null;
     }
 
@@ -28,7 +30,7 @@ final class ThorExtendedCommands
             return false;
         for (int i = 0; i < values.length; ++i)
         {
-            if (!known(values[i])) return false;
+            if (!known(values[i]) || values[i] >= PLAYER_SELECT) return false;
             for (int j = 0; j < i; ++j)
                 if (values[i] == values[j]) return false;
         }

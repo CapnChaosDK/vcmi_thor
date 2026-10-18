@@ -51,6 +51,7 @@ public:
 	void publishThorActionState(std::uint64_t revision, std::uint64_t enabledActionMask,
 		std::uint64_t activeActionMask);
 	void acknowledgeThorCommand(std::uint64_t revision, int command);
+	void publishThorLobbyPlayers(std::uint64_t revision, const std::vector<ThorLobbyPlayer> & players);
 	void publishThorCommands(std::uint64_t revision, const ThorExtended::State & state);
 	void publishThorBrowser(std::uint64_t revision, int page, int pageCount,
 		const std::vector<ThorBrowserEntry> & entries);
