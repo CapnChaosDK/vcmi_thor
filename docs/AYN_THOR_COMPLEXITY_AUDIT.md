@@ -199,6 +199,73 @@ Focused checksum-verified AYN Thor checklist:
 5. Upper touchscreen/controller and single-display play retain normal behavior;
    Adventure route/army dragging and recruitment retain their existing interactions.
 
-Next recommendation: characterize and centralize the repeated shell geometry;
+Historical Slice 46 recommendation: characterize and centralize the repeated shell geometry;
 design the protocol extension before adding another action family. Do not broaden
 this PR into presentation extraction or native dispatch replacement.
+
+## Slice 47 — Presentation geometry and Main Menu boundary
+
+Based on freshly fetched product `1731a3f11` (2026-10-18), with a clean working
+tree. Slice 46's shared `ThorControlGesture` was inspected and retained unchanged.
+The historical measurements/findings above describe the pre-Slice 47 tree.
+
+Selected boundary: one immutable shell geometry value plus the complete existing
+Main Menu presentation family. `ThorPresentationLayout` is pure Java; its sole
+formula supplies drawing, recruitment, Adventure/Battle and lobby hit detection.
+It retains both the old raw content extent and RectF subtraction order because
+rewriting these as equivalent algebra can change a float by a fraction of a pixel.
+Geometry is recomputed from current dimensions/density, so resize/recreation needs
+no new cache or reset protocol.
+
+`ThorMainMenuDeck` owns menu rendering, control hit detection, accessibility text
+and its existing semantic gesture facade. It receives current values per call,
+retaining only the gesture. The view keeps native submission and its captured
+revision, click notification, session checks and all existing cancellation sites.
+The extracted component returns an accepted action only after the unchanged
+`ThorMainMenuGesture`/`ThorControlGesture` accepts it. No snapshot subscription,
+controller reference, callback interface or framework was added. The component
+knows neither `ThorSecondScreenPresentation` nor `NativeMethods`, and can be tested
+without constructing an Android Presentation/View. Main Menu no longer reaches
+through the Adventure frame helper. `ThorDeckDrawing` shares the existing palette,
+fitted text and choice-button primitives with the view; it retains no Paint, view,
+resources, snapshot or lifecycle state. Its primitive bodies match the original
+operations exactly, with Paint made an explicit parameter.
+
+| Indicator | Before | After |
+| --- | ---: | ---: |
+| Shell margin formulas | 5 | 1 |
+| Presentation physical lines | 5,169 | 5,044 |
+| Presentation direct MainMenuState references | 14 | 4 (routing/cancellation only) |
+| Menu rendering/hit/description/gesture owners | Broad view | One 112-line menu component |
+| Geometry / shared drawing helper lines | Embedded | 32 / 58 |
+| Combined affected production lines | 5,169 | 5,246 (+77) |
+| Independent menu event-adapter test boundary | None | Plain events and snapshot values → accepted action |
+
+This is a responsibility reduction, not a claim of large file-size savings. The
+view's lifecycle/snapshot/native dependencies do not flow into the new menu owner;
+there are no backwards references or forwarding calls for each menu row. Hero,
+Town, Adventure, Battle, recruitment and specialized gestures remain in their
+existing owners. The broad view is still large; extracting more screen families
+without their own coupling analysis is deferred. Native publication duplication
+and the exhausted protocol namespace remain separate future work.
+
+Validation: 140 JUnit tests pass, including five new tests covering 32 size/density
+shell combinations, known reference/density-floor dimensions, eight menu contexts
+across 12 display configurations, rendered row centers and inert margins/header,
+move/one-shot acceptance, cancellation, extra pointers, changed revisions/sessions,
+availability and invalid session rejection. Full Thor Java source compilation with
+Java 17 compatibility against API 35 passes using local resource/native/activity
+stubs. Native checking is unavailable locally (`algorithm` absent in the NDK host
+toolchain); existing CI gates remain required. `git diff --check` passes. Exact CI
+and hardware evidence belongs in the Slice 47 backlog receipt; no device result is
+inferred from these tests. The checklist covers all shared-frame consumers as well
+as menu layout/input, reconnect, resume, restoration and upper-input regressions.
+
+Slice 47 validation receipt (2026-10-18): exact candidate
+`f9ba6e6d8124cec6eeae418f2cd7bcac4380069c` passed both jobs in
+[Thor run 39134929591](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39134929591).
+The artifact and installed APK were independently checksum-verified; APK SHA-256
+is `9f0b528bfd1918df37fa926575ca884ef328395a2c729de643314fa8bab619fa`.
+The user confirmed all five hardware checks passed on the installed AYN Thor APK.
+Status is `hardware validated`; PR #37 remains open and unmerged. See the backlog
+for the full receipt. These receipt-only updates do not change the tested build.

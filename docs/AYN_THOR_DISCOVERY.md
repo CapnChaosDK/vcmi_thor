@@ -72,6 +72,10 @@ VCMI combines Qt and SDL in one Android package:
 - Lower-deck haptics belong to the active Android `Presentation` view and use `View.performHapticFeedback` with default flags, so Android's system touch-feedback preference remains authoritative. The existing general `NativeMethods.hapticFeedback()` path is separate.
 - The validated main-menu slices show that `CMenuScreen` already publishes configured tab names. Map only exact approved names (`main`, `new`, `load`, `campaign`, and `credits`) to stable context IDs; every other name, including malformed and mod-added names, must publish `UNKNOWN`. Android must render known IDs from bounded local resources rather than from arbitrary native title/status text.
 
+### Presentation responsibility boundary (Slice 47)
+
+The lower view retains snapshots, lifecycle cancellation, session checks and native action submission. `ThorPresentationLayout` is the shared immutable shell calculation for drawing and hit testing. `ThorMainMenuDeck` owns the existing menu family's drawing, local control detection, accessibility description and semantic gesture facade, using values supplied per call; it retains no game snapshot or view/controller reference. `ThorDeckDrawing` shares the existing palette and two paint primitives without retaining mutable state. See the [Slice 47 audit](AYN_THOR_COMPLEXITY_AUDIT.md#slice-47--presentation-geometry-and-main-menu-boundary) for measurements and limits.
+
 ### Rendering lifecycle
 
 - The upper game remains a single SDL surface owned by `VcmiSDLActivity`; SDL2 and SDL3 backends live under `clientsdl2/` and `clientsdl3/`.

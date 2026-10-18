@@ -1,5 +1,7 @@
 package eu.vcmi.vcmi;
 
+import static eu.vcmi.vcmi.ThorDeckDrawing.*;
+
 import android.app.Presentation;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -28,10 +30,6 @@ final class ThorSecondScreenPresentation extends Presentation
         boolean isCurrent(long sessionId);
     }
 
-    // Measured AYN Thor lower panel reference: 1080 x 1240 px at approximately 369 dpi.
-    // The shell scales from these proportions and remains safe on other presentation displays.
-    private static final float REFERENCE_WIDTH = 1080f;
-    private static final float REFERENCE_HEIGHT = 1240f;
     private ThorFoundationView foundationView;
     private final ThorVisualAssetCache<Bitmap> visualAssets;
     private final HapticsChangeListener hapticsChangeListener;
@@ -204,14 +202,6 @@ final class ThorSecondScreenPresentation extends Presentation
             }
         }
 
-        private static final int BACKGROUND = Color.rgb(30, 31, 28);
-        private static final int STONE_DARK = Color.rgb(55, 57, 52);
-        private static final int STONE_LIGHT = Color.rgb(105, 105, 94);
-        private static final int PARCHMENT = Color.rgb(189, 166, 119);
-        private static final int PARCHMENT_DARK = Color.rgb(91, 69, 42);
-        private static final int GOLD = Color.rgb(205, 166, 66);
-        private static final int TEXT = Color.rgb(244, 229, 184);
-
         private final HapticsChangeListener hapticsChangeListener;
         private final long presentationSessionId;
         private final SessionValidity sessionValidity;
@@ -291,7 +281,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private boolean artifactTouchMovedWithoutSource;
         private final ThorLobbyScenarioGesture lobbyScenarioGesture = new ThorLobbyScenarioGesture();
         private final ThorLobbyScenarioGesture buildConfirmationGesture = new ThorLobbyScenarioGesture();
-        private final ThorMainMenuGesture mainMenuGesture = new ThorMainMenuGesture();
+        private final ThorMainMenuDeck mainMenu = new ThorMainMenuDeck();
         private final ThorBrowserGesture browserGesture = new ThorBrowserGesture();
         private final ThorWindowNavigation windowNavigation = new ThorWindowNavigation();
         private final ThorTownServices townServices = new ThorTownServices();
@@ -851,17 +841,14 @@ final class ThorSecondScreenPresentation extends Presentation
             super.onDraw(canvas);
 
             final float density = getResources().getDisplayMetrics().density;
-            final float referenceScale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
-            final float margin = Math.max(16f * density,
-                    Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
-                            Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
-            final float bevel = Math.max(3f * density, margin * 0.16f);
-            final float contentWidth = Math.max(0f, getWidth() - margin * 2f);
-            final float contentHeight = Math.max(0f, getHeight() - margin * 2f);
-            if (contentWidth <= 0f || contentHeight <= 0f)
+            final ThorPresentationLayout layout = presentationLayout();
+            final float bevel = layout.bevel;
+            final float contentWidth = Math.max(0f, layout.contentWidth);
+            final float contentHeight = Math.max(0f, layout.contentHeight);
+            if (!layout.hasContent())
                 return;
 
-            final RectF frame = new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
+            final RectF frame = ThorDeckDrawing.frame(layout);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(STONE_DARK);
             canvas.drawRect(frame, paint);
@@ -925,7 +912,8 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (ThorMainMenuState.choiceCount(contextId) > 0)
             {
-                drawMainMenuDashboard(canvas, frame, dividerY, density);
+                mainMenu.draw(canvas, paint, getContext(), contextId, title, status,
+                        enabledActionMask, activeActionMask, frame, dividerY, density);
             }
             else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {
@@ -2286,34 +2274,6 @@ final class ThorSecondScreenPresentation extends Presentation
             invalidate();
         }
 
-        private void drawMainMenuDashboard(final Canvas canvas, final RectF frame, final float dividerY,
-                                           final float density)
-        {
-            paint.setStyle(Paint.Style.FILL);
-            paint.setTextAlign(Paint.Align.CENTER);
-            paint.setFakeBoldText(true);
-            paint.setColor(TEXT);
-            drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.16f,
-                    frame.width() * 0.78f, Math.min(42f * density, frame.height() * 0.09f));
-            paint.setFakeBoldText(false);
-            paint.setColor(PARCHMENT_DARK);
-            drawFittedText(canvas, status, frame.centerX(), frame.top + frame.height() * 0.27f,
-                    frame.width() * 0.78f, Math.min(27f * density, frame.height() * 0.055f));
-
-            for (int control = 1; control <= ThorMainMenuState.choiceCount(contextId); ++control)
-            {
-                final int actionId = ThorMainMenuState.actionForControl(contextId, control);
-                final float[] bounds = ThorMainMenuState.boundsForControl(contextId, control,
-                        frame.width(), frame.height(), dividerY - frame.top);
-                final RectF button = new RectF(frame.left + bounds[0], frame.top + bounds[1],
-                        frame.left + bounds[2], frame.top + bounds[3]);
-                drawLobbyScenarioButton(canvas, button,
-                        getContext().getString(ThorMainMenuState.labelForControl(contextId, control)),
-                        isActionEnabled(actionId), ThorContextIds.HIGH_SCORES.equals(contextId)
-                                && isActionActive(actionId), density);
-            }
-        }
-
         private RectF browserControlBounds(final int control, final RectF frame)
         {
             final float[] bounds = ThorBrowserState.boundsForControl(contextId, control,
@@ -2505,7 +2465,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (recruitment.revision == revision)
             {
-                final RectF frame = recruitmentFrame();
+                final RectF frame = adventureFrame();
                 for (int position = 0; position < ThorRecruitmentState.PAGE_SIZE; ++position)
                 {
                     final int rowIndex = recruitment.rowIndexOnPage(recruitmentPage, position);
@@ -2522,7 +2482,7 @@ final class ThorSecondScreenPresentation extends Presentation
                                 ThorRecruitmentState.SELECT_ROW);
                 }
             }
-            final RectF frame = recruitmentFrame();
+            final RectF frame = adventureFrame();
             for (int index = 0; index < 11; ++index)
             {
                 final int code = recruitmentControlCode(index);
@@ -2538,16 +2498,6 @@ final class ThorSecondScreenPresentation extends Presentation
                 }
             }
             return null;
-        }
-
-        private RectF recruitmentFrame()
-        {
-            final float density = getResources().getDisplayMetrics().density;
-            final float referenceScale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
-            final float margin = Math.max(16f * density,
-                    Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
-                            Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
-            return new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
         }
 
         private boolean handleRecruitmentTouch(final MotionEvent event)
@@ -2959,21 +2909,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private void drawLobbyScenarioButton(final Canvas canvas, final RectF bounds, final String label,
                                              final boolean enabled, final boolean selected, final float density)
         {
-            final float radius = Math.max(4f * density, bounds.height() * 0.08f);
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(selected ? Color.rgb(105, 81, 37) : enabled ? STONE_DARK : Color.rgb(76, 74, 67));
-            canvas.drawRoundRect(bounds, radius, radius, paint);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(selected ? Math.max(3f, radius * 0.28f) : Math.max(2f, radius * 0.18f));
-            paint.setColor(selected || enabled ? GOLD : PARCHMENT_DARK);
-            canvas.drawRoundRect(bounds, radius, radius, paint);
-            paint.setStyle(Paint.Style.FILL);
-            paint.setTextAlign(Paint.Align.CENTER);
-            paint.setFakeBoldText(enabled || selected);
-            paint.setColor(enabled || selected ? TEXT : PARCHMENT_DARK);
-            drawFittedText(canvas, label, bounds.centerX(), bounds.centerY(), bounds.width() * 0.88f,
-                    Math.min(25f * density, bounds.height() * 0.36f));
-            paint.setFakeBoldText(false);
+            ThorDeckDrawing.drawChoiceButton(canvas, paint, bounds, label, enabled, selected, density);
         }
 
         private void drawHeroDashboard(final Canvas canvas, final RectF frame, final float dividerY,
@@ -3915,18 +3851,19 @@ final class ThorSecondScreenPresentation extends Presentation
             return -1;
         }
 
+        private ThorPresentationLayout presentationLayout()
+        {
+            return new ThorPresentationLayout(getWidth(), getHeight(), getResources().getDisplayMetrics().density);
+        }
+
         private RectF adventureFrame()
         {
-            final float density = getResources().getDisplayMetrics().density;
-            final float scale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
-            final float margin = Math.max(16f * density, Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
-                    Math.min(getWidth(), getHeight()) * 0.045f * scale));
-            return new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
+            return ThorDeckDrawing.frame(presentationLayout());
         }
 
         private float adventureBevel()
         {
-            return Math.max(3f * getResources().getDisplayMetrics().density, adventureFrame().left * 0.16f);
+            return presentationLayout().bevel;
         }
 
         private void drawAdventureTabs(final Canvas canvas, final RectF frame, final float dividerY,
@@ -4613,12 +4550,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private int lobbyScenarioControlAt(final float x, final float y)
         {
-            final float density = getResources().getDisplayMetrics().density;
-            final float referenceScale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
-            final float margin = Math.max(16f * density,
-                    Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
-                            Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
-            final RectF frame = new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
+            final RectF frame = ThorDeckDrawing.frame(presentationLayout());
             final float dividerY = frame.top + frame.height() * 0.48f;
             return ThorLobbyScenarioState.controlAt(x - frame.left, y - frame.top,
                     frame.width(), frame.height(), dividerY - frame.top);
@@ -4736,57 +4668,19 @@ final class ThorSecondScreenPresentation extends Presentation
             return true;
         }
 
-        private int mainMenuControlAt(final float x, final float y)
-        {
-            final RectF frame = adventureFrame();
-            final float dividerY = frame.height() * 0.34f;
-            return ThorMainMenuState.controlAt(contextId, x - frame.left, y - frame.top,
-                    frame.width(), frame.height(), dividerY);
-        }
-
         private void cancelMainMenuTouch()
         {
-            mainMenuGesture.cancel();
+            mainMenu.cancel();
         }
 
         private boolean handleMainMenuTouch(final MotionEvent event)
         {
-            final int action = event.getActionMasked();
-            if (action == MotionEvent.ACTION_DOWN)
-            {
-                final int control = mainMenuControlAt(event.getX(), event.getY());
-                final int actionId = ThorMainMenuState.actionForControl(contextId, control);
-                mainMenuGesture.begin(contextId, control, revision, presentationSessionId,
-                        event.getPointerId(0), actionId != ThorActionIds.NONE && isActionEnabled(actionId));
-                return true;
-            }
-            if (!mainMenuGesture.isActive())
-                return true;
-            if (event.getPointerCount() != 1 || event.getPointerId(0) != mainMenuGesture.pointerId()
-                    || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP)
-            {
-                cancelMainMenuTouch();
-                return true;
-            }
-            if (action == MotionEvent.ACTION_MOVE)
-                return true;
-            if (action == MotionEvent.ACTION_CANCEL)
-            {
-                cancelMainMenuTouch();
-                return true;
-            }
-            if (action != MotionEvent.ACTION_UP)
-                return true;
-
-            final int control = mainMenuGesture.control();
-            final int releasedControl = mainMenuControlAt(event.getX(), event.getY());
-            final long submittedRevision = mainMenuGesture.revision();
-            final long submittedSession = mainMenuGesture.session();
-            final int actionId = ThorMainMenuState.actionForControl(contextId, control);
-            final boolean enabledAtUp = actionId != ThorActionIds.NONE && isActionEnabled(actionId);
-            final boolean sessionIsCurrent = sessionValidity != null && sessionValidity.isCurrent(submittedSession);
-            if (mainMenuGesture.finish(contextId, releasedControl, event.getPointerCount(), event.getPointerId(0),
-                    revision, presentationSessionId, enabledAtUp, sessionIsCurrent))
+            final long submittedRevision = revision;
+            final int actionId = mainMenu.handleTouch(event.getActionMasked(), event.getX(), event.getY(),
+                    event.getPointerCount(), event.getPointerId(0), contextId, revision, presentationSessionId,
+                    enabledActionMask, presentationLayout(),
+                    sessionValidity != null && sessionValidity.isCurrent(presentationSessionId));
+            if (actionId != ThorActionIds.NONE)
             {
                 performClick();
                 NativeMethods.submitThorAction(submittedRevision, actionId, ThorActionIds.NO_TARGET);
@@ -4859,16 +4753,12 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private int actionAt(final float x, final float y)
         {
-            final float density = getResources().getDisplayMetrics().density;
-            final float referenceScale = Math.min(getWidth() / REFERENCE_WIDTH, getHeight() / REFERENCE_HEIGHT);
-            final float margin = Math.max(16f * density,
-                    Math.max(Math.min(getWidth(), getHeight()) * 0.035f,
-                            Math.min(getWidth(), getHeight()) * 0.045f * referenceScale));
-            final RectF frame = new RectF(margin, margin, getWidth() - margin, getHeight() - margin);
-            final float bevel = Math.max(3f * density, margin * 0.16f);
+            final ThorPresentationLayout layout = presentationLayout();
+            final RectF frame = ThorDeckDrawing.frame(layout);
+            final float bevel = layout.bevel;
             final boolean battleDashboard = ThorContextIds.BATTLE.equals(contextId)
                     || ThorContextIds.BATTLE_TACTICS.equals(contextId);
-            final float dividerY = frame.top + (getHeight() - margin * 2f) * (battleDashboard ? 0.55f
+            final float dividerY = frame.top + layout.contentHeight * (battleDashboard ? 0.55f
                     : ThorAdventureLayout.DIVIDER);
             if (ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.BATTLE_TACTICS.equals(contextId))
             {
@@ -4936,15 +4826,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             if (ThorMainMenuState.choiceCount(contextId) > 0)
             {
-                final StringBuilder description = new StringBuilder(title).append(". ").append(status);
-                for (int control = 1; control <= ThorMainMenuState.choiceCount(contextId); ++control)
-                {
-                    final int actionId = ThorMainMenuState.actionForControl(contextId, control);
-                    if (isActionEnabled(actionId))
-                        description.append(". ").append(getContext().getString(
-                                ThorMainMenuState.labelForControl(contextId, control)));
-                }
-                return description.toString();
+                return mainMenu.description(getContext(), contextId, title, status, enabledActionMask);
             }
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
@@ -5135,14 +5017,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private void drawFittedText(final Canvas canvas, final String text, final float centerX, final float baseline,
                                     final float maxWidth, final float preferredSize)
         {
-            float textSize = preferredSize;
-            paint.setTextSize(textSize);
-            while (textSize > 12f && paint.measureText(text) > maxWidth)
-            {
-                textSize -= 1f;
-                paint.setTextSize(textSize);
-            }
-            canvas.drawText(text, centerX, baseline - (paint.ascent() + paint.descent()) * 0.5f, paint);
+            ThorDeckDrawing.drawFittedText(canvas, paint, text, centerX, baseline, maxWidth, preferredSize);
         }
 
         private void drawEllipsizedText(final Canvas canvas, final String text, final float centerX,
