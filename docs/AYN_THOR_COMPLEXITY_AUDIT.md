@@ -328,3 +328,12 @@ exact candidate `97cdb79832fcb943692f9afae312fd15c7a132f8`,
 The permanent candidate advanced normally after fetch/ancestry verification. Status
 is `awaiting CI`; no package/checksum/device result is claimed. This receipt-only
 follow-up does not change the candidate product/build tree.
+
+Slice 48 CI completion (2026-10-18): run `39138368858` passed native preflight
+(149 tests, including six publisher tests), Android contracts and ARM64 packaging
+for exact candidate `97cdb79832fcb943692f9afae312fd15c7a132f8`. The downloaded
+APK matches receipt/checksum SHA-256
+`a99d26f234cf409271584cd5f1c29d87cf933ff0d44198c51d38c3c6af3ee833`.
+Warm compiler-cache hits: 833/846 (98.46%); ARM64 build: 131 seconds.
+Status is now `awaiting hardware validation`; earlier pending CI text is historical.
+No device pass, merge or promotion is claimed. See the backlog receipt/checklist.
