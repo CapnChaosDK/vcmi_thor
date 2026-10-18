@@ -224,6 +224,7 @@ set(vcmiclientcommon_HEADERS
 
 	battle/BattleActionsController.h
 	battle/BattleAnimationClasses.h
+	battle/BattleAnimationWait.h
 	battle/BattleConsole.h
 	battle/BattleEffectsController.h
 	battle/BattleFieldController.h

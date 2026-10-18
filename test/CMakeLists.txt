@@ -17,6 +17,7 @@ set(test_SRCS
  		JsonComparer.cpp
 
  		battle/BattleHexTest.cpp
+		battle/BattleAnimationWaitTest.cpp
  		battle/CBattleInfoCallbackTest.cpp
  		battle/CHealthTest.cpp
 		battle/CUnitStateTest.cpp
