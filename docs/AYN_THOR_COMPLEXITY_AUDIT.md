@@ -337,3 +337,10 @@ APK matches receipt/checksum SHA-256
 Warm compiler-cache hits: 833/846 (98.46%); ARM64 build: 131 seconds.
 Status is now `awaiting hardware validation`; earlier pending CI text is historical.
 No device pass, merge or promotion is claimed. See the backlog receipt/checklist.
+
+Slice 48 hardware confirmation (2026-10-18): the user confirmed all five device
+checks passed on installed candidate `97cdb79832fcb943692f9afae312fd15c7a132f8`,
+APK SHA-256 `a99d26f234cf409271584cd5f1c29d87cf933ff0d44198c51d38c3c6af3ee833`.
+Installed bytes were independently verified; behavior is user-reported. Status is
+`hardware validated`; earlier pending statements are historical. Merge and branch
+cleanup are explicitly authorized; their completion receipt belongs in the backlog.
