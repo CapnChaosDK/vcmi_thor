@@ -35,7 +35,7 @@ jobs:
   preflight:
     name: Thor preflight
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
@@ -100,6 +100,25 @@ jobs:
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
           "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:BattleAnimationWait*'
+
+      - name: Build and run authoritative army transfer regressions (non-Thor)
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ninja-build libboost-filesystem-dev libboost-program-options-dev \
+            zlib1g-dev libminizip-dev libtbb-dev libluajit-5.1-dev p7zip-full
+          cmake -S . -B "$RUNNER_TEMP/army-transfer-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DENABLE_TEST=ON -DENABLE_SERVER=ON \
+            -DENABLE_CLIENT=OFF -DENABLE_LAUNCHER=OFF -DENABLE_EDITOR=OFF \
+            -DENABLE_NULLKILLER2_AI=OFF -DENABLE_BATTLE_AI=OFF \
+            -DENABLE_STUPID_AI=OFF -DENABLE_MMAI=OFF -DENABLE_DISCORD=OFF
+          cmake --build "$RUNNER_TEMP/army-transfer-build" --target army-transfer-tests --parallel 2
+          # Reuse the standard native test-data procedure from github.yml.
+          curl --fail --location --retry 3 \
+            https://github.com/vcmi-mods/vcmi-test-data/releases/download/v2.0/heroes3.7z \
+            --output "$RUNNER_TEMP/army-test-data.7z"
+          mkdir -p "$HOME/.local/share/vcmi"
+          7za x -y -o"$HOME/.local/share/vcmi/" "$RUNNER_TEMP/army-test-data.7z"
+          ctest --test-dir "$RUNNER_TEMP/army-transfer-build" -R '^ArmyTransferBoundary$' --output-on-failure
 
   arm64-candidate:
     name: Thor ARM64 candidate
@@ -320,6 +339,7 @@ jobs:
               "arm64_build_duration_seconds": os.environ["ARM64_BUILD_DURATION_SECONDS"],
               "tests": {
                   "focused_native_thor": "passed",
+                  "authoritative_army_transfer_non_thor": "passed",
                   "focused_android_thor": "passed"
               },
               "package_verification": "passed"

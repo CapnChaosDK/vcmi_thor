@@ -115,6 +115,7 @@ set(test_SRCS
 		server/battles/SoulStealTest.cpp
 		server/battles/SummonGuardiansTest.cpp
 		server/battles/TransmutationTest.cpp
+		server/ArmyManagementTest.cpp
 		server/queries/QueriesProcessorTest.cpp
 
 		texts/TextOperationsTest.cpp
@@ -297,3 +298,19 @@ foreach(resource ${testdata})
 	set(output "${CMAKE_BINARY_DIR}/bin/test/testdata/${output}/${filename}")
 	configure_file(${resource} ${output} COPYONLY)
 endforeach()
+
+# Focused real server boundary gate; avoids compiling unrelated AI/gameplay tests.
+# Uses the same fixture, facade, server implementation and runtime data as vcmitest.
+add_executable(army-transfer-tests
+	main.cpp CVcmiTestConfig.cpp
+	server/ArmyManagementTest.cpp
+	mock/GameHandlerTestServer.cpp
+	mock/TinyMapGameTest.cpp
+	mock/TinyH3MBuilder.cpp mock/TinyH3MWriter.cpp
+	mock/mock_MapServiceTinyH3M.cpp)
+target_link_libraries(army-transfer-tests PRIVATE gtest gmock vcmi vcmiservercommon ${SYSTEM_LIBS})
+target_include_directories(army-transfer-tests PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR} ${GTestSrc}/include ${GMockSrc}/include)
+vcmi_set_output_dir(army-transfer-tests "")
+add_test(NAME ArmyTransferBoundary COMMAND army-transfer-tests
+	WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

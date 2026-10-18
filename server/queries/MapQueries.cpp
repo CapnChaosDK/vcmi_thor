@@ -93,6 +93,10 @@ bool CGarrisonDialogQuery::blocksPack(const CPackForServer * pack) const
 	if(auto stacks = dynamic_cast<const BulkSplitAndRebalanceStack*>(pack))
 		return !vstd::contains(ourIds, stacks->srcOwner);
 
+	if(auto stacks = dynamic_cast<const RedistributeArmyStack*>(pack))
+		return !vstd::contains(ourIds, stacks->leftHero) || !vstd::contains(ourIds, stacks->rightHero)
+			|| !vstd::contains(ourIds, stacks->sourceArmy);
+
 	if(auto stacks = dynamic_cast<const BulkMoveArmy*>(pack))
 		return !vstd::contains(ourIds, stacks->srcArmy) || !vstd::contains(ourIds, stacks->destArmy);
 

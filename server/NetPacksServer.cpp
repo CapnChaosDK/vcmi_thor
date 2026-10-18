@@ -95,7 +95,6 @@ void ApplyGhNetPackVisitor::visitCastleTeleportHero(CastleTeleportHero & pack)
 void ApplyGhNetPackVisitor::visitArrangeStacks(ArrangeStacks & pack)
 {
 	gh.throwIfWrongPlayer(connection, &pack);
-	gh.throwIfPlayerNotActive(connection, &pack);
 
 	result = gh.arrangeStacks(pack.id1, pack.id2, pack.what, pack.p1, pack.p2, pack.val, pack.player);
 }
@@ -103,41 +102,36 @@ void ApplyGhNetPackVisitor::visitArrangeStacks(ArrangeStacks & pack)
 void ApplyGhNetPackVisitor::visitRedistributeArmyStack(RedistributeArmyStack & pack)
 {
 	gh.throwIfWrongOwner(connection, &pack, pack.sourceArmy);
-	gh.throwIfPlayerNotActive(connection, &pack);
 	result = gh.redistributeArmyStack(pack.leftHero, pack.rightHero, pack.sourceArmy, pack.sourceSlot, pack.expectedCreature,
 		pack.expectedSourceCount, pack.destinations, pack.destinationCount, pack.player);
 }
 
 void ApplyGhNetPackVisitor::visitBulkMoveArmy(BulkMoveArmy & pack)
 {
-	gh.throwIfWrongOwner(connection, &pack, pack.srcArmy);
-	gh.throwIfPlayerNotActive(connection, &pack);
+	gh.throwIfWrongPlayer(connection, &pack);
 
-	result = gh.bulkMoveArmy(pack.srcArmy, pack.destArmy, pack.srcSlot);
+	result = gh.bulkMoveArmy(pack.srcArmy, pack.destArmy, pack.srcSlot, pack.player);
 }
 
 void ApplyGhNetPackVisitor::visitBulkSplitStack(BulkSplitStack & pack)
 {
 	gh.throwIfWrongPlayer(connection, &pack);
-	gh.throwIfPlayerNotActive(connection, &pack);
 
-	result = gh.bulkSplitStack(pack.src, pack.srcOwner, pack.amount);
+	result = gh.bulkSplitStack(pack.src, pack.srcOwner, pack.amount, pack.player);
 }
 
 void ApplyGhNetPackVisitor::visitBulkMergeStacks(BulkMergeStacks & pack)
 {
 	gh.throwIfWrongPlayer(connection, &pack);
-	gh.throwIfPlayerNotActive(connection, &pack);
 
-	result = gh.bulkMergeStacks(pack.src, pack.srcOwner);
+	result = gh.bulkMergeStacks(pack.src, pack.srcOwner, pack.player);
 }
 
 void ApplyGhNetPackVisitor::visitBulkSplitAndRebalanceStack(BulkSplitAndRebalanceStack & pack)
 {
 	gh.throwIfWrongPlayer(connection, &pack);
-	gh.throwIfPlayerNotActive(connection, &pack);
 
-	result = gh.bulkSplitAndRebalanceStack(pack.src, pack.srcOwner);
+	result = gh.bulkSplitAndRebalanceStack(pack.src, pack.srcOwner, pack.player);
 }
 
 void ApplyGhNetPackVisitor::visitDisbandCreature(DisbandCreature & pack)
@@ -145,7 +139,7 @@ void ApplyGhNetPackVisitor::visitDisbandCreature(DisbandCreature & pack)
 	gh.throwIfWrongOwner(connection, &pack, pack.id);
 	gh.throwIfPlayerNotActive(connection, &pack);
 
-	result = gh.disbandCreature(pack.id, pack.pos);
+	result = gh.disbandCreature(pack.id, pack.pos, pack.player);
 }
 
 void ApplyGhNetPackVisitor::visitBuildStructure(BuildStructure & pack)

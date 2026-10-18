@@ -35,6 +35,7 @@ struct CPackForServer;
 struct NewTurn;
 struct CArtifactOperationPack;
 struct CGarrisonOperationPack;
+struct BulkRebalanceStacks;
 struct SetResources;
 struct NewStructures;
 
@@ -92,7 +93,11 @@ public:
 	ServerCallback * spellcastEnvironment() const;
 
 	bool isBlockedByQueries(const CPackForServer *pack, PlayerColor player);
-	bool isAllowedExchange(ObjectInstanceID id1, ObjectInstanceID id2);
+	bool isAllowedExchange(PlayerColor player, ObjectInstanceID id1, ObjectInstanceID id2);
+	bool isInGarrisonDialog(PlayerColor player, ObjectInstanceID army);
+	bool canTakeTroopsFrom(PlayerColor player, const CArmedInstance * army);
+	bool canMoveTroopsBetween(PlayerColor player, const CArmedInstance * source, const CArmedInstance * destination);
+	bool applyArmyTransferPlan(BulkRebalanceStacks & plan);
 	void giveSpells(const CGTownInstance *t, const CGHeroInstance *h);
 
 	IGameInfoCallback & gameInfo();
@@ -242,17 +247,17 @@ public:
 	bool visitTownBuilding(ObjectInstanceID tid, BuildingID bid);
 	bool razeStructure(ObjectInstanceID tid, BuildingID bid);
 	bool spellResearch(ObjectInstanceID tid, SpellID spellAtSlot, bool accepted);
-	bool disbandCreature( ObjectInstanceID id, SlotID pos );
+	bool disbandCreature(ObjectInstanceID id, SlotID pos, PlayerColor player);
 	bool arrangeStacks( ObjectInstanceID id1, ObjectInstanceID id2, ui8 what, SlotID p1, SlotID p2, si32 val, PlayerColor player);
 	bool redistributeArmyStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
 		ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
 		si32 expectedSourceCount,
 		const std::array<ArmyStackRedistributionTarget, MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS> & destinations,
 		ui8 destinationCount, PlayerColor player);
-	bool bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot);
-	bool bulkSplitStack(SlotID src, ObjectInstanceID srcOwner, si32 howMany);
-	bool bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner);
-	bool bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID srcOwner);
+	bool bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot, PlayerColor player);
+	bool bulkSplitStack(SlotID src, ObjectInstanceID srcOwner, si32 howMany, PlayerColor player);
+	bool bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner, PlayerColor player);
+	bool bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID srcOwner, PlayerColor player);
 	bool responseStatistic(PlayerColor player);
 	void save(const std::string &fname, PlayerColor playerToNotifyOnSuccess, int autosaveCountLimit = 0);
 	void load(const StartInfo &info);

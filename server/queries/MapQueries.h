@@ -57,6 +57,7 @@ public:
 	static constexpr QueryType TYPE = QueryType::GarrisonDialog;
 
 	std::array<const CArmedInstance *,2> exchangingArmies;
+	bool removableUnits = true;
 
 	CGarrisonDialogQuery(CGameHandler * owner, const CArmedInstance *up, const CArmedInstance *down);
 	void notifyObjectAboutRemoval(const CGObjectInstance * visitedObject, const CGHeroInstance * visitingHero) const override;

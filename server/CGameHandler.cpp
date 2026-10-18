@@ -9,6 +9,7 @@
  */
 #include "StdInc.h"
 #include "CGameHandler.h"
+#include "../lib/mapObjects/army/ArmyTransferValidation.h"
 
 #include "CVCMIServer.h"
 #include "TurnTimerHandler.h"
@@ -534,7 +535,7 @@ void CGameHandler::handleReceivedPack(GameConnectionID connection, CPackForServe
 			complain((boost::format("Got false in applying %s... that request must have been fishy!")
 				% typeid(pack).name()).str());
 
-		sendPackageResponse(true);
+		sendPackageResponse(result);
 	}
 }
 
@@ -1887,12 +1888,14 @@ void CGameHandler::configureReplayLog(bool gameIsNew)
 		gs->replayLog.reconfigureOnLoad(roundsKept);
 }
 
-bool CGameHandler::bulkSplitStack(SlotID slotSrc, ObjectInstanceID srcOwner, si32 howMany)
+bool CGameHandler::bulkSplitStack(SlotID slotSrc, ObjectInstanceID srcOwner, si32 howMany, PlayerColor player)
 {
 	if(!slotSrc.validSlot() && complain(complainInvalidSlot))
 		return false;
 
 	const auto * army = dynamic_cast<const CArmedInstance*>(gameInfo().getObjInstance(srcOwner));
+	if(!canTakeTroopsFrom(player, army) || !isAllowedExchange(player, srcOwner, srcOwner))
+		COMPLAIN_RET("Cannot rearrange this army!");
 	const CCreatureSet & creatureSet = *army;
 
 	if((!vstd::contains(creatureSet.stacks, slotSrc) && complain(complainNoCreatures))
@@ -1927,16 +1930,17 @@ bool CGameHandler::bulkSplitStack(SlotID slotSrc, ObjectInstanceID srcOwner, si3
 		if(actualAmount <= howMany)
 			break;
 	}
-	sendAndApply(bulkRS);
-	return true;
+	return applyArmyTransferPlan(bulkRS);
 }
 
-bool CGameHandler::bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner)
+bool CGameHandler::bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner, PlayerColor player)
 {
 	if(!slotSrc.validSlot() && complain(complainInvalidSlot))
 		return false;
 
 	const auto * army = dynamic_cast<const CArmedInstance*>(gameInfo().getObjInstance(srcOwner));
+	if(!canTakeTroopsFrom(player, army) || !isAllowedExchange(player, srcOwner, srcOwner))
+		COMPLAIN_RET("Cannot rearrange this army!");
 	const CCreatureSet & creatureSet = *army;
 
 	if(!vstd::contains(creatureSet.stacks, slotSrc) && complain(complainNoCreatures))
@@ -1969,20 +1973,22 @@ bool CGameHandler::bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner)
 		rs.count = creatureSet.getStackCount(slot);
 		bulkRS.moves.push_back(rs);
 	}
-	sendAndApply(bulkRS);
-	return true;
+	return applyArmyTransferPlan(bulkRS);
 }
 
-bool CGameHandler::bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot)
+bool CGameHandler::bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot, PlayerColor player)
 {
 	if(!srcSlot.validSlot() && complain(complainInvalidSlot))
 		return false;
 
-	if(!isAllowedExchange(srcArmy, destArmy))
+	if(!isAllowedExchange(player, srcArmy, destArmy))
 		COMPLAIN_RET("That heroes cannot make any exchange!");
 
 	const auto * armySrc = dynamic_cast<const CArmedInstance*>(gameInfo().getObjInstance(srcArmy));
 	const auto * armyDest = dynamic_cast<const CArmedInstance*>(gameInfo().getObjInstance(destArmy));
+
+	if(srcArmy == destArmy || !canMoveTroopsBetween(player, armySrc, armyDest))
+		COMPLAIN_RET("Cannot take units from this army!");
 
 	if(!vstd::contains(armySrc->stacks, srcSlot) && complain(complainNoCreatures))
 		return false;
@@ -2019,7 +2025,7 @@ bool CGameHandler::bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destA
 	}
 
 	// all troops were moved, but we can't leave source hero without troops - undo movement of 1 unit from srcSlot
-	if (allTroopsMoved)
+	if (allTroopsMoved && armySrc->needsLastStack())
 	{
 		if (armySrc->getStack(srcSlot).getCount() == 1)
 		{
@@ -2040,8 +2046,7 @@ bool CGameHandler::bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destA
 		}
 	}
 
-	sendAndApply(bulkRS);
-	return true;
+	return applyArmyTransferPlan(bulkRS);
 }
 
 bool CGameHandler::redistributeArmyStack(ObjectInstanceID leftHeroId, ObjectInstanceID rightHeroId,
@@ -2064,7 +2069,7 @@ bool CGameHandler::redistributeArmyStack(ObjectInstanceID leftHeroId, ObjectInst
 	if(!leftHero || !rightHero || !source
 		|| (sourceArmyId != leftHeroId && sourceArmyId != rightHeroId)
 		|| leftHero->tempOwner != player || rightHero->tempOwner != player
-		|| source->tempOwner != player || !isAllowedExchange(leftHeroId, rightHeroId))
+		|| source->tempOwner != player || !isAllowedExchange(player, leftHeroId, rightHeroId))
 		return reject("Army redistribution is not allowed for these heroes!");
 
 	const auto * sourceStack = source->getStackPtr(sourceSlot);
@@ -2090,7 +2095,8 @@ bool CGameHandler::redistributeArmyStack(ObjectInstanceID leftHeroId, ObjectInst
 			!= seenDestinations.end())
 			return reject("Duplicate army redistribution destination!");
 		seenDestinations.emplace_back(target.armyId, target.slot);
-		if(destination->tempOwner != player || !isAllowedExchange(sourceArmyId, target.armyId))
+		if(destination->tempOwner != player || !isAllowedExchange(player, sourceArmyId, target.armyId)
+			|| !canMoveTroopsBetween(player, source, destination))
 			return reject("Army redistribution destination is not controlled by this player!");
 
 		const auto * destinationStack = destination->getStackPtr(target.slot);
@@ -2121,16 +2127,17 @@ bool CGameHandler::redistributeArmyStack(ObjectInstanceID leftHeroId, ObjectInst
 	});
 
 	// All destinations are revalidated before one garrison-update packet applies the complete plan.
-	sendAndApply(redistribution);
-	return true;
+	return applyArmyTransferPlan(redistribution);
 }
 
-bool CGameHandler::bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID srcOwner)
+bool CGameHandler::bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID srcOwner, PlayerColor player)
 {
 	if(!slotSrc.validSlot() && complain(complainInvalidSlot))
 		return false;
 
 	const auto * army = dynamic_cast<const CArmedInstance*>(gameInfo().getObjInstance(srcOwner));
+	if(!canTakeTroopsFrom(player, army) || !isAllowedExchange(player, srcOwner, srcOwner))
+		COMPLAIN_RET("Cannot rearrange this army!");
 	const CCreatureSet & creatureSet = *army;
 
 	if(!vstd::contains(creatureSet.stacks, slotSrc) && complain(complainNoCreatures))
@@ -2145,15 +2152,15 @@ bool CGameHandler::bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID s
 	const auto * currentCreature = creatureSet.getCreature(slotSrc);
 
 	if(freeSlot == SlotID() && creatureSet.isCreatureBalanced(currentCreature))
-		return true;
+		return false;
 
 	auto creatureSlots = creatureSet.getCreatureSlots(currentCreature, slotSrc, 1); // Ignore slots where's only 1 creature
-	TQuantity totalCreatures = creatureSet.getStackCount(slotSrc);
+	int64_t totalCreatures = creatureSet.getStackCount(slotSrc);
 
 	for(auto slot : creatureSlots)
 		totalCreatures += creatureSet.getStackCount(slot);
 
-	if(totalCreatures <= 1 && complain("Total creatures number is invalid"))
+	if((totalCreatures <= 1 || totalCreatures > std::numeric_limits<si32>::max()) && complain("Total creatures number is invalid"))
 		return false;
 
 	BulkRebalanceStacks bulkSRS;
@@ -2204,163 +2211,60 @@ bool CGameHandler::bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID s
 		rs.srcSlot = slotSrc;
 		rs.dstSlot = slot;
 		rs.count = vstd::divideAndCeil(unitsToMove, slotsLeft);
-		bulkSRS.moves.push_back(rs);
+		if(rs.count > 0)
+			bulkSRS.moves.push_back(rs);
 
 		unitsToMove -= rs.count;
 		slotsLeft -= 1;
 	}
 
-	sendAndApply(bulkSRS);
-	return true;
+	return applyArmyTransferPlan(bulkSRS);
 }
 
 bool CGameHandler::arrangeStacks(ObjectInstanceID id1, ObjectInstanceID id2, ui8 what, SlotID p1, SlotID p2, si32 val, PlayerColor player)
 {
-	const auto * s1 = dynamic_cast<const CArmedInstance *>(gameInfo().getObj(id1));
-	const auto * s2 = dynamic_cast<const CArmedInstance *>(gameInfo().getObj(id2));
+	const auto * first = dynamic_cast<const CArmedInstance *>(gameInfo().getObj(id1));
+	const auto * second = dynamic_cast<const CArmedInstance *>(gameInfo().getObj(id2));
+	if(!first || !second || !p1.validSlot() || !p2.validSlot()
+		|| (id1 == id2 && p1 == p2) || !isAllowedExchange(player, id1, id2))
+		COMPLAIN_RET("Invalid army exchange!");
 
-	if (s1 == nullptr || s2 == nullptr)
+	const StackLocation left(id1, p1);
+	const StackLocation right(id2, p2);
+	if(what == 1) // Swap: each occupied slot is an actual source.
 	{
-		complain("Cannot exchange stacks between non-existing objects!!\n");
-		return false;
-	}
-
-	const CCreatureSet & S1 = *s1;
-	const CCreatureSet & S2 = *s2;
-	StackLocation sl1(s1->id, p1);
-	StackLocation sl2(s2->id, p2);
-
-	if (!sl1.slot.validSlot()  ||  !sl2.slot.validSlot())
-	{
-		complain(complainInvalidSlot);
-		return false;
-	}
-
-	if (!isAllowedExchange(id1,id2))
-	{
-		complain("Cannot exchange stacks between these two objects!\n");
-		return false;
-	}
-
-	// We can always put stacks into locked garrison, but not take them out of it
-	auto notRemovable = [&](const CArmedInstance * army)
-	{
-		if (id1 != id2) // Stack arrangement inside locked garrison is allowed
-		{
-			const auto * g = dynamic_cast<const CGGarrison *>(army);
-			if (g && !g->removableUnits)
-			{
-				complain("Stacks in this garrison are not removable!\n");
-				return true;
-			}
-		}
-		return false;
-	};
-
-	if (what==1) //swap
-	{
-		if (((s1->tempOwner != player && s1->tempOwner != PlayerColor::UNFLAGGABLE) && s1->getStackCount(p1))
-		  || ((s2->tempOwner != player && s2->tempOwner != PlayerColor::UNFLAGGABLE) && s2->getStackCount(p2)))
-		{
-			complain("Can't take troops from another player!");
+		if(first->slotEmpty(p1) && second->slotEmpty(p2))
 			return false;
-		}
-
-		if (sl1.army == sl2.army && sl1.slot == sl2.slot)
-		{
-			complain("Cannot swap stacks - slots are the same!");
+		if((!first->slotEmpty(p1) && !canMoveTroopsBetween(player, first, second))
+			|| (!second->slotEmpty(p2) && !canMoveTroopsBetween(player, second, first)))
+			COMPLAIN_RET("Cannot take units from this army!");
+		return swapStacks(left, right);
+	}
+	if(what == 2) // Merge
+	{
+		if(first->slotEmpty(p1) || second->slotEmpty(p2)
+			|| !canMoveTroopsBetween(player, first, second))
 			return false;
-		}
-
-		if (!s1->slotEmpty(p1) && !s2->slotEmpty(p2))
+		return moveStack(left, right);
+	}
+	if(what == 3) // val is the desired destination count, including reverse rebalancing.
+	{
+		if(val <= 0 || first->slotEmpty(p1))
+			return false;
+		const int64_t delta = static_cast<int64_t>(val) - second->getStackCount(p2);
+		if(delta == 0)
+			return false;
+		if(delta > 0)
 		{
-			if (notRemovable(s1) || notRemovable(s2))
+			if(!canMoveTroopsBetween(player, first, second))
 				return false;
+			return moveStack(left, right, static_cast<TQuantity>(delta));
 		}
-		if (s1->slotEmpty(p1) && notRemovable(s2))
+		if(!canMoveTroopsBetween(player, second, first))
 			return false;
-		else if (s2->slotEmpty(p2) && notRemovable(s1))
-			return false;
-
-		swapStacks(sl1, sl2);
+		return moveStack(right, left, static_cast<TQuantity>(-delta));
 	}
-	else if (what==2)//merge
-	{
-		if ((s1->getCreature(p1) != s2->getCreature(p2) && complain("Cannot merge different creatures stacks!"))
-		|| (((s1->tempOwner != player && s1->tempOwner != PlayerColor::UNFLAGGABLE) && s2->getStackCount(p2)) && complain("Can't take troops from another player!")))
-			return false;
-
-		if (s1->slotEmpty(p1) || s2->slotEmpty(p2))
-		{
-			complain("Cannot merge empty stack!");
-			return false;
-		}
-		else if (notRemovable(s1))
-			return false;
-
-		moveStack(sl1, sl2);
-	}
-	else if (what==3) //split
-	{
-		const int countToMove = val - s2->getStackCount(p2);
-		const int countLeftOnSrc = s1->getStackCount(p1) - countToMove;
-
-		if (  (s1->tempOwner != player && countLeftOnSrc < s1->getStackCount(p1))
-			|| (s2->tempOwner != player && val < s2->getStackCount(p2)))
-		{
-			complain("Can't move troops of another player!");
-			return false;
-		}
-
-		//general conditions checking
-		if ((!vstd::contains(S1.stacks,p1) && complain(complainNoCreatures))
-			|| (val<1  && complain(complainNoCreatures)) )
-		{
-			return false;
-		}
-
-
-		if (vstd::contains(S2.stacks,p2))	 //dest. slot not free - it must be "rebalancing"...
-		{
-			int total = s1->getStackCount(p1) + s2->getStackCount(p2);
-			if ((total < val   &&   complain("Cannot split that stack, not enough creatures!"))
-				|| (s1->getCreature(p1) != s2->getCreature(p2) && complain("Cannot rebalance different creatures stacks!"))
-			)
-			{
-				return false;
-			}
-
-			if (notRemovable(s1))
-			{
-				if (s1->getStackCount(p1) > countLeftOnSrc)
-					return false;
-			}
-			else if (notRemovable(s2))
-			{
-				if (s2->getStackCount(p1) < countLeftOnSrc)
-					return false;
-			}
-
-			moveStack(sl1, sl2, countToMove);
-			//S2.slots[p2]->count = val;
-			//S1.slots[p1]->count = total - val;
-		}
-		else //split one stack to the two
-		{
-			if (s1->getStackCount(p1) < val)//not enough creatures
-			{
-				complain(complainNotEnoughCreatures);
-				return false;
-			}
-
-			if (notRemovable(s1))
-				return false;
-
-			moveStack(sl1, sl2, val);
-		}
-
-	}
-	return true;
+	return false;
 }
 
 bool CGameHandler::hasPlayerAt(PlayerColor player,  GameConnectionID connectionID) const
@@ -2373,17 +2277,25 @@ bool CGameHandler::hasBothPlayersAtSameConnection(PlayerColor left, PlayerColor 
 	return gameServer().hasBothPlayersAtSameConnection(left, right);
 }
 
-bool CGameHandler::disbandCreature(ObjectInstanceID id, SlotID pos)
+bool CGameHandler::disbandCreature(ObjectInstanceID id, SlotID pos, PlayerColor player)
 {
 	const auto * s1 = dynamic_cast<const CArmedInstance *>(gameInfo().getObjInstance(id));
-	if (!vstd::contains(s1->stacks,pos))
+	if (!canTakeTroopsFrom(player, s1) || !isAllowedExchange(player, id, id)
+		|| !pos.validSlot() || !vstd::contains(s1->stacks,pos))
 	{
 		complain("Illegal call to disbandCreature - no such stack in army!");
 		return false;
 	}
 
-	eraseStack(StackLocation(s1->id, pos));
-	return true;
+	if(const auto * garrison = dynamic_cast<const CGGarrison *>(s1))
+	{
+		if(!garrison->removableUnits)
+			return false;
+	}
+	const auto * dialog = dynamic_cast<const CGarrisonDialogQuery *>(queries->topQuery(player).get());
+	if(dialog && dialog->exchangingArmies[0] == s1 && !dialog->removableUnits)
+		return false;
+	return eraseStack(StackLocation(s1->id, pos));
 }
 
 void CGameHandler::buildStructureForced(ObjectInstanceID townID, BuildingID building)
@@ -2909,7 +2821,7 @@ bool CGameHandler::moveArtifact(const PlayerColor & player, const ArtifactLocati
 	assert(dstArtSet);
 
 	// Make sure exchange is even possible between the two heroes.
-	if(!isAllowedExchange(src.artHolder, dst.artHolder))
+	if(!isAllowedExchange(player, src.artHolder, dst.artHolder))
 		COMPLAIN_RET("That heroes cannot make any exchange!");
 
 	COMPLAIN_RET_FALSE_IF(!ArtifactUtils::checkIfSlotValid(*srcArtSet, src.slot), "moveArtifact: wrong artifact source slot");
@@ -2977,7 +2889,7 @@ bool CGameHandler::moveArtifact(const PlayerColor & player, const ArtifactLocati
 bool CGameHandler::bulkMoveArtifacts(const PlayerColor & player, ObjectInstanceID srcId, ObjectInstanceID dstId, bool swap, bool equipped, bool backpack)
 {
 	// Make sure exchange is even possible between the two heroes.
-	if(!isAllowedExchange(srcId, dstId))
+	if(!isAllowedExchange(player, srcId, dstId))
 		COMPLAIN_RET("That heroes cannot make any exchange!");
 
 	const auto * psrcSet = gameState().getArtSet(srcId);
@@ -3712,6 +3624,7 @@ void CGameHandler::showGarrisonDialog(ObjectInstanceID upobj, ObjectInstanceID h
 	assert(upperArmy);
 
 	auto garrisonQuery = std::make_shared<CGarrisonDialogQuery>(this, upperArmy, lowerArmy);
+	garrisonQuery->removableUnits = removableUnits;
 	queries->addQuery(garrisonQuery);
 
 	GarrisonDialog gd;
@@ -3739,74 +3652,79 @@ void CGameHandler::showObjectWindow(const CGObjectInstance * object, EOpenWindow
 	sendAndApply(pack);
 }
 
-bool CGameHandler::isAllowedExchange(ObjectInstanceID id1, ObjectInstanceID id2)
+bool CGameHandler::isInGarrisonDialog(PlayerColor player, ObjectInstanceID army)
 {
-	if (id1 == id2)
+	if(!player.isValidPlayer())
+		return false;
+	const auto * dialog = dynamic_cast<const CGarrisonDialogQuery *>(queries->topQuery(player).get());
+	const auto * object = gameInfo().getObj(army);
+	return dialog && object && (dialog->exchangingArmies[0] == object || dialog->exchangingArmies[1] == object);
+}
+
+bool CGameHandler::canTakeTroopsFrom(PlayerColor player, const CArmedInstance * army)
+{
+	return player.isValidPlayer() && army && (army->tempOwner == player
+		|| (army->tempOwner == PlayerColor::UNFLAGGABLE && isInGarrisonDialog(player, army->id)));
+}
+
+bool CGameHandler::canMoveTroopsBetween(PlayerColor player, const CArmedInstance * source, const CArmedInstance * destination)
+{
+	if(!destination || !canTakeTroopsFrom(player, source))
+		return false;
+	if(source == destination)
 		return true;
+	const auto * dialog = dynamic_cast<const CGarrisonDialogQuery *>(queries->topQuery(player).get());
+	if(dialog && dialog->exchangingArmies[0] == source && !dialog->removableUnits)
+		return false;
+	const auto * garrison = dynamic_cast<const CGGarrison *>(source);
+	return !garrison || garrison->removableUnits;
+}
 
-	for(const auto & query : queries->allQueries())
+bool CGameHandler::applyArmyTransferPlan(BulkRebalanceStacks & plan)
+{
+	if(!isValidArmyTransferPlan(plan.moves, [this](ObjectInstanceID id) { return gs->getArmyInstance(id); }))
+		COMPLAIN_RET("Invalid army transfer plan!");
+	sendAndApply(plan);
+	return true;
+}
+
+bool CGameHandler::isAllowedExchange(PlayerColor player, ObjectInstanceID id1, ObjectInstanceID id2)
+{
+	if(!player.isValidPlayer())
+		return false;
+	const auto * first = gameInfo().getObj(id1);
+	const auto * second = gameInfo().getObj(id2);
+	if(!first || !second)
+		return false;
+
+	// Only the requesting player's exposed exchange authorizes neutral/reward armies.
+	if(isInGarrisonDialog(player, id1) && isInGarrisonDialog(player, id2))
+		return true;
+	if(!vstd::contains(gs->actingPlayers, player))
+		return false;
+	if(id1 == id2)
+		return first->tempOwner == player && dynamic_cast<const CArmedInstance *>(first);
+
+	if(const auto * town = dynamic_cast<const CGTownInstance *>(first))
 	{
-		const auto * garrisonQuery = dynamic_cast<const CGarrisonDialogQuery *>(query.get());
-		if(garrisonQuery == nullptr)
-			continue;
-
-		const bool matchesForward = garrisonQuery->exchangingArmies[0]->id == id1 && garrisonQuery->exchangingArmies[1]->id == id2;
-		const bool matchesBackward = garrisonQuery->exchangingArmies[0]->id == id2 && garrisonQuery->exchangingArmies[1]->id == id1;
-		if(matchesForward || matchesBackward)
+		if(town->getVisitingHero() == second || town->getGarrisonHero() == second)
 			return true;
 	}
-
-	const CGObjectInstance *o1 = gameInfo().getObj(id1);
-	const CGObjectInstance *o2 = gameInfo().getObj(id2);
-	if (!o1 || !o2)
-		return true; //arranging stacks within an object should be always allowed
-
-	if (o1 && o2)
+	if(const auto * town = dynamic_cast<const CGTownInstance *>(second))
 	{
-		if (o1->ID == Obj::TOWN)
-		{
-			const auto *t = dynamic_cast<const CGTownInstance*>(o1);
-			if (t->getVisitingHero() == o2  ||  t->getGarrisonHero() == o2)
-				return true;
-		}
-		if (o2->ID == Obj::TOWN)
-		{
-			const auto *t = dynamic_cast<const CGTownInstance*>(o2);
-			if (t->getVisitingHero() == o1  ||  t->getGarrisonHero() == o1)
-				return true;
-		}
-
-		const auto * market = gameState().getMarket(id1);
-		if(market == nullptr)
-			market = gameState().getMarket(id2);
-		if(market)
-			return market->allowsTrade(EMarketMode::ARTIFACT_EXP);
-
-		if (o1->ID == Obj::HERO && o2->ID == Obj::HERO)
-		{
-			const auto *h1 = dynamic_cast<const CGHeroInstance*>(o1);
-			const auto *h2 = dynamic_cast<const CGHeroInstance*>(o2);
-
-			// two heroes in same town (garrisoned and visiting)
-			if (h1->getVisitedTown() != nullptr && h2->getVisitedTown() != nullptr && h1->getVisitedTown() == h2->getVisitedTown())
-				return true;
-		}
-
-		// Ongoing garrison exchange
-		const auto * dialog = queries->findQuery<CGarrisonDialogQuery>(
-			[o1, o2](const CGarrisonDialogQuery & query)
-			{
-				const auto * topArmy = query.exchangingArmies.at(0);
-				const auto * bottomArmy = query.exchangingArmies.at(1);
-
-				return (topArmy == o1 && bottomArmy == o2) || (topArmy == o2 && bottomArmy == o1);
-			});
-
-		if(dialog)
+		if(town->getVisitingHero() == first || town->getGarrisonHero() == first)
 			return true;
 	}
+	const auto * market = gameState().getMarket(id1);
+	if(!market)
+		market = gameState().getMarket(id2);
+	if(market)
+		return market->allowsTrade(EMarketMode::ARTIFACT_EXP);
 
-	return false;
+	const auto * hero1 = dynamic_cast<const CGHeroInstance *>(first);
+	const auto * hero2 = dynamic_cast<const CGHeroInstance *>(second);
+	return hero1 && hero2 && hero1->getVisitedTown()
+		&& hero1->getVisitedTown() == hero2->getVisitedTown();
 }
 
 void CGameHandler::objectVisited(const CGObjectInstance * visitedObject, const CGHeroInstance * h)
@@ -4309,7 +4227,8 @@ bool CGameHandler::moveStack(const StackLocation &src, const StackLocation &dst,
 	const auto * srcArmy = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(src.army));
 	const auto * dstArmy = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(dst.army));
 
-	if (!srcArmy->hasStackAtSlot(src.slot))
+	if (!srcArmy || !dstArmy || !src.slot.validSlot() || (src.army == dst.army && src.slot == dst.slot)
+		|| !srcArmy->hasStackAtSlot(src.slot))
 		COMPLAIN_RET("No stack to move!");
 
 	if (dstArmy->hasStackAtSlot(dst.slot) && dstArmy->getCreature(dst.slot) != srcArmy->getCreature(src.slot))
@@ -4337,6 +4256,9 @@ bool CGameHandler::moveStack(const StackLocation &src, const StackLocation &dst,
 	rs.srcSlot = src.slot;
 	rs.dstSlot = dst.slot;
 	rs.count = count;
+	if(!isValidArmyTransferPlan(std::span<const RebalanceStacks>(&rs, 1),
+		[this](ObjectInstanceID id) { return gs->getArmyInstance(id); }))
+		COMPLAIN_RET("Invalid stack transfer!");
 	sendAndApply(rs);
 	return true;
 }
@@ -4367,6 +4289,10 @@ bool CGameHandler::swapStacks(const StackLocation & sl1, const StackLocation & s
 {
 	const auto * army1 = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(sl1.army));
 	const auto * army2 = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(sl2.army));
+
+	if(!army1 || !army2 || !sl1.slot.validSlot() || !sl2.slot.validSlot()
+		|| (sl1.army == sl2.army && sl1.slot == sl2.slot))
+		return false;
 
 	if(!army1->hasStackAtSlot(sl1.slot))
 	{

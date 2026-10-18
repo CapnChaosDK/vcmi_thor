@@ -29,6 +29,7 @@ class GameStatePackVisitor final : public ICPackVisitor
 	void updateMoraleOnArtifactChange(const ObjectInstanceID & artHolder);
 private:
 	CGameState & gs;
+	void applyRebalanceStacks(RebalanceStacks & pack);
 
 public:
 	GameStatePackVisitor(CGameState & gs)
