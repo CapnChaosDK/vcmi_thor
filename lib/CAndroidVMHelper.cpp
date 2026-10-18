@@ -129,6 +129,49 @@ void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint6
 		}, true);
 }
 
+void CAndroidVMHelper::acknowledgeThorCommand(std::uint64_t revision, int command)
+{
+	if(!ThorExtended::known(command))
+		return;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "acknowledgeThorAction", "(JJI)V",
+		[revision, command](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			// Negative keys are feedback-only tags, never legacy action IDs or mask bits.
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jlong>(revision), -command);
+		}, true);
+}
+
+void CAndroidVMHelper::publishThorCommands(std::uint64_t revision, const ThorExtended::State & state)
+{
+	if(!state.valid())
+		return;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorCommands", "(JI[I[I)V",
+		[revision, &state](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jintArray enabled = env->NewIntArray(static_cast<jsize>(state.enabled.size()));
+			jintArray active = env->NewIntArray(static_cast<jsize>(state.active.size()));
+			if(!enabled || !active)
+			{
+				if(enabled) env->DeleteLocalRef(enabled);
+				if(active) env->DeleteLocalRef(active);
+				return;
+			}
+			for(std::size_t i = 0; i < state.enabled.size(); ++i)
+			{
+				const jint value = state.enabled[i];
+				env->SetIntArrayRegion(enabled, static_cast<jsize>(i), 1, &value);
+			}
+			for(std::size_t i = 0; i < state.active.size(); ++i)
+			{
+				const jint value = state.active[i];
+				env->SetIntArrayRegion(active, static_cast<jsize>(i), 1, &value);
+			}
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), state.version, enabled, active);
+			env->DeleteLocalRef(enabled);
+			env->DeleteLocalRef(active);
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorBrowser(std::uint64_t revision, int page, int pageCount,
 	const std::vector<ThorBrowserEntry> & entries)
 {

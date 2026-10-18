@@ -172,6 +172,8 @@ void GameEngine::updateFrame()
 		quickRecruitment->refreshThorNativeState();
 	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
 		dwellingRecruitment->refreshThorNativeState();
+	if(auto battleWindow = windows().topWindow<BattleWindow>())
+		battleWindow->updateThorActionState();
 	bool thorActionExecuted = false;
 	while(const auto request = thorHeroMeetingRedistributionQueue().pop())
 	{
@@ -252,7 +254,17 @@ void GameEngine::updateFrame()
 			break;
 		}
 		bool executed = false;
-		if(context.contextId == ThorContextIds::ADVENTURE_MAP)
+		if(request->commandVersion != 0)
+		{
+			auto battleWindow = windows().topWindow<BattleWindow>();
+			if(!battleWindow || context.nativeOwnerToken != battleWindow.get())
+				continue;
+			battleWindow->updateThorActionState();
+			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
+				continue;
+			executed = battleWindow->executeThorCommand(request->commandId);
+		}
+		else if(context.contextId == ThorContextIds::ADVENTURE_MAP)
 		{
 			if(!adventureInt || !adventureInt->isActive()
 				|| windows().topWindow<AdventureMapInterface>() != adventureInt)
@@ -506,7 +518,9 @@ void GameEngine::updateFrame()
 			logGlobal->debug("Thor action rejected: availability changed");
 			continue;
 		}
-		if(!isThorActionHapticDeferredUntilServerResult(request->action))
+		if(request->commandVersion != 0)
+			CAndroidVMHelper().acknowledgeThorCommand(request->revision, request->commandId);
+		else if(!isThorActionHapticDeferredUntilServerResult(request->action))
 		{
 			if(const auto acceptance = thorActionAcceptance(*request, ThorActionValidation::VALID, executed))
 				CAndroidVMHelper().acknowledgeThorAction(acceptance->revision, acceptance->action);

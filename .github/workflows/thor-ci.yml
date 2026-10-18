@@ -270,6 +270,7 @@ jobs:
               --tests eu.vcmi.vcmi.ThorTownManagementTest \
               --tests eu.vcmi.vcmi.ThorVisualAssetCacheTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingModeStateTest \
+              --tests eu.vcmi.vcmi.ThorBattleControlsTest \
               --tests eu.vcmi.vcmi.ThorHapticStateTest
 
       - name: Verify and checksum APK

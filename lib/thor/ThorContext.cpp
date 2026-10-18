@@ -17,6 +17,7 @@ namespace
 			&& lhs.details == rhs.details
 			&& lhs.enabledActionMask == rhs.enabledActionMask
 			&& lhs.activeActionMask == rhs.activeActionMask
+			&& lhs.extendedCommands == rhs.extendedCommands
 			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.campaignSelectionRevision == rhs.campaignSelectionRevision
 			&& lhs.browserPage == rhs.browserPage
@@ -55,14 +56,19 @@ namespace
 
 	void boundTextFields(ThorContextRecord & context)
 	{
+		if(context.contextId != ThorContextIds::BATTLE || !context.extendedCommands.valid())
+			context.extendedCommands = {};
 		context.title = thorBoundedText(std::move(context.title));
 		context.status = thorBoundedText(std::move(context.status));
 		context.menuModalSourceContext = thorBoundedText(std::move(context.menuModalSourceContext), 64);
 		if(context.menuModalType == ThorMenuModalType::NONE)
 		{
 			context.menuModalSourceContext.clear();
-			context.nativeOwnerToken = nullptr;
-			context.nativeParentToken = nullptr;
+			if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS)
+			{
+				context.nativeOwnerToken = nullptr;
+				context.nativeParentToken = nullptr;
+			}
 		}
 		for(auto & detail : context.details)
 			detail = thorBoundedText(std::move(detail));

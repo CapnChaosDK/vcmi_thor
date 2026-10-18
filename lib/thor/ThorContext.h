@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ThorExtendedCommand.h"
+
 #include "../../Global.h"
 
 #include <array>
@@ -346,6 +348,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::string status;
 	std::uint64_t enabledActionMask = 0;
 	std::uint64_t activeActionMask = 0;
+	ThorExtended::State extendedCommands;
 	int selectedHeroId = -1;
 	std::int64_t actionSubjectId = -1;
 	std::uint64_t actionEpoch = 0;

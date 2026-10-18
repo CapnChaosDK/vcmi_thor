@@ -173,6 +173,7 @@ public:
 	void updateThorActionState(bool invalidateActions = false);
 	bool matchesThorContext(const std::string & contextId);
 	bool executeThorAction(ThorAction action);
+	bool executeThorCommand(int command);
 #endif
 };
 

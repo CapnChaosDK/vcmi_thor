@@ -733,6 +733,22 @@ ThorActionValidation validateThorAdventureMovementRequest(const ThorActionReques
 
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)
 {
+	if(request.commandVersion != 0 || request.commandId != 0)
+	{
+		const std::array payload{request.commandVersion, request.commandId, request.targetId};
+		if(!ThorExtended::decode(payload) || request.action != ThorAction::NONE)
+			return ThorActionValidation::UNKNOWN_ACTION;
+		if(request.sourceArmyId != -1 || request.sourceSlot != -1 || request.destinationArmyId != -1
+			|| request.destinationSlot != -1 || request.amount != -1
+			|| request.recruitmentOperation != ThorRecruitmentOperation::NONE)
+			return ThorActionValidation::INVALID_TARGET;
+		if(request.revision != context.revision)
+			return ThorActionValidation::STALE_REVISION;
+		if(context.contextId != ThorContextIds::BATTLE || !context.nativeOwnerToken)
+			return ThorActionValidation::WRONG_CONTEXT;
+		return context.extendedCommands.allows(request.commandId)
+			? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
+	}
 	if(!thorActionFromId(static_cast<int>(request.action)))
 		return ThorActionValidation::UNKNOWN_ACTION;
 	if(request.revision != context.revision)

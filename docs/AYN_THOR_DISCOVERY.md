@@ -27,6 +27,14 @@ VCMI is not a single-process game-state engine like fheroes2. Its architecture s
 - `lib/gameState/CGameState.h` owns authoritative map, player, hero, army, town, and game-option state. Client-side visibility must be read through `CPlayerSpecificInfoCallback`/related callbacks.
 - `lib/callback/CCallback.*` is the safe mutation boundary. Existing methods create network packs for movement, turn completion, stack arrangement, artifact exchange, hero dismissal, construction, recruitment, and other actions. A Thor action must re-resolve current client-visible objects, validate current UI/context, then invoke these existing client request paths. It must never mutate `CGameState` directly.
 
+### Extended commands (Slice 49)
+
+Battle Quick Controls use an additive versioned command namespace alongside the
+unchanged legacy action mask. The bounded wire format, native owner/epoch checks,
+Android presentation/lifecycle contract and future-family rules are maintained in
+[Thor command protocol](AYN_THOR_COMMAND_PROTOCOL.md). Both envelopes reuse the
+existing queue and MainGUI dispatch; no separate game-state engine is introduced.
+
 ### Thor game-thread dispatch
 
 `GameEngine::mainLoop()` and `GameEngine::updateFrame()` provide the safe consumer location for one-shot Android requests that affect gameplay UI or issue client/server requests. The Thor bridge enqueues bounded plain data from the Android main thread and consumes it under the normal `MainGUI` frame path. Direct JNI calls from a lower-screen touch handler into gameplay code would violate thread ownership.
