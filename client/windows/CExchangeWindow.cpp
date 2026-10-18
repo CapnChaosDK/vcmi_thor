@@ -48,7 +48,7 @@
 
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
-#include "../thor/ThorVisualAssetPublisher.h"
+#include "../thor/ThorWindowPublisher.h"
 
 #endif
 
@@ -662,17 +662,7 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 		if(canThorHeroMeetingMoveArmy(*context.heroMeetingArmies, false))
 			context.enabledActionMask |= thorActionMask(ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT);
 	}
-	const auto previous = thorContextStore().snapshot();
-	context.actionEpoch = previous.contextId == ThorContextIds::HERO_MEETING ? previous.actionEpoch + (invalidateActions ? 1 : 0) : 0;
-	context = thorContextStore().publishNext(std::move(context));
-	if(context.revision == previous.revision)
-		return;
-	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	CAndroidVMHelper().publishThorHeroMeetingArmies(context.revision, *context.heroMeetingArmies);
-	CAndroidVMHelper().publishThorHeroMeetingArtifacts(context.revision,
-		context.heroMeetingArtifacts.value_or(ThorHeroMeetingArtifacts{}));
-	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
-	publishThorVisualAssets(context);
+	publishThorWindowContext(std::move(context), invalidateActions);
 }
 
 bool CExchangeWindow::matchesThorContext(const ThorContextRecord & context) const

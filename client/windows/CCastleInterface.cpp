@@ -80,7 +80,7 @@ namespace
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
-#include "../thor/ThorVisualAssetPublisher.h"
+#include "../thor/ThorWindowPublisher.h"
 
 namespace
 {
@@ -194,19 +194,7 @@ namespace
 		if(std::ranges::any_of(context.browserEntries, [](const auto & entry) { return entry.enabled; }))
 			context.enabledActionMask |= thorActionMask(ThorAction::TOWN_OPEN_SERVICE);
 
-		const auto previous = thorContextStore().snapshot();
-		context.actionEpoch = previous.contextId == ThorContextIds::TOWN_WINDOW
-			? previous.actionEpoch + (invalidateActions ? 1 : 0) : 0;
-		context = thorContextStore().publishNext(std::move(context));
-		if(context.revision != previous.revision)
-		{
-			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
-				context.details);
-			CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
-			CAndroidVMHelper().publishThorBrowser(context.revision, 0, 1, context.browserEntries);
-			if(context.townManagement)
-				CAndroidVMHelper().publishThorTownManagement(context.revision, *context.townManagement);
-		}
+		publishThorWindowContext(std::move(context), invalidateActions);
 	}
 }
 #endif
