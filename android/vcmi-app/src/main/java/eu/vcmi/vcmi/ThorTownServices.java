@@ -11,11 +11,7 @@ final class ThorTownServices
     static final int MARKETPLACE = 4;
     static final int SERVICE_COUNT = 5;
 
-    private int service = NONE;
-    private int pointerId = -1;
-    private long revision;
-    private long session;
-    private boolean active;
+    private final ThorControlGesture gesture = new ThorControlGesture(NONE);
 
     static float[] bounds(final int service, final float width, final float height)
     {
@@ -50,35 +46,24 @@ final class ThorTownServices
         cancel();
         if (pressedService < 0 || pressedService >= SERVICE_COUNT || !enabled)
             return;
-        service = pressedService;
-        revision = currentRevision;
-        session = currentSession;
-        pointerId = pressedPointerId;
-        active = true;
+        gesture.begin(null, pressedService, currentRevision, currentSession, pressedPointerId, enabled);
     }
 
-    boolean isActive() { return active; }
-    int service() { return service; }
-    int pointerId() { return pointerId; }
-    long revision() { return revision; }
+    boolean isActive() { return gesture.isActive(); }
+    int service() { return gesture.control(); }
+    int pointerId() { return gesture.pointerId(); }
+    long revision() { return gesture.revision(); }
 
     boolean finish(final int releasedService, final long currentRevision, final long currentSession,
                    final int releasedPointerId, final int pointerCount, final boolean enabled,
                    final boolean sessionIsCurrent)
     {
-        final boolean accepted = active && enabled && sessionIsCurrent && service == releasedService
-                && revision == currentRevision && session > 0L && session == currentSession
-                && pointerCount == 1 && pointerId == releasedPointerId;
-        cancel();
-        return accepted;
+        return gesture.finish(null, releasedService, pointerCount, releasedPointerId,
+                currentRevision, currentSession, enabled, sessionIsCurrent);
     }
 
     void cancel()
     {
-        active = false;
-        service = NONE;
-        pointerId = -1;
-        revision = 0L;
-        session = 0L;
+        gesture.cancel();
     }
 }

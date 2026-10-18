@@ -8,12 +8,7 @@ final class ThorWindowNavigation
     static final int NEXT = 1;
     static final int CLOSE = 2;
 
-    private String context;
-    private int control = NONE;
-    private int pointerId = -1;
-    private long revision;
-    private long session;
-    private boolean active;
+    private final ThorControlGesture gesture = new ThorControlGesture(NONE);
 
     static boolean isWindow(final String contextId)
     {
@@ -59,37 +54,24 @@ final class ThorWindowNavigation
         cancel();
         if (!isWindow(contextId) || actionFor(pressedControl) == ThorActionIds.NONE || !enabled)
             return;
-        context = contextId;
-        control = pressedControl;
-        revision = currentRevision;
-        session = currentSession;
-        pointerId = pressedPointerId;
-        active = true;
+        gesture.begin(contextId, pressedControl, currentRevision, currentSession, pressedPointerId, enabled);
     }
 
-    boolean isActive() { return active; }
-    int pointerId() { return pointerId; }
-    int control() { return control; }
-    long revision() { return revision; }
+    boolean isActive() { return gesture.isActive(); }
+    int pointerId() { return gesture.pointerId(); }
+    int control() { return gesture.control(); }
+    long revision() { return gesture.revision(); }
 
     boolean finish(final String currentContext, final int releasedControl, final long currentRevision,
                    final long currentSession, final int releasedPointerId, final int pointerCount,
                    final boolean enabled, final boolean sessionIsCurrent)
     {
-        final boolean accepted = active && enabled && sessionIsCurrent && context.equals(currentContext)
-                && control == releasedControl && revision == currentRevision && session > 0L
-                && session == currentSession && pointerCount == 1 && pointerId == releasedPointerId;
-        cancel();
-        return accepted;
+        return gesture.finish(currentContext, releasedControl, pointerCount, releasedPointerId,
+                currentRevision, currentSession, enabled, sessionIsCurrent);
     }
 
     void cancel()
     {
-        active = false;
-        context = null;
-        control = NONE;
-        pointerId = -1;
-        revision = 0L;
-        session = 0L;
+        gesture.cancel();
     }
 }

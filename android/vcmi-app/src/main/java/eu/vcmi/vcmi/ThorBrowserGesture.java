@@ -3,14 +3,8 @@ package eu.vcmi.vcmi;
 /** A page-row gesture bound to context, revision and the current Presentation. */
 final class ThorBrowserGesture
 {
-    private String contextId;
-    private int control;
-    private int target;
-    private int pointerId;
-    private long revision;
-    private long session;
-    private boolean enabledAtDown;
-    private boolean active;
+    private final ThorControlGesture gesture = new ThorControlGesture(ThorBrowserState.CONTROL_NONE);
+    private int target = ThorActionIds.NO_TARGET;
 
     void begin(final String context, final int pressedControl, final int pressedTarget,
                final long pressedRevision, final long pressedSession, final int pressedPointerId,
@@ -19,27 +13,21 @@ final class ThorBrowserGesture
         cancel();
         if (ThorBrowserState.actionForControl(context, pressedControl) == ThorActionIds.NONE)
             return;
-        contextId = context;
-        control = pressedControl;
         target = pressedTarget;
-        revision = pressedRevision;
-        session = pressedSession;
-        pointerId = pressedPointerId;
-        enabledAtDown = enabled;
-        active = true;
+        gesture.begin(context, pressedControl, pressedRevision, pressedSession, pressedPointerId, enabled);
     }
 
-    boolean isActive() { return active; }
-    int control() { return control; }
+    boolean isActive() { return gesture.isActive(); }
+    int control() { return gesture.control(); }
     int target() { return target; }
-    int pointerId() { return pointerId; }
-    long revision() { return revision; }
-    long session() { return session; }
+    int pointerId() { return gesture.pointerId(); }
+    long revision() { return gesture.revision(); }
+    long session() { return gesture.session(); }
 
     boolean retainsLoadBackAfterBrowserUpdate(final String currentContext, final boolean backEnabled)
     {
-        return active && backEnabled && ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
-                && contextId.equals(currentContext) && control == ThorBrowserState.CONTROL_BACK;
+        return gesture.isActive() && backEnabled && ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(gesture.context())
+                && gesture.context().equals(currentContext) && gesture.control() == ThorBrowserState.CONTROL_BACK;
     }
 
     boolean retainsLoadBackAcrossContextUpdate(final String currentContext,
@@ -64,24 +52,17 @@ final class ThorBrowserGesture
                    final long currentSession, final boolean enabledAtUp, final boolean sessionIsCurrent,
                    final boolean allowRevisionChange)
     {
-        final boolean accepted = active && enabledAtDown && enabledAtUp && sessionIsCurrent
-                && contextId.equals(releasedContext) && control == releasedControl && target == releasedTarget
-                && pointerCount == 1 && pointerId == releasedPointerId
-                && (allowRevisionChange || revision == currentRevision)
-                && session > 0L && session == currentSession;
+        // Only the existing Load Back caller may relax revision matching; identity and session stay exact.
+        final boolean accepted = gesture.finish(releasedContext, releasedControl, pointerCount, releasedPointerId,
+                allowRevisionChange ? gesture.revision() : currentRevision, currentSession,
+                enabledAtUp && target == releasedTarget, sessionIsCurrent);
         cancel();
         return accepted;
     }
 
     void cancel()
     {
-        active = false;
-        enabledAtDown = false;
-        contextId = null;
-        control = ThorBrowserState.CONTROL_NONE;
+        gesture.cancel();
         target = ThorActionIds.NO_TARGET;
-        pointerId = -1;
-        revision = 0L;
-        session = 0L;
     }
 }

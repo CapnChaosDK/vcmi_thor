@@ -3,13 +3,7 @@ package eu.vcmi.vcmi;
 /** A single enabled choice pressed and released on the same presentation snapshot. */
 final class ThorMainMenuGesture
 {
-    private int control;
-    private int pointerId = -1;
-    private long revision;
-    private long session;
-    private String contextId;
-    private boolean enabledAtDown;
-    private boolean active;
+    private final ThorControlGesture gesture = new ThorControlGesture(ThorMainMenuState.CONTROL_NONE);
 
     void begin(final String pressedContext, final int pressedControl, final long pressedRevision,
                final long pressedSession, final int pressedPointerId, final boolean enabled)
@@ -17,60 +11,29 @@ final class ThorMainMenuGesture
         cancel();
         if (ThorMainMenuState.actionForControl(pressedContext, pressedControl) == ThorActionIds.NONE)
             return;
-        contextId = pressedContext;
-        control = pressedControl;
-        revision = pressedRevision;
-        session = pressedSession;
-        pointerId = pressedPointerId;
-        enabledAtDown = enabled;
-        active = true;
+        gesture.begin(pressedContext, pressedControl, pressedRevision, pressedSession, pressedPointerId, enabled);
     }
 
-    boolean isActive()
-    {
-        return active;
-    }
+    boolean isActive() { return gesture.isActive(); }
 
-    int pointerId()
-    {
-        return pointerId;
-    }
+    int pointerId() { return gesture.pointerId(); }
 
-    long revision()
-    {
-        return revision;
-    }
+    long revision() { return gesture.revision(); }
 
-    int control()
-    {
-        return control;
-    }
+    int control() { return gesture.control(); }
 
-    long session()
-    {
-        return session;
-    }
+    long session() { return gesture.session(); }
 
     boolean finish(final String releasedContext, final int releasedControl,
                    final int pointerCount, final int releasedPointerId, final long currentRevision,
                    final long currentSession, final boolean enabledAtUp, final boolean sessionIsCurrent)
     {
-        final boolean accepted = active && enabledAtDown && enabledAtUp && sessionIsCurrent
-                && contextId.equals(releasedContext) && control == releasedControl
-                && pointerCount == 1 && pointerId == releasedPointerId
-                && revision == currentRevision && session > 0L && session == currentSession;
-        cancel();
-        return accepted;
+        return gesture.finish(releasedContext, releasedControl, pointerCount, releasedPointerId,
+                currentRevision, currentSession, enabledAtUp, sessionIsCurrent);
     }
 
     void cancel()
     {
-        active = false;
-        enabledAtDown = false;
-        control = ThorMainMenuState.CONTROL_NONE;
-        pointerId = -1;
-        revision = 0L;
-        session = 0L;
-        contextId = null;
+        gesture.cancel();
     }
 }
