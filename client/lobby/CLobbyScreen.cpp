@@ -329,6 +329,12 @@ void CLobbyScreen::publishThorContext()
 		const auto * startInfo = mapAvailable ? getStartInfo() : nullptr;
 		if(mapInfo && mapInfo->mapHeader && startInfo)
 		{
+			if(screenType == ESelectionScreen::newGame && tabOpt)
+			{
+				context.nativeOwnerToken = this;
+				context.actionEpoch = thorPlayerActionEpoch;
+				context.lobbyPlayers = tabOpt->thorPlayers(thorPlayerChangePending || thorDifficultyChangePending);
+			}
 			context.scenarioSelectionRevision = tabSel->getThorScenarioSelectionRevision();
 			context.title = mapInfo->getNameTranslated(&GAME->translator());
 			const auto & header = *mapInfo->mapHeader;
@@ -343,17 +349,17 @@ void CLobbyScreen::publishThorContext()
 				context.details[2] = std::to_string(startInfo->difficulty);
 
 			context.enabledActionMask = thorActionMask(ThorAction::LOBBY_BACK);
-			if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending)
+			if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending && !thorPlayerChangePending)
 			{
 				if(adjacentThorScenarioPosition(*tabSel, ThorAction::LOBBY_PREVIOUS_SCENARIO))
 					context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_PREVIOUS_SCENARIO);
 				if(adjacentThorScenarioPosition(*tabSel, ThorAction::LOBBY_NEXT_SCENARIO))
 					context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO);
 			}
-			if(screenType == ESelectionScreen::newGame && thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending
+			if(screenType == ESelectionScreen::newGame && thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending && !thorPlayerChangePending
 				&& startInfo->difficulty >= 0 && startInfo->difficulty <= 4)
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY);
-			if(!thorDifficultyChangePending && thorLobbyStartActionAvailable(mapAvailable,
+			if(!thorDifficultyChangePending && !thorPlayerChangePending && thorLobbyStartActionAvailable(mapAvailable,
 				canStartLobbyGame(), buttonStart && !buttonStart->isBlocked()))
 				context.enabledActionMask |= thorActionMask(ThorAction::LOBBY_START_GAME);
 		}
@@ -386,7 +392,7 @@ void CLobbyScreen::publishThorContext()
 						position == tabSel->selectionPos, false});
 					context.browserNativeKeys.push_back(item->fileURI);
 				}
-				if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending)
+				if(thorDifficultyAuthorityAvailable() && !thorDifficultyChangePending && !thorPlayerChangePending)
 				{
 					context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
 					if(thorSaveBrowserPage > 0)
@@ -408,6 +414,8 @@ void CLobbyScreen::publishThorContext()
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 		context.details);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	if(context.contextId == ThorContextIds::LOBBY_NEW_GAME_SCENARIO && context.revision != previous.revision)
+		CAndroidVMHelper().publishThorLobbyPlayers(context.revision, context.lobbyPlayers);
 	if(context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
 		CAndroidVMHelper().publishThorBrowser(context.revision, context.browserPage,
 			context.browserPageCount, context.browserEntries);
@@ -421,7 +429,7 @@ void CLobbyScreen::refreshThorActionAvailability()
 	const auto context = thorContextStore().snapshot();
 	if(context.contextId != thorContextIdForLobby(thorLobbyModeFor(screenType), ThorLobbyTab::SCENARIO))
 		return;
-	const bool available = !thorDifficultyChangePending && thorLobbyStartActionAvailable(thorScenarioMapAvailable(),
+	const bool available = !thorDifficultyChangePending && !thorPlayerChangePending && thorLobbyStartActionAvailable(thorScenarioMapAvailable(),
 		canStartLobbyGame(), buttonStart && !buttonStart->isBlocked());
 	if(available != ((context.enabledActionMask & thorActionMask(ThorAction::LOBBY_START_GAME)) != 0))
 		publishThorContext();
@@ -444,7 +452,7 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 	const bool scenarioTabActive = (screenType == ESelectionScreen::newGame
 		|| screenType == ESelectionScreen::loadGame) && curTab == tabSel;
 	const bool mapAvailable = thorScenarioMapAvailable();
-	const bool startAvailable = !thorDifficultyChangePending && thorLobbyStartActionAvailable(mapAvailable,
+	const bool startAvailable = !thorDifficultyChangePending && !thorPlayerChangePending && thorLobbyStartActionAvailable(mapAvailable,
 		canStartLobbyGame(), buttonStart && !buttonStart->isBlocked());
 	const auto adjacentPosition = (tabSel && (request.action == ThorAction::LOBBY_PREVIOUS_SCENARIO
 		|| request.action == ThorAction::LOBBY_NEXT_SCENARIO)
@@ -515,8 +523,26 @@ bool CLobbyScreen::executeThorAction(const ThorActionRequest & request)
 	}
 }
 
+bool CLobbyScreen::executeThorPlayerCommand(const ThorActionRequest & request)
+{
+	publishThorContext();
+	const auto context = thorContextStore().snapshot();
+	if(!matchesThorContext(context) || screenType != ESelectionScreen::newGame
+		|| context.nativeOwnerToken != this || !thorScenarioMapAvailable() || !tabOpt
+		|| thorPlayerChangePending || thorDifficultyChangePending
+		|| validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(!tabOpt->executeThorPlayerCommand(request.commandId, request.targetId))
+		return false;
+	thorPlayerChangePending = true;
+	++thorPlayerActionEpoch;
+	publishThorContext();
+	return true;
+}
+
 void CLobbyScreen::onThorLobbyAvailabilityChanged()
 {
+	thorPlayerChangePending = false;
 	thorDifficultyChangePending = false;
 	publishThorContext();
 }
@@ -827,6 +853,7 @@ void CLobbyScreen::updateAfterStateChange()
 	if(curTab && curTab == tabRand && GAME->server().si->mapGenOptions)
 		tabRand->setMapGenOptions(GAME->server().si->mapGenOptions);
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorPlayerChangePending = false;
 	thorDifficultyChangePending = false;
 	publishThorLobbyContext(*this);
 #endif

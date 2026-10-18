@@ -1197,3 +1197,68 @@ void OptionsTab::PlayerOptionsEntry::hideUnavailableButtons()
 		buttonBonusRight->enable();
 	}
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+std::vector<ThorLobbyPlayer> OptionsTab::thorPlayers(bool pending) const
+{
+	std::vector<ThorLobbyPlayer> result;
+	if(!SEL || SEL->screenType != ESelectionScreen::newGame || !SEL->getStartInfo())
+		return result;
+	const auto & players = SEL->getStartInfo()->playerInfos;
+	if(players.size() > PlayerColor::PLAYER_LIMIT_I)
+		return result;
+	const auto humans = std::count_if(players.begin(), players.end(), [](const auto & item)
+	{
+		return item.second.isControlledByHuman();
+	});
+	for(const auto & [color, player] : players)
+	{
+		if(color.getNum() < 0 || color.getNum() >= PlayerColor::PLAYER_LIMIT_I)
+			return {};
+		const auto & info = SEL->getPlayerInfo(color);
+		ThorLobbyPlayer row;
+		row.slot = color.getNum();
+		ThorLobbyPlayerRules rules;
+		rules.supported = GAME->server().getState() == EClientState::LOBBY && !GAME->server().battleMode
+			&& !SEL->getStartInfo()->mapGenOptions && !SEL->getStartInfo()->campState;
+		rules.guest = GAME->server().isGuest();
+		rules.local = GAME->server().isMyColor(color);
+		rules.human = player.isControlledByHuman();
+		rules.canHuman = info.canHumanPlay;
+		rules.humanCount = static_cast<int>(humans);
+		// Match upper arrow eligibility and protect optionNextCastle's iterator preconditions.
+		rules.factionChoice = !info.allowedFactions.empty() && (info.allowedFactions.size() >= 2 || info.isFactionRandom)
+			&& player.castle != FactionID::NONE
+			&& (player.castle == FactionID::RANDOM || info.allowedFactions.count(player.castle));
+		rules.heroChoice = info.defaultHero() == HeroTypeID::RANDOM && player.castle.isValid() && player.hero != HeroTypeID::NONE;
+		rules.pending = pending;
+		row.flags = rules.flags();
+		row.nativeState = {player.castle.getNum(), player.hero.getNum(), static_cast<int>(player.bonus)};
+		for(const auto connection : player.connectedPlayerIDs)
+			row.nativeState.push_back(static_cast<int>(connection));
+		row.labels = {GAME->translator().translate("core.plcolors", color.getNum()), player.name,
+			CPlayerSettingsHelper(player, TOWN).getName(), CPlayerSettingsHelper(player, HERO).getName(),
+			CPlayerSettingsHelper(player, BONUS).getName()};
+		result.push_back(std::move(row));
+	}
+	return result;
+}
+
+bool OptionsTab::executeThorPlayerCommand(int command, int slot) const
+{
+	const auto players = thorPlayers(false);
+	const auto row = std::find_if(players.begin(), players.end(), [&](const auto & p) { return p.slot == slot; });
+	if(row == players.end() || !row->allows(command))
+		return false;
+	const PlayerColor color(slot);
+	if(command == ThorExtended::PLAYER_SELECT)
+		onSetPlayerClicked(SEL->getStartInfo()->playerInfos.at(color));
+	else
+	{
+		const auto option = command <= ThorExtended::FACTION_NEXT ? LobbyChangePlayerOption::TOWN
+			: command <= ThorExtended::HERO_NEXT ? LobbyChangePlayerOption::HERO : LobbyChangePlayerOption::BONUS;
+		GAME->server().setPlayerOption(option, command % 2 == 0 ? 1 : -1, color);
+	}
+	return true;
+}
+#endif

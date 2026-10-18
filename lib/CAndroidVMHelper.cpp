@@ -141,6 +141,50 @@ void CAndroidVMHelper::acknowledgeThorCommand(std::uint64_t revision, int comman
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorLobbyPlayers(std::uint64_t revision, const std::vector<ThorLobbyPlayer> & players)
+{
+	if(players.size() > PlayerColor::PLAYER_LIMIT_I) return;
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorLobbyPlayers", "(J[I[Ljava/lang/String;)V",
+		[revision, &players](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jclass stringClass = env->FindClass("java/lang/String");
+			if(!stringClass) return;
+			jintArray data = env->NewIntArray(static_cast<jsize>(players.size() * 2));
+			jobjectArray labels = env->NewObjectArray(static_cast<jsize>(players.size() * 5), stringClass, nullptr);
+			if(data && labels)
+			{
+				for(std::size_t i = 0; i < players.size(); ++i)
+				{
+					const jint values[] = {players[i].slot, players[i].flags};
+					env->SetIntArrayRegion(data, static_cast<jsize>(i * 2), 2, values);
+					for(std::size_t j = 0; j < 5; ++j)
+					{
+						const auto & text = players[i].labels[j];
+						std::vector<jchar> utf16;
+						for(std::size_t offset = 0; offset < text.size();)
+						{
+							const auto point = TextOperations::getUnicodeCodepoint(text.data() + offset, text.size() - offset);
+							if(point <= 0xffff) utf16.push_back(static_cast<jchar>(point));
+							else
+							{
+								utf16.push_back(static_cast<jchar>(0xd800 + ((point - 0x10000) >> 10)));
+								utf16.push_back(static_cast<jchar>(0xdc00 + ((point - 0x10000) & 0x3ff)));
+							}
+							offset += TextOperations::getUnicodeCharacterSize(text[offset]);
+						}
+						jstring label = env->NewString(utf16.data(), static_cast<jsize>(utf16.size()));
+						env->SetObjectArrayElement(labels, static_cast<jsize>(i * 5 + j), label);
+						env->DeleteLocalRef(label);
+					}
+				}
+				env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), data, labels);
+			}
+			if(data) env->DeleteLocalRef(data);
+			if(labels) env->DeleteLocalRef(labels);
+			env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorCommands(std::uint64_t revision, const ThorExtended::State & state)
 {
 	if(!state.valid())

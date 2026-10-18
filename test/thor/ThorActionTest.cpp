@@ -1875,3 +1875,142 @@ TEST(ThorActionExtended, ExactWindowAndParticipantOwnership)
 	context.contextId = ThorContextIds::BATTLE_TACTICS;
 	EXPECT_FALSE(ThorExtended::battleOwnerMatches(context, &window, &participant, true, true));
 }
+
+TEST(ThorActionLobbyPlayers, PermissionRulesMatchUpperArrowsAndFlags)
+{
+	ThorLobbyPlayerRules rules;
+	rules.local = true; rules.human = true; rules.canHuman = true; rules.humanCount = 1;
+	rules.factionChoice = true; rules.heroChoice = true;
+	EXPECT_EQ(rules.flags() & 15, 14); // Last human cannot be removed.
+	rules.human = false;
+	EXPECT_EQ(rules.flags() & 15, 15); // Local host can configure AI and move its human here.
+	rules.human = true; rules.humanCount = 2;
+	EXPECT_EQ(rules.flags() & 15, 15); // Hot-seat flag follows native cycling.
+	rules.guest = true;
+	EXPECT_EQ(rules.flags() & 15, 14); // Guest's own options, never assignment.
+	rules.local = false;
+	EXPECT_EQ(rules.flags() & 15, 0); // Remote guest slot is read-only.
+	rules.guest = false; rules.factionChoice = false; rules.heroChoice = false; rules.canHuman = false;
+	EXPECT_EQ(rules.flags() & 15, 8); // Fixed faction/hero and AI-only flag.
+	rules.supported = false;
+	EXPECT_EQ(rules.flags() & 15, 0);
+}
+
+TEST(ThorActionLobbyPlayers, V1SlotTargetsAndMalformedEnvelopes)
+{
+	for(int command = 6; command <= 12; ++command)
+	{
+		EXPECT_EQ(ThorExtended::decode(std::array{1, command, 0}), command);
+		EXPECT_EQ(ThorExtended::decode(std::array{1, command, 7}), command);
+		EXPECT_FALSE(ThorExtended::decode(std::array{1, command, -1}));
+		EXPECT_FALSE(ThorExtended::decode(std::array{1, command, 8}));
+		EXPECT_FALSE(ThorExtended::decode(std::array{2, command, 0}));
+	}
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, 13, 0}));
+	for(int command = 1; command <= 5; ++command)
+	{
+		EXPECT_EQ(ThorExtended::decode(std::array{1, command, -1}), command);
+		EXPECT_FALSE(ThorExtended::decode(std::array{1, command, 0}));
+	}
+}
+
+TEST(ThorActionLobbyPlayers, NativePublicationRevisionAndPendingAcknowledgement)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
+	context.nativeOwnerToken = &store;
+	ThorLobbyPlayer player;
+	player.slot = 7; player.flags = 15;
+	player.labels = {"Pink", "Player", "Random", "None", "Random"};
+	player.nativeState = {-1, -2, -1};
+	context.lobbyPlayers = {player};
+	context = store.publishNext(context);
+	const auto firstRevision = context.revision;
+	EXPECT_EQ(store.publishNext(context).revision, firstRevision);
+	context.lobbyPlayers[0].nativeState[0] = 1; // Same public name, different native identity.
+	context = store.publishNext(context);
+	EXPECT_GT(context.revision, firstRevision);
+	const auto revision = context.revision;
+	ThorActionRequest request;
+	request.revision = revision; request.commandVersion = 1; request.commandId = 8; request.targetId = 7;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.targetId = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	request.targetId = 7;
+	context.lobbyPlayers[0].flags |= 64;
+	context = store.publishNext(context);
+	EXPECT_GT(context.revision, revision);
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision = context.revision;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	context.lobbyPlayers[0].flags &= ~64;
+	context.lobbyPlayers[0].labels[2] = "Castle";
+	context = store.publishNext(context);
+	request.revision = context.revision;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.amount = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.amount = -1;
+	context.scenarioSelectionRevision++;
+	context = store.publishNext(context);
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	context.contextId = ThorContextIds::LOBBY_LOAD_GAME_SCENARIO;
+	context = store.publishNext(context);
+	request.revision = context.revision;
+	EXPECT_TRUE(context.lobbyPlayers.empty());
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+}
+
+TEST(ThorActionLobbyPlayers, InvalidRowsAndOwnerWithdraw)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
+	ThorLobbyPlayer player; player.slot = 0; player.flags = 15;
+	player.labels[0] = std::string(300, 'a');
+	context.lobbyPlayers = {player};
+	context = store.publishNext(context);
+	EXPECT_LE(context.lobbyPlayers[0].labels[0].size(), 256);
+	ThorActionRequest request;
+	request.revision = context.revision; request.commandVersion = 1; request.commandId = 6; request.targetId = 0;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+	context.nativeOwnerToken = &store;
+	context.lobbyPlayers.push_back(player);
+	EXPECT_TRUE(store.publishNext(context).lobbyPlayers.empty());
+	context.lobbyPlayers = {player}; context.lobbyPlayers[0].slot = 8;
+	EXPECT_TRUE(store.publishNext(context).lobbyPlayers.empty());
+	context.lobbyPlayers.assign(9, player);
+	EXPECT_TRUE(store.publishNext(context).lobbyPlayers.empty());
+}
+
+TEST(ThorActionLobbyPlayers, ScenarioPlayerDifficultyStartContractJourney)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
+	context.nativeOwnerToken = &store;
+	context.enabledActionMask = thorActionMask(ThorAction::LOBBY_NEXT_SCENARIO)
+		| thorActionMask(ThorAction::LOBBY_SET_DIFFICULTY) | thorActionMask(ThorAction::LOBBY_START_GAME);
+	ThorLobbyPlayer player; player.slot = 0; player.flags = 14;
+	context.lobbyPlayers = {player};
+	context = store.publishNext(context);
+	ThorActionRequest request{context.revision, ThorAction::LOBBY_NEXT_SCENARIO};
+	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, true, true), ThorActionValidation::VALID);
+	++context.scenarioSelectionRevision;
+	context = store.publishNext(context);
+	for(int command : {8, 10, 12})
+	{
+		request = {}; request.revision = context.revision; request.commandVersion = 1;
+		request.commandId = command; request.targetId = 0;
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+		++context.actionEpoch;
+		context = store.publishNext(context);
+		EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	}
+	request = {context.revision, ThorAction::LOBBY_SET_DIFFICULTY, 3};
+	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, true, true), ThorActionValidation::VALID);
+	request = {context.revision, ThorAction::LOBBY_START_GAME};
+	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, true, true), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, false, true), ThorActionValidation::UNAVAILABLE);
+}

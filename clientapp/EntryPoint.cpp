@@ -93,6 +93,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThor
 	request.revision = static_cast<std::uint64_t>(revision);
 	request.commandVersion = values[0];
 	request.commandId = *command;
+	request.targetId = values[2];
 	return thorActionQueue().submit(request) ? JNI_TRUE : JNI_FALSE;
 }
 

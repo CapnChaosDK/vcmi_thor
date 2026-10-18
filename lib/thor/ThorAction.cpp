@@ -744,6 +744,15 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			return ThorActionValidation::INVALID_TARGET;
 		if(request.revision != context.revision)
 			return ThorActionValidation::STALE_REVISION;
+		if(ThorExtended::playerCommand(request.commandId))
+		{
+			if(context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO || !context.nativeOwnerToken)
+				return ThorActionValidation::WRONG_CONTEXT;
+			const auto row = std::find_if(context.lobbyPlayers.begin(), context.lobbyPlayers.end(),
+				[&](const auto & player) { return player.slot == request.targetId; });
+			return row != context.lobbyPlayers.end() && row->allows(request.commandId)
+				? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
+		}
 		if(context.contextId != ThorContextIds::BATTLE || !context.nativeOwnerToken)
 			return ThorActionValidation::WRONG_CONTEXT;
 		return context.extendedCommands.allows(request.commandId)

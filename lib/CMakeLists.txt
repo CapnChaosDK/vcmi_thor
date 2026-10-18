@@ -805,6 +805,7 @@ set(lib_MAIN_HEADERS
 	AsyncRunner.h
 	BattleFieldHandler.h
 	CAndroidVMHelper.h
+	thor/ThorLobbyPlayer.h
 	thor/ThorExtendedCommand.h
 	thor/ThorBattleControls.h
 	thor/ThorAction.h

@@ -82,6 +82,16 @@ final class ThorSecondScreenPresentation extends Presentation
                     enabledActionMask, activeActionMask);
     }
 
+    void updateLobbyPlayers(final ThorLobbyPlayers players)
+    {
+        if (foundationView != null)
+        {
+            foundationView.playerSetup.update(players);
+            foundationView.invalidate();
+            foundationView.setContentDescription(foundationView.commandDeckDescription());
+        }
+    }
+
     void updateCommands(final ThorExtendedCommands commands)
     {
         if (foundationView != null)
@@ -227,6 +237,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private long heroPortraitAssetKey;
         private String contextId = ThorContextIds.UNKNOWN;
         private final String[] detailLines = new String[ThorContextDetails.COUNT];
+        private final ThorLobbyPlayerSetup playerSetup = new ThorLobbyPlayerSetup();
         private final ThorBattleDeck battleDeck = new ThorBattleDeck();
         private long enabledActionMask;
         private long activeActionMask;
@@ -336,6 +347,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             super.onSizeChanged(width, height, oldWidth, oldHeight);
             battleDeck.cancel();
+            playerSetup.cancel();
             mapGesture.cancel();
             inspectedCluster = -1;
         }
@@ -343,6 +355,7 @@ final class ThorSecondScreenPresentation extends Presentation
         void clearTransientState()
         {
             battleDeck.reset();
+            playerSetup.withdraw(false);
             cancelHeroManagementTouch();
             heroManagement = ThorHeroManagement.EMPTY;
             townManagement = ThorTownManagement.EMPTY;
@@ -379,7 +392,11 @@ final class ThorSecondScreenPresentation extends Presentation
                            final String[] publishedDetails,
                            final long enabledActionMask, final long activeActionMask)
         {
-            if (revision != this.revision || !contextId.equals(this.contextId)) battleDeck.reset();
+            if (revision != this.revision || !contextId.equals(this.contextId))
+            {
+                battleDeck.reset();
+                playerSetup.withdraw(!ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId));
+            }
             final boolean retainMeetingArmies = ThorHeroMeetingGesture.retainsArmies(
                     this.revision, this.contextId, revision, contextId);
             // publishContext resets the mask to zero before the action-state callback for a new
@@ -914,7 +931,10 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             else if (lobbyScenario)
             {
-                drawLobbyScenarioDashboard(canvas, frame, dividerY, bevel, density);
+                if (!playerSetup.showingPlayers())
+                    drawLobbyScenarioDashboard(canvas, frame, dividerY, bevel, density);
+                if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId))
+                    playerSetup.draw(canvas, paint, getContext(), frame, density, enabledActionMask, revision);
             }
             else if (campaignBonus)
             {
@@ -1061,6 +1081,15 @@ final class ThorSecondScreenPresentation extends Presentation
                 return handleHeroManagementTouch(event);
             if (ThorWindowNavigation.isWindow(contextId))
                 return handleWindowNavigationTouch(event);
+            if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
+                    && playerSetup.touch(event, ThorDeckDrawing.frame(presentationLayout()), revision, presentationSessionId,
+                            enabledActionMask, sessionValidity != null && sessionValidity.isCurrent(presentationSessionId)))
+            {
+                cancelLobbyScenarioTouch();
+                invalidate();
+                setContentDescription(commandDeckDescription());
+                return true;
+            }
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId))
                 return handleLobbyScenarioTouch(event);
@@ -2709,7 +2738,8 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(TEXT);
-            drawFittedText(canvas, getContext().getString(ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+            if (!ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId))
+                drawFittedText(canvas, getContext().getString(ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                             ? R.string.thor_context_load_game : R.string.thor_context_new_game), frame.centerX(),
                     frame.top + contentHeight * 0.09f, frame.width() * 0.78f,
                     Math.min(27f * density, contentHeight * 0.048f));
@@ -4789,6 +4819,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private String commandDeckDescription()
         {
+            if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId) && playerSetup.showingPlayers())
+                return playerSetup.description(getContext());
             if (ThorMainMenuState.choiceCount(contextId) > 0)
             {
                 return mainMenu.description(getContext(), contextId, title, status, enabledActionMask);

@@ -15,15 +15,23 @@ inline constexpr int VERSION = 1;
 inline constexpr std::size_t MAX_AVAILABLE = 16;
 enum Command : int
 {
-	AUTO_START = 1, AUTO_STOP = 2, CAST_SPELL = 3, RETREAT = 4, SURRENDER = 5
+	AUTO_START = 1, AUTO_STOP = 2, CAST_SPELL = 3, RETREAT = 4, SURRENDER = 5,
+	PLAYER_SELECT = 6, FACTION_PREVIOUS = 7, FACTION_NEXT = 8,
+	HERO_PREVIOUS = 9, HERO_NEXT = 10, BONUS_PREVIOUS = 11, BONUS_NEXT = 12
 };
 
-inline bool known(int command) { return command >= AUTO_START && command <= SURRENDER; }
+inline bool known(int command) { return command >= AUTO_START && command <= BONUS_NEXT; }
+
+inline bool playerCommand(int command) { return command >= PLAYER_SELECT && command <= BONUS_NEXT; }
+inline bool validTarget(int command, int target)
+{
+	return known(command) && (playerCommand(command) ? target >= 0 && target < 8 : target == -1);
+}
 
 /// V1 is exactly [version, command, target]. Battle commands require the no-target sentinel.
 inline std::optional<int> decode(std::span<const int> payload)
 {
-	if(payload.size() != 3 || payload[0] != VERSION || !known(payload[1]) || payload[2] != -1)
+	if(payload.size() != 3 || payload[0] != VERSION || !validTarget(payload[1], payload[2]))
 		return std::nullopt;
 	return payload[1];
 }
@@ -41,7 +49,7 @@ struct DLL_LINKAGE State
 			if(list.size() > MAX_AVAILABLE)
 				return false;
 			for(std::size_t i = 0; i < list.size(); ++i)
-				if(!known(list[i]) || std::find(list.begin(), list.begin() + i, list[i]) != list.begin() + i)
+				if(!known(list[i]) || playerCommand(list[i]) || std::find(list.begin(), list.begin() + i, list[i]) != list.begin() + i)
 					return false;
 			return true;
 		};
