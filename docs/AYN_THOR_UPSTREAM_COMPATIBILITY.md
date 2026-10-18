@@ -157,7 +157,8 @@ artifact, receipt, package `is.xyz.vcmi.thor` and APK checksum before this check
    disabled/single-screen operation; separately build/run a non-Thor client before
    claiming that platform gate passed.
 
-Status remains awaiting CI, then awaiting hardware validation until exact-SHA
-receipts and explicit user confirmation. Do not merge automatically. Recommended
+Exact-SHA CI, installation and user-confirmed hardware receipts are recorded in
+the Slice 51 backlog record; Slice 51 is hardware validated and awaits promotion.
+Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically. Recommended
 next action is the army-transfer safety milestone, before more gameplay features
 or a larger upstream checkpoint; do not start it as part of Slice 51.
