@@ -321,3 +321,10 @@ No local full non-Thor build is claimed. Exact CI/candidate receipts and the fiv
 check hardware gate belong in the Slice 48 backlog record. Resume feature work
 after validation; further architectural cleanup needs concrete evidence. A versioned
 protocol design is required before a new global action family.
+
+Slice 48 handoff: [PR #38](https://github.com/CapnChaosDK/vcmi_thor/pull/38),
+exact candidate `97cdb79832fcb943692f9afae312fd15c7a132f8`,
+[Thor run 39138368858](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39138368858).
+The permanent candidate advanced normally after fetch/ancestry verification. Status
+is `awaiting CI`; no package/checksum/device result is claimed. This receipt-only
+follow-up does not change the candidate product/build tree.
