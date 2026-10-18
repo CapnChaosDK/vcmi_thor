@@ -13,8 +13,7 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 
 #include "../GameEngine.h"
-#include "../thor/ThorVisualAssetPublisher.h"
-#include "../../lib/CAndroidVMHelper.h"
+#include "../thor/ThorWindowPublisher.h"
 #include "../../lib/GameLibrary.h"
 #include "../../lib/entities/ResourceTypeHandler.h"
 
@@ -35,19 +34,7 @@ std::string formatThorRecruitmentCost(const ResourceSet & cost)
 
 void publishThorRecruitmentContext(ThorContextRecord next)
 {
-	const auto previous = thorContextStore().snapshot();
-	const auto context = thorContextStore().publishNext(std::move(next));
-	if(context.revision == previous.revision)
-		return;
-
-	CAndroidVMHelper bridge;
-	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status, context.details);
-	bridge.publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
-	if(context.recruitment)
-	{
-		bridge.publishThorRecruitment(context.revision, *context.recruitment);
-		publishThorVisualAssets(context);
-	}
+	publishThorWindowContext(std::move(next));
 }
 
 #endif

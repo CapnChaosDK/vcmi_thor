@@ -58,6 +58,16 @@ VCMI is not a single-process game-state engine like fheroes2. Its architecture s
 - Slice 40 closes the two terminal-action gaps attached to existing menu flows. A lower Load Game row selection may be ahead of the asynchronous `setMapInfo()` lobby update, so `CLobbyScreen` suppresses Start/Load until its authoritative state refresh republishes the matching save and current native Start button availability. The exact ordinary top `CBuildWindow` publishes a distinct `BUILD_CONFIRMATION` card with native-only Town/Building identities and bounded translated name/cost/state details; MainGUI refreshes its live availability while the owner is topmost. `WINDOW_CONFIRM = 57` invokes its existing Buy callback after live revalidation and `WINDOW_CLOSE = 52` follows the normal Cancel path. Right-click informational `CBuildWindow` popups remain non-executable. Both routes preserve MainGUI thread ownership and ordinary window restoration.
 - Slice 39 adds Town-backed recruitment for the exact top `QuickRecruitmentWindow` opened through the Town interface's Recruit entry and Town-backed `CRecruitmentWindow`. Kingdom and map Quick Recruitment shortcuts keep their upper-only behavior. Native publishes bounded creature choices, current stock, affordability, selection, costs, variant, and destination-army capacity; Android renders five-row pages and submits typed selection/amount/variant edits plus one Buy action. `MainGUI` revalidates the same Town, window, army, capacity, and current native choices before invoking the existing recruitment controls. Generic non-Town dwellings are excluded; Java never decides purchase rules or game state.
 
+### Native window publication boundary (Slice 48)
+
+`client/thor/ThorWindowPublisher.*` shares normalized, revision-gated publication
+for Hero, Town, Hero Meeting and Town recruitment. Owners retain construction,
+authority checks, pending requests and lifecycle. Per-family callback order and
+epoch policy are preserved, including recruitment's unsupported-owner `UNKNOWN`
+withdrawal. Adventure's map/route/viewport, movement timing and forced publications
+remain specialized. See the [complexity audit](AYN_THOR_COMPLEXITY_AUDIT.md#slice-48--native-window-publication-boundary)
+for measured scope and rationale.
+
 ## Android application architecture
 
 VCMI combines Qt and SDL in one Android package:

@@ -118,6 +118,7 @@ set(test_SRCS
 
 		texts/TextOperationsTest.cpp
 
+		thor/ThorWindowPublisherTest.cpp
 		thor/ThorContextTest.cpp
 		thor/ThorActionTest.cpp
 		thor/ThorAdventureMapTest.cpp

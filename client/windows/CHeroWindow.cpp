@@ -49,7 +49,7 @@
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
-#include "../thor/ThorVisualAssetPublisher.h"
+#include "../thor/ThorWindowPublisher.h"
 
 namespace
 {
@@ -175,18 +175,7 @@ namespace
 		context.details[3] = std::move(secondarySkills);
 		context.status += " · " + hero->getHeroType()->getSpecialtyNameTranslated();
 
-		const auto previous = thorContextStore().snapshot();
-		context.actionEpoch = previous.contextId == ThorContextIds::HERO_WINDOW
-			? previous.actionEpoch + (invalidateActions ? 1 : 0) : 0;
-		context = thorContextStore().publishNext(std::move(context));
-		if(context.revision != previous.revision)
-		{
-			CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
-				context.details, context.heroPortraitAssetKey);
-			CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, 0);
-			CAndroidVMHelper().publishThorHeroManagement(context.revision, *context.heroManagement);
-			publishThorVisualAssets(context);
-		}
+		publishThorWindowContext(std::move(context), invalidateActions);
 	}
 }
 #endif

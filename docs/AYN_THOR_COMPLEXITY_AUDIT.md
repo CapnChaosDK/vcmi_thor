@@ -270,3 +270,54 @@ The user confirmed all five hardware checks passed on the installed AYN Thor APK
 Status is `hardware validated`; PR #37 merged at the user's request as
 `332ec554311dcee78d765dbcb265a5099bdeb524`, preserving the tested product/build
 tree. See the backlog for validation and branch-cleanup receipts. These receipt-only updates do not change the tested build.
+
+
+## Slice 48 — Native window publication boundary
+
+Baseline: freshly fetched product `ee900792eab5c10e706da3fd5b2fb8a96efdeae7`
+(2026-10-18). Inspection covered Hero, Town, Hero Meeting, Adventure, recruitment,
+context normalization, JNI and the visual publisher. Slice 46–47 remains intact.
+Duplication is post-construction adapter work: store update/revision gating and
+context/action JNI sequences. Snapshot construction, owner checks, pending requests
+and server authority remain necessary specialization at their original sites.
+
+`ThorWindowPublisher` shares these mechanics for four window families (five IDs),
+with explicit Meeting payload-before-actions ordering and Hero/Town zero active
+masks. The store retains normalization and semantic equality; only its returned
+snapshot is transported. Recruitment retains its epoch and conditional payload/
+visual publication, including unsupported-owner `UNKNOWN` withdrawal. Other forced
+publications, clearing and normal parent activation are unchanged. The concrete
+adapter is Android/Thor guarded; a template seam records actual transport calls in
+host-native tests without a VM, event framework or new interface hierarchy.
+
+| Indicator | Before | After |
+| --- | ---: | ---: |
+| Window transaction/revision gates | 4 | 1 |
+| Window epoch carry/reset/invalidate expressions | 3 | 1 |
+| Common context/action call sites in these transactions | 4 each | 1 each |
+| Snapshot construction owner files | 4 | 4 |
+| Affected owner physical lines | 4,824 | 4,778 |
+| New publisher source/header lines | 0 | 89 |
+| Combined affected production lines | 4,824 | 4,867 (+43) |
+| Recruitment support direct JNI dependency | Yes | No |
+
+This reduces distributed maintenance and adds a testable sequencing boundary; it
+does not claim net line savings or eliminate upstream window integration. Empty
+Meeting artifact fallback, optional Town management and visual ordering remain
+explicit. No Java/JNI contract, action IDs, 64-bit representation, native authority
+or normalization changes are made.
+
+Adventure stays specialized: refresh/coalescing timestamps, map RGB/viewport reuse,
+route and movement publication belong to its owner. Its forced publisher also
+intentionally sends unchanged revisions. Moving these into an ordinary changed-
+window transaction would require more policy/indirection than this slice warrants.
+Other modal/menu publications remain explicit.
+
+Validation: 140 Java contract tests pass. Six new native recording tests are
+registered in CMake and permanent preflight/filter. Local native execution is
+unavailable; Android-target syntax checking stops at missing Boost headers.
+Separate diff/caller review caught and fixed unsupported recruitment withdrawal.
+No local full non-Thor build is claimed. Exact CI/candidate receipts and the five-
+check hardware gate belong in the Slice 48 backlog record. Resume feature work
+after validation; further architectural cleanup needs concrete evidence. A versioned
+protocol design is required before a new global action family.

@@ -89,6 +89,7 @@ jobs:
             lib/thor/ThorAction.cpp \
             lib/thor/ThorContext.cpp \
             lib/thor/ThorVisualAssetCache.cpp \
+            test/thor/ThorWindowPublisherTest.cpp \
             test/thor/ThorContextTest.cpp \
             test/thor/ThorActionTest.cpp \
             test/thor/ThorAdventureMapTest.cpp \
