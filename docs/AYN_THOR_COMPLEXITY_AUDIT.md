@@ -185,7 +185,8 @@ safety maintenance, not the number of runtime snapshots or the presentation's si
 - Exact candidate `de244e5600b41a717f195fdfc2798a073ec02531` passed Thor CI
   run `39132783698`; downloaded checksums were verified and the user confirmed all
   five device checks passed on 2026-10-18. See the Slice 46 backlog receipt. PR #36
-  remains open; subsequent changes are validation documentation only.
+  merged as `4e89f517b2608ffa3070b120ed03571f4c172c79`; subsequent changes
+  are validation documentation only. The merged development branch was removed.
 
 Focused checksum-verified AYN Thor checklist:
 1. Main menu/New Game/campaign and confirmation taps execute once; cancel/back works.
