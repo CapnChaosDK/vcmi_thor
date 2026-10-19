@@ -1407,15 +1407,15 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 		for(const auto & heroWindow : ENGINE->windows().findWindows<CHeroWindow>())
 			heroWindow->onThorActionRequestResult(requestId);
 	};
-	const auto notifyTownWindow = [](int requestId)
+	const auto notifyTownWindow = [](int requestId, bool success)
 	{
 		for(const auto & townWindow : ENGINE->windows().findWindows<CCastleInterface>())
-			townWindow->onThorActionRequestResult(requestId);
+			townWindow->onThorActionRequestResult(requestId, success);
 	};
 	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
 		notifyHeroWindow(static_cast<int>(pa->requestID));
 	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
-		notifyTownWindow(static_cast<int>(pa->requestID));
+		notifyTownWindow(static_cast<int>(pa->requestID), pa->result);
 	if(pa->packType == CTypeList::getInstance().getTypeID<RedistributeArmyStack>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, true);
 	if(pa->packType == CTypeList::getInstance().getTypeID<BulkExchangeArtifacts>(nullptr))

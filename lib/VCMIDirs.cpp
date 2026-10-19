@@ -215,7 +215,8 @@ bool IVCMIDirsUNIX::developmentMode() const
 		|| bfs::exists("vcmiserver")
 		|| bfs::exists("vcmilobby")
 		|| bfs::exists("vcmieditor")
-		|| bfs::exists("vcmitest");
+		|| bfs::exists("vcmitest")
+		|| bfs::exists("army-transfer-tests");
 	return hasConfigs && hasBinaries;
 }
 

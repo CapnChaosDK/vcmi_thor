@@ -9,6 +9,7 @@
  */
 #include "StdInc.h"
 #include "GameStatePackVisitor.h"
+#include "../mapObjects/army/ArmyTransferValidation.h"
 
 #include "CGameState.h"
 #include "TavernHeroesPool.h"
@@ -811,6 +812,11 @@ void GameStatePackVisitor::visitSwapStacks(SwapStacks & pack)
 	if(!dstObj)
 		throw std::runtime_error("SwapStacks: invalid army object " + std::to_string(pack.dstArmy.getNum()) + ", possible game state corruption.");
 
+	if(!pack.srcSlot.validSlot() || !pack.dstSlot.validSlot()
+		|| (srcObj == dstObj && pack.srcSlot == pack.dstSlot)
+		|| srcObj->slotEmpty(pack.srcSlot) || dstObj->slotEmpty(pack.dstSlot))
+		throw std::runtime_error("SwapStacks: invalid occupied slots");
+
 	auto s1 = srcObj->detachStack(pack.srcSlot);
 	auto s2 = dstObj->detachStack(pack.dstSlot);
 
@@ -827,6 +833,14 @@ void GameStatePackVisitor::visitInsertNewStack(InsertNewStack & pack)
 }
 
 void GameStatePackVisitor::visitRebalanceStacks(RebalanceStacks & pack)
+{
+	if(!isValidArmyTransferPlan(std::span<const RebalanceStacks>(&pack, 1),
+		[this](ObjectInstanceID id) { return gs.getArmyInstance(id); }))
+		throw std::runtime_error("RebalanceStacks: invalid transfer");
+	applyRebalanceStacks(pack);
+}
+
+void GameStatePackVisitor::applyRebalanceStacks(RebalanceStacks & pack)
 {
 	auto * srcObj = gs.getArmyInstance(pack.srcArmy);
 	if(!srcObj)
@@ -849,7 +863,6 @@ void GameStatePackVisitor::visitRebalanceStacks(RebalanceStacks & pack)
 		{
 			assert(dstType == srcType);
 			const auto srcHero = dynamic_cast<CGHeroInstance*>(srcObj);
-			const auto dstHero = dynamic_cast<CGHeroInstance*>(dstObj);
 			auto srcStack = srcObj->getStackPtr(src.slot);
 			auto dstStack = dstObj->getStackPtr(dst.slot);
 			if(srcStack->getArt(ArtifactPosition::CREATURE_SLOT))
@@ -871,7 +884,7 @@ void GameStatePackVisitor::visitRebalanceStacks(RebalanceStacks & pack)
 					if (artifactIsLost)
 					{
 						BulkEraseArtifacts ea;
-						ea.artHolder = dstHero->id;
+						ea.artHolder = dstObj->id;
 						ea.posPack.emplace_back(ArtifactPosition::CREATURE_SLOT);
 						ea.creature = dst.slot;
 						ea.visit(*this);
@@ -916,8 +929,10 @@ void GameStatePackVisitor::visitRebalanceStacks(RebalanceStacks & pack)
 
 void GameStatePackVisitor::visitBulkRebalanceStacks(BulkRebalanceStacks & pack)
 {
+	if(!isValidArmyTransferPlan(pack.moves, [this](ObjectInstanceID id) { return gs.getArmyInstance(id); }))
+		throw std::runtime_error("BulkRebalanceStacks: invalid transfer plan");
 	for(auto & move : pack.moves)
-		move.visit(*this);
+		applyRebalanceStacks(move);
 }
 
 void GameStatePackVisitor::visitGrowUpArtifact(GrowUpArtifact & pack)
@@ -942,7 +957,7 @@ void GameStatePackVisitor::visitPutArtifact(PutArtifact & pack)
 
 void GameStatePackVisitor::visitBulkEraseArtifacts(BulkEraseArtifacts & pack)
 {
-	const auto artSet = gs.getArtSet(pack.artHolder);
+	const auto artSet = gs.getArtSet(ArtifactLocation(pack.artHolder, pack.creature));
 	assert(artSet);
 
 	std::sort(pack.posPack.begin(), pack.posPack.end(), [](const ArtifactPosition & slot0, const ArtifactPosition & slot1) -> bool
@@ -960,6 +975,7 @@ void GameStatePackVisitor::visitBulkEraseArtifacts(BulkEraseArtifacts & pack)
 			logGlobal->debug("Erasing locked artifact: %s", artifact->getType()->getNameTranslated());
 			DisassembledArtifact dis;
 			dis.al.artHolder = pack.artHolder;
+			dis.al.creature = pack.creature;
 
 			for(auto & slotInfoWorn : artSet->artifactsWorn)
 			{

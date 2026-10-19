@@ -60,7 +60,9 @@ termination propagation. They test scheduling and callback lock boundaries, not
 real rendering or OS thread synchronization. Permanent Thor preflight runs them;
 normal project test registration includes them independently of Thor.
 
-## Army-transfer assessment and next milestone
+## Army-transfer assessment (Slice 51 historical input)
+
+The table below records Slice 51 findings before Slice 52; see the next section for current implementation status.
 
 [#8035](https://github.com/vcmi/vcmi/pull/8035), merge `005a888b7`
 (`c72621eab` implementation), changes **54 files, +1,045/-292 lines** relative to
@@ -103,12 +105,46 @@ Recommended coherent milestone, without requiring the full activity migration:
    save/load and multiplayer rejection. Then one reviewed exact-SHA CI candidate
    and physical Thor checklist under the build playbook.
 
+## Slice 52 — Adapted army-transfer boundary
+
+Freshly fetched product `d05c1df0291b663c07866b1c59fbfe7b948b8362` and the
+unchanged pinned upstream ref underpin the targeted #8035 adaptation. Source
+permission and exchange authorization now bind to the authenticated player and
+their exposed query. Owned Town/visitor relationships, allied deposits and neutral
+reward collection remain supported. Actual transfer direction determines removal
+permission; the server retains the existing dialog flag without a wire change.
+
+Every bulk plan is simulated before publication and before mutation, including
+all destinations, count/type/overflow checks and required last-stack retention.
+Single moves share that integrity boundary. Empty/self/zero moves fail, bulk
+retention is conditional on needsLastStack, and smart rebalance emits positive
+moves with bounded intermediate totals. Existing artifact processing is retained,
+including safe non-Hero conflict cleanup. Thor redistribution keeps its packet
+registration/expected-state contract and matching-query authorization; actual
+PackageApplied results reach its existing pending-release/revision-refresh path.
+Java/UI/JNI/action contracts and the query architecture remain. Legacy requests
+are revalidated against live state; no exactly-once/nonce guarantee is added.
+
+Twenty-one server scenarios use real handlers, queries, state application and results
+through in-memory transport. Standard vcmitest and a focused non-Thor native target
+register them; the existing Thor preflight must build/run them before packaging.
+Local ARM64 syntax checks and 149 Android JVM tests passed during implementation.
+PR #43 follow-up also builds the focused target and passes all 21 server scenarios
+on Linux after correcting development-directory detection for its executable.
+Corrected candidate `078a28c0a` passed Thor CI 39217037034, including the real
+non-Thor server suite and ARM64 packaging. Archive/APK/receipt/package verification
+passed. The exact APK was installed on the AYN Thor and the user confirmed all
+seven physical checks passed on 2026-10-19. PR #43 remains open/unpromoted; full desktop
+rendering/runtime is unverified.
+Current review, candidate receipts and the complete hardware checklist belong in
+[Slice 52](../AYN_THOR_BACKLOG.md#slice-52--complete-army-transfer-authorization-and-integrity).
+
 ## Priority and dependency-aware synchronization plan
 
 | Priority | Candidate / evidence | Value, risk and decision |
 | --- | --- | --- |
 | 1 | #8014 staged completion | High battle reliability value, low integration risk; adopted here. |
-| 2 | #8035 army authorization/integrity | High safety value, medium/high integration risk; next coherent milestone above, no wholesale cherry-pick. |
+| 2 | #8035 army authorization/integrity | Adapted in Slice 52 above; CI/artifact and user-confirmed hardware acceptance passed; promotion pending, no wholesale cherry-pick. |
 | 3 | Controller cancellation/navigation (#7772, `dfe0d541c`, `6aa1bf766`) | Useful held-input/window safety; depends on new dispatcher/controller state and battle targeting. Test upper controls, focus, modal restoration and lower command parity before adoption. |
 | 4 | Strict callbacks (#8018, `e23240336`) | `getX` throws, `tryGetX` handles absence; audit every Thor stale-identity lookup before migrating. A textual merge cannot establish safe stale-request behavior. |
 | 5 | Activity/question server migration (`54a6fc585` and `server/activities/`) | Replaces queries, QueryID/reply routes and exchange/battle continuation ownership. High risk to acknowledgements, result dismissal and movement stop/resume. Separate architecture milestone after army tests. |
@@ -159,6 +195,6 @@ artifact, receipt, package `is.xyz.vcmi.thor` and APK checksum before this check
 
 Exact-SHA CI, installation and user-confirmed hardware receipts are recorded in
 the Slice 51 backlog record; Slice 51 is hardware validated and promoted via PR #41.
-Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically. Recommended
-next action is the army-transfer safety milestone, before more gameplay features
-or a larger upstream checkpoint; do not start it as part of Slice 51.
+Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically. Slice 52 implements the army safety milestone above and awaits its own validation.
+After acceptance, prioritize bounded controller cancellation/navigation dependencies
+before a full activity/query migration; do not start it automatically.

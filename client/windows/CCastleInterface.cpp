@@ -1890,7 +1890,7 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 	return true;
 }
 
-void CCastleInterface::onThorActionRequestResult(int requestId)
+void CCastleInterface::onThorActionRequestResult(int requestId, bool success)
 {
 	if(pendingThorArmyRequestId != requestId)
 		return;
@@ -1899,8 +1899,9 @@ void CCastleInterface::onThorActionRequestResult(int requestId)
 	pendingThorArmyActionRevision = 0;
 	if(isActive() && ENGINE->windows().topWindow<CCastleInterface>().get() == this)
 		updateThorActionState();
-	CAndroidVMHelper().acknowledgeThorAction(thorContextStore().snapshot().revision,
-		ThorAction::TOWN_WINDOW_TRANSFER_STACK, submittedRevision);
+	if(success)
+		CAndroidVMHelper().acknowledgeThorAction(thorContextStore().snapshot().revision,
+			ThorAction::TOWN_WINDOW_TRANSFER_STACK, submittedRevision);
 }
 #endif
 

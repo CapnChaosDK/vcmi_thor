@@ -273,7 +273,7 @@ public:
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	void updateThorActionState();
 	bool executeThorAction(const ThorActionRequest & request);
-	void onThorActionRequestResult(int requestId);
+	void onThorActionRequestResult(int requestId, bool success);
 	bool hasPendingThorArmyRequest() const { return pendingThorArmyRequestId >= 0; }
 #endif
 
