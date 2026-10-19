@@ -128,8 +128,11 @@ are revalidated against live state; no exactly-once/nonce guarantee is added.
 Twenty-one server scenarios use real handlers, queries, state application and results
 through in-memory transport. Standard vcmitest and a focused non-Thor native target
 register them; the existing Thor preflight must build/run them before packaging.
-Local ARM64 syntax checks and 149 Android JVM tests pass. Native runtime, CI and
-physical acceptance remain pending; full desktop rendering/runtime is unverified.
+Local ARM64 syntax checks and 149 Android JVM tests passed during implementation.
+PR #43 follow-up also builds the focused target and passes all 21 server scenarios
+on Linux after correcting development-directory detection for its executable.
+Corrected-candidate CI and physical acceptance remain pending; full desktop
+rendering/runtime is unverified.
 Current review, candidate receipts and the complete hardware checklist belong in
 [Slice 52](../AYN_THOR_BACKLOG.md#slice-52--complete-army-transfer-authorization-and-integrity).
 
