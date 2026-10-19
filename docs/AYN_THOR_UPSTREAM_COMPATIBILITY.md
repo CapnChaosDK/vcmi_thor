@@ -133,7 +133,8 @@ PR #43 follow-up also builds the focused target and passes all 21 server scenari
 on Linux after correcting development-directory detection for its executable.
 Corrected candidate `078a28c0a` passed Thor CI 39217037034, including the real
 non-Thor server suite and ARM64 packaging. Archive/APK/receipt/package verification
-passed; installation and physical acceptance remain pending; full desktop
+passed. The exact APK was installed on the AYN Thor and the user confirmed all
+seven physical checks passed on 2026-10-19. PR #43 remains open/unpromoted; full desktop
 rendering/runtime is unverified.
 Current review, candidate receipts and the complete hardware checklist belong in
 [Slice 52](../AYN_THOR_BACKLOG.md#slice-52--complete-army-transfer-authorization-and-integrity).
@@ -143,7 +144,7 @@ Current review, candidate receipts and the complete hardware checklist belong in
 | Priority | Candidate / evidence | Value, risk and decision |
 | --- | --- | --- |
 | 1 | #8014 staged completion | High battle reliability value, low integration risk; adopted here. |
-| 2 | #8035 army authorization/integrity | Adapted in Slice 52 above; CI/artifact verification passed; hardware acceptance pending, no wholesale cherry-pick. |
+| 2 | #8035 army authorization/integrity | Adapted in Slice 52 above; CI/artifact and user-confirmed hardware acceptance passed; promotion pending, no wholesale cherry-pick. |
 | 3 | Controller cancellation/navigation (#7772, `dfe0d541c`, `6aa1bf766`) | Useful held-input/window safety; depends on new dispatcher/controller state and battle targeting. Test upper controls, focus, modal restoration and lower command parity before adoption. |
 | 4 | Strict callbacks (#8018, `e23240336`) | `getX` throws, `tryGetX` handles absence; audit every Thor stale-identity lookup before migrating. A textual merge cannot establish safe stale-request behavior. |
 | 5 | Activity/question server migration (`54a6fc585` and `server/activities/`) | Replaces queries, QueryID/reply routes and exchange/battle continuation ownership. High risk to acknowledgements, result dismissal and movement stop/resume. Separate architecture milestone after army tests. |
