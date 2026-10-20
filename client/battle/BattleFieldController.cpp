@@ -28,6 +28,12 @@
 #include "../adventureMap/CInGameConsole.h"
 #include "render/CAnimation.h"
 #include "../gui/CursorHandler.h"
+#include "../gui/Shortcut.h"
+#include "../gui/ControllerInputState.h"
+#include "../gui/WindowHandler.h"
+#include "../windows/CCreatureWindow.h"
+#include "../windows/InfoWindows.h"
+#include "events/InputHandler.h"
 #include "render/CAnimation.h"
 #include "render/Canvas.h"
 #include "render/IImage.h"
@@ -164,7 +170,231 @@ BattleFieldController::BattleFieldController(BattleInterface & owner):
 	pos.h = background->height();
 
 	updateAccessibleHexes();
-	addUsedEvents(LCLICK | SHOW_POPUP | MOVE | TIME | GESTURE);
+	addUsedEvents(LCLICK | SHOW_POPUP | MOVE | TIME | GESTURE | KEYBOARD | INPUT_MODE_CHANGE | CONTROLLER_AXIS);
+}
+
+bool BattleFieldController::usesNativeController() const
+{
+	return nativeController && ENGINE->input().getCurrentInputMode() == InputMode::CONTROLLER;
+}
+
+std::optional<BattleControllerInput::Selection> BattleFieldController::controllerSelection()
+{
+	const auto actor = owner.stacksController->getActiveStack();
+	const auto action = owner.actionsController->controllerAction(hoveredHex);
+	if(!actor || !action)
+		return std::nullopt;
+	const auto target = owner.getBattle()->battleGetStackByPos(hoveredHex, false);
+	const auto direction = owner.actionsController->currentActionHasAttackDirection(hoveredHex)
+		? selectAttackDirection(hoveredHex) : BattleHex::NONE;
+	return BattleControllerInput::Selection{actor->unitId(), hoveredHex,
+		target ? std::make_optional(target->unitId()) : std::nullopt, direction, *action,
+		owner.actionsController->heroSpellcastingModeActive(), owner.actionsController->creatureSpellcastingModeActive()};
+}
+
+void BattleFieldController::activeStackChanged()
+{
+	if(ENGINE->input().getCurrentInputMode() == InputMode::CONTROLLER)
+	{
+		controllerFocusInitialized = false;
+		ENGINE->input().cancelControllerInput();
+	}
+}
+
+void BattleFieldController::resetControllerPress()
+{
+	controllerConfirm.cancel();
+	navigationAxis = {};
+	navigationRepeat = 0;
+	unitNavigationAxis = {};
+	unitNavigationRepeat = 0;
+	attackDirectionStep = 0;
+	attackDirectionRepeat = 0;
+}
+
+void BattleFieldController::controllerInputCanceled()
+{
+	resetControllerPress();
+	controllerFocusInitialized = false;
+	if(usesNativeController())
+	{
+		hoveredHex = BattleHex::INVALID;
+		owner.actionsController->onHoverEnded();
+	}
+}
+
+void BattleFieldController::keyCanceled(EShortcut key)
+{
+	controllerConfirm.cancel();
+	attackDirectionStep = 0;
+}
+
+void BattleFieldController::inputModeChanged(InputMode mode)
+{
+	resetControllerPress();
+	if(usesNativeController())
+	{
+		ENGINE->cursor().hide();
+		if((!controllerFocusInitialized || !hoveredHex.isValid()) && owner.stacksController->getActiveStack())
+		{
+			focusHex(BattleControllerInput::initialHex(owner.stacksController->getActiveStack()->getPosition()));
+			controllerFocusInitialized = true;
+		}
+	}
+	else
+		ENGINE->cursor().show();
+	ENGINE->fakeMouseMove();
+}
+
+void BattleFieldController::focusHex(BattleHex hex)
+{
+	if(hex.isValid())
+	{
+		controllerConfirm.cancel();
+		ENGINE->input().setCursorPosition(hexPositionAbsolute(hex).center());
+	}
+}
+
+bool BattleFieldController::controllerAxisMoved(EShortcut axis, double value)
+{
+	if(!usesNativeController())
+		return false;
+	if(axis == EShortcut::MOUSE_CURSOR_X || axis == EShortcut::MOUSE_CURSOR_Y)
+	{
+		navigationAxis[axis == EShortcut::MOUSE_CURSOR_X ? 0 : 1] = value;
+		if(vstd::isAlmostZero(navigationAxis[0]) && vstd::isAlmostZero(navigationAxis[1]))
+			navigationRepeat = 0;
+		return true;
+	}
+	if(axis == EShortcut::MOUSE_SWIPE_X || axis == EShortcut::MOUSE_SWIPE_Y)
+	{
+		unitNavigationAxis[axis == EShortcut::MOUSE_SWIPE_X ? 0 : 1] = value;
+		if(vstd::isAlmostZero(unitNavigationAxis[0]) && vstd::isAlmostZero(unitNavigationAxis[1]))
+			unitNavigationRepeat = 0;
+		return true;
+	}
+	return false;
+}
+
+void BattleFieldController::moveControllerFocus()
+{
+	focusHex(BattleControllerInput::adjacentHex(hoveredHex, navigationAxis));
+}
+
+void BattleFieldController::moveControllerUnitFocus()
+{
+	if(!hoveredHex.isValid())
+		return;
+
+	const auto center = [this](const CStack * stack)
+	{
+		Point result = hexPositionAbsolute(stack->getPosition()).center();
+		if(stack->doubleWide())
+			result = (result + hexPositionAbsolute(stack->occupiedHex()).center()) / 2;
+		return result;
+	};
+	const auto current = owner.getBattle()->battleGetStackByPos(hoveredHex, true);
+	const Point origin = current ? center(current) : hexPositionAbsolute(hoveredHex).center();
+	const auto units = owner.getBattle()->battleGetStacks();
+	const auto selected = BattleControllerInput::unitInDirection(units, origin, unitNavigationAxis, center,
+		[current](const CStack * stack) { return stack != current && stack->alive() && stack->getPosition().isAvailable(); });
+	if(selected)
+		focusHex(selected->getPosition());
+}
+
+bool BattleFieldController::translateControllerShortcuts(std::vector<EShortcut> & shortcuts) const
+{
+	const bool native = usesNativeController();
+	const bool melee = native && owner.actionsController->currentActionHasAttackDirection(hoveredHex);
+	return BattleControllerInput::translateShortcuts(shortcuts, native, melee, owner.isInTacticsMode());
+}
+
+void BattleFieldController::keyPressed(EShortcut key)
+{
+	if(usesNativeController() && key == EShortcut::GLOBAL_ACCEPT)
+	{
+		controllerConfirm.press(controllerSelection());
+		return;
+	}
+	if(usesNativeController() && key == EShortcut::GLOBAL_CANCEL)
+	{
+		const bool pending = controllerConfirm.cancel();
+		// Cancel a spell through its normal owner, otherwise open a dismissible inspect window.
+		if(owner.actionsController->heroSpellcastingModeActive() || owner.actionsController->creatureSpellcastingModeActive())
+		{
+			owner.actionsController->endCastingSpell();
+			owner.actionsController->onHexHovered(getHoveredHex());
+		}
+		else if(!pending && hoveredHex.isValid())
+		{
+			const auto target = owner.getBattle()->battleGetStackByPos(hoveredHex, true);
+			if(target || (owner.siegeController && owner.siegeController->isTowerHex(hoveredHex)))
+				owner.actionsController->onHexRightClicked(hoveredHex,
+					[](const CStack * stack) { ENGINE->windows().createAndPushWindow<CStackWindow>(stack, false); },
+					[](const std::string & text) { ENGINE->windows().pushWindow(CInfoWindow::create(text, GAME->interface()->playerID)); });
+			else if(const auto actor = owner.stacksController->getActiveStack())
+				focusHex(BattleControllerInput::initialHex(actor->getPosition()));
+		}
+		return;
+	}
+
+	if(key == EShortcut::BATTLE_TOGGLE_CURSOR_MODE)
+	{
+		ENGINE->input().cancelControllerInput();
+		nativeController = !nativeController;
+		inputModeChanged(ENGINE->input().getCurrentInputMode());
+	}
+	else if(key == EShortcut::BATTLE_PREVIOUS_ATTACK_DIRECTION || key == EShortcut::BATTLE_NEXT_ATTACK_DIRECTION)
+	{
+		const int step = key == EShortcut::BATTLE_PREVIOUS_ATTACK_DIRECTION ? -1 : 1;
+		if(cycleControllerAttackDirection(step))
+		{
+			attackDirectionStep = step;
+			attackDirectionRepeat = 320;
+			attackDirectionTarget = hoveredHex;
+		}
+	}
+}
+
+bool BattleFieldController::hasControllerAttackDirections() const
+{
+	if(!usesNativeController() || !owner.stacksController->getActiveStack() || !hoveredHex.isAvailable() || !owner.actionsController->currentActionHasAttackDirection(hoveredHex))
+		return false;
+	const auto points = attackDirectionPoints(hoveredHex);
+	return std::count_if(points.begin(), points.end(), [](const Point & point) { return point.isValid(); }) > 1;
+}
+
+bool BattleFieldController::cycleControllerAttackDirection(int step)
+{
+	if(!hasControllerAttackDirections())
+		return false;
+	const auto points = attackDirectionPoints(hoveredHex);
+	const int direction = BattleControllerInput::nextAttackDirection(points, selectAttackDirection(hoveredHex), step);
+	if(direction < 0)
+		return false;
+	controllerConfirm.cancel();
+	const Point center = hexPositionAbsolute(hoveredHex).center();
+	ENGINE->input().setCursorPosition(center + (points[direction] - center) / 3);
+	return true;
+}
+
+void BattleFieldController::keyReleased(EShortcut key)
+{
+	if(key == EShortcut::GLOBAL_ACCEPT && usesNativeController())
+	{
+		if(controllerConfirm.release(controllerSelection()))
+			activateHoveredHex();
+		return;
+	}
+
+	if((key == EShortcut::BATTLE_PREVIOUS_ATTACK_DIRECTION && attackDirectionStep < 0)
+		|| (key == EShortcut::BATTLE_NEXT_ATTACK_DIRECTION && attackDirectionStep > 0))
+		attackDirectionStep = 0;
+}
+
+bool BattleFieldController::captureThisKey(EShortcut key)
+{
+	return !owner.openingPlaying() && usesNativeController() && BattleControllerInput::capturesShortcut(key);
 }
 
 void BattleFieldController::startShakeAnimation()
@@ -193,6 +423,7 @@ void BattleFieldController::activate()
 {
 	GAME->interface()->cingconsole->pos = this->pos;
 	CIntObject::activate();
+	inputModeChanged(ENGINE->input().getCurrentInputMode());
 }
 
 void BattleFieldController::createHeroes()
@@ -256,6 +487,11 @@ void BattleFieldController::mouseMoved(const Point & cursorPosition, const Point
 
 void BattleFieldController::clickPressed(const Point & cursorPosition)
 {
+	activateHoveredHex();
+}
+
+void BattleFieldController::activateHoveredHex()
+{
 	// a click on the battlefield cancels ongoing auto-combat (H3 behavior)
 	if(owner.curInt->isAutoFightOn)
 	{
@@ -265,8 +501,9 @@ void BattleFieldController::clickPressed(const Point & cursorPosition)
 
 	BattleHex selectedHex = getHoveredHex();
 
-	if (selectedHex != BattleHex::INVALID)
-		owner.actionsController->onHexLeftClicked(selectedHex);
+	if(selectedHex == BattleHex::INVALID)
+		return;
+	owner.actionsController->onHexLeftClicked(selectedHex);
 }
 
 void BattleFieldController::showPopupWindow(const Point & cursorPosition)
@@ -327,6 +564,8 @@ void BattleFieldController::showBackgroundImage(Canvas & canvas)
 
 void BattleFieldController::deactivate()
 {
+	controllerInputCanceled();
+	ENGINE->cursor().show();
 	// Released on deactivation rather than in the destructor, which runs after the window is
 	// already gone. A window that is merely covered reclaims the layer on the next redraw.
 	ENGINE->screenHandler().releaseLayer(GpuRenderLayer::BATTLE);
@@ -810,21 +1049,9 @@ BattleHex BattleFieldController::getHexAtPosition(Point hoverPos)
 	return BattleHex::INVALID;
 }
 
-BattleHex::EDir BattleFieldController::selectAttackDirection(const BattleHex & myNumber) const
+std::array<Point, 8> BattleFieldController::attackDirectionPoints(const BattleHex & myNumber) const
 {
 	auto attacker = owner.stacksController->getActiveStack();
-	assert(attacker);
-
-	// When the target is pointed at through the battle queue there is no meaningful mouse
-	// position on the battlefield to derive an approach direction from, so the raw cursor
-	// position would always yield the same corner. Instead, pretend the cursor sits on the
-	// attacker: the nearest-test-point logic below then selects the attack-from hex closest
-	// to the attacker, which is what a player usually wants when simply saying "attack that
-	// stack".
-	Point originPoint = currentAttackOriginPoint;
-	if(!pos.isInside(originPoint) && getQueueHoveredStack() != nullptr)
-		originPoint = hexPositionAbsolute(attacker->getPosition()).center();
-
 	const BattleHexArray & neighbours = myNumber.getAllNeighbouringTiles();
 	// For each valid direction, select position to test against
 	std::array<Point, 8> testPoint;
@@ -840,6 +1067,26 @@ BattleHex::EDir BattleFieldController::selectAttackDirection(const BattleHex & m
 
 	if (owner.getBattle()->battleCanAttackHex(availableHexes, attacker, myNumber, BattleHex::EDir(7)))
 		testPoint[7] = (hexPositionAbsolute(neighbours[3]).center() + hexPositionAbsolute(neighbours[4]).center()) / 2 + Point(0,  5);
+
+	return testPoint;
+}
+
+BattleHex::EDir BattleFieldController::selectAttackDirection(const BattleHex & myNumber) const
+{
+	auto attacker = owner.stacksController->getActiveStack();
+	assert(attacker);
+
+	// When the target is pointed at through the battle queue there is no meaningful mouse
+	// position on the battlefield to derive an approach direction from, so the raw cursor
+	// position would always yield the same corner. Instead, pretend the cursor sits on the
+	// attacker: the nearest-test-point logic below then selects the attack-from hex closest
+	// to the attacker, which is what a player usually wants when simply saying "attack that
+	// stack".
+	Point originPoint = currentAttackOriginPoint;
+	if(!pos.isInside(originPoint) && getQueueHoveredStack() != nullptr)
+		originPoint = hexPositionAbsolute(attacker->getPosition()).center();
+
+	const auto testPoint = attackDirectionPoints(myNumber);
 
 	// Compute distance between tested position & cursor position and pick nearest
 	int nearestDistance = std::numeric_limits<int>::max();
@@ -884,6 +1131,38 @@ void BattleFieldController::showAll(Canvas & to)
 
 void BattleFieldController::tick(uint32_t msPassed)
 {
+	if(usesNativeController())
+	{
+		ENGINE->cursor().hide();
+		// Hover needs the new actor's actions, which are initialized after setActiveStack.
+		if(!controllerFocusInitialized && owner.stacksController->getActiveStack())
+		{
+			focusHex(BattleControllerInput::initialHex(owner.stacksController->getActiveStack()->getPosition()));
+			controllerFocusInitialized = true;
+		}
+		if(attackDirectionStep != 0)
+		{
+			if(attackDirectionTarget != hoveredHex || !hasControllerAttackDirections())
+				attackDirectionStep = 0;
+			else if(ControllerInput::repeatReady(msPassed, attackDirectionRepeat))
+			{
+				cycleControllerAttackDirection(attackDirectionStep);
+				attackDirectionRepeat = 110;
+			}
+		}
+		if((!vstd::isAlmostZero(navigationAxis[0]) || !vstd::isAlmostZero(navigationAxis[1]))
+			&& ControllerInput::repeatReady(msPassed, navigationRepeat))
+		{
+			moveControllerFocus();
+			navigationRepeat = navigationRepeat == 0 ? 320 : 110;
+		}
+		if((!vstd::isAlmostZero(unitNavigationAxis[0]) || !vstd::isAlmostZero(unitNavigationAxis[1]))
+			&& ControllerInput::repeatReady(msPassed, unitNavigationRepeat))
+		{
+			moveControllerUnitFocus();
+			unitNavigationRepeat = unitNavigationRepeat == 0 ? 320 : 110;
+		}
+	}
 	updateShake();
 	updateAccessibleHexes();
 	owner.stacksController->tick(msPassed);
@@ -906,7 +1185,7 @@ void BattleFieldController::show(Canvas & to)
 		Canvas layer = ENGINE->screenHandler().getLayerCanvas(GpuRenderLayer::BATTLE);
 		renderBattlefield(layer);
 
-		if (isActive() && isGesturing() && getHoveredHex() != BattleHex::INVALID)
+		if (isActive() && (isGesturing() || usesNativeController()) && getHoveredHex() != BattleHex::INVALID)
 			layer.draw(ENGINE->cursor().getCurrentImage(), hexPositionAbsolute(getHoveredHex()).center() - ENGINE->cursor().getPivotOffset());
 
 		return;
@@ -916,7 +1195,7 @@ void BattleFieldController::show(Canvas & to)
 
 	renderBattlefield(to);
 
-	if (isActive() && isGesturing() && getHoveredHex() != BattleHex::INVALID)
+	if (isActive() && (isGesturing() || usesNativeController()) && getHoveredHex() != BattleHex::INVALID)
 		to.draw(ENGINE->cursor().getCurrentImage(), hexPositionAbsolute(getHoveredHex()).center() - ENGINE->cursor().getPivotOffset());
 }
 

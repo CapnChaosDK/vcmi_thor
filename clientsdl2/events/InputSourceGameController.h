@@ -14,6 +14,7 @@
 #include <SDL_gamecontroller.h>
 
 #include "lib/Point.h"
+#include "gui/ControllerInputState.h"
 #include "ControllerPromptFamily.h"
 #include "gui/Shortcut.h"
 
@@ -24,8 +25,8 @@ class InputSourceGameController
 	using GameControllerPtr = std::unique_ptr<SDL_GameController, decltype(&gameControllerDeleter)>;
 
 	std::map<int, GameControllerPtr> gameControllerMap;
-	std::set<SDL_GameControllerAxis> pressedAxes;
 	int activeController = -1;
+	std::map<std::pair<int, int>, ControllerInput::AxisLatch> axisLatches;
 
 	std::chrono::steady_clock::time_point lastCheckTime;
 	double cursorAxisValueX;
@@ -47,10 +48,11 @@ class InputSourceGameController
 	const double configAxisSpeed;
 	const double configAxisScale;
 
+	void latchHeldControls(int instance);
 	void openGameController(int index);
 	int getJoystickIndex(SDL_GameController * controller);
 	double getRealAxisValue(int value) const;
-	void dispatchAxisShortcuts(const std::vector<EShortcut> & shortcutsVector, SDL_GameControllerAxis axisID, int axisValue, std::string axisName);
+	void dispatchAxisShortcuts(int instance, int axisValue, const std::string & axisName);
 	void tryToConvertCursor();
 	void doCursorMove(int deltaX, int deltaY);
 	int getMoveDis(float planDis);
@@ -61,11 +63,12 @@ class InputSourceGameController
 public:
 	InputSourceGameController();
 	void setActiveController(int instanceID);
+	void resetInput(bool dismissPopup = true);
 	bool isAxisMotionActive(const SDL_ControllerAxisEvent & axis) const;
 	ControllerPrompt::Family getActiveControllerPromptFamily() const;
 	void tryOpenAllGameControllers();
 	void handleEventDeviceAdded(const SDL_ControllerDeviceEvent & device);
-	void handleEventDeviceRemoved(const SDL_ControllerDeviceEvent & device);
+	bool handleEventDeviceRemoved(const SDL_ControllerDeviceEvent & device);
 	void handleEventDeviceRemapped(const SDL_ControllerDeviceEvent & device);
 	void handleEventAxisMotion(const SDL_ControllerAxisEvent & axis);
 	void handleEventButtonDown(const SDL_ControllerButtonEvent & button);

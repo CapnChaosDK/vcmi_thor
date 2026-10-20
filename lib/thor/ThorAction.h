@@ -320,11 +320,13 @@ class DLL_LINKAGE ThorActionQueue final
 	std::array<ThorActionRequest, capacity> requests;
 	std::size_t first = 0;
 	std::size_t count = 0;
+	bool controllerResetPending = false;
 
 public:
 	bool submit(ThorActionRequest request);
 	std::optional<ThorActionRequest> pop();
-	void clear();
+	void clear(bool cancelController = false);
+	bool takeControllerReset();
 	std::size_t size() const;
 };
 

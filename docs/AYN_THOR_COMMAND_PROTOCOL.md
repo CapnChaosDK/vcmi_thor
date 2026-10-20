@@ -50,6 +50,13 @@ Version/ID zero defaults preserve all existing aggregate callers.
 
 ## Native authority and lifecycle
 
+Slice 53 leaves these payloads, IDs, revisions and availability rules unchanged.
+The existing `clearThorActions()` lifecycle callback additionally sets a bounded,
+mutex-protected controller-reset flag alongside clearing its queues. MainGUI consumes
+that flag before frame input/commands; ordinary queue clears cannot lose it.
+Accepted lower Battle actions cancel pending upper controller intent before invoking
+their existing native routes. No controller gameplay data travels through Java.
+
 The normalized context includes the lists in semantic equality; a list, owner,
 participant, active-unit, turn/targeting or action-epoch change invalidates the
 rendered revision. Non-Battle contexts clear the Battle availability lists. Player setup capabilities
