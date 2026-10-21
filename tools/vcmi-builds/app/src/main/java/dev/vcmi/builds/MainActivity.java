@@ -172,7 +172,8 @@ public final class MainActivity extends Activity {
         worker.execute(() -> {
             File partial=new File(getCacheDir(),"download.part");
             try {
-                HttpURLConnection c=connect(item.url,auth,"application/octet-stream");
+                // Actions returns a redirect using GitHub's API media type; release assets use octet-stream.
+                HttpURLConnection c=connect(item.url,auth,item.zip?"application/vnd.github+json":"application/octet-stream");
                 long expected=c.getContentLengthLong(), total=0, lastUpdate=0;
                 try (InputStream in=c.getInputStream(); OutputStream out=new FileOutputStream(partial)) {
                     byte[] buffer=new byte[65536]; int n;

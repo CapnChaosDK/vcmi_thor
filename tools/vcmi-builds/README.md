@@ -4,10 +4,10 @@ Small native Android app (Android 8 or later) for downloading APKs from GitHub R
 
 ## Produce an APK on GitHub
 
-1. Put this directory's contents at the root of a GitHub repository, including `.github/workflows/android.yml`.
-2. Open **Actions → Build installer APK → Run workflow** (pushing also triggers it).
+1. Keep this project under `tools/vcmi-builds` with `.github/workflows/vcmi-builds-helper.yml` at the repository root.
+2. Push helper changes to `codex/vcmi-builds-helper` to run **Build VCMI helper APK**.
 3. Once the build succeeds, download the **vcmi-builds-installer** artifact.
-4. Extract `app-debug.apk`, transfer it to your phone, and open it to install.
+4. Verify the included checksum for `vcmi-builds.apk`, transfer it to your phone, and open it to install.
 
 The workflow builds a debug-signed APK. GitHub-hosted runners may generate a new debug signing key on each run, so later installer versions may require uninstalling this installer app first. This does not uninstall VCMI. A stable release signing key is needed for repeatable installer upgrades.
 
@@ -32,7 +32,9 @@ Output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Limits and validation
 
-- No repository URL was supplied, so there is no preset repository or verified VCMI Thor build layout.
+- Version 0.1.1 corrects HTTP 415 when downloading Actions artifacts: the archive API request uses `application/vnd.github+json`, while Release asset downloads retain `application/octet-stream`. A live authenticated comparison on 2026-10-21 reproduced HTTP 415 with the old header and HTTP 302 with the corrected header. Complete download/install behavior on the Thor still requires device validation.
+
+- Defaults to `CapnChaosDK/vcmi_thor`, Actions artifacts, and `ci/thor-candidate-validation`.
 - Discovers the 30 most recent releases or successful Actions runs. Artifacts may be expired, or may contain no APK. Split APK sets and Android App Bundles are unsupported.
 - Downloads require keeping the app open; background/resumable downloads are not implemented. Interrupting a download may require retrying.
-- This project has not been compiled or tested on a device. The provided cloud environment lacked SDK/Gradle and its configured proxy refused connections, preventing tool installation.
+- Version 0.1.0 passed GitHub assemble/lint/package checks and was installed and launched on an AYN Thor. Token-authenticated build listing worked on device; artifact downloading exposed the HTTP 415 fixed in 0.1.1. This does not establish a complete download/install device pass.
