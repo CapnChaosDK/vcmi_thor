@@ -27,14 +27,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Prepare stable helper signing key
+        env:
+          HELPER_KEYSTORE_BASE64: ${{ secrets.VCMI_BUILDS_KEYSTORE_BASE64 }}
+          HELPER_SIGNING_PASSWORD: ${{ secrets.VCMI_BUILDS_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$HELPER_KEYSTORE_BASE64" && test -n "$HELPER_SIGNING_PASSWORD"
+          umask 077
+          printf '%s' "$HELPER_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/vcmi-builds.jks"
       - name: Compile and lint helper
-        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
+        env:
+          HELPER_SIGNING_STORE: ${{ runner.temp }}/vcmi-builds.jks
+          HELPER_SIGNING_PASSWORD: ${{ secrets.VCMI_BUILDS_KEYSTORE_PASSWORD }}
+        run: gradle --no-daemon :app:assembleRelease :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Verify package and signature
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk vcmi-builds.apk
+          cp app/build/outputs/apk/release/app-release.apk vcmi-builds.apk
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           "$build_tools/aapt" dump badging vcmi-builds.apk | grep "package: name='dev.vcmi.builds'"
           "$build_tools/apksigner" verify --verbose vcmi-builds.apk
+          "$build_tools/apksigner" verify --print-certs vcmi-builds.apk > vcmi-builds-signing-certificate.txt
           sha256sum vcmi-builds.apk > vcmi-builds.apk.sha256
       - uses: actions/upload-artifact@v4
         with:
@@ -42,5 +54,17 @@ jobs:
           path: |
             tools/vcmi-builds/vcmi-builds.apk
             tools/vcmi-builds/vcmi-builds.apk.sha256
+            tools/vcmi-builds/vcmi-builds-signing-certificate.txt
           if-no-files-found: error
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vcmi-builds-device-tests
+          path: |
+            tools/vcmi-builds/app/build/outputs/apk/debug/app-debug.apk
+            tools/vcmi-builds/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/vcmi-builds.jks"

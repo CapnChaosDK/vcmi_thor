@@ -25,7 +25,9 @@ public final class MainActivity extends Activity {
     private Spinner source;
     private LinearLayout results;
     private TextView status;
-    private Button refresh, install;
+    private Button refresh, install, saveToken, forgetToken;
+    private TokenStore tokenStore;
+    private TextView tokenStatus;
     private ProgressBar progress;
     private boolean busy, awaitingPermission;
     private String installedCandidate;
@@ -53,7 +55,25 @@ public final class MainActivity extends Activity {
         branch = input("Branch (Actions only; blank = all)", false); page.addView(branch);
         branch.setText(getPreferences(0).getString("branch", "ci/thor-candidate-validation"));
         token = input("GitHub token (required for Actions/private repo)", true); page.addView(token);
-        page.addView(text("Token is kept in memory only. Device: " + String.join(", ", Build.SUPPORTED_ABIS), 12));
+        token.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+        token.setImeOptions(android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING);
+        tokenStore = new TokenStore(this);
+        tokenStatus = text("Save token to remember it on this device.",12); page.addView(tokenStatus);
+        try {
+            token.setText(tokenStore.load());
+            if (token.length()>0) tokenStatus.setText("Saved token restored securely.");
+        } catch (Exception e) { tokenStatus.setText("Saved token could not be unlocked. Paste and save it again, or tap Forget token."); }
+        saveToken = new Button(this); saveToken.setText("Save token"); page.addView(saveToken);
+        saveToken.setOnClickListener(v -> saveToken());
+        forgetToken = new Button(this); forgetToken.setText("Forget token"); page.addView(forgetToken);
+        forgetToken.setOnClickListener(v -> {
+            token.setText(""); results.removeAllViews();
+            try {
+                tokenStore.clear();
+                tokenStatus.setText("Token forgotten on this device. This does not revoke it on GitHub.");
+            } catch (Exception e) { tokenStatus.setText("Could not remove the saved token. Please try again."); }
+        });
+        page.addView(text("Token is encrypted on this device. Device: " + String.join(", ", Build.SUPPORTED_ABIS), 12));
         refresh = new Button(this); refresh.setText("Check newest builds"); page.addView(refresh);
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setVisibility(View.GONE); page.addView(progress);
@@ -78,6 +98,7 @@ public final class MainActivity extends Activity {
     private void working(boolean value) {
         busy=value; refresh.setEnabled(!value); repo.setEnabled(!value); source.setEnabled(!value);
         branch.setEnabled(!value); token.setEnabled(!value); install.setEnabled(!value);
+        saveToken.setEnabled(!value); forgetToken.setEnabled(!value);
         for (int i=0;i<results.getChildCount();i++) results.getChildAt(i).setEnabled(!value);
         progress.setVisibility(value ? View.VISIBLE : View.GONE); progress.setIndeterminate(true);
     }
@@ -90,6 +111,17 @@ public final class MainActivity extends Activity {
         if (!value.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")) throw new IllegalArgumentException("Use owner/repository or its GitHub URL.");
         return value;
     }
+    private boolean saveToken() {
+        try {
+            tokenStore.save(token.getText().toString().trim());
+            results.removeAllViews(); // Download buttons capture the token used to list their builds.
+            tokenStatus.setText(token.length()==0?"No token saved.":"Token saved securely for app restarts and device reboots.");
+            return true;
+        } catch (Exception e) {
+            tokenStatus.setText("Could not save token securely. Tap Forget token, then paste and save it again.");
+            return false;
+        }
+    }
     private void load() {
         if (busy) return;
         final String repository;
@@ -97,6 +129,7 @@ public final class MainActivity extends Activity {
         final String auth=token.getText().toString().trim(), filter=branch.getText().toString().trim();
         final boolean actions=source.getSelectedItemPosition()==1;
         if (actions && auth.isEmpty()) { status.setText("GitHub requires a token to download Actions artifacts. Use a fine-grained token with Actions: read access to this repository."); return; }
+        if (!saveToken()) return;
         getPreferences(0).edit().putString("repo", repository).putString("branch", filter).putInt("source", actions?1:0).apply();
         results.removeAllViews(); working(true); status.setText("Looking for builds…");
         worker.execute(() -> {
