@@ -1079,36 +1079,23 @@ BattleHex::EDir BattleFieldController::selectAttackDirection(const BattleHex & m
 	// When the target is pointed at through the battle queue there is no meaningful mouse
 	// position on the battlefield to derive an approach direction from, so the raw cursor
 	// position would always yield the same corner. Instead, pretend the cursor sits on the
-	// attacker: the nearest-test-point logic below then selects the attack-from hex closest
+	// attacker. Centered native controller focus uses the same default; shoulder
+	// offsets still select explicit sides. A centered cursor
+	// would otherwise prefer RIGHT/LEFT regardless of the actor position.
+	// The nearest-test-point logic below selects the attack-from hex closest
 	// to the attacker, which is what a player usually wants when simply saying "attack that
 	// stack".
-	Point originPoint = currentAttackOriginPoint;
+	Point originPoint = BattleControllerInput::attackDirectionOrigin(currentAttackOriginPoint,
+		hexPositionAbsolute(myNumber).center(), hexPositionAbsolute(attacker->getPosition()).center(), usesNativeController());
 	if(!pos.isInside(originPoint) && getQueueHoveredStack() != nullptr)
 		originPoint = hexPositionAbsolute(attacker->getPosition()).center();
 
 	const auto testPoint = attackDirectionPoints(myNumber);
 
-	// Compute distance between tested position & cursor position and pick nearest
-	int nearestDistance = std::numeric_limits<int>::max();
-	size_t nearest = -1;
-
-	for (size_t i = 0; i < 8; ++i)
-	{
-		if (testPoint[i].isValid())
-		{
-			int distance = (testPoint[i].y - originPoint.y)*(testPoint[i].y - originPoint.y) + (testPoint[i].x - originPoint.x)*(testPoint[i].x - originPoint.x);
-			if (nearest == -1 || distance < nearestDistance)
-			{
-				nearestDistance = distance;
-				nearest = i;
-			}
-		}
-	}
-
-	if (nearest == -1)
-		// Zero available tiles to attack from
+	const auto nearest = BattleControllerInput::nearestAttackDirection(testPoint, originPoint);
+	if(nearest == BattleHex::NONE)
 		logGlobal->error("Error: cannot find a hex to attack hex %d from!", myNumber);
-	return BattleHex::EDir(nearest);
+	return nearest;
 }
 
 void BattleFieldController::updateAccessibleHexes()

@@ -124,6 +124,53 @@ TEST(BattleControllerInput, AttackDirectionCyclesOnlyNativeLegalApproaches)
 	EXPECT_EQ(BattleControllerInput::nextAttackDirection(points, BattleHex::TOP_LEFT, -1), 7);
 }
 
+TEST(BattleControllerInput, DefaultApproachFollowsAttackerInsteadOfCenteredFocus)
+{
+	const std::array<Point, 8> legal = {{{-22, -42}, {22, -42}, {44, 0},
+		{22, 42}, {-22, 42}, {-44, 0}, {0, -47}, {0, 47}}};
+	// Centered target focus previously picked RIGHT by tie order from either side.
+	EXPECT_EQ(BattleControllerInput::nearestAttackDirection(legal, Point()), BattleHex::RIGHT);
+	for(size_t index = 0; index < legal.size(); ++index)
+	{
+		const auto origin = BattleControllerInput::attackDirectionOrigin(Point(), Point(), legal[index] * 3, true);
+		EXPECT_EQ(BattleControllerInput::nearestAttackDirection(legal, origin), index);
+	}
+	EXPECT_EQ(BattleControllerInput::attackDirectionOrigin(Point(), Point(), Point(-100, 0), false), Point());
+
+	auto restricted = legal;
+	restricted[BattleHex::LEFT] = Point::makeInvalid();
+	EXPECT_NE(BattleControllerInput::nearestAttackDirection(restricted, Point(-100, 0)), BattleHex::LEFT);
+	restricted.fill(Point::makeInvalid());
+	EXPECT_EQ(BattleControllerInput::nearestAttackDirection(restricted, Point()), BattleHex::NONE);
+}
+
+TEST(BattleControllerInput, ShoulderCyclePreviewAndConfirmationPreserveEveryLegalSide)
+{
+	const std::array<Point, 8> legal = {{{-22, -42}, {22, -42}, {44, 0},
+		{22, 42}, {-22, 42}, {-44, 0}, {0, -47}, {0, 47}}};
+	for(int step : {1, -1})
+	{
+		auto direction = BattleHex::RIGHT;
+		std::set<int> visited;
+		for(size_t count = 0; count < legal.size(); ++count)
+		{
+			const auto next = BattleControllerInput::nextAttackDirection(legal, direction, step);
+			// Actual production cursor projection, then native preview/submission lookup.
+			const auto origin = BattleControllerInput::attackDirectionOrigin(legal[next] / 3, Point(), Point(-100, 0), true);
+			direction = BattleControllerInput::nearestAttackDirection(legal, origin);
+			EXPECT_EQ(direction, next);
+			visited.insert(direction);
+			auto preview = selection(PossiblePlayerBattleAction::WALK_AND_ATTACK);
+			preview.direction = direction;
+			BattleControllerInput::Confirmation confirm;
+			confirm.press(preview);
+			EXPECT_TRUE(confirm.release(preview));
+			EXPECT_FALSE(confirm.release(preview));
+		}
+		EXPECT_EQ(visited.size(), legal.size());
+	}
+}
+
 TEST(BattleControllerInput, MoveMeleeRangedAndTacticsConfirmExactlyOnce)
 {
 	for(const auto action : {PossiblePlayerBattleAction::MOVE_STACK, PossiblePlayerBattleAction::WALK_AND_ATTACK,

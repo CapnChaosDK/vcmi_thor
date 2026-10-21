@@ -92,6 +92,28 @@ inline int nextAttackDirection(const std::array<Point, 8> & points, BattleHex::E
 	return -1;
 }
 
+inline Point attackDirectionOrigin(const Point & cursor, const Point & target, const Point & actor, bool native)
+{
+	return native && cursor == target ? actor : cursor;
+}
+
+inline BattleHex::EDir nearestAttackDirection(const std::array<Point, 8> & points, const Point & origin)
+{
+	int nearestDistance = std::numeric_limits<int>::max();
+	BattleHex::EDir nearest = BattleHex::NONE;
+	for(size_t index = 0; index < points.size(); ++index)
+		if(points[index].isValid())
+		{
+			const int distance = (points[index] - origin).lengthSquared();
+			if(nearest == BattleHex::NONE || distance < nearestDistance)
+			{
+				nearestDistance = distance;
+				nearest = static_cast<BattleHex::EDir>(index);
+			}
+		}
+	return nearest;
+}
+
 inline bool capturesShortcut(EShortcut key)
 {
 	// Direction aliases must still reach native Wait/Defend/tactics handlers
