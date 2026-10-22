@@ -349,8 +349,10 @@ bool CGTeleport::isConnected(const CGObjectInstance * src, const CGObjectInstanc
 
 bool CGTeleport::isExitPassable(const IGameInfoCallback & gameInfo, const CGHeroInstance * h, const CGObjectInstance * obj)
 {
-	ObjectInstanceID topObjectID = gameInfo.getTile(obj->visitablePos())->topVisitableObj();
-	const CGObjectInstance * topObject = gameInfo.getObjInstance(topObjectID);
+	const auto * tile = obj ? gameInfo.tryGetTile(obj->visitablePos()) : nullptr;
+	const auto * topObject = tile ? gameInfo.tryGetObj(tile->topVisitableObj()) : nullptr;
+	if(!topObject)
+		return false;
 
 	if(topObject->ID == Obj::HERO)
 	{
@@ -372,7 +374,7 @@ std::vector<ObjectInstanceID> CGTeleport::getPassableExits(const IGameInfoCallba
 {
 	vstd::erase_if(exits, [&](const ObjectInstanceID & exit) -> bool 
 	{
-		return !isExitPassable(gameInfo, h, gameInfo.getObj(exit));
+		return !isExitPassable(gameInfo, h, gameInfo.tryGetObj(exit));
 	});
 	return exits;
 }
@@ -406,7 +408,7 @@ TeleportChannelID CGMonolith::findMeChannel(const std::vector<Obj> & IDs, MapObj
 	// teleportChannels only ever contains already-paired monoliths, same as before this searched
 	auto matches = [&](const ObjectInstanceID & objId) -> bool
 	{
-		const auto * obj = cb->getObj(objId);
+		const auto * obj = cb->tryGetObj(objId);
 		return obj && vstd::contains(IDs, obj->ID) && obj->subID == SubID;
 	};
 

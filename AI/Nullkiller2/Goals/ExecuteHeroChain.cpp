@@ -151,7 +151,7 @@ void ExecuteHeroChain::accept(AIGateway * aiGw)
 	aiGw->nullkiller->setTargetObject(objid);
 	aiGw->nullkiller->objectClusterizer->reset();
 
-	auto targetObject = aiGw->cc->getObj(static_cast<ObjectInstanceID>(objid), false);
+	auto targetObject = aiGw->cc->tryGetObj(static_cast<ObjectInstanceID>(objid));
 
 	if(chainPath.turn() == 0 && targetObject && targetObject->ID == Obj::TOWN)
 	{

@@ -26,6 +26,7 @@ set(test_SRCS
 		battle/battle_UnitTest.cpp
 
 		bonus/BonusSystemTest.cpp
+		callback/InfoCallbackTest.cpp
 
 		combatScripts/CombatScriptDescriptionTest.cpp
 
@@ -300,11 +301,12 @@ foreach(resource ${testdata})
 	configure_file(${resource} ${output} COPYONLY)
 endforeach()
 
-# Focused real server boundary gate; avoids compiling unrelated AI/gameplay tests.
+# Focused real callback/server boundary gate; avoids unrelated AI/gameplay tests.
 # Uses the same fixture, facade, server implementation and runtime data as vcmitest.
 add_executable(army-transfer-tests
 	main.cpp CVcmiTestConfig.cpp
 	server/ArmyManagementTest.cpp
+	callback/InfoCallbackTest.cpp
 	mock/GameHandlerTestServer.cpp
 	mock/TinyMapGameTest.cpp
 	mock/TinyH3MBuilder.cpp mock/TinyH3MWriter.cpp

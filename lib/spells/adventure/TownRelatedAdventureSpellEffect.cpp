@@ -132,7 +132,7 @@ ESpellCastResult TownRelatedAdventureSpellEffect::beginCast(SpellCastEnvironment
 					return;
 				}
 
-				const CGObjectInstance * object = env->getCb()->getObj(townId, true);
+				const CGObjectInstance * object = env->getCb()->tryGetObj(townId);
 				if(object == nullptr)
 				{
 					env->complain("Invalid object instance selected");

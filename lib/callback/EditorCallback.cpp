@@ -55,9 +55,17 @@ Calendar EditorCallback::getCalendar() const
 	THROW_EDITOR_UNSUPPORTED;
 }
 
-const TerrainTile * EditorCallback::getTile(int3 tile, bool) const
+const TerrainTile * EditorCallback::getTile(int3 tile) const
 {
-	return &map->getTile(tile);
+	const auto * result = tryGetTile(tile);
+	if(!result)
+		throw std::runtime_error("Invalid editor tile " + tile.toString());
+	return result;
+}
+
+const TerrainTile * EditorCallback::tryGetTile(int3 tile) const
+{
+	return map->isInTheMap(tile) ? &map->getTile(tile) : nullptr;
 }
 
 const TerrainTile * EditorCallback::getTileUnchecked(int3) const
@@ -75,7 +83,7 @@ const CGObjectInstance * EditorCallback::getTopObj(int3) const
 	THROW_EDITOR_UNSUPPORTED;
 }
 
-EDiggingStatus EditorCallback::getTileDigStatus(int3, bool) const
+EDiggingStatus EditorCallback::getTileDigStatus(int3) const
 {
 	THROW_EDITOR_UNSUPPORTED;
 }
@@ -165,7 +173,12 @@ const TeamState * EditorCallback::getPlayerTeam(PlayerColor) const
 	THROW_EDITOR_UNSUPPORTED;
 }
 
-const PlayerState * EditorCallback::getPlayerState(PlayerColor, bool) const
+const PlayerState * EditorCallback::getPlayerState(PlayerColor) const
+{
+	THROW_EDITOR_UNSUPPORTED;
+}
+
+const PlayerState * EditorCallback::tryGetPlayerState(PlayerColor) const
 {
 	THROW_EDITOR_UNSUPPORTED;
 }
@@ -185,7 +198,7 @@ int EditorCallback::getHeroCount(PlayerColor, bool) const
 	THROW_EDITOR_UNSUPPORTED;
 }
 
-EPlayerStatus EditorCallback::getPlayerStatus(PlayerColor, bool) const
+EPlayerStatus EditorCallback::getPlayerStatus(PlayerColor) const
 {
 	THROW_EDITOR_UNSUPPORTED;
 }

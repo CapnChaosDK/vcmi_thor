@@ -147,7 +147,7 @@ TEST_F(HeroRecruitmentTest, recruitedHeroGetsFreshInstanceNameWhenPoolEntryConfl
 	for (int playerIndex = 0; playerIndex < PlayerColor::PLAYER_LIMIT_I; ++playerIndex)
 	{
 		const auto currentPlayer = PlayerColor(playerIndex);
-		if (gameState->getPlayerState(currentPlayer))
+		if (gameState->tryGetPlayerState(currentPlayer))
 		{
 			playerColor = currentPlayer;
 			break;

@@ -33,17 +33,17 @@ namespace NK2AI
 
 const CGObjectInstance * ObjectIdRef::operator->() const
 {
-	return cpsic->getObj(id, false);
+	return cpsic->tryGetObj(id);
 }
 
 ObjectIdRef::operator const CGObjectInstance *() const
 {
-	return cpsic->getObj(id, false);
+	return cpsic->tryGetObj(id);
 }
 
 ObjectIdRef::operator bool() const
 {
-	return cpsic->getObj(id, false);
+	return cpsic->tryGetObj(id);
 }
 
 ObjectIdRef::ObjectIdRef(ObjectInstanceID id, const CPlayerSpecificInfoCallback * cpsic) : id(id), cpsic(cpsic) {}
@@ -94,7 +94,7 @@ bool HeroPtr::verify(const bool verbose) const
 
 	if(hero)
 	{
-		const auto *obj = cpsic->getObj(hero->id, verbose);
+		const auto *obj = cpsic->tryGetObj(hero->id);
 		//const bool owned = obj && obj->tempOwner == ai->playerID;
 
 		if(!obj)

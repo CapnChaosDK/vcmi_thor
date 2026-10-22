@@ -36,11 +36,11 @@
 
 ColorRGBA CMinimapInstance::getTileColor(const int3 & pos, bool minimapShowHeroes)
 {
-	const TerrainTile * tile = GAME->interface()->cb->getTile(pos, false);
+	const TerrainTile * tile = GAME->interface()->cb->tryGetTile(pos);
 
 	return minimapTileColor(tile, Colors::BLACK, [minimapShowHeroes](ObjectInstanceID objectID) -> std::optional<ColorRGBA>
 	{
-		const auto * obj = GAME->interface()->cb->getObj(objectID);
+		const auto * obj = GAME->interface()->cb->tryGetObj(objectID);
 		if(!obj)
 			return std::nullopt;
 		const auto player = obj->getOwner();
@@ -201,9 +201,9 @@ void CMinimap::showAll(Canvas & to)
 
 			for (const auto objectID : visibleHeroes)
 			{
-				const auto * object = GAME->interface()->cb->getObj(objectID);
+				const auto * object = GAME->interface()->cb->tryGetObj(objectID);
 
-				if (object->anchorPos().z != level)
+				if (!object || object->anchorPos().z != level)
 					continue;
 
 				heroIcon->setOverlayColor(graphics->playerColors[object->getOwner().getNum()]);
@@ -270,7 +270,7 @@ std::vector<ObjectInstanceID> CMinimap::getVisibleHeroes()
 
 	for (const auto & player : PlayerColor::ALL_PLAYERS())
 	{
-		if (GAME->interface()->cb->getPlayerStatus(player, false) != EPlayerStatus::INGAME)
+		if (GAME->interface()->cb->getPlayerStatus(player) != EPlayerStatus::INGAME)
 			continue;
 
 		for (const auto & hero : GAME->interface()->cb->getHeroes(player))
