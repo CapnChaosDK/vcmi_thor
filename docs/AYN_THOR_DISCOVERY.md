@@ -225,3 +225,11 @@ Android uses the existing affine transform for generic markers, deterministic sc
 The compact immutable route snapshot is separate from the shared RGB map cache: 17 header integers and up to 4096 chronological seven-integer nodes, retaining native turns, remaining movement, layer and action. Explicit truncation preserves full-route arrival metadata and full-path confirmation. Special discontinuities get endpoint markers. Plain route data participates in semantic equality; native-only movement-start sequence identity ensures an old Stop cannot affect a restarted journey. Ordinary movement progress is coalesced to 250 ms, with immediate command/state/lifecycle transitions; map RGB is sent only when its existing content generation changes.
 
 The Thor-only graceful-stop entry sets the controller's existing stopping flag and waits for its legal-stop/acknowledgement logic. Existing immediate abort for battles/dialogs is preserved. Native path advancement, server results and controller state determine progress and completion. Preview withdrawal never clears a saved upper route. Android retains only immutable current-revision route data and local modes/zoom/pan, restoring the current snapshot after Presentation recreation while cancelling gestures across session, pointer, context, revision and level changes. The complete behavioral contract, limits and hardware gate are in the Slice 45 backlog record.
+
+## Standalone candidate companion
+
+The `dev.vcmi.builds` app owns candidate discovery, verified downloads, installation
+handoff and local validation reports. It is independent of VCMI's MainGUI/JNI/game
+state, and hashes the installed `is.xyz.vcmi.thor` APK to identify the tested candidate.
+The existing Thor CI packages the commit-bound validation plan alongside its receipt.
+See [companion contract](THOR_CANDIDATE_COMPANION.md) for ownership and lifecycle details.

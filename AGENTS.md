@@ -342,6 +342,14 @@ product/build tree as described in the playbook.
 
 Documentation is part of a slice:
 
+- Maintain `CI/thor-validation-plan.json` with the current candidate's feature title,
+  change summary, setup, explicit test steps and expected outcomes before publication.
+  This is the single structured checklist source consumed by the Thor companion;
+  link it from the current backlog contract instead of maintaining a second new checklist.
+  Retain historical checklist records. CI validates its schema and binds the packaged
+  copy to the exact candidate commit and APK checksum. See
+  `docs/THOR_CANDIDATE_COMPANION.md` for the contract and result handoff.
+
 - Before/during implementation, add or refine the backlog contract when needed:
   behavior, boundary, native/Android responsibilities, acceptance tests, and risks.
 - After implementation/review, update its truthful status and resulting behavior.

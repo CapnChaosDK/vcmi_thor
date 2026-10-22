@@ -56,6 +56,7 @@ Successful full candidates upload a seven-day artifact named `thor-candidate-arm
 - `thor-candidate-arm64.apk`
 - `thor-candidate-arm64.apk.sha256`
 - `thor-validation-receipt.json`
+- `thor-validation-plan.json` — the authored `CI/thor-validation-plan.json`, bound by CI to this candidate and APK; its digest is recorded in the receipt. See [companion contract](THOR_CANDIDATE_COMPANION.md).
 - `thor-ccache-stats.txt`
 
 The JSON receipt records the real candidate commit, run ID and number, package ID, APK SHA-256, artifact name, Git ref, preset, ABI, and completed test/package gates. The GitHub job summary repeats the SHA, run ID, package, digest, artifact, test status, and ccache statistics.

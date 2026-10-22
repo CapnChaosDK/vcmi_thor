@@ -44,6 +44,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Validate candidate checklist contract
+        run: |
+          python3 CI/thor_validation_plan.py
+          python3 -m unittest discover -s CI -p 'test_thor_validation_plan.py'
+
       - name: Restore Conan dependency archive
         id: conan_archive
         uses: actions/cache/restore@v6
@@ -375,6 +380,9 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Bind checklist to candidate APK
+        run: python3 CI/thor_validation_plan.py --receipt thor-validation-receipt.json
+
       - name: Upload Thor candidate artifact
         uses: actions/upload-artifact@v7
         with:
@@ -383,6 +391,7 @@ jobs:
             thor-candidate-arm64.apk
             thor-candidate-arm64.apk.sha256
             thor-validation-receipt.json
+            thor-validation-plan.json
             thor-ccache-stats.txt
           if-no-files-found: error
           retention-days: 7
