@@ -76,7 +76,10 @@ is user testimony, not authorization to merge/promote or automatic backlog mutat
   background/recreation; Android cancel/permission/install; exact installed identity;
   launch/return; Save result/drafts, restart/reboot, candidate switching and report sharing.
 
-Keep helper source/build changes on the helper implementation branch until explicitly
+For future helper changes, branch from current product using `codex/vcmi-builds-helper`
+(recreate it after merged-branch cleanup); the existing signed helper workflow watches
+that ref. Reuse the stable signing secrets to preserve installed app data.
+Keep helper source/build changes on that implementation branch until explicitly
 merged into product. Integrate the companion packaging with the latest reviewed game
 candidate without discarding concurrent work, then hand that exact reviewed integrated
 SHA to the existing permanent candidate ref. Full ARM64 build and user hardware checks
