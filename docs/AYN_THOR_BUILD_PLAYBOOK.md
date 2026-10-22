@@ -36,7 +36,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 
 It has two validation levels:
 
-1. Relevant pushes to `ayn-thor-dual-screen` and pull requests targeting it run a no-secret preflight. It restores the immutable Conan dependency archive when available and runs the focused host-native Thor suites plus the real non-Thor army-transfer server boundary. The latter builds the `army-transfer-tests` CMake target with system native dependencies and uses the standard `github.yml` test-data setup; details and acceptance are in Slice 52 of the backlog. Documentation-only changes do not trigger it.
+1. Relevant pushes to `ayn-thor-dual-screen` and pull requests targeting it run a no-secret preflight. It restores the immutable Conan dependency archive when available and runs the focused host-native Thor suites (including the Slice 53 native controller input/confirmation/cancellation contract) plus the real non-Thor army-transfer server boundary. The latter builds the `army-transfer-tests` CMake target with system native dependencies and uses the standard `github.yml` test-data setup; details and acceptance are in Slice 52 of the backlog. Documentation-only changes do not trigger it.
 2. A trusted push to the permanent `ci/thor-candidate-validation` transport branch runs that preflight, then a dependent full ARM64 candidate job. The full job uses Ubuntu 24.04, Temurin JDK 17, recursive submodules, the official Android Conan bundle and profiles, `android-thor-release`, `arm64-v8a`, the required Qt compatibility hook, validation signing, focused Android Thor tests, package verification, checksum generation, receipt generation, and artifact upload.
 
 The full job cannot start until preflight succeeds. It never runs for pull requests, so signing secrets are not available to fork PRs or arbitrary branches. A manual dispatch from `ci/thor-candidate-validation` can request the same trusted full path with `full_arm64`.
@@ -56,6 +56,7 @@ Successful full candidates upload a seven-day artifact named `thor-candidate-arm
 - `thor-candidate-arm64.apk`
 - `thor-candidate-arm64.apk.sha256`
 - `thor-validation-receipt.json`
+- `thor-validation-plan.json` — the authored `CI/thor-validation-plan.json`, bound by CI to this candidate and APK; its digest is recorded in the receipt. See [companion contract](THOR_CANDIDATE_COMPANION.md).
 - `thor-ccache-stats.txt`
 
 The JSON receipt records the real candidate commit, run ID and number, package ID, APK SHA-256, artifact name, Git ref, preset, ABI, and completed test/package gates. The GitHub job summary repeats the SHA, run ID, package, digest, artifact, test status, and ccache statistics.

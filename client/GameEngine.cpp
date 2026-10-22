@@ -164,6 +164,8 @@ void GameEngine::updateFrame()
 	engineUser->onUpdate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(thorActionQueue().takeControllerReset())
+		input().cancelControllerInput();
 	if(adventureInt)
 		adventureInt->updateThorActionState();
 	if(auto buildWindow = windows().topWindow<CBuildWindow>())

@@ -224,7 +224,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThor
 
 extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_clearThorActions(JNIEnv *, jclass)
 {
-	thorActionQueue().clear();
+	thorActionQueue().clear(true);
 	thorHeroMeetingRedistributionQueue().clear();
 }
 

@@ -1126,11 +1126,18 @@ std::optional<ThorActionRequest> ThorActionQueue::pop()
 	return result;
 }
 
-void ThorActionQueue::clear()
+void ThorActionQueue::clear(bool cancelController)
 {
 	std::lock_guard lock(mutex);
 	first = 0;
 	count = 0;
+	controllerResetPending |= cancelController;
+}
+
+bool ThorActionQueue::takeControllerReset()
+{
+	std::lock_guard lock(mutex);
+	return std::exchange(controllerResetPending, false);
 }
 
 std::size_t ThorActionQueue::size() const

@@ -146,7 +146,7 @@ Current review, candidate receipts and the complete hardware checklist belong in
 | --- | --- | --- |
 | 1 | #8014 staged completion | High battle reliability value, low integration risk; adopted here. |
 | 2 | #8035 army authorization/integrity | Adapted in Slice 52 above; CI/artifact and user-confirmed hardware acceptance passed; promoted through PR #43, no wholesale cherry-pick. |
-| 3 | Controller cancellation/navigation (#7772, `dfe0d541c`, `6aa1bf766`) | Useful held-input/window safety; depends on new dispatcher/controller state and battle targeting. Test upper controls, focus, modal restoration and lower command parity before adoption. |
+| 3 | Controller cancellation/navigation (#7772, `dfe0d541c`, `6aa1bf766`) | Targeted native adaptation in Slice 53 below; CI and hardware acceptance pending. |
 | 4 | Strict callbacks (#8018, `e23240336`) | `getX` throws, `tryGetX` handles absence; audit every Thor stale-identity lookup before migrating. A textual merge cannot establish safe stale-request behavior. |
 | 5 | Activity/question server migration (`54a6fc585` and `server/activities/`) | Replaces queries, QueryID/reply routes and exchange/battle continuation ownership. High risk to acknowledgements, result dismissal and movement stop/resume. Separate architecture milestone after army tests. |
 | 6 | Chunked saves (#8022, `f6b5eb30c`) | New SaveFileFormat/legacy loader, SAVE_CHUNKS and subsequent serialization versions. Migrate serializer, lobby save browser and custom packet registration together; test old saves and multiplayer compatibility explicitly. |
@@ -196,6 +196,42 @@ artifact, receipt, package `is.xyz.vcmi.thor` and APK checksum before this check
 
 Exact-SHA CI, installation and user-confirmed hardware receipts are recorded in
 the Slice 51 backlog record; Slice 51 is hardware validated and promoted via PR #41.
-Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically. Slice 52 implements the army safety milestone above and awaits its own validation.
-After acceptance, prioritize bounded controller cancellation/navigation dependencies
-before a full activity/query migration; do not start it automatically.
+Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically.
+Slice 52 has since passed its exact-candidate CI and hardware gates and was promoted
+through PR #43. Slice 53 below implements the bounded controller milestone and awaits
+its own gates; the full activity/query migration remains deferred.
+
+
+## Slice 53 — Native controller navigation and cancellation
+
+Product base `dc637214c0ac68a7057965948302a40597618a97` and PR #7772 head
+`6aa1bf766d54089017d7a638ba547c09dcef5467` were freshly fetched on 2026-10-20.
+The fork had cursor/swipe emulation and Thor Battle Quick Controls but neither
+native grid/unit navigation nor prerequisite cancellation from `dfe0d541c`.
+
+Adapted: dispatcher press ownership/cancellation, CKeyShortcut and gesture-owner
+cleanup, SDL2/SDL3 reset/device handling, battlefield directional focus, native
+preview/action legality, native melee-approach geometry and turn notifications.
+Fork-specific integration preserves GPU/software field rendering, Thor lower
+commands, availability publication and immediate-parent window restoration.
+
+Corrections beyond the reference: A invokes the native action owner directly;
+confirmation binds stable actor/target IDs, action/spell, hex and approach; canceled
+sticks require neutral; newly connected/remapped held controls are suppressed;
+queued device/pause/focus boundaries preserve input order on MainGUI. Dispatcher
+cancellation marks presses before callbacks, supporting reentrant window cleanup.
+Mouse shortcuts cannot continue into a window opened by their own dispatch.
+Back Auto remains bound; X/Y expose native Defend/Wait while melee shoulders
+select approaches. Tactics movement stays on native legality and right shoulder
+can end tactics. Ordinary native inspect windows already support both face buttons,
+so no creature-window shortcut/constructor migration is needed.
+
+Intentionally excluded: upstream controller-family binding schema, new shoulder
+glyph images, floating prompt layout, side-panel geometry and settings UI changes.
+Existing native action cursor/highlights/status provide feedback; left-stick click
+exposes existing cursor-mode advanced interfaces. No activity/query, wire/JNI,
+Android presentation, proprietary asset or unrelated upstream migration.
+
+Local tests/syntax checks and independent review are recorded in
+[Slice 53](../AYN_THOR_BACKLOG.md#slice-53--complete-controller-driven-battlefield-navigation-and-safe-cancellation).
+CI/package and physical acceptance remain separate, unverified gates.

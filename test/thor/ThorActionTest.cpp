@@ -2014,3 +2014,15 @@ TEST(ThorActionLobbyPlayers, ScenarioPlayerDifficultyStartContractJourney)
 	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, true, true), ThorActionValidation::VALID);
 	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, false, true), ThorActionValidation::UNAVAILABLE);
 }
+
+TEST(ThorActionQueue, LifecycleClearRequestsOneMainGuiControllerReset)
+{
+	ThorActionQueue queue;
+	EXPECT_FALSE(queue.takeControllerReset());
+	queue.clear(true);
+	queue.clear(); // ordinary queue consumption must not lose a pending lifecycle cancellation
+	EXPECT_TRUE(queue.takeControllerReset());
+	EXPECT_FALSE(queue.takeControllerReset());
+	queue.clear();
+	EXPECT_FALSE(queue.takeControllerReset());
+}
