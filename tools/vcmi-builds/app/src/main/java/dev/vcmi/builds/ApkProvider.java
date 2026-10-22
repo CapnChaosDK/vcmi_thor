@@ -14,8 +14,13 @@ import java.io.FileNotFoundException;
 public final class ApkProvider extends ContentProvider {
     public boolean onCreate() { return true; }
     private File apk(Uri uri) {
-        if (!"/build.apk".equals(uri.getPath())) throw new IllegalArgumentException("Unknown file");
-        return new File(getContext().getFilesDir(), "build.apk");
+        if ("/build.apk".equals(uri.getPath())) return new File(getContext().getFilesDir(), "build.apk");
+        java.util.List<String> segments=uri.getPathSegments();
+        if (segments.size()==3 && segments.get(0).equals("candidates") && segments.get(2).equals("build.apk")) {
+            try { return new CandidateStore(getContext()).apk(segments.get(1)); }
+            catch (java.io.IOException e) { throw new IllegalArgumentException("Unknown candidate"); }
+        }
+        throw new IllegalArgumentException("Unknown file");
     }
     public String getType(Uri uri) { apk(uri); return "application/vnd.android.package-archive"; }
     public ParcelFileDescriptor openFile(Uri uri, String mode) throws FileNotFoundException {

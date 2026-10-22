@@ -4,6 +4,8 @@ on:
     branches: [codex/vcmi-builds-helper]
     paths:
       - 'tools/vcmi-builds/**'
+      - 'CI/thor*'
+      - 'CI/test_thor_validation_plan.py'
       - '.github/workflows/vcmi-builds-helper.yml'
 permissions:
   contents: read
@@ -40,6 +42,10 @@ jobs:
           HELPER_SIGNING_STORE: ${{ runner.temp }}/vcmi-builds.jks
           HELPER_SIGNING_PASSWORD: ${{ secrets.VCMI_BUILDS_KEYSTORE_PASSWORD }}
         run: gradle --no-daemon :app:assembleRelease :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Validate companion checklist packaging
+        run: |
+          python3 ../../CI/thor_validation_plan.py --source ../../CI/thor-validation-plan.json
+          python3 -m unittest discover -s ../../CI -p 'test_thor_validation_plan.py'
       - name: Verify package and signature
         run: |
           cp app/build/outputs/apk/release/app-release.apk vcmi-builds.apk

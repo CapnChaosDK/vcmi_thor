@@ -15,6 +15,11 @@ public final class TokenStoreInstrumentation extends Instrumentation {
     }
     @Override public void onStart() {
         Bundle result=new Bundle();
+        if ("candidate".equals(phase)) {
+            try { CandidateContractTests.run(getTargetContext()); result.putString("stream","Candidate workflow: all device contract checks passed\n"); finish(Activity.RESULT_OK,result); }
+            catch (Throwable failure) { result.putString("stream","Candidate workflow failed: "+failure); finish(Activity.RESULT_CANCELED,result); }
+            return;
+        }
         TokenStore store=new TokenStore(getTargetContext(),"token-store-test","dev.vcmi.builds.token-test");
         if ("seed".equals(phase) || "verify".equals(phase)) {
             try {

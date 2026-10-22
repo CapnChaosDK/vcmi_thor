@@ -43,3 +43,24 @@ Output: `app/build/outputs/apk/debug/app-debug.apk`.
 - Discovers the 30 most recent releases or successful Actions runs. Artifacts may be expired, or may contain no APK. Split APK sets and Android App Bundles are unsupported.
 - Downloads require keeping the app open; background/resumable downloads are not implemented. Interrupting a download may require retrying.
 - Version 0.1.0 passed GitHub assemble/lint/package checks and was installed and launched on an AYN Thor. Token-authenticated build listing worked on device; artifact downloading exposed the HTTP 415 fixed in 0.1.1. This does not establish a complete download/install device pass.
+
+## 0.3.0 — candidate validation workflow
+
+Home now lists recent Thor CI candidates (including running/failed runs), verified
+local candidates and saved results. Settings holds repository/branch and encrypted
+token configuration; Advanced downloads retains the previous generic/Release flow.
+See [the companion contract](../../docs/THOR_CANDIDATE_COMPANION.md) for the full
+verification, checklist, persistence and reporting contract, including limits.
+
+A verified candidate offers Install, Launch VCMI, exact installed-APK verification,
+and its packaged checklist. Save result records Pass/Fail/Blocked/Not tested with
+notes only after hashing the currently installed Thor APK. Drafts are retained while
+editing; Copy/Share reports the exact candidate identity and user-reported outcomes.
+No result authorizes merging or promotion. Older artifacts with no packaged plan
+are clearly identified and retain a link to the backlog at their commit.
+
+Candidate downloads now use a foreground service and can be cancelled from its
+notification. The earlier activity-bound download limitation still applies only to
+Advanced downloads. Interrupted candidate transfers can be retried. The device test
+suite's `-e phase candidate` mode checks verification and result isolation without
+reading the user's token or altering the installed game.
