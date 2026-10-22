@@ -51,6 +51,7 @@ public final class CandidateDownloadService extends Service {
         String stagingId=java.util.UUID.randomUUID().toString();
         File archive=new File(getCacheDir(),"candidate-download-"+stagingId+".part"), staged=new File(getCacheDir(),"candidate-apk-"+stagingId+".part");
         try {
+            checkCancelled();
             JSONObject selected=new JSONObject(payload);
             String repo=GitHubClient.repository(selected.getString("repo"));
             String artifact=selected.getString("artifact_id");
@@ -89,7 +90,8 @@ public final class CandidateDownloadService extends Service {
     }
     private void cancel() {
         cancelled=true; if (connection!=null) connection.disconnect();
-        worker.shutdownNow(); status("Download cancelled.",false,"");
+        // Let even a queued transfer enter its finally block and stop the service.
+        status("Cancelling download…",started,"");
         if (!started) { running=false; stopSelf(); }
     }
     @Override public void onTimeout(int startId,int fgsType) { cancel(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
