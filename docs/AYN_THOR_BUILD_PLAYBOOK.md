@@ -50,6 +50,23 @@ The workflow concurrency group includes both workflow and ref. A new push cancel
 
 ### Caches and receipts
 
+Native preflight uses its own 2 GB `ccache`, separate from Android. Keys include
+Ubuntu 24.04, runner OS/architecture, native Release/no-PCH configuration, compiler
+and dependency fingerprint, ref and commit; restore stays within that compatibility
+prefix and ref (pull requests read their trusted base ref). C/C++ CMake launchers
+are verified and cacheable calls must be nonzero. Only successful trusted product/candidate refs save objects; pull requests
+restore read-only. The job summary reports the restored key, hit/miss statistics,
+size and native build duration. The first run is cold; improvement requires later
+compatible runs and must not be claimed before measuring them.
+
+Only the native regression build disables precompiled headers (`ENABLE_PCH=OFF`)
+so ccache can reuse ordinary objects without relaxing macro/header checks; see
+[ccache's PCH requirements](https://ccache.dev/manual/4.9.1.html#_precompiled_headers).
+Compiler contents and source/header inputs remain checked, with empty sloppiness.
+Fresh generated native build trees, two compile workers, every regression, and the
+45-minute timeout remain required. Android's PCH configuration, 3 GB cache,
+dependency archive, Gradle cache, signing and packaging are unchanged.
+
 The dependency archive is cached separately from the Conan installation. Its key includes the runner, Android ARM64 identity, and the hash of `CI/install_conan_dependencies.sh`; changing the release definition therefore cannot reuse the old archive. The installer only downloads a missing archive and uses robust retrying downloads. Caches never contain credentials, signing material, APKs, or build directories.
 
 The ARM64 compilation uses a 3 GB `ccache` directory cached by runner OS, Android NDK r29, ABI, cache schema version, permanent candidate ref, and commit SHA. A commit-specific primary key is saved after every successful candidate; its same-ref restore prefix allows later candidate commits to reuse only compatible objects from prior permanent-candidate builds. Do not rely on GitHub Actions cache sharing between sibling branches. `CCACHE_BASEDIR`, content-based compiler checking, and disabled directory hashing avoid ephemeral runner paths needlessly reducing reuse. The workflow passes the C and C++ launcher settings explicitly to CMake, proves the launchers are configured, verifies cacheable compiler calls, and reports the restore result/key, calls, hits, misses, hit percentage, current cache size, warm/cold classification, and ARM64 build duration in both the summary and receipt.
