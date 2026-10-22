@@ -13,6 +13,8 @@
 #include "GameEngine.h"
 #include "CIntObject.h"
 #include "CursorHandler.h"
+#include "EventDispatcher.h"
+#include "events/InputHandler.h"
 
 #include "render/Canvas.h"
 #include "render/IScreenHandler.h"
@@ -23,6 +25,7 @@ void WindowHandler::popWindow(std::shared_ptr<IShowActivatable> top)
 	if (windowsStack.back() != top)
 		throw std::runtime_error("Attempt to pop non-top window from stack!");
 
+	ENGINE->input().cancelControllerInput(false);
 	top->deactivate();
 	disposed.push_back(top);
 	windowsStack.pop_back();
@@ -40,6 +43,7 @@ void WindowHandler::pushWindow(std::shared_ptr<IShowActivatable> newInt)
 	if (vstd::contains(windowsStack, newInt))
 		throw std::runtime_error("Attempt to add already existing window to stack!");
 
+	ENGINE->input().cancelControllerInput(true);
 	if(!windowsStack.empty())
 		windowsStack.back()->deactivate();
 	windowsStack.push_back(newInt);
@@ -62,6 +66,7 @@ void WindowHandler::popWindows(int howMany)
 		return; //senseless but who knows...
 
 	assert(windowsStack.size() >= howMany);
+	ENGINE->input().cancelControllerInput(false);
 	windowsStack.back()->deactivate();
 	for(int i = 0; i < howMany; i++)
 	{
@@ -179,6 +184,7 @@ void WindowHandler::simpleRedrawImpl()
 
 void WindowHandler::onScreenResize()
 {
+	ENGINE->input().cancelControllerInput(false);
 	for(const auto & entry : windowsStack)
 		entry->onScreenResize();
 
@@ -197,6 +203,7 @@ size_t WindowHandler::count() const
 
 void WindowHandler::clear()
 {
+	ENGINE->input().cancelControllerInput(false);
 	if(!windowsStack.empty())
 		windowsStack.back()->deactivate();
 
@@ -219,6 +226,7 @@ void WindowHandler::setOverlay(std::shared_ptr<IShowActivatable> newOverlay)
 
 std::vector<std::shared_ptr<IShowActivatable>> WindowHandler::detachAll()
 {
+	ENGINE->input().cancelControllerInput(false);
 	if(!windowsStack.empty())
 		windowsStack.back()->deactivate();
 

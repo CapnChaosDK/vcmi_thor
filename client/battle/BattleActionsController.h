@@ -100,6 +100,12 @@ public:
 	/// returns true if currently selected action allows long weapon reach for melee attacks
 	bool currentActionUsesLongWeapon(const BattleHex & hoveredHex);
 
+	/// Snapshot the same legal action used for pointer preview and submission.
+	std::optional<PossiblePlayerBattleAction> controllerAction(const BattleHex & hex);
+
+	/// returns true when the selected legal action uses a melee approach direction
+	bool currentActionHasAttackDirection(const BattleHex & hoveredHex);
+
 	/// enter targeted spellcasting mode for creature, e.g. via "F" hotkey
 	void enterCreatureCastingMode();
 
@@ -119,7 +125,7 @@ public:
 	void onHexLeftClicked(const BattleHex & clickedHex);
 
 	/// performs action according to selected hex
-	void onHexRightClicked(const BattleHex & clickedHex);
+	void onHexRightClicked(const BattleHex & clickedHex, const std::function<void(const CStack *)> & showStackInfo = {}, const std::function<void(const std::string &)> & showTextInfo = {});
 
 	const spells::Caster * getCurrentSpellcaster() const;
 	const CSpell * getCurrentSpell(const BattleHex & hoveredHex);

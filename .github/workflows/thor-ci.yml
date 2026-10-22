@@ -101,10 +101,11 @@ jobs:
             test/thor/ThorRecruitmentTest.cpp \
             test/thor/ThorVisualAssetTest.cpp \
             test/battle/BattleAnimationWaitTest.cpp \
+            test/battle/BattleControllerInputTest.cpp \
             test/googletest/googletest/src/gtest-all.cc \
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
-          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:BattleAnimationWait*'
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:BattleAnimationWait*:BattleControllerInput*:ControllerInput*'
 
       - name: Build and run authoritative army transfer regressions (non-Thor)
         run: |

@@ -141,6 +141,7 @@ public:
 	bool isKeyboardShiftDown() const;
 
 	InputMode getCurrentInputMode();
+	void cancelControllerInput(bool dismissPopup = true);
 	ControllerPrompt::Family getActiveControllerPromptFamily() const;
 
 	bool inputModeSupportsHover() const;

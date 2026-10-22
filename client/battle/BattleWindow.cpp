@@ -23,6 +23,7 @@
 
 #include "../CPlayerInterface.h"
 #include "../GameEngine.h"
+#include "events/InputHandler.h"
 #include "../GameInstance.h"
 #include "../adventureMap/CInGameConsole.h"
 #include "../adventureMap/TurnTimerWidget.h"
@@ -1085,6 +1086,7 @@ bool BattleWindow::executeThorCommand(int command)
 		isActive(), ENGINE->windows().isTopWindow(this)) || !context.extendedCommands.allows(command))
 		return false;
 	updateThorActionState(true);
+	ENGINE->input().cancelControllerInput();
 	switch(command)
 	{
 	case ThorExtended::AUTO_START:
@@ -1113,6 +1115,7 @@ bool BattleWindow::executeThorAction(ThorAction action)
 		return false;
 
 	updateThorActionState(true);
+	ENGINE->input().cancelControllerInput();
 	switch(action)
 	{
 	case ThorAction::BATTLE_WAIT:

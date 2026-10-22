@@ -11,6 +11,8 @@
 #include "StdInc.h"
 
 #include "ShortcutHandler.h"
+#include "GameEngine.h"
+#include "events/InputHandler.h"
 #include "Shortcut.h"
 
 #include "../../lib/CConfigHandler.h"
@@ -23,6 +25,9 @@ ShortcutHandler::ShortcutHandler()
 
 void ShortcutHandler::reloadShortcuts()
 {
+	if(initialized)
+		ENGINE->input().cancelControllerInput();
+	initialized = true;
 	mappedKeyboardShortcuts = loadShortcuts(keyBindingsConfig["keyboard"]);
 	mappedJoystickShortcuts = loadShortcuts(keyBindingsConfig["joystickButtons"]);
 	mappedJoystickAxes = loadShortcuts(keyBindingsConfig["joystickAxes"]);
@@ -241,6 +246,9 @@ EShortcut ShortcutHandler::findShortcut(const std::string & identifier ) const
 		{"adventureDisembark",       EShortcut::ADVENTURE_DISEMBARK       },
 		{"adventureOpenWiki",        EShortcut::ADVENTURE_OPEN_WIKI       },
 		{"battleToggleHeroesStats",  EShortcut::BATTLE_TOGGLE_HEROES_STATS},
+		{"battleToggleCursorMode",   EShortcut::BATTLE_TOGGLE_CURSOR_MODE},
+		{"battlePreviousAttackDirection", EShortcut::BATTLE_PREVIOUS_ATTACK_DIRECTION},
+		{"battleNextAttackDirection", EShortcut::BATTLE_NEXT_ATTACK_DIRECTION},
 		{"battleToggleQueue",        EShortcut::BATTLE_TOGGLE_QUEUE       },
 		{"battleUseCreatureSpell",   EShortcut::BATTLE_USE_CREATURE_SPELL },
 		{"battleSurrender",          EShortcut::BATTLE_SURRENDER          },

@@ -1288,23 +1288,36 @@ void BattleActionsController::activateStack()
 	}
 }
 
-void BattleActionsController::onHexRightClicked(const BattleHex & clickedHex)
+void BattleActionsController::onHexRightClicked(const BattleHex & clickedHex, const std::function<void(const CStack *)> & showStackInfo, const std::function<void(const std::string &)> & showTextInfo)
 {
+	const auto presentText = [&showTextInfo](const std::string & text)
+	{
+		if(showTextInfo)
+			showTextInfo(text);
+		else
+			CRClickPopup::createAndPush(text);
+	};
+
 	bool isCurrentStackInSpellcastMode = creatureSpellcastingModeActive();
 
 	if (heroSpellcastingModeActive() || isCurrentStackInSpellcastMode)
 	{
 		endCastingSpell();
-		CRClickPopup::createAndPush(LIBRARY->generaltexth->translate("core.genrltxt.731")); // spell cancelled
+		presentText(LIBRARY->generaltexth->translate("core.genrltxt.731")); // spell cancelled
 		return;
 	}
 
 	auto selectedStack = owner.getBattle()->battleGetStackByPos(clickedHex, true);
 
 	if (selectedStack != nullptr)
-		ENGINE->windows().createAndPushWindow<CStackWindow>(selectedStack, true);
+	{
+		if(showStackInfo)
+			showStackInfo(selectedStack);
+		else
+			ENGINE->windows().createAndPushWindow<CStackWindow>(selectedStack, true);
+	}
 	else if (owner.siegeController && owner.siegeController->isTowerHex(clickedHex))
-		CRClickPopup::createAndPush(owner.siegeController->getTowersInfoText());
+		presentText(owner.siegeController->getTowersInfoText());
 
 	if (clickedHex == BattleHex::HERO_ATTACKER && owner.attackingHero)
 		owner.attackingHero->heroRightClicked();
@@ -1361,6 +1374,33 @@ bool BattleActionsController::currentActionUsesLongWeapon(const BattleHex & hove
 		return true;
 
 	return selectAction(hoveredHex).get() == PossiblePlayerBattleAction::LONG_WEAPON_ATTACK;
+}
+
+std::optional<PossiblePlayerBattleAction> BattleActionsController::controllerAction(const BattleHex & hex)
+{
+	if(!hex.isValid() || possibleActions.empty() || (!owner.stacksController->getActiveStack() && !monsterCaster))
+		return std::nullopt;
+	const auto action = selectAction(hex);
+	if(!actionIsLegal(action, hex))
+		return std::nullopt;
+	return action;
+}
+
+bool BattleActionsController::currentActionHasAttackDirection(const BattleHex & hoveredHex)
+{
+	if(!hoveredHex.isValid() || possibleActions.empty() || heroSpellToCast || !owner.stacksController->getActiveStack())
+		return false;
+	const auto action = selectAction(hoveredHex);
+	switch(action.get())
+	{
+		case PossiblePlayerBattleAction::ATTACK:
+		case PossiblePlayerBattleAction::LONG_WEAPON_ATTACK:
+		case PossiblePlayerBattleAction::WALK_AND_ATTACK:
+		case PossiblePlayerBattleAction::ATTACK_AND_RETURN:
+			return actionIsLegal(action, hoveredHex);
+		default:
+			return false;
+	}
 }
 
 const std::vector<PossiblePlayerBattleAction> & BattleActionsController::getPossibleActions() const
