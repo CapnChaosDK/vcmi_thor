@@ -147,8 +147,8 @@ Current review, candidate receipts and the complete hardware checklist belong in
 | 1 | #8014 staged completion | High battle reliability value, low integration risk; adopted here. |
 | 2 | #8035 army authorization/integrity | Adapted in Slice 52 above; CI/artifact and user-confirmed hardware acceptance passed; promoted through PR #43, no wholesale cherry-pick. |
 | 3 | Controller cancellation/navigation (#7772, `dfe0d541c`, `6aa1bf766`) | Targeted native adaptation in Slice 53 below; exact integrated candidate passed CI/hardware and was promoted through PR #44. |
-| 4 | Strict callbacks (#8018, `e23240336`) | Adapted in Slice 54 below: strict object/tile/player lookups, optional stale/hidden identities, fork-specific server/Thor/AI callers and focused regressions. CI/hardware gates remain pending. |
-| 5 | Activity/question server migration (`54a6fc585` and `server/activities/`) | Replaces queries, QueryID/reply routes and exchange/battle continuation ownership. High risk to acknowledgements, result dismissal and movement stop/resume. Separate architecture milestone after army tests. |
+| 4 | Strict callbacks (#8018, `e23240336`) | Adapted in Slice 54 below: strict object/tile/player lookups, optional stale/hidden identities, fork-specific server/Thor/AI callers and focused regressions. CI succeeded and the user confirmed hardware acceptance on the exact candidate. |
+| 5 | Activity/question server migration (`54a6fc585` and `server/activities/`) | Slice 55 is in progress. The first local checkpoint scopes legacy covered replies to the answering player's stack. The full migration must replace queries, QueryID/reply routes and exchange/battle continuation ownership together; acknowledgement, result dismissal and movement stop/resume remain high-risk acceptance paths. |
 | 6 | Chunked saves (#8022, `f6b5eb30c`) | New SaveFileFormat/legacy loader, SAVE_CHUNKS and subsequent serialization versions. Migrate serializer, lobby save browser and custom packet registration together; test old saves and multiplayer compatibility explicitly. |
 | 7 | Download/build/SDL changes | Defer dependency release 2026-10-13, libcurl downloader/Android CA JNI, optional LTO/section GC and SDL3 rendering changes to a dedicated toolchain checkpoint. Preserve Thor package ID, Linux Qt deployment hook, caches and signing gates. |
 
@@ -199,7 +199,8 @@ the Slice 51 backlog record; Slice 51 is hardware validated and promoted via PR 
 Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically.
 Slice 52 has since passed its exact-candidate CI and hardware gates and was promoted
 through PR #43. Slice 53 below passed its integrated CI and hardware gates and was
-promoted through PR #44; the full activity/query migration remains deferred.
+promoted through PR #44; the full activity/query migration was deferred at that
+checkpoint and is now tracked as Slice 55 in the backlog.
 
 
 ## Slice 53 — Native controller navigation and cancellation
