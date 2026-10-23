@@ -63,8 +63,8 @@ void CGarrisonDialogQuery::notifyObjectAboutRemoval(const CGObjectInstance * vis
 	visitedObject->garrisonDialogClosed(*gh, visitingHero);
 }
 
-CGarrisonDialogQuery::CGarrisonDialogQuery(CGameHandler * owner, const CArmedInstance * up, const CArmedInstance * down):
-	CDialogQuery(owner, TYPE)
+CGarrisonDialogQuery::CGarrisonDialogQuery(CGameHandler * owner, PlayerColor initiator, const CArmedInstance * up, const CArmedInstance * down):
+	CDialogQuery(owner, TYPE), initiator(initiator)
 {
 	exchangingArmies[0] = up;
 	exchangingArmies[1] = down;
@@ -73,6 +73,11 @@ CGarrisonDialogQuery::CGarrisonDialogQuery(CGameHandler * owner, const CArmedIns
 		addPlayer(up->tempOwner);
 	if(down->tempOwner.isValidPlayer())
 		addPlayer(down->tempOwner);
+}
+
+bool CGarrisonDialogQuery::acceptsReply(PlayerColor player, std::optional<int32_t> reply) const
+{
+	return player == initiator && CDialogQuery::acceptsReply(player, reply);
 }
 
 bool CGarrisonDialogQuery::blocksPack(const CPackForServer * pack) const
@@ -157,6 +162,17 @@ CBlockingDialogQuery::CBlockingDialogQuery(CGameHandler * owner, const IObjectIn
 	addPlayer(bd.player);
 }
 
+bool CBlockingDialogQuery::acceptsReply(PlayerColor player, std::optional<int32_t> reply) const
+{
+	if(!CDialogQuery::acceptsReply(player, reply))
+		return false;
+
+	if(*reply < 0)
+		return false;
+
+	return bd.selection() ? static_cast<size_t>(*reply) <= bd.components.size() : *reply <= 1;
+}
+
 OpenWindowQuery::OpenWindowQuery(CGameHandler * owner, const CGHeroInstance * hero, EOpenWindowMode mode)
 	: CDialogQuery(owner, TYPE), mode(mode)
 {
@@ -239,6 +255,14 @@ CHeroLevelUpDialogQuery::CHeroLevelUpDialogQuery(CGameHandler * owner, const Her
 	addPlayer(hero->tempOwner);
 }
 
+bool CHeroLevelUpDialogQuery::acceptsReply(PlayerColor player, std::optional<int32_t> reply) const
+{
+	if(!CDialogQuery::acceptsReply(player, reply) || !prompted || *reply < 0)
+		return false;
+
+	return hlu.skills.empty() ? *reply == 0 : static_cast<size_t>(*reply) < hlu.skills.size();
+}
+
 void CHeroLevelUpDialogQuery::onRemoval(PlayerColor color)
 {
 	assert(answer);
@@ -306,6 +330,14 @@ CCommanderLevelUpDialogQuery::CCommanderLevelUpDialogQuery(CGameHandler * owner,
 {
 	clu = Clu;
 	addPlayer(hero->tempOwner);
+}
+
+bool CCommanderLevelUpDialogQuery::acceptsReply(PlayerColor player, std::optional<int32_t> reply) const
+{
+	if(!CDialogQuery::acceptsReply(player, reply) || !prompted || *reply < 0)
+		return false;
+
+	return clu.skills.empty() ? *reply == 0 : static_cast<size_t>(*reply) < clu.skills.size();
 }
 
 void CCommanderLevelUpDialogQuery::onRemoval(PlayerColor color)

@@ -1620,7 +1620,7 @@ void CGameHandler::heroExchange(ObjectInstanceID hero1, ObjectInstanceID hero2)
 
 	if (gameInfo().getPlayerRelations(h1->getOwner(), h2->getOwner()) != PlayerRelations::ENEMIES)
 	{
-		auto exchange = std::make_shared<CGarrisonDialogQuery>(this, h1, h2);
+		auto exchange = std::make_shared<CGarrisonDialogQuery>(this, h1->getOwner(), h1, h2);
 		ExchangeDialog hex;
 		hex.queryID = exchange->queryID;
 		hex.player = h1->getOwner();
@@ -3590,12 +3590,13 @@ bool CGameHandler::queryReply(QueryID qid, std::optional<int32_t> answer, Player
 	{
 		auto currentQuery = queries->getQuery(qid, player);
 
-		if(currentQuery != nullptr && currentQuery->endsByPlayerAnswer())
+		if(currentQuery != nullptr && currentQuery->endsByPlayerAnswer() && currentQuery->acceptsReply(player, answer))
 			currentQuery->setReply(answer);
 
 		COMPLAIN_RET("This player top query has different ID!"); //topQuery->queryID != qid
 	}
 	COMPLAIN_RET_FALSE_IF(!topQuery->endsByPlayerAnswer(), "This query cannot be ended by player's answer!");
+	COMPLAIN_RET_FALSE_IF(!topQuery->acceptsReply(player, answer), "Invalid answer for this query or player!");
 
 	topQuery->setReply(answer);
 	queries->popQuery(topQuery);
@@ -3623,7 +3624,7 @@ void CGameHandler::showGarrisonDialog(ObjectInstanceID upobj, ObjectInstanceID h
 	assert(lowerArmy);
 	assert(upperArmy);
 
-	auto garrisonQuery = std::make_shared<CGarrisonDialogQuery>(this, upperArmy, lowerArmy);
+	auto garrisonQuery = std::make_shared<CGarrisonDialogQuery>(this, lowerArmy->getOwner(), upperArmy, lowerArmy);
 	garrisonQuery->removableUnits = removableUnits;
 	queries->addQuery(garrisonQuery);
 

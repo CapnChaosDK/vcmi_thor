@@ -57,11 +57,13 @@ public:
 	static constexpr QueryType TYPE = QueryType::GarrisonDialog;
 
 	std::array<const CArmedInstance *,2> exchangingArmies;
+	PlayerColor initiator;
 	bool removableUnits = true;
 
-	CGarrisonDialogQuery(CGameHandler * owner, const CArmedInstance *up, const CArmedInstance *down);
+	CGarrisonDialogQuery(CGameHandler * owner, PlayerColor initiator, const CArmedInstance *up, const CArmedInstance *down);
 	void notifyObjectAboutRemoval(const CGObjectInstance * visitedObject, const CGHeroInstance * visitingHero) const override;
 	bool blocksPack(const CPackForServer *pack) const override;
+	bool acceptsReply(PlayerColor player, std::optional<int32_t> reply) const override;
 };
 
 //yes/no and component selection dialogs
@@ -74,6 +76,7 @@ public:
 	BlockingDialog bd; //copy of pack... debug purposes
 
 	CBlockingDialogQuery(CGameHandler * owner, const IObjectInterface * caller, const BlockingDialog &bd);
+	bool acceptsReply(PlayerColor player, std::optional<int32_t> reply) const override;
 
 	void notifyObjectAboutRemoval(const CGObjectInstance * visitedObject, const CGHeroInstance * visitingHero) const override;
 };
@@ -108,6 +111,7 @@ public:
 	static constexpr QueryType TYPE = QueryType::HeroLevelUpDialog;
 
 	CHeroLevelUpDialogQuery(CGameHandler * owner, const HeroLevelUp &Hlu, const CGHeroInstance * Hero);
+	bool acceptsReply(PlayerColor player, std::optional<int32_t> reply) const override;
 
 	void onRemoval(PlayerColor color) override;
 	void onAdded(PlayerColor color) override;
@@ -125,6 +129,7 @@ public:
 	static constexpr QueryType TYPE = QueryType::CommanderLevelUpDialog;
 
 	CCommanderLevelUpDialogQuery(CGameHandler * owner, const CommanderLevelUp &Clu, const CGHeroInstance * Hero);
+	bool acceptsReply(PlayerColor player, std::optional<int32_t> reply) const override;
 
 	void onRemoval(PlayerColor color) override;
 	void onExposure(QueryPtr topQuery) override;

@@ -80,6 +80,11 @@ bool CQuery::endsByPlayerAnswer() const
 	return false;
 }
 
+bool CQuery::acceptsReply(PlayerColor player, std::optional<int32_t> reply) const
+{
+	return vstd::contains(players, player);
+}
+
 void CQuery::onRemoval(PlayerColor color)
 {
 
@@ -138,6 +143,11 @@ bool CDialogQuery::endsByPlayerAnswer() const
 bool CDialogQuery::blocksPack(const CPackForServer * pack) const
 {
 	return blockAllButReply(pack);
+}
+
+bool CDialogQuery::acceptsReply(PlayerColor player, std::optional<int32_t> reply) const
+{
+	return CQuery::acceptsReply(player, reply) && reply.has_value();
 }
 
 void CDialogQuery::setReply(std::optional<int32_t> reply)

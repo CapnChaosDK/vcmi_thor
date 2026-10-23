@@ -134,6 +134,11 @@ CBattleDialogQuery::CBattleDialogQuery(CGameHandler * owner, const IBattleInfo *
 		addPlayer(defender);
 }
 
+bool CBattleDialogQuery::acceptsReply(PlayerColor player, std::optional<int32_t> reply) const
+{
+	return CDialogQuery::acceptsReply(player, reply) && (*reply == 0 || *reply == 1);
+}
+
 void CBattleDialogQuery::onRemoval(PlayerColor color)
 {
 	// answer to this query was already processed when handling 1st player
