@@ -109,6 +109,8 @@ public:
 
 	QueryPtr topQuery(PlayerColor player);
 	QueryPtr getQuery(QueryID queryID);
+	/// Player-supplied replies must resolve only against that player's query stack.
+	QueryPtr getQuery(QueryID queryID, PlayerColor player);
 
 	AllQueriesView allQueries();
 	AllQueriesViewConst allQueries() const;

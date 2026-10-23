@@ -142,6 +142,18 @@ QueryPtr QueriesProcessor::getQuery(QueryID queryID)
 	return nullptr;
 }
 
+QueryPtr QueriesProcessor::getQuery(QueryID queryID, PlayerColor player)
+{
+	if(!player.isValidPlayer())
+		return nullptr;
+
+	for(auto & query : queries.at(player.getNum()))
+		if(query->queryID == queryID)
+			return query;
+
+	return nullptr;
+}
+
 int QueriesProcessor::countQuery(const QueryPtr & query) const
 {
 	if(!query)

@@ -167,6 +167,46 @@ TEST_F(ArmyManagementTest, OwnedHeroesRequireTheirExposedExchange)
 	reject(pack);
 }
 
+TEST_F(ArmyManagementTest, BuriedQuestionRejectsAnotherPlayersAnswer)
+{
+	std::optional<int32_t> appliedAnswer = 42;
+	auto question = std::make_shared<CGenericQuery>(handler.get(), blue,
+		[&](std::optional<int32_t> answer) { appliedAnswer = answer; });
+	auto redCover = std::make_shared<TimerPauseQuery>(handler.get(), red);
+	auto blueCover = std::make_shared<TimerPauseQuery>(handler.get(), blue);
+	handler->queries->addQuery(question);
+	handler->queries->addQuery(redCover);
+	handler->queries->addQuery(blueCover);
+
+	ASSERT_EQ(handler->queries->getQuery(question->queryID, blue), question);
+	EXPECT_EQ(handler->queries->getQuery(question->queryID, red), nullptr);
+	QueryReply reply(question->queryID, 7);
+	EXPECT_FALSE(request(reply, red));
+	EXPECT_EQ(handler->queries->topQuery(red), redCover);
+	EXPECT_EQ(handler->queries->topQuery(blue), blueCover);
+
+	handler->queries->popQuery(blueCover);
+	handler->queries->popQuery(question);
+	handler->queries->popQuery(redCover);
+	EXPECT_EQ(appliedAnswer, std::nullopt);
+}
+
+TEST_F(ArmyManagementTest, BuriedQuestionStillStoresItsOwnPlayersAnswer)
+{
+	std::optional<int32_t> appliedAnswer;
+	auto question = std::make_shared<CGenericQuery>(handler.get(), red,
+		[&](std::optional<int32_t> answer) { appliedAnswer = answer; });
+	auto cover = std::make_shared<TimerPauseQuery>(handler.get(), red);
+	handler->queries->addQuery(question);
+	handler->queries->addQuery(cover);
+
+	// The legacy query processor stores this answer until the covered query is removed.
+	EXPECT_FALSE(handler->queryReply(question->queryID, 7, red));
+	handler->queries->popQuery(cover);
+	handler->queries->popQuery(question);
+	EXPECT_EQ(appliedAnswer, 7);
+}
+
 TEST_F(ArmyManagementTest, ReverseSplitUsesActualSourceAndExactCount)
 {
 	exchange(left, right);

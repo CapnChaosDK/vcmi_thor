@@ -3588,7 +3588,7 @@ bool CGameHandler::queryReply(QueryID qid, std::optional<int32_t> answer, Player
 
 	if(topQuery->queryID != qid)
 	{
-		auto currentQuery = queries->getQuery(qid);
+		auto currentQuery = queries->getQuery(qid, player);
 
 		if(currentQuery != nullptr && currentQuery->endsByPlayerAnswer())
 			currentQuery->setReply(answer);

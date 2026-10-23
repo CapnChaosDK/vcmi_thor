@@ -1,40 +1,40 @@
 {
   "schema_version": 1,
-  "feature_id": "slice-54-safe-callbacks",
-  "title": "Safe callback lookups and stale-action handling",
-  "summary": "Verify current gameplay after separating required lookups from optional missing/hidden object, tile and player-state lookups. Stale actions must reject safely and controls recover.",
-  "preparation": "Use a disposable save with fog, owned/enemy heroes, multiple towns, a Town visitor, two meeting heroes and a neutral battle. Install and verify the exact candidate with the helper before recording results.",
-  "limitations": "Mark unavailable removal/ownership scenarios Blocked with notes. Automated callback/server tests cover missing identities separately. CI does not establish hardware acceptance. Record non-Thor/editor coverage separately; the helper does not authorize merging.",
+  "feature_id": "covered-query-reply-isolation",
+  "title": "Covered question reply isolation",
+  "summary": "Verify that normal Hero Meeting, Town, battle and movement questions resolve once and restore current controls after the server confines covered replies to the answering player's query stack. The wrong-player packet rejection is covered by real-server automated tests.",
+  "preparation": "Install the exact checksum-verified candidate APK with the companion. Use a disposable save with two meeting heroes, a Town visitor, a hero able to move into an event or encounter, and a battle that can lead to level-up. Use multiplayer if available for ordinary separate-player dialogs; it is not required to forge network packets.",
+  "limitations": "Mark unavailable game scenarios Blocked with notes. Device play cannot directly prove a forged wrong-player reply; the real-server regression test covers it. CI does not establish physical acceptance, and this candidate does not complete the activity-system migration or authorize merging.",
   "checks": [
     {
-      "id": "fog-and-objects",
-      "title": "Adventure fog and current objects",
-      "steps": "Explore and pan/zoom both maps; browse and inspect markers; switch levels. Where practical remove/lose an object or change ownership and revisit its former location.",
-      "expected": "Fog remains concealed; only current authorized objects appear. Missing/hidden objects cause no crash, stale details or actionable old marker. Exploration restores current information."
+      "id": "meeting-exchange",
+      "title": "Hero Meeting and exchange answers",
+      "steps": "Open a two-hero Meeting; transfer and split units in both directions, close the exchange, and reopen it. If multiplayer is available, have the other player open and dismiss their own dialog while the first player has a pending exchange.",
+      "expected": "Each legal transfer applies once to the intended armies. Closing or dismissing a question releases only its own player; no stuck exchange, cross-player resolution, stale army or duplicate acknowledgement remains."
     },
     {
-      "id": "hero-town-meeting",
-      "title": "Hero, Town and Meeting actions",
-      "steps": "Navigate Hero/Town cards; manage armies/artifacts; transfer Town/visitor and Meeting armies, including redistribution; recruit, confirm a build and purchase a boat where available. Try rapid repeats and selection/window changes during pending input.",
-      "expected": "Legal requests complete once through native/server routes. Invalid or outdated input does not alter another object or show success; pending controls recover and authoritative armies/resources remain correct."
+      "id": "town-dialogs",
+      "title": "Town visitor and confirmation dialogs",
+      "steps": "Open a Town with a visitor; transfer garrison/visitor units, confirm or cancel one available recruitment or build question, and reopen the Town after dismissal.",
+      "expected": "The chosen answer applies once to the correct town or army. Cancellation leaves resources unchanged, dialogs close normally, and current upper and lower Town context returns."
     },
     {
-      "id": "adventure-transitions",
-      "title": "Movement, selection and modal restoration",
-      "steps": "Select heroes/towns from lower lists; plan/confirm/cancel a route, Stop/Continue and end the turn. Open/dismiss Hero/Town, utility and confirmation dialogs.",
-      "expected": "Both displays track current ownership and availability. Visible parents restore with no stale row, held gesture, residual window or unintended action."
+      "id": "battle-level-up",
+      "title": "Battle result and level-up continuation",
+      "steps": "Finish a battle against neutral units, dismiss the result, and answer any level-up choice. Return to Adventure and repeat a routine battle action with the controller.",
+      "expected": "The battle result and any reward/level-up resolve once in the expected order. No question remains stuck; Adventure restores and battle controls do not leak into it."
     },
     {
-      "id": "battle-regression",
-      "title": "Battle controller and neutral battle results",
-      "steps": "Navigate/attack with sticks/A, cycle melee approaches, use X/Y Wait/Defend, Auto start/stop, spells and cancellation. Finish a battle against neutral units and dismiss results.",
-      "expected": "Previews and legal actions agree; held releases do not leak between windows. Neutral battles handle absent player states and Adventure restores without crashes or stuck controls."
+      "id": "movement-resume",
+      "title": "Movement interruption and recovery",
+      "steps": "Move a hero into an encounter or event that raises a question; answer or cancel it, then issue another move or Stop/Continue action. Try a rapid repeat while a question is visible.",
+      "expected": "Movement pauses for the active question and resumes or stops according to the answer. Only the current action executes; stale repeats cause no duplicate move or pending control."
     },
     {
-      "id": "lifecycle",
-      "title": "Display, resume and upper input",
-      "steps": "Toggle/reconnect the lower display and background/resume during held/pending input in Adventure, Town/Meeting and Battle. Check upper touch/controller and lower-disabled single-display play.",
-      "expected": "One current lower presentation restores, old gestures clear, current controls recover and upper focus/touch/controller remain usable."
+      "id": "display-lifecycle",
+      "title": "Dual-screen and input recovery",
+      "steps": "During Meeting, Town and result/dialog states, toggle/reconnect the lower display and background/resume. Dismiss the question with normal upper touch/controller input, then check lower controls and lower-disabled play.",
+      "expected": "One current lower presentation restores without stale hit regions or held gestures. Upper touch/controller remain usable and each player returns to the correct current context."
     }
   ]
 }
