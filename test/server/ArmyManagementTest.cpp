@@ -377,6 +377,35 @@ TEST_F(ArmyManagementTest, MissingAndNonArmyIdentitiesAreSafeForEveryBulkRequest
 	}
 }
 
+TEST_F(ArmyManagementTest, MissingArrangeTargetsRejectAndAcknowledgeWithoutThrowing)
+{
+	exchange(left, right);
+	const auto removedID = right->id;
+	RemoveObject removal(removedID, PlayerColor::NEUTRAL);
+	gameState()->apply(removal);
+	for(const auto id : {ObjectInstanceID::NONE, removedID, ObjectInstanceID(100000)})
+	{
+		ArrangeStacks sourceMissing(mergeStacks, SlotID(0), SlotID(0), id, left->id, 0);
+		reject(sourceMissing);
+		ArrangeStacks destinationMissing(mergeStacks, SlotID(0), SlotID(0), left->id, id, 0);
+		reject(destinationMissing);
+		EXPECT_FALSE(handler->isAllowedExchange(red, id, left->id));
+	}
+}
+
+TEST_F(ArmyManagementTest, MissingAndNonShipyardBoatRequestsRejectWithoutSpendingResources)
+{
+	const auto resources = gameState()->getPlayerState(red)->resources;
+	for(const auto id : {ObjectInstanceID::NONE, ObjectInstanceID(100000), left->id})
+	{
+		EXPECT_FALSE(handler->buildBoat(id, red));
+		BuildBoat request;
+		request.objid = id;
+		reject(request);
+		EXPECT_EQ(gameState()->getPlayerState(red)->resources, resources);
+	}
+}
+
 TEST_F(ArmyManagementTest, InvalidActionsSlotsAndCountsDoNotMutate)
 {
 	exchange(left, right);

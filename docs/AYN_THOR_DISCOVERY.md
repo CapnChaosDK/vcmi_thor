@@ -27,6 +27,17 @@ VCMI is not a single-process game-state engine like fheroes2. Its architecture s
 - `lib/gameState/CGameState.h` owns authoritative map, player, hero, army, town, and game-option state. Client-side visibility must be read through `CPlayerSpecificInfoCallback`/related callbacks.
 - `lib/callback/CCallback.*` is the safe mutation boundary. Existing methods create network packs for movement, turn completion, stack arrangement, artifact exchange, hero dismissal, construction, recruitment, and other actions. A Thor action must re-resolve current client-visible objects, validate current UI/context, then invoke these existing client request paths. It must never mutate `CGameState` directly.
 
+### Callback lookup boundary (Slice 54)
+
+Required `getObj`, const `getTile` and `getPlayerState` throw if current access fails.
+Use their `tryGet` counterparts for stale Android/native identities, fog probes and
+untrusted server request targets. These optional calls retain callback visibility
+and player-access checks; raw map/object access is not a substitute. Hero/Town typed
+lookups and `getTopObj` remain nullable, as does Lua `Game:getObj`. Native mutable
+map access retains its existing contract. Server rejection must still acknowledge
+requests and release pending UI through the existing callback route. The complete
+contract and validation evidence belong in [Slice 54](../AYN_THOR_BACKLOG.md#slice-54--safe-callback-lookups-and-stale-action-handling).
+
 ### Extended commands (Slice 49)
 
 Battle Quick Controls use an additive versioned command namespace alongside the

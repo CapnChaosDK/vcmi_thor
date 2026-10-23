@@ -253,7 +253,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	auto attackerQuery = gameHandler->queries->topQuery(battle.sideToPlayer(BattleSide::ATTACKER));
 
 	QueryPtr battleQuery;
-	const auto * defenderPlayer = gameHandler->gameInfo().getPlayerState(battle.getBattle()->getSidePlayer(BattleSide::DEFENDER));
+	const auto * defenderPlayer = gameHandler->gameInfo().tryGetPlayerState(battle.getBattle()->getSidePlayer(BattleSide::DEFENDER));
 	bool isDefenderHuman = defenderPlayer && defenderPlayer->isHuman();
 	if(gameHandler->queries->queryAs<CBattleQuery>(attackerQuery))
 		battleQuery = attackerQuery;
@@ -281,7 +281,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	finishingBattles[battle.getBattle()->getBattleID()] = std::make_unique<FinishingBattleHelper>(battle, *battleResult, queriedPlayers);
 
 	// in battles against neutrals, 1st player can ask to replay battle manually
-	const auto * attackerPlayer = gameHandler->gameInfo().getPlayerState(battle.getBattle()->getSidePlayer(BattleSide::ATTACKER));
+	const auto * attackerPlayer = gameHandler->gameInfo().tryGetPlayerState(battle.getBattle()->getSidePlayer(BattleSide::ATTACKER));
 	bool isAttackerHuman = attackerPlayer && attackerPlayer->isHuman();
 	bool onlyOnePlayerHuman = isAttackerHuman != isDefenderHuman;
 	// in battles against neutrals attacker can ask to replay battle manually, additionally in battles against AI player human side can also ask for replay

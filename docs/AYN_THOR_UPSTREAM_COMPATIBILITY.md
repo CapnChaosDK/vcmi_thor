@@ -146,8 +146,8 @@ Current review, candidate receipts and the complete hardware checklist belong in
 | --- | --- | --- |
 | 1 | #8014 staged completion | High battle reliability value, low integration risk; adopted here. |
 | 2 | #8035 army authorization/integrity | Adapted in Slice 52 above; CI/artifact and user-confirmed hardware acceptance passed; promoted through PR #43, no wholesale cherry-pick. |
-| 3 | Controller cancellation/navigation (#7772, `dfe0d541c`, `6aa1bf766`) | Targeted native adaptation in Slice 53 below; CI and hardware acceptance pending. |
-| 4 | Strict callbacks (#8018, `e23240336`) | `getX` throws, `tryGetX` handles absence; audit every Thor stale-identity lookup before migrating. A textual merge cannot establish safe stale-request behavior. |
+| 3 | Controller cancellation/navigation (#7772, `dfe0d541c`, `6aa1bf766`) | Targeted native adaptation in Slice 53 below; exact integrated candidate passed CI/hardware and was promoted through PR #44. |
+| 4 | Strict callbacks (#8018, `e23240336`) | Adapted in Slice 54 below: strict object/tile/player lookups, optional stale/hidden identities, fork-specific server/Thor/AI callers and focused regressions. CI/hardware gates remain pending. |
 | 5 | Activity/question server migration (`54a6fc585` and `server/activities/`) | Replaces queries, QueryID/reply routes and exchange/battle continuation ownership. High risk to acknowledgements, result dismissal and movement stop/resume. Separate architecture milestone after army tests. |
 | 6 | Chunked saves (#8022, `f6b5eb30c`) | New SaveFileFormat/legacy loader, SAVE_CHUNKS and subsequent serialization versions. Migrate serializer, lobby save browser and custom packet registration together; test old saves and multiplayer compatibility explicitly. |
 | 7 | Download/build/SDL changes | Defer dependency release 2026-10-13, libcurl downloader/Android CA JNI, optional LTO/section GC and SDL3 rendering changes to a dedicated toolchain checkpoint. Preserve Thor package ID, Linux Qt deployment hook, caches and signing gates. |
@@ -198,8 +198,8 @@ Exact-SHA CI, installation and user-confirmed hardware receipts are recorded in
 the Slice 51 backlog record; Slice 51 is hardware validated and promoted via PR #41.
 Full non-Thor build/runtime compatibility remains unverified. Do not merge automatically.
 Slice 52 has since passed its exact-candidate CI and hardware gates and was promoted
-through PR #43. Slice 53 below implements the bounded controller milestone and awaits
-its own gates; the full activity/query migration remains deferred.
+through PR #43. Slice 53 below passed its integrated CI and hardware gates and was
+promoted through PR #44; the full activity/query migration remains deferred.
 
 
 ## Slice 53 — Native controller navigation and cancellation
@@ -234,4 +234,28 @@ Android presentation, proprietary asset or unrelated upstream migration.
 
 Local tests/syntax checks and independent review are recorded in
 [Slice 53](../AYN_THOR_BACKLOG.md#slice-53--complete-controller-driven-battlefield-navigation-and-safe-cancellation).
-CI/package and physical acceptance remain separate, unverified gates.
+Exact integrated candidate `9e5fa181e4b9193100724ca647629302d05c23c5` passed
+Thor CI 39824620408 and user-confirmed hardware acceptance; PR #44 promoted its
+product/build tree. Detailed receipts are in the backlog.
+
+
+## Slice 54 — Strict and optional callback boundary
+
+Adapt `e2324033600611a182cfb10b6ae4db024ccc7d18` from product `b98058529`.
+Origin and upstream were fetched on 2026-10-22; upstream develop was `610c3cbec`.
+That fetch does not replace the full Slice 51 divergence assessment above.
+
+Required object, const tile and player-state getters throw for unavailable data;
+optional `tryGet` counterparts return null without changing visibility/access rules.
+Hero/Town typed getters retain nullable semantics, and Lua `Game:getObj` still
+returns nil for absence. Missing-player status remains `WRONG`.
+
+Fork-specific adaptation preserves Slice 52's server rejection/acknowledgement path,
+lower-map fog filtering, minimap marker safety, current native window ownership and
+nullable top-object lookup. AI startup, threat scans, partially visible teleport
+exits, non-coastal shipyards and delayed object-selection callbacks handle absence
+explicitly. No activity/query, network packet, serialization, Java/JNI or build
+migration is imported. The native callback tests share the existing non-Thor server
+boundary target; normal tests retain the AI exploration coverage. See the
+[Slice 54 contract](../AYN_THOR_BACKLOG.md#slice-54--safe-callback-lookups-and-stale-action-handling)
+for scope, validation and exact candidate/hardware state.

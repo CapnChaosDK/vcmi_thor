@@ -45,7 +45,7 @@ float getNeighbourStrategicProgress(
 
 	for(const ObjectInstanceID objId : aiNk->memory->visitableObjs)
 	{
-		const CGObjectInstance * obj = aiNk->cc->getObj(objId, false);
+		const CGObjectInstance * obj = aiNk->cc->tryGetObj(objId);
 		if(!targetReachedThroughTile(obj))
 			continue;
 
@@ -159,7 +159,7 @@ void ExploreNeighbourTile::accept(AIGateway * aiGw)
 {
 	bool moved = false;
 
-	for(int i = 0; i < tilesToExplore && aiGw->cc->getObj(hero->id, false) && hero->movementPointsRemaining() > 0; i++)
+	for(int i = 0; i < tilesToExplore && aiGw->cc->tryGetObj(hero->id) && hero->movementPointsRemaining() > 0; i++)
 	{
 		const auto target = findTarget(hero, aiGw->nullkiller.get());
 

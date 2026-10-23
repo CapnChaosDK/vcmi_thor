@@ -1,18 +1,40 @@
 {
   "schema_version": 1,
-  "feature_id": "slice-53-battle-controller",
-  "title": "Battle controller navigation and melee approaches",
-  "summary": "Test the native Battle controller flow and corrected default melee approach. Sticks select targets, shoulders cycle legal melee approaches, and A confirms. The default approach now follows the attacking unit's position. Also check the candidate companion's install/verification and return-to-checklist workflow.",
-  "preparation": "Use a disposable save with battles containing friendly/enemy units, obstacles, ranged and melee units, and a two-wide unit where possible. Verify this exact APK is installed before recording results. Left stick navigates hexes; right stick browses units; shoulders cycle legal melee approaches; A confirms; X/Y use Defend/Wait; Back toggles Auto. Keep a save suitable for regression checks.",
-  "limitations": "Advanced spell and other interfaces may use the existing cursor fallback. Record unavailable scenarios as Blocked with notes. Automated CI success does not establish hardware acceptance. The companion never authorizes promotion or merging.",
+  "feature_id": "slice-54-safe-callbacks",
+  "title": "Safe callback lookups and stale-action handling",
+  "summary": "Verify current gameplay after separating required lookups from optional missing/hidden object, tile and player-state lookups. Stale actions must reject safely and controls recover.",
+  "preparation": "Use a disposable save with fog, owned/enemy heroes, multiple towns, a Town visitor, two meeting heroes and a neutral battle. Install and verify the exact candidate with the helper before recording results.",
+  "limitations": "Mark unavailable removal/ownership scenarios Blocked with notes. Automated callback/server tests cover missing identities separately. CI does not establish hardware acceptance. Record non-Thor/editor coverage separately; the helper does not authorize merging.",
   "checks": [
-    {"id":"navigation", "title":"Battle navigation and target previews", "steps":"Navigate every edge, diagonal and obstacle with the left stick. Browse friendly/enemy and two-wide units with the right stick. Release controls to neutral and check repeat timing.", "expected":"Targets and previews remain visible and accurate; dead zone and repeat behavior are usable; no stuck movement occurs."},
-    {"id":"melee-approaches", "title":"Movement, attacks and all legal melee sides", "steps":"Use A for legal movement, melee and ranged attacks. Attack from both sides and confirm the default approach follows the actor. Cycle every legal approach with both shoulders, including two-wide top/bottom approaches. Try invalid destinations, rapid/double A and changing targets while A is held. Compare X/Y Defend/Wait with the lower controls.", "expected":"Legal actions execute once. Default and shoulder-selected approaches agree with the preview. Invalid/repeated input submits no unintended action; controls match native availability."},
-    {"id":"battle-actions", "title":"Auto, spells, tactics and confirmations", "steps":"Start/stop Auto using Back and the lower controls. Exercise spellbook, targeted/multi-target spells, cancellation, creature abilities, tactics move/next/end, options and retreat/surrender confirmations. Use cursor fallback for advanced interfaces.", "expected":"Actions and cancellation complete normally. Lower controls reflect targeting, AI and pending actions without stale or duplicate requests."},
-    {"id":"window-restoration", "title":"Modal and battle-result restoration", "steps":"Open/dismiss inspect, modal, spellbook and result windows. Finish battle and return to Adventure. Hold A/B/shoulders/sticks across turns, modals, action completion and result dismissal.", "expected":"No held-release action leaks into a new window. Current targeting and input recover; dismissed windows leave no residual image or input."},
-    {"id":"controller-recovery", "title":"Controller reconnect, remap and mixed input", "steps":"Disconnect/reconnect and remap the controller while held, then release to neutral. Switch among upper touch, mouse and controller. Check native and cursor modes.", "expected":"No connection/remap action fires unexpectedly. Pointer and preview recover, with correct upper focus and usable input."},
-    {"id":"display-lifecycle", "title":"Lower display and background/resume", "steps":"Toggle or disconnect/reconnect the lower display and background/resume with input held. Re-enter battle and leave it again.", "expected":"One current lower deck returns; neutral/release recovery, upper focus and independent gestures work. No duplicate actions or residual navigation overlay remains."},
-    {"id":"regressions", "title":"Adventure, Hero/Town and Battle regressions", "steps":"Recheck Adventure navigation, Hero/Town interactions and Battle Quick Controls. Test lower-disabled/single-screen behavior; record non-Thor coverage or its unavailability separately.", "expected":"Existing gameplay and touch/controller behavior remain usable. Record each failure and unavailable scenario against this exact build."},
-    {"id":"companion-roundtrip", "title":"Verified installation and saved validation", "steps":"In the helper, verify the selected candidate's checksum, install it using Android's confirmation, launch VCMI, and return to a checklist. Save a result and notes, close/reopen the helper and reboot when convenient. Copy/share the report. On a different candidate, check that results start independently.", "expected":"Installed identity is confirmed from APK bytes. Results and notes survive restart/reboot and remain tied to the correct candidate. An uninstalled or different APK cannot receive confirmed test results. The report contains exact build identity, results and notes."}
+    {
+      "id": "fog-and-objects",
+      "title": "Adventure fog and current objects",
+      "steps": "Explore and pan/zoom both maps; browse and inspect markers; switch levels. Where practical remove/lose an object or change ownership and revisit its former location.",
+      "expected": "Fog remains concealed; only current authorized objects appear. Missing/hidden objects cause no crash, stale details or actionable old marker. Exploration restores current information."
+    },
+    {
+      "id": "hero-town-meeting",
+      "title": "Hero, Town and Meeting actions",
+      "steps": "Navigate Hero/Town cards; manage armies/artifacts; transfer Town/visitor and Meeting armies, including redistribution; recruit, confirm a build and purchase a boat where available. Try rapid repeats and selection/window changes during pending input.",
+      "expected": "Legal requests complete once through native/server routes. Invalid or outdated input does not alter another object or show success; pending controls recover and authoritative armies/resources remain correct."
+    },
+    {
+      "id": "adventure-transitions",
+      "title": "Movement, selection and modal restoration",
+      "steps": "Select heroes/towns from lower lists; plan/confirm/cancel a route, Stop/Continue and end the turn. Open/dismiss Hero/Town, utility and confirmation dialogs.",
+      "expected": "Both displays track current ownership and availability. Visible parents restore with no stale row, held gesture, residual window or unintended action."
+    },
+    {
+      "id": "battle-regression",
+      "title": "Battle controller and neutral battle results",
+      "steps": "Navigate/attack with sticks/A, cycle melee approaches, use X/Y Wait/Defend, Auto start/stop, spells and cancellation. Finish a battle against neutral units and dismiss results.",
+      "expected": "Previews and legal actions agree; held releases do not leak between windows. Neutral battles handle absent player states and Adventure restores without crashes or stuck controls."
+    },
+    {
+      "id": "lifecycle",
+      "title": "Display, resume and upper input",
+      "steps": "Toggle/reconnect the lower display and background/resume during held/pending input in Adventure, Town/Meeting and Battle. Check upper touch/controller and lower-disabled single-display play.",
+      "expected": "One current lower presentation restores, old gestures clear, current controls recover and upper focus/touch/controller remain usable."
+    }
   ]
 }

@@ -633,13 +633,13 @@ std::optional<ThorAdventureMap> AdventureMapInterface::buildThorAdventureMap()
 		std::sort(visible.begin(), visible.end(), [](const auto * lhs, const auto * rhs) { return lhs->id < rhs->id; });
 		for(const auto * candidate : visible)
 		{
-			const auto * object = GAME->interface()->cb->getObj(candidate->id, false);
+			const auto * object = GAME->interface()->cb->tryGetObj(candidate->id);
 			if(!object)
 				continue;
 			const int category = thorMapObjectCategory(object->ID);
 			const auto tile = object->visitablePos();
 			if(appendThorMapObject(map, object->id.getNum(), {tile.x, tile.y, tile.z}, category,
-				GAME->interface()->cb->isVisible(object), GAME->interface()->cb->getTile(tile, false) != nullptr, [&]()
+				GAME->interface()->cb->isVisible(object), GAME->interface()->cb->tryGetTile(tile) != nullptr, [&]()
 				{
 					const auto * hero = GAME->interface()->localState->getCurrentHero();
 					auto label = (hero ? object->getHoverText(hero) : object->getHoverText(GAME->interface()->playerID)).toString(&GAME->translator());
@@ -1445,7 +1445,7 @@ void AdventureMapInterface::onTileRightClicked(const int3 &mapPos)
 	if(!obj)
 	{
 		// Bare or undiscovered terrain
-		const TerrainTile * tile = GAME->interface()->cb->getTile(mapPos);
+		const TerrainTile * tile = GAME->interface()->cb->tryGetTile(mapPos);
 		if(tile)
 		{
 			std::string hlp = GAME->map().getTerrainDescr(mapPos, true);

@@ -598,7 +598,7 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
 void CGameHandler::setPortalDwelling(const CGTownInstance * town, bool forced=false, bool clear = false)
 {// bool forced = true - if creature should be replaced, if false - only if no creature was set
 
-	const PlayerState * p = gameInfo().getPlayerState(town->tempOwner);
+	const PlayerState * p = gameInfo().tryGetPlayerState(town->tempOwner);
 	if (!p)
 	{
 		assert(town->tempOwner == PlayerColor::NEUTRAL);
@@ -828,7 +828,7 @@ void CGameHandler::giveSpells(const CGTownInstance *t, const CGHeroInstance *h)
 
 bool CGameHandler::removeObject(const CGObjectInstance * obj, const PlayerColor & initiator)
 {
-	if (!obj || !gameInfo().getObj(obj->id))
+	if (!obj || !gameInfo().tryGetObj(obj->id))
 	{
 		logGlobal->error("Something wrong, that object already has been removed or hasn't existed!");
 		return false;
@@ -2223,8 +2223,8 @@ bool CGameHandler::bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID s
 
 bool CGameHandler::arrangeStacks(ObjectInstanceID id1, ObjectInstanceID id2, ui8 what, SlotID p1, SlotID p2, si32 val, PlayerColor player)
 {
-	const auto * first = dynamic_cast<const CArmedInstance *>(gameInfo().getObj(id1));
-	const auto * second = dynamic_cast<const CArmedInstance *>(gameInfo().getObj(id2));
+	const auto * first = dynamic_cast<const CArmedInstance *>(gameInfo().tryGetObj(id1));
+	const auto * second = dynamic_cast<const CArmedInstance *>(gameInfo().tryGetObj(id2));
 	if(!first || !second || !p1.validSlot() || !p2.validSlot()
 		|| (id1 == id2 && p1 == p2) || !isAllowedExchange(player, id1, id2))
 		COMPLAIN_RET("Invalid army exchange!");
@@ -2582,10 +2582,10 @@ bool CGameHandler::spellResearch(ObjectInstanceID tid, SpellID spellAtSlot, bool
 
 bool CGameHandler::recruitCreatures(ObjectInstanceID objid, ObjectInstanceID dstid, CreatureID crid, int32_t cram, int32_t fromLvl, PlayerColor player)
 {
-	const auto * dwelling = dynamic_cast<const CGDwelling *>(gameInfo().getObj(objid));
-	const auto * town = dynamic_cast<const CGTownInstance *>(gameInfo().getObj(objid));
-	const auto * army = dynamic_cast<const CArmedInstance *>(gameInfo().getObj(dstid));
-	const auto * hero = dynamic_cast<const CGHeroInstance *>(gameInfo().getObj(dstid));
+	const auto * dwelling = dynamic_cast<const CGDwelling *>(gameInfo().tryGetObj(objid));
+	const auto * town = dynamic_cast<const CGTownInstance *>(gameInfo().tryGetObj(objid));
+	const auto * army = dynamic_cast<const CArmedInstance *>(gameInfo().tryGetObj(dstid));
+	const auto * hero = dynamic_cast<const CGHeroInstance *>(gameInfo().tryGetObj(dstid));
 	const auto * c = crid.toCreature();
 
 	const bool warMachine = c->warMachine != ArtifactID::NONE;
@@ -3133,7 +3133,7 @@ bool CGameHandler::switchArtifactsCostume(const PlayerColor & player, const Obje
 {
 	const auto * artSet = gameState().getArtSet(heroID);
 	COMPLAIN_RET_FALSE_IF(artSet == nullptr, "switchArtifactsCostume: wrong hero's ID");
-	const auto * playerState = gameInfo().getPlayerState(player);
+	const auto * playerState = gameInfo().tryGetPlayerState(player);
 	COMPLAIN_RET_FALSE_IF(playerState == nullptr, "switchArtifactsCostume: wrong player");
 
 	if(auto costume = playerState->costumesArtifacts.find(costumeIdx); costume != playerState->costumesArtifacts.end())
@@ -3494,7 +3494,7 @@ bool CGameHandler::transformInUndead(const IMarket *market, const CGHeroInstance
 
 bool CGameHandler::sendResources(ui32 val, PlayerColor player, GameResID r1, PlayerColor r2)
 {
-	const PlayerState *p2 = gameInfo().getPlayerState(r2, false);
+	const PlayerState *p2 = gameInfo().tryGetPlayerState(r2);
 	if (!p2  ||  p2->status != EPlayerStatus::INGAME)
 	{
 		complain("Dest player must be in game!");
@@ -3657,7 +3657,7 @@ bool CGameHandler::isInGarrisonDialog(PlayerColor player, ObjectInstanceID army)
 	if(!player.isValidPlayer())
 		return false;
 	const auto * dialog = dynamic_cast<const CGarrisonDialogQuery *>(queries->topQuery(player).get());
-	const auto * object = gameInfo().getObj(army);
+	const auto * object = gameInfo().tryGetObj(army);
 	return dialog && object && (dialog->exchangingArmies[0] == object || dialog->exchangingArmies[1] == object);
 }
 
@@ -3692,8 +3692,8 @@ bool CGameHandler::isAllowedExchange(PlayerColor player, ObjectInstanceID id1, O
 {
 	if(!player.isValidPlayer())
 		return false;
-	const auto * first = gameInfo().getObj(id1);
-	const auto * second = gameInfo().getObj(id2);
+	const auto * first = gameInfo().tryGetObj(id1);
+	const auto * second = gameInfo().tryGetObj(id2);
 	if(!first || !second)
 		return false;
 
@@ -3787,7 +3787,9 @@ void CGameHandler::objectVisitEnded(const ObjectInstanceID & heroObjectID, Playe
 
 bool CGameHandler::buildBoat(ObjectInstanceID objid, PlayerColor playerID)
 {
-	const auto *obj = dynamic_cast<const IShipyard *>(gameInfo().getObj(objid));
+	const auto *obj = dynamic_cast<const IShipyard *>(gameInfo().tryGetObj(objid));
+	if(!obj)
+		COMPLAIN_RET("Invalid shipyard!");
 
 	if (obj->shipyardStatus() != IBoatGenerator::GOOD)
 	{
@@ -3821,7 +3823,7 @@ void CGameHandler::checkVictoryLossConditions(const std::set<PlayerColor> & play
 {
 	for (auto playerColor : playerColors)
 	{
-		if (gameInfo().getPlayerState(playerColor, false))
+		if (gameInfo().tryGetPlayerState(playerColor))
 			checkVictoryLossConditionsForPlayer(playerColor);
 	}
 }
@@ -3838,7 +3840,7 @@ void CGameHandler::checkVictoryLossConditionsForAll()
 
 void CGameHandler::checkVictoryLossConditionsForPlayer(PlayerColor player)
 {
-	const PlayerState * p = gameInfo().getPlayerState(player);
+	const PlayerState * p = gameInfo().tryGetPlayerState(player);
 
 	if(!p || p->status != EPlayerStatus::INGAME) return;
 
@@ -4224,8 +4226,8 @@ void CGameHandler::tryJoiningArmy(const CArmedInstance *src, const CArmedInstanc
 
 bool CGameHandler::moveStack(const StackLocation &src, const StackLocation &dst, TQuantity count)
 {
-	const auto * srcArmy = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(src.army));
-	const auto * dstArmy = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(dst.army));
+	const auto * srcArmy = dynamic_cast<const CArmedInstance*>(gameInfo().tryGetObj(src.army));
+	const auto * dstArmy = dynamic_cast<const CArmedInstance*>(gameInfo().tryGetObj(dst.army));
 
 	if (!srcArmy || !dstArmy || !src.slot.validSlot() || (src.army == dst.army && src.slot == dst.slot)
 		|| !srcArmy->hasStackAtSlot(src.slot))
@@ -4287,8 +4289,8 @@ void CGameHandler::castSpell(const spells::Caster * caster, SpellID spellID, con
 
 bool CGameHandler::swapStacks(const StackLocation & sl1, const StackLocation & sl2)
 {
-	const auto * army1 = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(sl1.army));
-	const auto * army2 = dynamic_cast<const CArmedInstance*>(gameInfo().getObj(sl2.army));
+	const auto * army1 = dynamic_cast<const CArmedInstance*>(gameInfo().tryGetObj(sl1.army));
+	const auto * army2 = dynamic_cast<const CArmedInstance*>(gameInfo().tryGetObj(sl2.army));
 
 	if(!army1 || !army2 || !sl1.slot.validSlot() || !sl2.slot.validSlot()
 		|| (sl1.army == sl2.army && sl1.slot == sl2.slot))

@@ -575,7 +575,7 @@ TeleporterPopup::TeleporterPopup(const Point & position, const CGTeleport * tele
 
 	for (const auto exit : allTeleporters)
 	{
-		const auto * exitObject = GAME->interface()->cb->getObj(exit, false);
+		const auto * exitObject = GAME->interface()->cb->tryGetObj(exit);
 
 		if (!exitObject)
 			continue;

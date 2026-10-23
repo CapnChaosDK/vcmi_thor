@@ -39,11 +39,33 @@ It has two validation levels:
 1. Relevant pushes to `ayn-thor-dual-screen` and pull requests targeting it run a no-secret preflight. It restores the immutable Conan dependency archive when available and runs the focused host-native Thor suites (including the Slice 53 native controller input/confirmation/cancellation contract) plus the real non-Thor army-transfer server boundary. The latter builds the `army-transfer-tests` CMake target with system native dependencies and uses the standard `github.yml` test-data setup; details and acceptance are in Slice 52 of the backlog. Documentation-only changes do not trigger it.
 2. A trusted push to the permanent `ci/thor-candidate-validation` transport branch runs that preflight, then a dependent full ARM64 candidate job. The full job uses Ubuntu 24.04, Temurin JDK 17, recursive submodules, the official Android Conan bundle and profiles, `android-thor-release`, `arm64-v8a`, the required Qt compatibility hook, validation signing, focused Android Thor tests, package verification, checksum generation, receipt generation, and artifact upload.
 
+The existing `army-transfer-tests` target also runs the real callback lookup
+regressions from Slice 54 (visibility/access, removal, map bounds and teleport
+probes), alongside army request rejection/acknowledgement checks. Its CTest gate
+retains the name `ArmyTransferBoundary`; this does not add a separate workflow.
+
 The full job cannot start until preflight succeeds. It never runs for pull requests, so signing secrets are not available to fork PRs or arbitrary branches. A manual dispatch from `ci/thor-candidate-validation` can request the same trusted full path with `full_arm64`.
 
 The workflow concurrency group includes both workflow and ref. A new push cancels an obsolete run for the permanent candidate branch without cancelling a different workflow.
 
 ### Caches and receipts
+
+Native preflight uses its own 2 GB `ccache`, separate from Android. Keys include
+Ubuntu 24.04, runner OS/architecture, native Release/no-PCH configuration, compiler
+and dependency fingerprint, ref and commit; restore stays within that compatibility
+prefix and ref (pull requests read their trusted base ref). C/C++ CMake launchers
+are verified and cacheable calls must be nonzero. Only successful trusted product/candidate refs save objects; pull requests
+restore read-only. The job summary reports the restored key, hit/miss statistics,
+size and native build duration. The first run is cold; improvement requires later
+compatible runs and must not be claimed before measuring them.
+
+Only the native regression build disables precompiled headers (`ENABLE_PCH=OFF`)
+so ccache can reuse ordinary objects without relaxing macro/header checks; see
+[ccache's PCH requirements](https://ccache.dev/manual/4.9.1.html#_precompiled_headers).
+Compiler contents and source/header inputs remain checked, with empty sloppiness.
+Fresh generated native build trees, two compile workers, every regression, and the
+45-minute timeout remain required. Android's PCH configuration, 3 GB cache,
+dependency archive, Gradle cache, signing and packaging are unchanged.
 
 The dependency archive is cached separately from the Conan installation. Its key includes the runner, Android ARM64 identity, and the hash of `CI/install_conan_dependencies.sh`; changing the release definition therefore cannot reuse the old archive. The installer only downloads a missing archive and uses robust retrying downloads. Caches never contain credentials, signing material, APKs, or build directories.
 

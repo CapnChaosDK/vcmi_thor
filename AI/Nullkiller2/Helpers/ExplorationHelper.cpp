@@ -283,7 +283,7 @@ bool ExplorationHelper::considerDimensionDoorExplorationTargets()
 void ExplorationHelper::scanTile(const int3 & tile)
 {
 	if(tile == ourPos
-		|| !aiNk->cc->getTile(tile, false)
+		|| !aiNk->cc->tryGetTile(tile)
 		|| !aiNk->pathfinder->isTileAccessible(HeroPtr(hero, aiNk->cc.get()), tile)) //shouldn't happen, but it does
 		return;
 
@@ -608,7 +608,7 @@ float ExplorationHelper::getDimensionDoorStrategicScore(const int3 & tile) const
 
 	for(const ObjectInstanceID objId : aiNk->memory->visitableObjs)
 	{
-		const CGObjectInstance * obj = cc->getObj(objId, false);
+		const CGObjectInstance * obj = cc->tryGetObj(objId);
 		if(!obj)
 			continue;
 

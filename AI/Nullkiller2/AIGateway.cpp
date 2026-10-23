@@ -73,8 +73,8 @@ void AIGateway::heroMoved(const TryMoveHero & details, bool verbose)
 	const int3 from = hero ? hero->convertToVisitablePos(details.start) : (details.start - int3(0,1,0));
 	const int3 to   = hero ? hero->convertToVisitablePos(details.end)   : (details.end   - int3(0,1,0));
 
-	const CGObjectInstance * o1 = vstd::frontOrNull(cc->getVisitableObjs(from, verbose));
-	const CGObjectInstance * o2 = vstd::frontOrNull(cc->getVisitableObjs(to, verbose));
+	const CGObjectInstance * o1 = (cc->isVisible(from) ? vstd::frontOrNull(cc->getVisitableObjs(from)) : nullptr);
+	const CGObjectInstance * o2 = (cc->isVisible(to) ? vstd::frontOrNull(cc->getVisitableObjs(to)) : nullptr);
 
 	if(details.result == TryMoveHero::TELEPORTATION)
 	{
@@ -441,7 +441,7 @@ void AIGateway::objectPropertyChanged(const SetObjectProperty * sop)
 	if(sop->what == ObjProperty::OWNER)
 	{
 		auto relations = cc->getPlayerRelations(playerID, sop->identifier.as<PlayerColor>());
-		auto obj = cc->getObj(sop->id, false);
+		auto obj = cc->tryGetObj(sop->id);
 
 		if(!nullkiller) // crash protection
 			return;
@@ -602,9 +602,9 @@ void AIGateway::showBlockingDialog(const std::string & text, const std::vector<C
 
 				logAi->trace("Query hook: %s(%s) by %s danger ratio %f", target.toString(), topObj->getObjectNameTextID(), heroPtr.nameOrDefault(), ratio);
 
-				if(cc->getObj(goalObjectID, false))
+				if(cc->tryGetObj(goalObjectID))
 				{
-					logAi->trace("AI expected %s", cc->getObj(goalObjectID, false)->getObjectNameTextID());
+					logAi->trace("AI expected %s", cc->tryGetObj(goalObjectID)->getObjectNameTextID());
 				}
 
 				if(objType == Obj::BORDERGUARD || objType == Obj::QUEST_GUARD)
@@ -677,7 +677,7 @@ void AIGateway::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelI
 		{
 			// TODO: Implement checking if visiting that teleport will uncovert any FoW
 			// So far this is the best option to handle decision about probing
-			auto obj = cc->getObj(exit.first, false);
+			auto obj = cc->tryGetObj(exit.first);
 			if(obj == nullptr && !vstd::contains(teleportChannelProbingList, exit.first))
 			{
 				if(exit.first != destinationTeleport)
@@ -980,7 +980,7 @@ void AIGateway::battleStart(const BattleID & battleID, const CCreatureSet * army
 {
 	assert(!playerID.isValidPlayer() || status.getBattle() == UPCOMING_BATTLE);
 	status.setBattle(ONGOING_BATTLE);
-	const CGObjectInstance * presumedEnemy = vstd::backOrNull(cc->getVisitableObjs(tile)); //may be nullptr in some very are cases -> eg. visited monolith and fighting with an enemy at the FoW covered exit
+	const CGObjectInstance * presumedEnemy = (cc->isVisible(tile) ? vstd::backOrNull(cc->getVisitableObjs(tile)) : nullptr); //may be nullptr in some very are cases -> eg. visited monolith and fighting with an enemy at the FoW covered exit
 	battlename = boost::str(boost::format("Starting battle of %s attacking %s at %s") % (hero1 ? hero1->getNameTextID() : "a army") % (presumedEnemy ? presumedEnemy->getObjectNameTextID() : "unknown enemy") % tile.toString());
 	CAdventureAI::battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
@@ -1078,9 +1078,9 @@ bool AIGateway::moveHeroToTile(const int3 dst, const HeroPtr & heroPtr)
 
 		auto getObj = [&](int3 coord, bool ignoreHero)
 		{
-			auto tile = cc->getTile(coord, false);
+			auto tile = cc->tryGetTile(coord);
 			assert(tile);
-			return cc->getObj(tile->topVisitableObj(ignoreHero), false);
+			return cc->tryGetObj(tile->topVisitableObj(ignoreHero));
 		};
 
 		auto isTeleportAction = [&](EPathNodeAction action) -> bool
@@ -1116,7 +1116,7 @@ bool AIGateway::moveHeroToTile(const int3 dst, const HeroPtr & heroPtr)
 
 		auto doTeleportMovement = [&](ObjectInstanceID exitId, int3 exitPos)
 		{
-			if(cc->getObj(exitId) && cc->getObj(exitId)->ID == Obj::WHIRLPOOL)
+			if(cc->tryGetObj(exitId) && cc->tryGetObj(exitId)->ID == Obj::WHIRLPOOL)
 			{
 				nullkiller->armyFormation->rearrangeArmyForWhirlpool(*heroPtr);
 			}
@@ -1269,7 +1269,7 @@ void AIGateway::tryRealize(Goals::Trade & g) //trade
 		throw goalFulfilledException(sptr(g));
 
 	int acquiredResources = 0;
-	if(const CGObjectInstance * obj = cc->getObj(ObjectInstanceID(g.objid), false))
+	if(const CGObjectInstance * obj = cc->tryGetObj(ObjectInstanceID(g.objid)))
 	{
 		if(const auto * m = dynamic_cast<const IMarket*>(obj))
 		{
@@ -1651,8 +1651,9 @@ void AIGateway::memorizeVisitableObjs(const std::unique_ptr<AIMemory> & memory,
 {
 	foreach_tile_pos(*cc, [&](const int3 & pos)
 	{
-		// TODO: Inspect what not visible means when using verbose true
-		for(const CGObjectInstance * obj : cc->getVisitableObjs(pos, false))
+		if(!cc->isVisible(pos))
+			return;
+		for(const CGObjectInstance * obj : cc->getVisitableObjs(pos))
 		{
 			memorizeVisitableObj(obj, memory, dangerHitMap, playerID, cc);
 		}

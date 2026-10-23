@@ -824,7 +824,7 @@ bool Nullkiller::areAffectedObjectsPresent(const Goals::TTask & task) const
 
 	for(auto oid : affectedObjs)
 	{
-		if(!cc->getObj(oid, false))
+		if(!cc->tryGetObj(oid))
 			return false;
 	}
 

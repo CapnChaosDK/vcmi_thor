@@ -241,14 +241,15 @@ TeleporterTilesVector CPathfinderHelper::getAllowedTeleportChannelExits(const Te
 
 	for(const auto & objId : gameInfo.getTeleportChannelExits(channelID, hero->tempOwner))
 	{
-		const auto * obj = gameInfo.getObj(objId);
+		const auto * obj = gameInfo.tryGetObj(objId);
 		if(dynamic_cast<const CGWhirlpool *>(obj))
 		{
 			auto pos = obj->getBlockedPos();
 			for(const auto & p : pos)
 			{
-				ObjectInstanceID topObject = gameInfo.getTile(p)->topVisitableObj();
-				if(topObject.hasValue() && gameInfo.getObj(topObject)->ID == obj->ID)
+				const auto * tile = gameInfo.tryGetTile(p);
+				const auto * topObject = tile ? gameInfo.tryGetObj(tile->topVisitableObj()) : nullptr;
+				if(topObject && topObject->ID == obj->ID)
 					allowedExits.push_back(p);
 			}
 		}

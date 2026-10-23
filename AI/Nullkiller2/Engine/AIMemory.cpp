@@ -95,7 +95,7 @@ void AIMemory::removeInvisibleOrDeletedObjects(const CCallback & cc)
 {
 	auto shouldBeErased = [&](const ObjectInstanceID objId) -> bool
 	{
-		return !cc.getObj(objId, false);
+		return !cc.tryGetObj(objId);
 	};
 
 	vstd::erase_if(visitableObjs, shouldBeErased);

@@ -1255,7 +1255,7 @@ void CPlayerInterface::showMapObjectSelectDialog(QueryID askID, const Component 
 	{
 		if(!settings["general"]["enableUiEnhancements"].Bool())
 			break;
-		const CGTownInstance * t = dynamic_cast<const CGTownInstance *>(cb->getObj(obj));
+		const CGTownInstance * t = dynamic_cast<const CGTownInstance *>(cb->tryGetObj(obj));
 		if(t)
 		{
 			auto image = ENGINE->renderHandler().loadImage(AnimationPath::builtin("ITPA"), t->getTown()->clientInfo.icons[t->hasFort()][false] + 2, 0, EImageBlitMode::OPAQUE);
@@ -1276,8 +1276,19 @@ void CPlayerInterface::showMapObjectSelectDialog(QueryID askID, const Component 
 
 	auto wnd = std::make_shared<CObjectListWindow>(tempList, localIcon, localTitle, localDescription, selectCallback, 0, images);
 	wnd->onExit = cancelCallback;
-	wnd->onPopup = [this, objectGuiOrdered](int index) { CRClickPopup::createAndPush(cb->getObj(objectGuiOrdered[index]), ENGINE->getCursorPosition()); };
-	wnd->onClicked = [this, objectGuiOrdered](int index) { adventureInt->centerOnObject(cb->getObj(objectGuiOrdered[index])); ENGINE->windows().totalRedraw(); };
+	wnd->onPopup = [this, objectGuiOrdered](int index)
+	{
+		if(const auto * object = cb->tryGetObj(objectGuiOrdered[index]))
+			CRClickPopup::createAndPush(object, ENGINE->getCursorPosition());
+	};
+	wnd->onClicked = [this, objectGuiOrdered](int index)
+	{
+		if(const auto * object = cb->tryGetObj(objectGuiOrdered[index]))
+		{
+			adventureInt->centerOnObject(object);
+			ENGINE->windows().totalRedraw();
+		}
+	};
 	ENGINE->windows().pushWindow(wnd);
 }
 
@@ -1486,7 +1497,7 @@ void CPlayerInterface::beforeObjectPropertyChanged(const SetObjectProperty * sop
 {
 	if (sop->what == ObjProperty::OWNER)
 	{
-		const CGObjectInstance * obj = cb->getObj(sop->id, false);
+		const CGObjectInstance * obj = cb->tryGetObj(sop->id);
 
 		if(!obj)
 			return;
@@ -1513,7 +1524,7 @@ void CPlayerInterface::objectPropertyChanged(const SetObjectProperty * sop)
 
 	if (sop->what == ObjProperty::OWNER)
 	{
-		const CGObjectInstance * obj = cb->getObj(sop->id, false);
+		const CGObjectInstance * obj = cb->tryGetObj(sop->id);
 
 		if(!obj)
 			return;
@@ -1557,7 +1568,7 @@ void CPlayerInterface::initializeHeroTownList()
 
 	const std::optional<PlayerColor> callbackPlayer = cb->getPlayerID();
 	const PlayerColor localStatePlayer = callbackPlayer.value_or(playerID);
-	const PlayerState * playerState = cb->getPlayerState(localStatePlayer);
+	const PlayerState * playerState = cb->tryGetPlayerState(localStatePlayer);
 	if(playerState)
 		localState->deserialize(*playerState->playerLocalSettings);
 

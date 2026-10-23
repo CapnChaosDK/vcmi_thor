@@ -39,6 +39,10 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPILERCHECK: content
+      CCACHE_NOHASHDIR: "true"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -107,17 +111,65 @@ jobs:
             -o "$RUNNER_TEMP/thor-context-tests"
           "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:BattleAnimationWait*:BattleControllerInput*:ControllerInput*'
 
-      - name: Build and run authoritative army transfer regressions (non-Thor)
+      - name: Install native regression dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes ninja-build libboost-filesystem-dev libboost-program-options-dev \
+          sudo apt-get install --yes ccache ninja-build libboost-filesystem-dev libboost-program-options-dev \
             zlib1g-dev libminizip-dev libtbb-dev libluajit-5.1-dev p7zip-full
+
+      - name: Identify native compiler cache compatibility
+        id: native_toolchain
+        run: |
+          echo "CCACHE_DIR=$RUNNER_TEMP/thor-native-ccache" >> "$GITHUB_ENV"
+          toolchain_id="$(
+            {
+              gcc --version
+              g++ --version
+              ccache --version
+              sha256sum "$(readlink -f "$(command -v gcc)")" \
+                "$(readlink -f "$(command -v g++)")" \
+                "$(g++ -print-prog-name=cc1plus)"
+              dpkg-query -W -f='${Package}=${Version}\n' \
+                libboost-filesystem-dev libboost-program-options-dev zlib1g-dev \
+                libminizip-dev libtbb-dev libluajit-5.1-dev
+            } | sha256sum | cut -d ' ' -f 1
+          )"
+          echo "id=$toolchain_id" >> "$GITHUB_OUTPUT"
+
+      - name: Restore native compiler cache
+        id: native_ccache
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: thor-native-ccache-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu24-release-no-pch-${{ steps.native_toolchain.outputs.id }}-${{ github.base_ref || github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            thor-native-ccache-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu24-release-no-pch-${{ steps.native_toolchain.outputs.id }}-${{ github.base_ref || github.ref_name }}-
+
+      - name: Configure native compiler cache
+        run: |
+          mkdir -p "$CCACHE_DIR"
+          ccache --set-config=max_size=2G
+          ccache --set-config=compiler_check=content
+          ccache --set-config=base_dir="$GITHUB_WORKSPACE"
+          ccache --set-config=hash_dir=false
+          ccache --set-config=sloppiness=
+          ccache --zero-stats
+          ccache --show-config
+
+      - name: Build and run authoritative army transfer regressions (non-Thor)
+        run: |
           cmake -S . -B "$RUNNER_TEMP/army-transfer-build" -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DENABLE_TEST=ON -DENABLE_SERVER=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DENABLE_PCH=OFF \
             -DENABLE_CLIENT=OFF -DENABLE_LAUNCHER=OFF -DENABLE_EDITOR=OFF \
             -DENABLE_NULLKILLER2_AI=OFF -DENABLE_BATTLE_AI=OFF \
             -DENABLE_STUPID_AI=OFF -DENABLE_MMAI=OFF -DENABLE_DISCORD=OFF
+          grep -E '^CMAKE_C_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/army-transfer-build/CMakeCache.txt"
+          grep -E '^CMAKE_CXX_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/army-transfer-build/CMakeCache.txt"
+          build_started_at="$(date +%s)"
           cmake --build "$RUNNER_TEMP/army-transfer-build" --target army-transfer-tests --parallel 2
+          echo "NATIVE_BUILD_DURATION_SECONDS=$(($(date +%s) - build_started_at))" >> "$GITHUB_ENV"
           # Reuse the standard native test-data procedure from github.yml.
           curl --fail --location --retry 3 \
             https://github.com/vcmi-mods/vcmi-test-data/releases/download/v2.0/heroes3.7z \
@@ -125,6 +177,34 @@ jobs:
           mkdir -p "$HOME/.local/share/vcmi"
           7za x -y -o"$HOME/.local/share/vcmi/" "$RUNNER_TEMP/army-test-data.7z"
           ctest --test-dir "$RUNNER_TEMP/army-transfer-build" -R '^ArmyTransferBoundary$' --output-on-failure
+
+      - name: Verify and report native compiler cache use
+        env:
+          RESTORED_KEY: ${{ steps.native_ccache.outputs.cache-matched-key }}
+        run: |
+          ccache --show-stats | tee "$RUNNER_TEMP/thor-native-ccache-stats.txt"
+          cacheable_calls="$(awk '/Cacheable calls:/ { print $3 }' "$RUNNER_TEMP/thor-native-ccache-stats.txt")"
+          test "${cacheable_calls:-0}" -gt 0
+          {
+            echo '### Native preflight compiler cache'
+            echo "- Restored key: ${RESTORED_KEY:-(none; cold cache)}"
+            echo "- Build duration: ${NATIVE_BUILD_DURATION_SECONDS}s"
+            echo '- Cache limit: 2 GB; generated build trees are always clean.'
+            echo '```text'
+            cat "$RUNNER_TEMP/thor-native-ccache-stats.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Only trusted named refs publish compiler objects; PR caches stay read-only.
+      - name: Save native compiler cache
+        if: >-
+          github.event_name != 'pull_request' &&
+          (github.ref == 'refs/heads/ayn-thor-dual-screen' || github.ref == 'refs/heads/ci/thor-candidate-validation') &&
+          steps.native_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ steps.native_ccache.outputs.cache-primary-key }}
 
   arm64-candidate:
     name: Thor ARM64 candidate

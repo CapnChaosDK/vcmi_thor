@@ -878,7 +878,7 @@ public:
 				}
 			}
 
-			const TerrainTile * tile = evaluationContext.evaluator.aiNk->cc->getTile(task->tile, false);
+			const TerrainTile * tile = evaluationContext.evaluator.aiNk->cc->tryGetTile(task->tile);
 			if(tile && tile->roadType != RoadId::NO_ROAD)
 				evaluationContext.explorePriority = 1;
 		}
@@ -1066,7 +1066,7 @@ public:
 		bool checkGold = evaluationContext.danger == 0;
 		auto army = path.heroArmy;
 
-		const CGObjectInstance * target = aiNk->cc->getObj((ObjectInstanceID)task->objid, false);
+		const CGObjectInstance * target = aiNk->cc->tryGetObj((ObjectInstanceID)task->objid);
 		auto heroRole = evaluationContext.evaluator.aiNk->heroManager->getHeroRoleOrDefaultInefficient(hero);
 
 		if(heroRole == HeroRole::MAIN)

@@ -201,7 +201,7 @@ TGoalVec CompleteQuest::missionDestroyObj(const Nullkiller * aiNk) const
 	TGoalVec solutions;
 	for(const auto & targetId : killQuest->mission.destroyedObjects)
 	{
-		const auto obj = aiNk->cc->getObj(targetId);
+		const auto obj = aiNk->cc->tryGetObj(targetId);
 		if(!obj)
 		{
 			vstd::concatenate(solutions, CaptureObjectsBehavior(q.getObject(aiNk->cc.get())).decompose(aiNk));
