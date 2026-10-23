@@ -59,7 +59,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 55 reply-validation stage: `in progress` locally. The next compatibility stage validates player, prompt state and answer bounds before a legacy question changes state; the complete activity runtime migration remains open. No candidate, CI, APK or device result is claimed for this stage.
+- Slice 55 reply-validation stage: `awaiting CI` on exact implementation candidate `e9a00c57804f6aa4c44ca866af4a5e22c88b6632`. [PR #53](https://github.com/CapnChaosDK/vcmi_thor/pull/53) is open; [Thor CI 39956198463](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39956198463) was queued at handoff. The server validates player, prompt state and answer bounds before a legacy question changes state. APK and device results remain pending, and the complete activity runtime migration remains open.
 
 - Covered-query reply isolation: `hardware validated` by the user's 2026-10-23 report for exact candidate `f70ae38382afc1115ef2c286699dc961908183fb`; [Thor CI 39928810263](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39928810263) passed both jobs. The server confines a covered legacy reply to the answering player's query stack. The five-check candidate plan passed according to the user. The companion's installed-byte receipt was not provided here, so its checksum is not independently recorded. [PR #52](https://github.com/CapnChaosDK/vcmi_thor/pull/52) is promoted as `12699f09e83c09c4b9dfd32c32433e41cf941147`, with only backlog Markdown differing from the tested candidate. The activity migration in Slice 55 remains in progress.
 
@@ -235,7 +235,7 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff: Slice 54 callback safety is user-confirmed on its exact candidate, and the corresponding product/build tree is already merged. The candidate's artifact/APK checksum is not independently recorded here. The player-scoped covered-reply fix is being prepared as a separate security prerequisite with its own candidate checklist. Slice 55 activity/question migration remains in progress; its future complete candidate needs a new checklist before publication. The earlier proposed/next-slice headings below, including old Slice 43/44 handoffs, are historical planning records. The [compatibility assessment](docs/AYN_THOR_UPSTREAM_COMPATIBILITY.md) retains the dependency-aware roadmap.
+Current handoff: Slice 54 callback safety and the covered-reply isolation prerequisite are user-confirmed on their exact candidates and promoted. The reply-validation stage is published as PR #53 and exact candidate `e9a00c57804f6aa4c44ca866af4a5e22c88b6632`, with CI and hardware validation pending. The full Slice 55 activity/question migration remains open and will need its own complete candidate checklist. The earlier proposed/next-slice headings below, including old Slice 43/44 handoffs, are historical planning records. The [compatibility assessment](docs/AYN_THOR_UPSTREAM_COMPATIBILITY.md) retains the dependency-aware roadmap.
 
 ## Proposed next slice: measured deck shell and diagnostics
 
@@ -2044,12 +2044,13 @@ Promotion and cleanup receipt (2026-10-22):
 
 ## Slice 55 reply-validation stage — Server question answer contract
 
-- Status: `in progress` locally, without a published candidate or CI/device result. This completes one input-validation boundary in the existing query runtime; it does not switch to upstream activities or change network packet fields.
+- Status: `awaiting CI` on exact implementation candidate `e9a00c57804f6aa4c44ca866af4a5e22c88b6632`; no CI pass, APK or device result is claimed. This completes one input-validation boundary in the existing query runtime; it does not switch to upstream activities or change network packet fields.
 - Behavior: only a player affected by a question may answer it. A dialog needs a value; blocking selection accepts only 0 through the number of components, hero/commander level-up accepts only an offered skill index (or 0 when no skill is offered), and battle result accepts only dismiss/replay 0 or 1. A second participant may not close the initiator's exchange. Invalid, missing or premature answers reject without removing the question, applying rewards, or acknowledging success. Existing generic null cancellation and teleport's -1/random-exit convention remain accepted.
 - Boundary: the authoritative `CGameHandler::queryReply` validates both top and covered answers before `setReply`; each query type owns its answer contract. `CGarrisonDialogQuery` records its initiator explicitly at the Hero Meeting or Town visitor call site. Android/JNI and the client packet schema are unchanged.
 - Automated acceptance: real-server packet tests cover missing, negative and out-of-range selection/level-up answers, unoffered hero level-up, commander level-up bounds, and a partner's attempted exchange dismissal followed by the initiator's valid dismissal. The existing covered-reply and army-transfer tests must keep passing.
 - Candidate acceptance: the current [structured checklist](CI/thor-validation-plan.json) covers Hero Meeting and Town exchange ownership, valid choice/cancel dialogs, hero/commander level-up, battle result/replay, teleport selection/cancel, and display/input recovery. Malformed packets are tested by the server suite rather than device UI.
 - Risks: rejecting a legitimate sentinel or early prompt can strand the player, especially after a nested battle or visit. The full activity migration still owns settled multi-player questions, duplicate/stale reply idempotency, continuation and serialization.
+- Publication receipt (2026-10-23): focused `army-transfer-tests` built and its `ArmyTransferBoundary` regression suite passed after the final source change. The structured checklist validator and all three unit tests passed; `git diff --check` and an independent full-diff review passed. The implementation and checklist were published on `codex/slice-55-answer-validation` as [PR #53](https://github.com/CapnChaosDK/vcmi_thor/pull/53). After verifying the product and candidate refs, the permanent candidate branch fast-forwarded from `f70ae38382afc1115ef2c286699dc961908183fb` to the exact implementation SHA, triggering [Thor CI 39956198463](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39956198463), observed `queued`. This later backlog-only receipt commit is not part of the candidate tree.
 
 ## Slice 55 — Activity and question lifecycle migration
 
