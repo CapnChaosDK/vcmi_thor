@@ -49,6 +49,7 @@ class CBattleDialogQuery : public CDialogQuery
 public:
 	static constexpr QueryType TYPE = QueryType::BattleDialog;
 	CBattleDialogQuery(CGameHandler * owner, const IBattleInfo * Bi, const std::optional<BattleResult> & Br);
+	bool acceptsReply(PlayerColor player, std::optional<int32_t> reply) const override;
 	void onRemoval(PlayerColor color) override;
 	void onExposure(QueryPtr topQuery) override;
 };

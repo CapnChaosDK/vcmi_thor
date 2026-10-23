@@ -66,6 +66,8 @@ public:
 
 	/// query is removed after player gives answer (like dialogs)
 	virtual bool endsByPlayerAnswer() const;
+	/// Validate a network reply before it changes this query or removes it.
+	virtual bool acceptsReply(PlayerColor player, std::optional<int32_t> reply) const;
 
 	/// called just before query is pushed on stack
 	virtual void onAdding(PlayerColor color);
@@ -107,6 +109,7 @@ public:
 	explicit CDialogQuery(CGameHandler * owner, QueryType type);
 	bool endsByPlayerAnswer() const override;
 	bool blocksPack(const CPackForServer *pack) const override;
+	bool acceptsReply(PlayerColor player, std::optional<int32_t> reply) const override;
 	void setReply(std::optional<int32_t> reply) override;
 protected:
 	std::optional<ui32> answer;

@@ -101,7 +101,7 @@ protected:
 
 	void exchange(const CArmedInstance * first, const CArmedInstance * second)
 	{
-		handler->queries->addQuery(std::make_shared<CGarrisonDialogQuery>(handler.get(), first, second));
+		handler->queries->addQuery(std::make_shared<CGarrisonDialogQuery>(handler.get(), first->getOwner(), first, second));
 	}
 
 	using Snapshot = std::vector<std::tuple<ObjectInstanceID, SlotID, CreatureID, int, const CStackInstance *, ArtifactInstanceID>>;
@@ -205,6 +205,81 @@ TEST_F(ArmyManagementTest, BuriedQuestionStillStoresItsOwnPlayersAnswer)
 	handler->queries->popQuery(cover);
 	handler->queries->popQuery(question);
 	EXPECT_EQ(appliedAnswer, 7);
+}
+
+TEST_F(ArmyManagementTest, SelectionQuestionRejectsMissingAndOutOfRangeAnswers)
+{
+	BlockingDialog dialog(true, true);
+	dialog.player = red;
+	dialog.components.resize(2);
+	auto question = std::make_shared<CBlockingDialogQuery>(handler.get(), nullptr, dialog);
+	handler->queries->addQuery(question);
+
+	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-1}, std::optional<int32_t>{3}})
+	{
+		QueryReply reply(question->queryID, answer);
+		EXPECT_FALSE(request(reply));
+		EXPECT_EQ(handler->queries->topQuery(red), question);
+	}
+
+	QueryReply valid(question->queryID, 2);
+	EXPECT_TRUE(request(valid));
+	EXPECT_EQ(handler->queries->topQuery(red), nullptr);
+}
+
+TEST_F(ArmyManagementTest, LevelUpQuestionRejectsUnofferedAndOutOfRangeAnswers)
+{
+	HeroLevelUp levelUp;
+	levelUp.skills.resize(1);
+	auto question = std::make_shared<CHeroLevelUpDialogQuery>(handler.get(), levelUp, left);
+	handler->queries->addQuery(question);
+
+	QueryReply early(question->queryID, 0);
+	EXPECT_FALSE(request(early));
+	EXPECT_EQ(handler->queries->topQuery(red), question);
+
+	// The tiny map has no client level-up UI; mark the already constructed prompt offered.
+	question->prompted = true;
+	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-1}, std::optional<int32_t>{1}})
+	{
+		QueryReply reply(question->queryID, answer);
+		EXPECT_FALSE(request(reply));
+		EXPECT_EQ(handler->queries->topQuery(red), question);
+	}
+	EXPECT_TRUE(question->acceptsReply(red, 0));
+}
+
+TEST_F(ArmyManagementTest, CommanderLevelUpQuestionRejectsOutOfRangeAnswers)
+{
+	CommanderLevelUp levelUp;
+	levelUp.skills.resize(1);
+	auto question = std::make_shared<CCommanderLevelUpDialogQuery>(handler.get(), levelUp, left);
+	// The actual prompt is covered by the client integration; avoid emitting it in this fixture.
+	question->prompted = true;
+	handler->queries->addQuery(question);
+
+	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-1}, std::optional<int32_t>{1}})
+	{
+		QueryReply reply(question->queryID, answer);
+		EXPECT_FALSE(request(reply));
+		EXPECT_EQ(handler->queries->topQuery(red), question);
+	}
+	EXPECT_TRUE(question->acceptsReply(red, 0));
+}
+
+TEST_F(ArmyManagementTest, ExchangePartnerCannotDismissInitiatorsQuestion)
+{
+	auto partner = findHeroAt({20, 20, 0});
+	ASSERT_NE(partner, nullptr);
+	auto question = std::make_shared<CGarrisonDialogQuery>(handler.get(), red, left, partner);
+	handler->queries->addQuery(question);
+
+	EXPECT_FALSE(handler->queryReply(question->queryID, 0, blue));
+	EXPECT_EQ(handler->queries->topQuery(red), question);
+	EXPECT_EQ(handler->queries->topQuery(blue), question);
+	EXPECT_TRUE(handler->queryReply(question->queryID, 0, red));
+	EXPECT_EQ(handler->queries->topQuery(red), nullptr);
+	EXPECT_EQ(handler->queries->topQuery(blue), nullptr);
 }
 
 TEST_F(ArmyManagementTest, ReverseSplitUsesActualSourceAndExactCount)
@@ -387,7 +462,7 @@ TEST_F(ArmyManagementTest, LockedGarrisonUsesActualDirectionAndSlots)
 
 TEST_F(ArmyManagementTest, DialogLockAlsoProtectsNonGarrisonArmies)
 {
-	auto query = std::make_shared<CGarrisonDialogQuery>(handler.get(), right, left);
+	auto query = std::make_shared<CGarrisonDialogQuery>(handler.get(), red, right, left);
 	query->removableUnits = false;
 	handler->queries->addQuery(query);
 	DisbandCreature disband;
