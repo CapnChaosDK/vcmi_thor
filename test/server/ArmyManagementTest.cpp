@@ -113,9 +113,9 @@ protected:
 		return object.get();
 	}
 
-	void exchange(const CArmedInstance * first, const CArmedInstance * second)
+	void exchange(const CArmedInstance * first, const CArmedInstance * second, PlayerColor initiator = red)
 	{
-		auto activity = std::make_shared<GarrisonDialogActivity>(handler.get(), first->getOwner(), first, second);
+		auto activity = std::make_shared<GarrisonDialogActivity>(handler.get(), initiator, first, second);
 		activity->askQuestion();
 		handler->activities->addActivity(activity);
 	}
@@ -419,7 +419,7 @@ TEST_F(ArmyManagementTest, AnotherPlayersQueryAndCoveredQueriesDoNotAuthorize)
 	right->tempOwner = blue;
 	auto * neutral = addObject<CGPandoraBox>(Obj::PANDORAS_BOX, PlayerColor::UNFLAGGABLE);
 	ASSERT_TRUE(neutral->setCreature(SlotID(0), pikeman, 8));
-	exchange(neutral, right);
+	exchange(neutral, right, blue);
 	BulkMoveArmy steal(neutral->id, left->id, SlotID(0));
 	reject(steal);
 	exchange(left, right);

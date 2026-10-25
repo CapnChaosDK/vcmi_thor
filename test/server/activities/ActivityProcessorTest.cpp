@@ -2596,9 +2596,18 @@ TEST_F(ActivityProcessorTest, unofferedAndInvalidPlayerRepliesCannotFinishAnActi
 	EXPECT_FALSE(activity->isFinished());
 }
 
-TEST_F(ActivityProcessorTest, saveWaitsForTheWholeContinuationIncludingOtherPlayers)
+TEST_F(MapObjectVisitTest, saveWaitsForTheWholeContinuationIncludingOtherPlayers)
 {
 	const PlayerColor player(0);
+	TinyH3M::TinyH3MBuilder builder(EMapFormat::SOD);
+	builder.size(36, false).playerActive(player).playerActive(PlayerColor(1))
+		.hero(int3(5, 5, 0), HeroTypeID(0), player)
+		.hero(int3(20, 20, 0), HeroTypeID(1), PlayerColor(1));
+	startWithMap(std::move(builder));
+	GameHandlerTestServer server(gameState(), player);
+	CGameHandler gh(server, gameState());
+	auto & activities = *gh.activities;
+
 	EXPECT_TRUE(activities.canSave());
 	auto pause = std::make_shared<TimerPauseActivity>(&gh, player);
 	activities.addActivity(pause);
