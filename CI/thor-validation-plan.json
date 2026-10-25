@@ -1,40 +1,40 @@
 {
   "schema_version": 1,
-  "feature_id": "slice-55-question-answer-validation",
-  "title": "Server question answer validation",
-  "summary": "Confirm that valid dialogs and battle choices resolve normally after the server validates each player's question answers. Malformed, unoffered and other-player replies are rejected by the real-server automated tests.",
-  "preparation": "Use the Thor companion to verify and install this exact candidate. Prepare a disposable game with two meeting heroes, a Town visitor, a choice or yes/no map dialog, a hero approaching level-up, a neutral battle and a teleport with multiple exits if available.",
-  "limitations": "Mark unavailable scenarios Blocked with notes. Ordinary device input cannot forge malformed or other-player packets; the real-server tests cover these. The activity runtime migration is still pending. CI and this checklist do not authorize merging.",
+  "feature_id": "slice-55-activity-question-lifecycle",
+  "title": "Complete activity and question lifecycle migration",
+  "summary": "Validate server-owned activities, once-only question settlement and continuation through exchanges, visits, rewards, battles, level-ups, teleport movement and save/load. Real-server tests cover malformed, wrong-player, duplicate, stale and covered replies.",
+  "preparation": "Use the Thor companion to verify and install this exact candidate while preserving data. Keep a pre-migration save. Prepare meeting heroes, a Town visitor, a reward object that grants experience and creatures, a neutral battle and a teleport route. Use disposable saves for rewards and replay.",
+  "limitations": "Mark unavailable scenarios Blocked with notes. Forged packets and shared-stack interleavings are automated server tests. Activity continuations are runtime-only: saves must wait until interactions settle; a standalone game pause remains saveable. CI/device acceptance does not authorize merging.",
   "checks": [
     {
       "id": "exchange-owner",
-      "title": "Hero Meeting and Town visitor exchange",
-      "steps": "Open a Hero Meeting, transfer and split units in both directions, close and reopen it. In a Town with a visitor, move units between garrison and visitor and close the window. If multiplayer is available, have the partner act while the initiator's exchange is open.",
-      "expected": "Only the initiator closes each exchange; both players' windows and current armies settle once. Legal transfers succeed, partner actions do not dismiss the wrong question, and no pending control remains."
+      "title": "Hero Meeting, Town and allied exchange",
+      "steps": "Transfer, split, merge and redistribute units and move artifacts on upper and lower screens in a Meeting and Town visitor exchange. Close/reopen; try rapid actions. If multiplayer is available, open an allied exchange, let the partner donate their own units/artifacts and hold an artifact while the initiator closes. Try an ally already in a dialog and hotseat.",
+      "expected": "Transfers preserve units and locks. Only the initiator closes; the partner window and children close on server settlement, with held artifacts returned and no pending lower controls. Busy/hotseat allies are not stranded."
     },
     {
-      "id": "choice-dialog",
-      "title": "Choice and cancellation dialogs",
-      "steps": "Answer a map-object selection and a yes/no or cancelable question; repeat with the opposite valid choice or cancel in a disposable save. Open and dismiss a Town recruitment or utility window.",
-      "expected": "Each offered answer applies once to the intended object. Cancel leaves the corresponding action unapplied, and upper and lower contexts recover without a stuck dialog."
+      "id": "visits-rewards",
+      "title": "Nested visits, reward choices and turn start",
+      "steps": "Choose and cancel object dialogs. Claim a reward granting multiple hero/commander levels and more creatures than fit. Resolve the level-ups and garrison window; where available, claim consecutive Seer Hut rewards. With turn timers enabled, start a turn in a Town containing a reward building.",
+      "expected": "Each chosen reward applies once. Hero levels precede commander levels; remaining rewards and building visits resume after their children. Turn events and visits wait behind turn acceptance. Dialogs never strand the turn."
     },
     {
-      "id": "level-up",
-      "title": "Hero and commander level-up",
-      "steps": "Gain a hero level and choose an offered skill. If a commander level-up is available, answer it too. Continue moving or end the turn after the prompts; note any unavailable commander scenario.",
-      "expected": "Only the chosen offered skill is applied once. Prompts appear in order and close normally; the player is not stranded behind a pending question."
+      "id": "battle-movement",
+      "title": "Battle result, replay and teleport continuation",
+      "steps": "Finish a neutral battle that causes a level-up, dismiss the result and choose skills; exercise replay in a disposable save. Stop/continue an upper/lower route through a guard and a teleport. Dismiss any nested messages before proceeding; try rapid accept/cancel.",
+      "expected": "Battle/reward effects apply once, level-ups precede object continuation, and the ordinary Adventure view returns. Teleport movement continues only after its own question actually resolves; rejected or older answers do not restart a route."
     },
     {
-      "id": "battle-teleport",
-      "title": "Battle result and teleport answers",
-      "steps": "Finish a neutral battle and dismiss the result; where replay is offered, exercise it in a disposable save. Use a teleport with multiple destinations and try selection and cancel/random-exit behavior where available.",
-      "expected": "Dismiss and replay take their intended paths without double application. Teleport preserves its existing selection and cancel/random-exit behavior, and Adventure resumes with current controls."
+      "id": "save-load",
+      "title": "Existing saves and settled new saves",
+      "steps": "Load a pre-migration save, finish a reward or battle, save after dialogs close and reload. Repeat from a standalone game pause. Attempt saving during a pending turn-start acceptance or interaction, then accept/finish and save again.",
+      "expected": "Existing saves and new settled saves retain creatures, armies, rewards, heroes and turn state. Unserialized continuations cannot be lost through a mid-interaction save. Saving works once pending work is settled and during a standalone pause."
     },
     {
       "id": "lifecycle-input",
-      "title": "Display and input recovery",
-      "steps": "While a Meeting, choice dialog, level-up or battle result is open, toggle/reconnect the lower display and background/resume. Dismiss the current question with upper touch/controller, then check lower controls and single-display play.",
-      "expected": "The current question resolves once, one lower presentation returns without stale hit regions or held gestures, and upper touch/controller remain usable."
+      "title": "Display, modal restoration and input regressions",
+      "steps": "While Meeting, reward, level-up and battle-result windows are open, toggle/reconnect the lower display and background/resume. Close each via upper touch/controller, check the restored parent and current lower controls, then repeat with one display.",
+      "expected": "Correct native parent and lower context return without a residual battle frame, stale hit regions, duplicate actions or stuck input. Upper touch/controller and single-display play remain usable."
     }
   ]
 }

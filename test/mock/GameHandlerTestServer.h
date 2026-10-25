@@ -30,6 +30,15 @@ public:
 	void applyPack(CPackForClient & pack) override;
 	void sendPack(CPackForClient & pack, GameConnectionID connectionID) override;
 
+	/// Question ids of the level-up dialogs that the server sent, in order.
+	std::vector<QuestionID> levelUpPromptIDs;
+
+	/// Question ids that the server reported as resolved, in order.
+	std::vector<QuestionID> resolvedQuestionIDs;
+
+	/// Number of battles whose result the server actually applied.
+	int battlesConfirmed = 0;
+
 private:
 	EServerState state = EServerState::LOBBY;
 	std::shared_ptr<CGameState> gameState;

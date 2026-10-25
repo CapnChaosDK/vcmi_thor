@@ -105,7 +105,7 @@ void CGMine::onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance *
 		else
 			ynd.text.appendTextID("core.advevent.187");
 
-		gameEvents.showBlockingDialog(this, &ynd);
+		gameEvents.showBlockingDialog(&ynd);
 		return;
 	}
 
@@ -269,7 +269,7 @@ void CGMine::battleFinished(IGameEventCallback & gameEvents, const CGHeroInstanc
 	}
 }
 
-void CGMine::blockingDialogAnswered(IGameEventCallback & gameEvents, const CGHeroInstance *hero, int32_t answer) const
+void CGMine::blockingDialogAnswered(IGameEventCallback & gameEvents, const CGHeroInstance *hero, int32_t answer, const JsonNode & visitState) const
 {
 	if(answer)
 		gameEvents.startBattle(hero, this);
@@ -849,7 +849,7 @@ void CGArtifact::onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstan
 					ynd.text.replaceRawString(getArmyDescription().toString(LIBRARY->staticTexts()));
 					ynd.text.replaceTextID("core.genrltxt.43"); // creatures
 				}
-				gameEvents.showBlockingDialog(this, &ynd);
+				gameEvents.showBlockingDialog(&ynd);
 			}
 			break;
 		case Obj::SPELL_SCROLL:
@@ -859,10 +859,10 @@ void CGArtifact::onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstan
 					BlockingDialog ynd(true,false);
 					ynd.player = h->getOwner();
 					ynd.text = message;
-					gameEvents.showBlockingDialog(this, &ynd);
+					gameEvents.showBlockingDialog(&ynd);
 				}
 				else
-					blockingDialogAnswered(gameEvents, h, true);
+					gameEvents.startBattle(h, this);
 			}
 			break;
 		}
@@ -886,7 +886,7 @@ void CGArtifact::battleFinished(IGameEventCallback & gameEvents, const CGHeroIns
 		pick(gameEvents, hero);
 }
 
-void CGArtifact::blockingDialogAnswered(IGameEventCallback & gameEvents, const CGHeroInstance *hero, int32_t answer) const
+void CGArtifact::blockingDialogAnswered(IGameEventCallback & gameEvents, const CGHeroInstance *hero, int32_t answer, const JsonNode & visitState) const
 {
 	if(answer)
 		gameEvents.startBattle(hero, this);

@@ -31,7 +31,12 @@ class CGameHandler;
 class BattleProcessor;
 class ICombatEventScript;
 
-/// Processes incoming battle action queries and applies requested action(s)
+namespace spells
+{
+class Spell;
+}
+
+/// Processes incoming battle action requests and applies requested action(s)
 class BattleActionProcessor : boost::noncopyable
 {
 	struct MovementResult
