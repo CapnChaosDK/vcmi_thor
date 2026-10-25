@@ -22,6 +22,7 @@
 #include "lib/CConfigHandler.h"
 
 #include <SDL_version.h>
+#include <SDL_hints.h>
 
 namespace
 {
@@ -40,8 +41,16 @@ ControllerPrompt::Family controllerPromptFamily(SDL_GameController * controller)
 	case SDL_CONTROLLER_TYPE_XBOX360:
 	case SDL_CONTROLLER_TYPE_XBOXONE:
 		return ControllerPrompt::Family::XBOX;
+	case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO:
+#if SDL_VERSION_ATLEAST(2,24,0)
+	case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
+	case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
+	case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
+#endif
+		return SDL_GetHintBoolean(SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS, SDL_TRUE)
+			? ControllerPrompt::Family::NINTENDO_LABELS : ControllerPrompt::Family::NINTENDO;
 	default:
-		return ControllerPrompt::Family::UNKNOWN;
+		return ControllerPrompt::Family::GENERIC;
 	}
 #else
 	static_cast<void>(controller);
@@ -112,23 +121,6 @@ void InputSourceGameController::openGameController(int index)
 	}
 
 	gameControllerMap.try_emplace(joystickIndex, std::move(controllerPtr));
-	latchHeldControls(joystickIndex);
-}
-
-void InputSourceGameController::latchHeldControls(int instance)
-{
-	const auto controller = gameControllerMap.at(instance).get();
-	// Connecting/remapping a held control is not a new intent in the active window.
-	for(int button = 0; button < SDL_CONTROLLER_BUTTON_MAX; ++button)
-		if(SDL_GameControllerGetButton(controller, static_cast<SDL_GameControllerButton>(button)))
-			ENGINE->events().blockControllerButton(instance, SDL_GameControllerGetStringForButton(static_cast<SDL_GameControllerButton>(button)));
-	for(int axis = 0; axis < SDL_CONTROLLER_AXIS_MAX; ++axis)
-	{
-		const bool stick = axis < SDL_CONTROLLER_AXIS_TRIGGERLEFT;
-		auto & latch = axisLatches[{instance, stick ? axis / 2 : axis}];
-		latch.update(getRealAxisValue(SDL_GameControllerGetAxis(controller, static_cast<SDL_GameControllerAxis>(axis))), stick ? axis % 2 : 0);
-		latch.cancel();
-	}
 }
 
 ControllerPrompt::Family InputSourceGameController::getActiveControllerPromptFamily() const
@@ -159,20 +151,17 @@ void InputSourceGameController::handleEventDeviceAdded(const SDL_ControllerDevic
 	openGameController(device.which);
 }
 
-bool InputSourceGameController::handleEventDeviceRemoved(const SDL_ControllerDeviceEvent & device)
+void InputSourceGameController::handleEventDeviceRemoved(const SDL_ControllerDeviceEvent & device)
 {
 	if(gameControllerMap.find(device.which) == gameControllerMap.end())
 	{
 		logGlobal->warn("Game controller %d is not opened before.", device.which);
-		return false;
+		return;
 	}
-	const bool removedActiveController = activeController == device.which;
-	if(removedActiveController)
+	if(activeController == device.which)
 		setActiveController(-1);
 	ENGINE->events().forgetController(device.which);
 	gameControllerMap.erase(device.which);
-	std::erase_if(axisLatches, [&](const auto & entry) { return entry.first.first == device.which; });
-	return removedActiveController;
 }
 
 void InputSourceGameController::handleEventDeviceRemapped(const SDL_ControllerDeviceEvent & device)
@@ -193,8 +182,6 @@ void InputSourceGameController::handleEventDeviceRemapped(const SDL_ControllerDe
 
 void InputSourceGameController::resetInput(bool dismissPopup)
 {
-	for(auto & [identity, latch] : axisLatches)
-		latch.cancel();
 	cursorAxisValueX = 0;
 	cursorAxisValueY = 0;
 	scrollAxisValueX = 0;
@@ -203,18 +190,14 @@ void InputSourceGameController::resetInput(bool dismissPopup)
 	cursorPlanDisY = 0;
 	scrollPlanDisX = 0;
 	scrollPlanDisY = 0;
-	const bool cancelGesture = std::exchange(scrollAxisMoved, false);
-	if(cancelGesture)
-		ENGINE->events().dispatchGesturePanningCanceled(dismissPopup);
+	if(scrollAxisMoved)
+		ENGINE->events().dispatchGesturePanningCanceled();
+	scrollAxisMoved = false;
 	ENGINE->events().cancelControllerInput(dismissPopup);
-	if(gameControllerMap.count(activeController))
-		latchHeldControls(activeController);
 }
 
 void InputSourceGameController::setActiveController(int instanceID)
 {
-	if(instanceID != -1 && !gameControllerMap.count(instanceID))
-		return;
 	if(activeController == instanceID)
 		return;
 	resetInput();
@@ -229,23 +212,28 @@ bool InputSourceGameController::isAxisMotionActive(const SDL_ControllerAxisEvent
 
 double InputSourceGameController::getRealAxisValue(int value) const
 {
-	return ControllerInput::axisValue(value, configAxisDeadZone, configAxisFullZone);
+	double ratio = static_cast<double>(value) / (value < 0 ? -static_cast<double>(SDL_JOYSTICK_AXIS_MIN) : SDL_JOYSTICK_AXIS_MAX);
+	double greenZone = configAxisFullZone - configAxisDeadZone;
+
+	if (std::abs(ratio) < configAxisDeadZone)
+		return 0;
+
+	double scaledValue = std::copysign((std::abs(ratio) - configAxisDeadZone) / greenZone, ratio);
+	double clampedValue = std::clamp(scaledValue, -1.0, +1.0);
+	return clampedValue;
 }
 
-void InputSourceGameController::dispatchAxisShortcuts(int instance, int axisValue, const std::string & axisName)
+void InputSourceGameController::dispatchAxisShortcuts(int instance, int axisValue, const std::string & axisName, bool consumed)
 {
 	if(getRealAxisValue(axisValue) > configTriggerThreshold)
-		ENGINE->events().dispatchControllerButtonPressed(instance, axisName);
+		ENGINE->events().dispatchControllerButtonPressed(instance, axisName, consumed);
 	else
 		ENGINE->events().dispatchControllerButtonReleased(instance, axisName);
 }
 
 void InputSourceGameController::handleEventAxisMotion(const SDL_ControllerAxisEvent & axis)
 {
-	if(axis.which != activeController || !gameControllerMap.count(axis.which))
-		return;
-	const bool stick = axis.axis < SDL_CONTROLLER_AXIS_TRIGGERLEFT;
-	if(!axisLatches[{axis.which, stick ? axis.axis / 2 : axis.axis}].update(getRealAxisValue(axis.value), stick ? axis.axis % 2 : 0))
+	if(axis.which != activeController)
 		return;
 
 	if(isAxisMotionActive(axis))
@@ -263,6 +251,7 @@ void InputSourceGameController::handleEventAxisMotion(const SDL_ControllerAxisEv
 		scrollAxisValueX = 0;
 		scrollAxisValueY = 0;
 		scrollAxisMoved = false;
+		dispatchAxisShortcuts(axis.which, axis.value, axisName, true);
 		return;
 	}
 
@@ -302,16 +291,12 @@ void InputSourceGameController::tryToConvertCursor()
 
 void InputSourceGameController::handleEventButtonDown(const SDL_ControllerButtonEvent & button)
 {
-	if(!gameControllerMap.count(button.which))
-		return;
 	std::string buttonName = SDL_GameControllerGetStringForButton(static_cast<SDL_GameControllerButton>(button.button));
 	ENGINE->events().dispatchControllerButtonPressed(button.which, buttonName);
 }
 
 void InputSourceGameController::handleEventButtonUp(const SDL_ControllerButtonEvent & button)
 {
-	if(!gameControllerMap.count(button.which))
-		return;
 	std::string buttonName = SDL_GameControllerGetStringForButton(static_cast<SDL_GameControllerButton>(button.button));
 	ENGINE->events().dispatchControllerButtonReleased(button.which, buttonName);
 }

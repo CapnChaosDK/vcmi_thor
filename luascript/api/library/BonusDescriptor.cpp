@@ -39,6 +39,7 @@ JsonNode BonusDescriptor::toJson() const
 	if(!sourceType.isNull())         result["sourceType"] = sourceType;
 	if(!sourceID.isNull())           result["sourceID"] = sourceID;
 	if(!targetSourceType.isNull())   result["targetSourceType"] = targetSourceType;
+	if(!targetSourceID.isNull())     result["targetSourceID"] = targetSourceID;
 	if(!addInfo.isNull())            result["addInfo"] = addInfo;
 	if(!limiters.isNull())           result["limiters"] = limiters;
 	if(!propagator.isNull())         result["propagator"] = propagator;
@@ -50,9 +51,7 @@ JsonNode BonusDescriptor::toJson() const
 
 Bonus BonusDescriptor::toBonus() const
 {
-	Bonus b;
-	JsonUtils::parseBonus(toJson(), &b);
-	return b;
+	return *JsonUtils::parseBonus(toJson());
 }
 
 }

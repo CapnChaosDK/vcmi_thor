@@ -310,20 +310,34 @@ bool CCreatureSet::needsLastStack() const
 	return false;
 }
 
-ui64 CCreatureSet::getArmyStrength(int fortLevel) const
+ui64 CCreatureSet::getArmyStrength() const
 {
 	ui64 ret = 0;
 	for(const auto & elem : stacks)
+		ret += elem.second->getPower();
+	return ret;
+}
+
+ui64 CCreatureSet::estimateCombatValue(int fortLevel) const
+{
+	ui64 ret = 0;
+
+	for(const auto & elem : stacks)
 	{
-		ui64 powerToAdd = elem.second->getPower();
+		ui64 value = elem.second->estimateCombatValue();
+
+		// town walls delay attackers, and delay them longer when they can neither fly nor shoot
 		if(fortLevel > 0 && !elem.second->hasBonusOfType(BonusType::FLYING))
 		{
-			powerToAdd /= fortLevel;
+			value /= fortLevel;
+
 			if(!elem.second->hasBonusOfType(BonusType::SHOOTER))
-				powerToAdd /= fortLevel;
+				value /= fortLevel;
 		}
-		ret += powerToAdd;
+
+		ret += value;
 	}
+
 	return ret;
 }
 
@@ -580,24 +594,27 @@ bool CCreatureSet::canBeMergedWith(const CCreatureSet & cs, bool allowMergingSta
 
 bool CCreatureSet::hasUnits(const std::vector<CStackBasicDescriptor> & units, bool requireLastStack) const
 {
-	bool foundExtraCreatures = false;
-	int testedSlots = 0;
+	std::map<CreatureID, int64_t> requested;
 	for(const auto & reqStack : units)
+		requested[reqStack.getId()] += reqStack.getCount();
+
+	bool foundExtraCreatures = false;
+	size_t testedSlots = 0;
+	for(const auto & [creature, requestedCount] : requested)
 	{
-		size_t count = 0;
+		int64_t count = 0;
 		for(const auto & slot : Slots())
 		{
-			const auto & heroStack = slot.second;
-			if(heroStack->getType() == reqStack.getType())
+			if(slot.second->getId() == creature)
 			{
-				count += heroStack->getCount();
+				count += slot.second->getCount();
 				testedSlots += 1;
 			}
 		}
-		if(count > reqStack.getCount())
+		if(count > requestedCount)
 			foundExtraCreatures = true;
 
-		if(count < reqStack.getCount()) //not enough creatures of this kind
+		if(count < requestedCount) //not enough creatures of this kind
 			return false;
 	}
 

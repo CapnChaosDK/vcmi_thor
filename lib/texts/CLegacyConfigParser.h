@@ -12,7 +12,7 @@
 #include "filesystem/ResourcePath.h"
 
 /// Parser for any text files from H3
-class DLL_LINKAGE CLegacyConfigParser
+class CLegacyConfigParser
 {
 	std::string fileEncoding;
 
@@ -31,6 +31,9 @@ class DLL_LINKAGE CLegacyConfigParser
 
 	/// reads "raw" string without encoding conversion
 	std::string readRawString();
+
+	/// returns true if position points at the end of current line or file
+	bool isEndOfLine(const char * position) const;
 
 public:
 	/// read one entry from current line. Return ""/0 if end of line reached

@@ -27,8 +27,8 @@ class Services;
 class IGameRandomizer;
 class IMapService;
 class CMap;
-class CSaveFile;
-class CLoadFile;
+class BinarySerializer;
+class BinaryDeserializer;
 struct CPackForClient;
 class CHeroClass;
 struct EventCondition;
@@ -75,6 +75,9 @@ class DLL_LINKAGE CGameState : public CNonConstInfoCallback, public Serializeabl
 	/// Runs the map's converted event script; null when the map has no event system. Server-only, rebuilt on load.
 	std::unique_ptr<scripting::MapEventDispatcher> mapEventDispatcher;
 
+	/// Bonus nodes of special terrains, created on first use. Not serialized - heroes reattach on load
+	std::map<BattleField, std::unique_ptr<CBonusSystemNode>> specialTerrainNodes;
+
 public:
 	/// List of currently ongoing battles
 	std::vector<std::unique_ptr<BattleInfo>> currentBattles;
@@ -86,6 +89,10 @@ public:
 
 	/// list of players currently making turn. Usually - just one, except for simturns
 	std::set<PlayerColor> actingPlayers;
+
+	/// pairs of players that play their turns simultaneously and have not made contact yet.
+	/// Such players can not interact with objects owned by each other - see TurnOrderProcessor on server
+	std::set<std::pair<PlayerColor, PlayerColor>> blockedContacts;
 
 	CGameState();
 	virtual ~CGameState();
@@ -118,8 +125,15 @@ public:
 
 	void apply(CPackForClient & pack);
 	BattleField battleGetBattlefieldType(int3 tile, vstd::RNG & randomGenerator) const;
+	/// Returns special terrain, such as Cursed Ground, that covers specified tile, or NONE
+	BattleField getSpecialTerrainAt(const int3 & tile) const;
+	/// Returns node that grants bonuses of specified special terrain to heroes that stand on it
+	CBonusSystemNode & getSpecialTerrainNode(BattleField terrain);
 
 	PlayerRelations getPlayerRelations(PlayerColor color1, PlayerColor color2) const override;
+	/// Returns false if both players are still playing simultaneous turns without contact,
+	/// which means that interaction between them is not allowed yet
+	bool isContactAllowed(PlayerColor color1, PlayerColor color2) const;
 	void calculatePaths(const std::shared_ptr<PathfinderConfig> & config) const override;
 	std::vector<const CGObjectInstance*> guardingCreatures (int3 pos) const;
 
@@ -199,8 +213,10 @@ public:
 	/// Null when the map has no event script - callers must check.
 	scripting::MapEventDispatcher * getMapEventDispatcher() const { return mapEventDispatcher.get(); }
 
-	void saveGame(CSaveFile & file) const;
-	void loadGame(CLoadFile & file);
+	/// Writes map header and start info, in form used by lobby when saved game is selected
+	void saveHeader(BinarySerializer & h) const;
+	void saveGame(BinarySerializer & h) const;
+	void loadGame(BinaryDeserializer & h);
 
 	/// Serializes the whole gamestate into a memory buffer. The replay log is deliberately left
 	/// out - a snapshot lives inside that very log, and including it would nest snapshots.
@@ -215,6 +231,8 @@ public:
 		h & scenarioOps;
 		h & initialOpts;
 		h & actingPlayers;
+		if (h.hasFeature(Handler::Version::SIMTURNS_CONTACT_STATUS))
+			h & blockedContacts;
 		h & day;
 		h & map;
 		h & players;
@@ -254,12 +272,16 @@ private:
 	void adjustObjectsToMapBounds();
 	void initHeroes(IGameRandomizer & gameRandomizer);
 	void placeHeroesInTowns();
+	/// heroes placed on water start in boat, must be called after heroes on town tiles are moved to town entrance
+	void initHeroBoats(IGameRandomizer & gameRandomizer);
 	void initFogOfWar();
 	void initStartingBonus(IGameRandomizer & gameRandomizer);
 	void initTowns(vstd::RNG & randomGenerator);
 	void initTownNames(vstd::RNG & randomGenerator);
 	void initMapObjects(IGameRandomizer & gameRandomizer);
 	void initVisitingAndGarrisonedHeroes();
+	/// Removes one-sided town-hero links, found in saves made before shared town entrances were fixed
+	void repairTownHeroLinks();
 	void initCampaign();
 
 	// ----- bonus system handling -----

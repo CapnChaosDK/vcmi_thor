@@ -15,6 +15,8 @@
 #include "adventureMap/AdventureMapInterface.h"
 #include "events/InputHandler.h"
 #include "GameEngine.h"
+#include "Client.h"
+#include "CServerHandler.h"
 #include "GameInstance.h"
 #include "gui/CursorHandler.h"
 #include "mapView/mapHandler.h"
@@ -84,12 +86,11 @@ void HeroMovementController::showTeleportDialog(const CGHeroInstance * hero, Tel
 	// othervice, ask server to select one randomly by sending invalid (-1) value as answer
 	assert(waitingForQueryApplyReply == false);
 	waitingForQueryApplyReply = true;
-	pendingTeleportQuestion = questionID;
 
 	if(!GAME->interface()->localState->hasPath(hero))
 	{
 		// Hero enters teleporter without specifying exit - select it randomly
-		pendingTeleportReplyRequest = GAME->interface()->cb->selectionMade(-1, questionID);
+		GAME->interface()->cb->selectionMade(-1, questionID);
 		return;
 	}
 
@@ -102,14 +103,14 @@ void HeroMovementController::showTeleportDialog(const CGHeroInstance * hero, Tel
 		{
 			// Remove this node from path - it will be covered by teleportation
 			//GAME->interface()->localState->removeLastNode(hero);
-			pendingTeleportReplyRequest = GAME->interface()->cb->selectionMade(i, questionID);
+			GAME->interface()->cb->selectionMade(i, questionID);
 			return;
 		}
 	}
 
 	// may happen when hero has path but does not moves alongside it
 	// for example, while standing on teleporter set path that does not leads throught teleporter and press space
-	pendingTeleportReplyRequest = GAME->interface()->cb->selectionMade(-1, questionID);
+	GAME->interface()->cb->selectionMade(-1, questionID);
 	return;
 }
 
@@ -124,7 +125,7 @@ void HeroMovementController::updatePath(const CGHeroInstance * hero, const TryMo
 	if(!GAME->interface()->localState->hasPath(hero))
 		return; // may happen when hero teleports
 
-	assert(GAME->interface()->makingTurn);
+	assert(GAME->interface()->makingTurn || (GAME->server().client && GAME->server().client->observerMode.load()));
 
 	bool directlyAttackingCreature = details.attackedFrom.isValid() && GAME->interface()->localState->getPath(hero).lastNode().coord == details.attackedFrom;
 
@@ -216,25 +217,15 @@ void HeroMovementController::onTryMoveHero(const CGHeroInstance * hero, const Tr
 	}
 }
 
-void HeroMovementController::onQuestionAnswerApplied(int requestID, bool success)
+void HeroMovementController::onQuestionAnswerApplied()
 {
-	if(!waitingForQueryApplyReply || requestID != pendingTeleportReplyRequest || success)
+	if (!waitingForQueryApplyReply)
 		return;
 
 	waitingForQueryApplyReply = false;
-	pendingTeleportQuestion = QuestionID::NONE;
-	pendingTeleportReplyRequest = -1;
-	requestMovementAbort();
-}
 
-void HeroMovementController::onQuestionResolved(QuestionID questionID)
-{
-	if(!waitingForQueryApplyReply || questionID != pendingTeleportQuestion)
-		return;
-
-	waitingForQueryApplyReply = false;
-	pendingTeleportQuestion = QuestionID::NONE;
-	pendingTeleportReplyRequest = -1;
+	// Server accepted our TeleportDialog question reply and moved hero
+	// Continue moving alongside our path, if any
 	if(duringMovement)
 		onMoveHeroApplied();
 }
@@ -249,7 +240,8 @@ void HeroMovementController::onMoveHeroApplied()
 		return;
 
 	// hero has moved onto teleporter and activated it
-	// Continue only after this teleport question resolves and the hero has moved to its destination
+	// in this case next movement should be done only after question reply has been acknowledged
+	// and hero has been moved to teleport destination
 	if(waitingForQueryApplyReply)
 		return;
 

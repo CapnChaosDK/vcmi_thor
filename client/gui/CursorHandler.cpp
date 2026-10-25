@@ -93,6 +93,9 @@ void CursorHandler::set(const std::string & index)
 		}
 	}
 
+	if (cursors.at(currentCursorIndex).cursorID != index)
+		logGlobal->error("Cursor '%s' is not defined in config/cursors.json", index);
+
 	const auto & currentCursor = cursors.at(currentCursorIndex);
 
 	if (currentCursor.image.empty())
@@ -255,6 +258,12 @@ void CursorHandler::updateAnimatedCursor()
 	{
 		frameTime -= frameDisplayDuration;
 		newFrame++;
+	}
+
+	if (animation->size() == 0)
+	{
+		logGlobal->error("CursorHandler::updateAnimatedCursor: animation '%s' has no frames, skipping update", animationName.getName().c_str());
+		return; //nothing to display, would loop forever in loop below
 	}
 
 	while (newFrame >= animation->size())

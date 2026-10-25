@@ -1,5 +1,10 @@
 # AYN Thor VCMI repository discovery
 
+Current reconciliation work uses pinned fresh upstream with a minimal second-screen
+layer. See [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md) for its contract, intentional
+compatibility changes and validation gates. Earlier assessments below are historical
+for their pinned trees; they do not authorize engine feature adaptations.
+
 Discovery date: 2026-09-13
 
 Baseline: VCMI `develop` at `819259d97f1de9262b97811ccb081346c20ffef2`

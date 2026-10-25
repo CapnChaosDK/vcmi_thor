@@ -24,7 +24,7 @@ TResources BuildAnalyzer::getMissingResourcesNow(const float armyGoldRatio) cons
 	result[GameResID::GOLD] *= armyGoldRatio;
 	result += requiredResources;
 	result -= aiNk->getFreeResources();
-	result.positive();
+	result.removeNegative();
 	return result;
 }
 
@@ -34,7 +34,7 @@ TResources BuildAnalyzer::getMissingResourcesInTotal(const float armyGoldRatio) 
 	result[GameResID::GOLD] *= armyGoldRatio;
 	result += totalDevelopmentCost;
 	result -= aiNk->getFreeResources();
-	result.positive();
+	result.removeNegative();
 	return result;
 }
 
@@ -44,7 +44,7 @@ TResources BuildAnalyzer::getFreeResourcesAfterMissingTotal(const float armyGold
 	result[GameResID::GOLD] *= armyGoldRatio;
 	result -= totalDevelopmentCost;
 	result += aiNk->getFreeResources();
-	result.positive();
+	result.removeNegative();
 	return result;
 }
 
@@ -365,7 +365,9 @@ BuildingInfo BuildAnalyzer::getBuildingOrPrerequisite(
 
 	if(!town->hasBuilt(building))
 	{
-		auto canBuild = cc->canBuildStructure(town, building);
+		// buildings that appear on their own or by special means are reported as allowed, but the server refuses to build them
+		const bool builtByOtherMeans = buildPtr->mode == CBuilding::BUILD_AUTO || buildPtr->mode == CBuilding::BUILD_SPECIAL;
+		auto canBuild = builtByOtherMeans ? EBuildingState::FORBIDDEN : cc->canBuildStructure(town, building);
 
 		if(canBuild == EBuildingState::ALLOWED)
 		{

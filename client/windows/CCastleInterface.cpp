@@ -35,6 +35,7 @@
 #include "../widgets/TextControls.h"
 #include "../widgets/RadialMenu.h"
 #include "../widgets/CExchangeController.h"
+#include "../thor/ThorArmyController.h"
 #include "render/Canvas.h"
 #include "render/IImage.h"
 #include "render/IRenderHandler.h"
@@ -179,7 +180,7 @@ namespace
 		context.browserEntries = thorTownServices(town);
 		if(context.townManagement && context.townManagement->locallyControllable && !owner->hasPendingThorArmyRequest())
 		{
-			CExchangeController exchange(context.townManagement->garrisonArmyId >= 0 ? town->getUpperArmy() : nullptr,
+			ThorArmyController exchange(context.townManagement->garrisonArmyId >= 0 ? town->getUpperArmy() : nullptr,
 				town->getVisitingHero());
 			bool canTransfer = false;
 			for(int source = 0; source < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE) && !canTransfer; ++source)
@@ -252,6 +253,17 @@ static UpgradableSlotsResult getUpgradableSlots(const CArmedInstance *obj)
 	return UpgradableSlotsResult { hasCreaturesToUpgrade, !upgradeInfos.empty(), slotInfosToDelete.empty(), costs, upgradeInfos };
 }
 
+static std::string getUpgradeAllConfirmationTextID(const UpgradableSlotsResult & upgradableSlots)
+{
+	if(!upgradableSlots.canAffordAll)
+		return "vcmi.townWindow.upgradeAll.notAllUpgradable";
+
+	if(upgradableSlots.totalCosts.empty())
+		return "vcmi.upgrade.freeConfirm";
+
+	return "core.genrltxt.207";
+}
+
 static void upgradeAllCreatures(const CArmedInstance *obj, const UpgradableSlotsResult & upgradableSlots)
 {
 	if(!upgradableSlots.canAffordAny)
@@ -261,15 +273,15 @@ static void upgradeAllCreatures(const CArmedInstance *obj, const UpgradableSlots
 	}
 
 	std::vector<std::shared_ptr<CComponent>> resComps;
-	for(TResources::nziterator i(upgradableSlots.totalCosts); i.valid(); i++)
-		resComps.push_back(std::make_shared<CComponent>(ComponentType::RESOURCE, i->resType, i->resVal));
-	if(resComps.empty())
-		resComps.push_back(std::make_shared<CComponent>(ComponentType::RESOURCE, static_cast<GameResID>(GameResID::GOLD), 0)); // add at least gold, when there are no costs
-	resComps.back()->newLine = true;
+	for(const auto & [resource, amount] : upgradableSlots.totalCosts.nonZeroEntries())
+		resComps.push_back(std::make_shared<CComponent>(ComponentType::RESOURCE, resource, amount));
+	// Free upgrades have no resource components, so only add a separator when costs are present.
+	if(!resComps.empty())
+		resComps.back()->newLine = true;
 	for(auto & upgradeInfo : upgradableSlots.upgradeInfos)
 		resComps.push_back(std::make_shared<CComponent>(ComponentType::CREATURE, upgradeInfo.second.getUpgrade(), obj->Slots().at(upgradeInfo.first)->getCount()));
 
-	std::string textID = upgradableSlots.canAffordAll ? "core.genrltxt.207" : "vcmi.townWindow.upgradeAll.notAllUpgradable";
+	const std::string textID = getUpgradeAllConfirmationTextID(upgradableSlots);
 
 	GAME->interface()->showYesNoDialog(LIBRARY->generaltexth->translate(textID), [upgradableSlots, obj](){
 		for(auto & upgradeInfo : upgradableSlots.upgradeInfos)
@@ -327,7 +339,7 @@ CSpellResearchDialog::CSpellResearchDialog(const std::string & textToShow, const
 
 CBuildingRect::CBuildingRect(CCastleBuildings * Par, const CGTownInstance * Town, const CStructure * Str)
 	: CShowableAnim(0, 0, Str->defName, CShowableAnim::BASE, BUILDING_FRAME_TIME),
-	  parent(Par),
+	  owner(Par),
 	  town(Town),
 	  str(Str),
 	  border(nullptr),
@@ -394,18 +406,18 @@ void CBuildingRect::hover(bool on)
 
 	if(on)
 	{
-		if(! parent->selectedBuilding //no building hovered
-		  || (*parent->selectedBuilding)<(*this)) //or we are on top
+		if(! owner->selectedBuilding //no building hovered
+		  || (*owner->selectedBuilding)<(*this)) //or we are on top
 		{
-			parent->selectedBuilding = this;
+			owner->selectedBuilding = this;
 			ENGINE->statusbar()->write(getSubtitle());
 		}
 	}
 	else
 	{
-		if(parent->selectedBuilding == this)
+		if(owner->selectedBuilding == this)
 		{
-			parent->selectedBuilding = nullptr;
+			owner->selectedBuilding = nullptr;
 			ENGINE->statusbar()->clear();
 		}
 	}
@@ -413,16 +425,16 @@ void CBuildingRect::hover(bool on)
 
 void CBuildingRect::clickPressed(const Point & cursorPosition)
 {
-	if(getBuilding() && area && (parent->selectedBuilding==this))
+	if(getBuilding() && area && (owner->selectedBuilding==this))
 	{
 		auto building = getBuilding();
-		parent->buildingClicked(building->bid);
+		owner->buildingClicked(building->bid);
 	}
 }
 
 void CBuildingRect::showPopupWindow(const Point & cursorPosition)
 {
-	if((!area) || (this!=parent->selectedBuilding) || getBuilding() == nullptr)
+	if((!area) || (this!=owner->selectedBuilding) || getBuilding() == nullptr)
 		return;
 
 	BuildingID bid = getBuilding()->bid;
@@ -435,7 +447,7 @@ void CBuildingRect::showPopupWindow(const Point & cursorPosition)
 	else
 	{
 		int level = BuildingID::getLevelIndexFromDwelling(bid);
-		ENGINE->windows().createAndPushWindow<CDwellingInfoBox>(parent->pos.x+parent->pos.w / 2, parent->pos.y+parent->pos.h  /2, town, level);
+		ENGINE->windows().createAndPushWindow<CDwellingInfoBox>(owner->pos.x+owner->pos.w / 2, owner->pos.y+owner->pos.h  /2, town, level);
 	}
 }
 
@@ -460,7 +472,7 @@ void CBuildingRect::show(Canvas & to)
 	{
 		if(stateTimeCounter >= BUILD_ANIMATION_FINISHED_TIMEPOINT)
 		{
-			if(parent->selectedBuilding == this || showTextOverlay)
+			if(owner->selectedBuilding == this || showTextOverlay)
 				to.draw(border, pos.topLeft());
 			return;
 		}
@@ -495,7 +507,7 @@ void CBuildingRect::showAll(Canvas & to)
 		return;
 
 	CShowableAnim::showAll(to);
-	if(!isActive() && parent->selectedBuilding == this && border)
+	if(!isActive() && owner->selectedBuilding == this && border)
 		to.draw(border, pos.topLeft());
 }
 
@@ -879,15 +891,15 @@ void CCastleBuildings::recreate()
 	if(town->hasBuilt(BuildingID::SHIPYARD))
 	{
 		auto bayPos = town->bestLocation();
-		if(!bayPos.isValid())
-			logGlobal->warn("Shipyard in non-coastal town!");
-		const auto vobjs = GAME->interface()->cb->isVisible(bayPos)
-			? GAME->interface()->cb->getVisitableObjs(bayPos) : std::vector<const CGObjectInstance *>();
-		//there is visitable obj at shipyard output tile and it's a boat or hero (on boat)
-		if(!vobjs.empty() && (vobjs.front()->ID == Obj::BOAT || vobjs.front()->ID == Obj::HERO))
+		if(bayPos.isValid())
 		{
-			buildingsCopy.insert(BuildingID::SHIP);
+			std::vector <const CGObjectInstance *> vobjs = GAME->interface()->cb->getVisitableObjs(bayPos);
+			//there is visitable obj at shipyard output tile and it's a boat or hero (on boat)
+			if(!vobjs.empty() && (vobjs.front()->ID == Obj::BOAT || vobjs.front()->ID == Obj::HERO))
+				buildingsCopy.insert(BuildingID::SHIP);
 		}
+		else
+			logGlobal->warn("Shipyard in non-coastal town!");
 	}
 
 	for(const auto & structure : town->getTown()->clientInfo.structures)
@@ -954,6 +966,8 @@ void CCastleBuildings::drawOverlays(Canvas & to, std::vector<std::shared_ptr<CBu
 			backColor = Colors::PURPLE; // dwelling
 
 		auto contentRect = buildingRect->border->contentRect();
+		if(contentRect.w <= 0 || contentRect.h <= 0)
+			continue; // border image has no visible content (e.g. fully transparent), nothing to label
 		auto center = Rect(buildingRect->pos.x + contentRect.x, buildingRect->pos.y + contentRect.y, contentRect.w, contentRect.h).center();
 		Point dimensions(font->getStringWidth(overlay), font->getLineHeight());
 		Rect textRect = Rect(center - dimensions / 2, dimensions).resize(2);
@@ -1223,8 +1237,7 @@ void CCastleBuildings::enterBlacksmith(BuildingID building, ArtifactID artifactI
 	ArtifactID existingArtifact = hero->getReplacedWarMachine(artifactID);
 
 	bool canAfford = GAME->interface()->cb->getResourceAmount(EGameResID::GOLD) >= price;
-	bool hasSameMachine = existingArtifact.hasValue() && existingArtifact == artifactID;
-	bool possible = canAfford && !hasSameMachine;
+	bool possible = canAfford && hero->canRecruitWarMachine(artifactID);
 
 	ENGINE->windows().createAndPushWindow<CBlacksmithDialog>(possible, artifactID, existingArtifact, hero->id);
 }
@@ -1363,7 +1376,7 @@ void CCastleBuildings::enterTownHall()
 	if(town->getVisitingHero() && town->getVisitingHero()->hasArt(ArtifactID::GRAIL) &&
 		!town->hasBuilt(BuildingID::GRAIL)) //hero has grail, but town does not have it
 	{
-		if(!vstd::contains(town->forbiddenBuildings, BuildingID::GRAIL))
+		if(GAME->interface()->cb->isGrailAllowed(town))
 		{
 			GAME->interface()->showYesNoDialog(LIBRARY->generaltexth->allTexts[597], //Do you wish this to be the permanent home of the Grail?
 										[&](){ GAME->interface()->cb->buildBuilding(town, BuildingID::GRAIL); },
@@ -1864,7 +1877,7 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 			publishThorTownContext(this, true);
 			return false;
 		}
-		CExchangeController exchange(town->getUpperArmy(), visiting);
+		ThorArmyController exchange(town->getUpperArmy(), visiting);
 		const int requestId = exchange.transferStackRequest(!pair->sourceIsVisiting,
 			SlotID(pair->sourceSlot), !pair->destinationIsVisiting, SlotID(pair->destinationSlot));
 		if(requestId <= 0)
@@ -1891,7 +1904,7 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 	return true;
 }
 
-void CCastleInterface::onThorActionRequestResult(int requestId, bool success)
+void CCastleInterface::onThorActionRequestResult(int requestId)
 {
 	if(pendingThorArmyRequestId != requestId)
 		return;
@@ -1900,9 +1913,8 @@ void CCastleInterface::onThorActionRequestResult(int requestId, bool success)
 	pendingThorArmyActionRevision = 0;
 	if(isActive() && ENGINE->windows().topWindow<CCastleInterface>().get() == this)
 		updateThorActionState();
-	if(success)
-		CAndroidVMHelper().acknowledgeThorAction(thorContextStore().snapshot().revision,
-			ThorAction::TOWN_WINDOW_TRANSFER_STACK, submittedRevision);
+	CAndroidVMHelper().acknowledgeThorAction(thorContextStore().snapshot().revision,
+		ThorAction::TOWN_WINDOW_TRANSFER_STACK, submittedRevision);
 }
 #endif
 
@@ -2935,10 +2947,8 @@ void CMageGuildScreen::Scroll::clickPressed(const Point & cursorPosition)
 		resComps.push_back(std::make_shared<CComponent>(ComponentType::SPELL, spell->id));
 		resComps.push_back(std::make_shared<CComponent>(ComponentType::SPELL, newSpell));
 		resComps.back()->newLine = true;
-		for(TResources::nziterator i(cost); i.valid(); i++)
-		{
-			resComps.push_back(std::make_shared<CComponent>(ComponentType::RESOURCE, i->resType, i->resVal, CComponent::ESize::medium));
-		}
+		for(const auto & [resource, amount] : cost.nonZeroEntries())
+			resComps.push_back(std::make_shared<CComponent>(ComponentType::RESOURCE, resource, amount, CComponent::ESize::medium));
 
 		MetaString text;
 		text.appendTextID(GAME->interface()->cb->getResourceAmount().canAfford(cost) ? "vcmi.spellResearch.pay" : "vcmi.spellResearch.canNotAfford");

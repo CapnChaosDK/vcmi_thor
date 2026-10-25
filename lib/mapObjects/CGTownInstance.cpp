@@ -431,13 +431,17 @@ FactionID CGTownInstance::randomizeFaction(vstd::RNG & rand)
 	if(getOwner().isValidPlayer())
 		return cb->getStartInfo()->getIthPlayersSettings(getOwner()).castle;
 
-	if(alignmentToPlayer.isValidPlayer())
+	if(alignmentToPlayer.isValidPlayer() && !alignmentExcludesPlayer)
 		return cb->getStartInfo()->getIthPlayersSettings(alignmentToPlayer).castle;
+
+	FactionID excludedFaction = FactionID::NONE;
+	if(alignmentToPlayer.isValidPlayer())
+		excludedFaction = cb->getStartInfo()->getIthPlayersSettings(alignmentToPlayer).castle;
 
 	std::vector<FactionID> potentialPicks;
 
 	for (FactionID faction(0); faction < FactionID(LIBRARY->townh->size()); ++faction)
-		if (LIBRARY->factions()->getById(faction)->hasTown())
+		if (LIBRARY->factions()->getById(faction)->hasTown() && faction != excludedFaction)
 			potentialPicks.push_back(faction);
 
 	assert(!potentialPicks.empty());
@@ -451,6 +455,11 @@ void CGTownInstance::pickRandomObject(IGameRandomizer & gameRandomizer)
 	{
 		ID = MapObjectID::TOWN;
 		subID = randomizeFaction(gameRandomizer.getDefault());
+
+		builtBuildings.merge(randomTownBuildings[getFactionID()]);
+		forbiddenBuildings.merge(randomTownForbiddenBuildings[getFactionID()]);
+		for (auto & event : events)
+			event.buildings.merge(event.randomTownBuildings[getFactionID()]);
 	}
 
 	assert(ID == Obj::TOWN); // just in case
@@ -498,7 +507,7 @@ void CGTownInstance::initializeNeutralTownGarrison(vstd::RNG & rand)
 		RandomGuardsInfo{ 0, 33, 8, 15 },
 		RandomGuardsInfo{ 1, 33, 5,  7 },
 		RandomGuardsInfo{ 2, 20, 3,  5 },
-		RandomGuardsInfo{ 3, 14, 1,  3 },
+		RandomGuardsInfo{ 3, 13, 1,  3 },
 	};
 
 	// Only neutral towns may get initial garrison
@@ -767,48 +776,40 @@ void CGTownInstance::recreateBuildingsBonuses()
 	}
 }
 
+void CGTownInstance::setTownHero(ObjectInstanceID & slot, CGHeroInstance * hero, bool garrisoned)
+{
+	if(hero)
+	{
+		if(slot.hasValue() || hero->getVisitedTown())
+			throw std::runtime_error("Hero or town slot is already assigned");
+		assert(hero->visitablePos() == visitablePos());
+
+		hero->detachFromBonusSystem(cb->gameState());
+		hero->setVisitedTown(this, garrisoned);
+		hero->attachToBonusSystem(cb->gameState());
+		slot = hero->id;
+	}
+	else if(slot.hasValue())
+	{
+		auto * oldHero = cb->gameState().getHero(slot);
+		if(!oldHero || oldHero->getVisitedTown() != this)
+			throw std::runtime_error("Town hero assignment is inconsistent");
+
+		oldHero->detachFromBonusSystem(cb->gameState());
+		oldHero->setVisitedTown(nullptr, false);
+		oldHero->attachToBonusSystem(cb->gameState());
+		slot = {};
+	}
+}
+
 void CGTownInstance::setVisitingHero(CGHeroInstance *h)
 {
-	if(getVisitingHero() == h)
-		return;
-	
-	if(h)
-	{
-		h->detachFromBonusSystem(cb->gameState());
-		h->setVisitedTown(this, false);
-		h->attachToBonusSystem(cb->gameState());
-		visitingHero = h->id;
-	}
-	else if (visitingHero.hasValue())
-	{
-		auto oldVisitor = dynamic_cast<CGHeroInstance*>(cb->gameState().getObjInstance(visitingHero));
-		oldVisitor->detachFromBonusSystem(cb->gameState());
-		oldVisitor->setVisitedTown(nullptr, false);
-		oldVisitor->attachToBonusSystem(cb->gameState());
-		visitingHero = {};
-	}
+	setTownHero(visitingHero, h, false);
 }
 
 void CGTownInstance::setGarrisonedHero(CGHeroInstance *h)
 {
-	if(getGarrisonHero() == h)
-		return;
-	
-	if(h)
-	{
-		h->detachFromBonusSystem(cb->gameState());
-		h->setVisitedTown(this, true);
-		h->attachToBonusSystem(cb->gameState());
-		garrisonHero = h->id;
-	}
-	else if (garrisonHero.hasValue())
-	{
-		auto oldVisitor = dynamic_cast<CGHeroInstance*>(cb->gameState().getObjInstance(garrisonHero));
-		oldVisitor->detachFromBonusSystem(cb->gameState());
-		oldVisitor->setVisitedTown(nullptr, false);
-		oldVisitor->attachToBonusSystem(cb->gameState());
-		garrisonHero = {};
-	}
+	setTownHero(garrisonHero, h, true);
 	updateMoraleBonusFromArmy(); //avoid giving morale bonus for same army twice
 }
 
@@ -1146,6 +1147,7 @@ void CGTownInstance::serializeJsonOptions(JsonSerializeFormat & handler)
 		eventsHandler.serializeStruct(events);
 	}
 	handler.serializeId("alignmentToPlayer", alignmentToPlayer, PlayerColor::NEUTRAL);
+	handler.serializeBool("alignmentExcludesPlayer", alignmentExcludesPlayer, false);
 }
 
 const CFaction * CGTownInstance::getFaction() const

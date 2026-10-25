@@ -21,7 +21,7 @@ class BattleActivity : public Activity
 public:
 	static constexpr ActivityType TYPE = ActivityType::Battle;
 
-	BattleSideArray<ObjectInstanceID> belligerents;
+	BattleSideArray<const CArmedInstance *> belligerents;
 
 	BattleID battleID;
 	std::optional<BattleResult> result;
@@ -34,10 +34,11 @@ public:
 class BattleResultActivity : public DialogActivity
 {
 	const IBattleInfo * bi;
+	std::optional<BattleResult> result;
 
 public:
 	static constexpr ActivityType TYPE = ActivityType::BattleDialog;
-	BattleResultActivity(CGameHandler * owner, const IBattleInfo * Bi);
+	BattleResultActivity(CGameHandler * owner, const IBattleInfo * Bi, const std::optional<BattleResult> & Br);
 	bool acceptsAnswer(int32_t answer) const override;
 	void onRemoval() override;
 };

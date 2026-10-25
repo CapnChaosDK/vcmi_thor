@@ -12,7 +12,7 @@ Returns the bonuses of the bearer that match the filter. Say as much as the filt
 
 ### getBonusesValue
 
-Returns what the matching bonuses are worth together. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
+Returns the combined value of the matching bonuses. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
 
 - param `filter`: [`BonusFilter`](BonusFilter.md) — Which bonuses to count. An empty filter counts every one of them.
 
@@ -55,6 +55,18 @@ Returns the creature's attack stat.
 Returns the creature's defense stat.
 
 - param `ranged`: `boolean` — True for defense against ranged attacks, false for defense against melee.
+
+- returns `integer`
+
+### getLuck
+
+Returns effective luck after caps and unit exclusions. Returns 0 when luck does not apply. Prefer this method to summing LUCK bonuses.
+
+- returns `integer`
+
+### getMorale
+
+Returns effective morale after caps and unit exclusions.
 
 - returns `integer`
 
@@ -116,6 +128,12 @@ True if the stack was summoned during battle (e.g. by Summon Elementals).
 
 - returns `boolean`
 
+### isCommander
+
+True if the stack is a hero's commander.
+
+- returns `boolean`
+
 ### isLiving
 
 True if the stack is a living creature - not undead, not a golem-like non-living unit.
@@ -124,7 +142,7 @@ True if the stack is a living creature - not undead, not a golem-like non-living
 
 ### getOwner
 
-Returns the player color controlling this unit.
+Returns the player owning this unit. A hypnotized unit keeps its owner; Battle:getUnitController returns who controls it.
 
 - returns `integer`
 
@@ -136,7 +154,7 @@ Returns the army slot in the army this unit occupies. NOTE: All summoned units s
 
 ### getSide
 
-Returns the battle side (attacker or defender) this unit belongs to.
+Returns the battle side (attacker or defender) this unit belongs to. A hypnotized unit keeps its side; use Battle:isHostile to tell friend from foe.
 
 - returns [`BattleSide`](BattleSide.md)
 
@@ -176,6 +194,12 @@ True if the stack can shoot in general, even if out of ammo. See canShoot to che
 
 - returns `boolean`
 
+### ableToRetaliate
+
+True when the unit is alive and has an unused retaliation this round. Attacker-side retaliation blocking is not considered.
+
+- returns `boolean`
+
 ### isTurret
 
 True if the stack is one of the towers of a besieged town.
@@ -184,9 +208,9 @@ True if the stack is one of the towers of a besieged town.
 
 ### getTurretPart
 
-Which of the three towers of a besieged town this stack is.
+Returns the tower position of a besieged-town stack.
 
-- returns `string?` — "keep", "upper" or "lower"; nil when the stack is no tower.
+- returns `string?` — 'keep', 'upper' or 'lower'; nil for non-turret units.
 
 ### getMaxHealth
 

@@ -10,33 +10,19 @@
 #pragma once
  
 #include "../../lib/mapObjects/CGHeroInstance.h"
-#include "../../lib/mapObjects/army/ArmyStackRedistribution.h"
  
 class CExchangeController
 {
 public:
 	CExchangeController(ObjectInstanceID hero1, ObjectInstanceID hero2);
-	CExchangeController(const CArmedInstance * army1, const CArmedInstance * army2);
-	bool swapArmy();
+	void swapArmy();
 	void moveArmy(bool leftToRight, std::optional<SlotID> heldSlot);
 	void moveStack(bool leftToRight, SlotID sourceSlot);
-	bool canMoveStack(bool leftToRight, SlotID sourceSlot) const;
-	bool canTransferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot) const;
-	bool transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
-	int transferStackRequest(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
-	bool canSplitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
-		int amount) const;
-	bool splitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
-		int amount);
-	bool canRedistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
-		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations) const;
-	int redistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
-		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations);
 	void moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget);
-	int swapArtifacts(bool equipped, bool baclpack);
-	int moveArtifacts(bool leftToRight, bool equipped, bool baclpack);
+	void swapArtifacts(bool equipped, bool baclpack);
+	void moveArtifacts(bool leftToRight, bool equipped, bool baclpack);
 
 private:
-	const CArmedInstance * left;
-	const CArmedInstance * right;
+	const CGHeroInstance * left;
+	const CGHeroInstance * right;
 };

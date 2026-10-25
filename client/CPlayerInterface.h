@@ -70,6 +70,7 @@ class CPlayerInterface : public CGameInterface
 		Type blockingPolicy = Type::Blocking;
 		QuestionID questionID = QuestionID::NONE;
 		State state = State::Queued;
+		bool moreLevelsFollow = false; ///< level-up only: the server will ask about the next level right after this one
 		std::function<void()> showCallback;
 
 		bool isLevelUpDialog() const
@@ -128,8 +129,8 @@ protected: // Call-ins from server, should not be called directly, but only via 
 
 	void heroVisit(const CGHeroInstance * visitor, const CGObjectInstance * visitedObj, bool start) override;
 	void heroCreated(const CGHeroInstance* hero) override;
-	void heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, const std::vector<SecondarySkill> &skills, QuestionID questionID) override;
-	void commanderGotLevel (const CCommanderInstance * commander, std::vector<ui32> skills, QuestionID questionID) override;
+	void heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, const std::vector<SecondarySkill> &skills, bool moreLevelsFollow, QuestionID questionID) override;
+	void commanderGotLevel (const CCommanderInstance * commander, std::vector<ui32> skills, bool moreLevelsFollow, QuestionID questionID) override;
 	void heroInGarrisonChange(const CGTownInstance *town) override;
 	void heroMoved(const TryMoveHero & details, bool verbose = true) override;
 	void heroExperienceChanged(const CGHeroInstance * hero, si64 val) override;
@@ -143,7 +144,7 @@ protected: // Call-ins from server, should not be called directly, but only via 
 	void showRecruitmentDialog(const CGDwelling *dwelling, const CArmedInstance *dst, int level, QuestionID questionID) override;
 	void showBlockingDialog(const std::string &text, const std::vector<Component> &components, QuestionID questionID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept) override; //Show a dialog, player must take decision. If selection then he has to choose between one of given components, if cancel he is allowed to not choose. After making choice, CCallback::selectionMade should be called with number of selected component (1 - n) or 0 for cancel (if allowed) and questionID.
 	void showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QuestionID questionID) override;
-	void showGarrisonDialog(const CArmedInstance *up, const CGHeroInstance *down, bool removableUnits, QuestionID questionID, const MetaString & customTitle) override;
+	void showGarrisonDialog(const CArmedInstance *up, const CGHeroInstance *down, QuestionID questionID, const MetaString & customTitle) override;
 	void showMapObjectSelectDialog(QuestionID questionID, const Component & icon, const MetaString & title, const MetaString & description, const std::vector<ObjectInstanceID> & objects) override;
 	void showMarketWindow(const IMarket * market, const CGHeroInstance * visitor, QuestionID questionID) override;
 	void showUniversityWindow(const IMarket *market, const CGHeroInstance *visitor, QuestionID questionID) override;
@@ -180,6 +181,7 @@ protected: // Call-ins from server, should not be called directly, but only via 
 	void battleAttack(const BattleID & battleID, const BattleAttack *ba) override; //stack performs attack
 	void battleEnd(const BattleID & battleID, const BattleResult *br, QuestionID questionID) override; //end of battle
 	void battleNewRoundFirst(const BattleID & battleID) override; //called at the beginning of each turn before changes are applied; used for HP regen handling
+	void battleTacticsEnded(const BattleID & battleID) override;
 	void battleNewRound(const BattleID & battleID) override; //called at the beginning of each turn, round=-1 is the tactic phase, round=0 is the first "normal" turn
 	void battleLogMessage(const BattleID & battleID, const std::vector<MetaString> & lines) override;
 	void battleStackMoved(const BattleID & battleID, const CStack * stack, const BattleHexArray & dest, int distance, bool teleport) override;
@@ -222,7 +224,7 @@ public: // public interface for use by client via GAME->interface() access
 	void showInfoDialog(const std::string &text, std::shared_ptr<CComponent> component);
 	void showInfoDialog(const std::string &text, const std::vector<std::shared_ptr<CComponent>> & components = std::vector<std::shared_ptr<CComponent>>(), int soundID = 0);
 	void showInfoDialogAndWait(std::vector<Component> & components, const MetaString & text);
-	void showYesNoDialog(const std::string &text, CFunctionList<void()> onYes, CFunctionList<void()> onNo, const std::vector<std::shared_ptr<CComponent>> & components = std::vector<std::shared_ptr<CComponent>>());
+	void showYesNoDialog(const std::string &text, CFunctionList<void()> onYes, CFunctionList<void()> onNo, const std::vector<std::shared_ptr<CComponent>> & components = std::vector<std::shared_ptr<CComponent>>(), uint32_t timeoutMs = 0, QuestionID questionID = QuestionID::NONE);
 
 	void moveHero(const CGHeroInstance *h, const CGPath& path);
 
@@ -277,7 +279,7 @@ private:
 
 	void heroKilled(const CGHeroInstance* hero);
 	void closeActiveLevelUpDialog();
-	void queueDialog(PendingDialog::Type blocking, QuestionID questionID, std::function<void()> showCallback);
+	void queueLevelUpDialog(QuestionID questionID, bool moreLevelsFollow, std::function<void()> showCallback);
 	void queueDialog(PendingDialog::Type blocking, std::function<void()> showCallback);
 	std::list<PendingDialog>::iterator firstNonLevelUpDialog();
 	void tryShowNextPendingDialog();

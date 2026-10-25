@@ -62,8 +62,14 @@ public:
 	bool executeThorMenuModalAction(ThorAction action);
 	#endif
 
+	uint32_t closeTimeLeft = 0; // ms, 0 keeps the window open until a button is pressed
+
 	void close() override;
 	void showAll(Canvas & to) override;
+	void tick(uint32_t msPassed) override;
+
+	/// closes the window on its own, as if nobody had answered
+	void closeAfter(uint32_t ms);
 
 	void sliderMoved(int to);
 
@@ -73,7 +79,8 @@ public:
 
 	//use only before the game starts! (showYesNoDialog in GAME->interface() must be used then)
 	static void showInfoDialog(const std::string & text, const TCompsInfo & components, PlayerColor player = PlayerColor(1));
-	static void showYesNoDialog(const std::string & text, const TCompsInfo & components, const CFunctionList<void()> & onYes, const CFunctionList<void()> & onNo, PlayerColor player = PlayerColor(1));
+	/// questionID must be set when this dialog is an answer to a question asked by server, so that this window does not get closed without answering
+	static void showYesNoDialog(const std::string & text, const TCompsInfo & components, const CFunctionList<void()> & onYes, const CFunctionList<void()> & onNo, PlayerColor player = PlayerColor(1), uint32_t timeoutMs = 0, QuestionID questionID = QuestionID::NONE);
 	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	static void showThorMenuConfirmation(const std::string & text, const CFunctionList<void()> & onYes,
 		const CFunctionList<void()> & onNo, ThorMenuModalType type, IShowActivatable * sourceOwner,

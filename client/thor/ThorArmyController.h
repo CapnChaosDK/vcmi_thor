@@ -1,0 +1,36 @@
+/*
+ * ThorArmyController.h, part of VCMI engine
+ *
+ * Authors: listed in file AUTHORS in main folder
+ *
+ * License: GNU General Public License v2.0 or later
+ * Full text of license available in license.txt file, in main folder
+ *
+ */
+#pragma once
+
+#include "../../lib/mapObjects/CGHeroInstance.h"
+
+class ThorArmyController
+{
+public:
+	ThorArmyController(ObjectInstanceID hero1, ObjectInstanceID hero2);
+	ThorArmyController(const CArmedInstance * army1, const CArmedInstance * army2);
+	bool swapArmy();
+	void moveArmy(bool leftToRight, std::optional<SlotID> heldSlot);
+	void moveStack(bool leftToRight, SlotID sourceSlot);
+	bool canMoveStack(bool leftToRight, SlotID sourceSlot) const;
+	bool canTransferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot) const;
+	bool transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
+	int transferStackRequest(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot);
+	bool canSplitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
+		int amount) const;
+	bool splitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft, SlotID destinationSlot,
+		int amount);
+	int swapArtifacts(bool equipped, bool baclpack);
+	int moveArtifacts(bool leftToRight, bool equipped, bool baclpack);
+
+private:
+	const CArmedInstance * left;
+	const CArmedInstance * right;
+};

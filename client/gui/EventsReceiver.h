@@ -72,9 +72,8 @@ public:
 	/// Called when UI element gesture status changes
 	virtual void gesture(bool on, const Point & initialPosition, const Point & finalPosition) {}
 
-	/// Cancel an active gesture without its release action. False means the caller
-	/// already owns window teardown, so a transient receiver must not close itself.
-	virtual void gestureCanceled(bool closeWindow) {}
+	/// Cancel an active gesture without its release action.
+	virtual void gestureCanceled() {}
 
 	virtual void textInputted(const std::string & enteredText) {}
 	virtual void textEdited(const std::string & enteredText) {}

@@ -58,7 +58,7 @@ public:
 	/// returns building associated with this structure
 	const CBuilding * getBuilding();
 
-	CCastleBuildings * parent;
+	CCastleBuildings * owner;
 	const CGTownInstance * town;
 	const CStructure* str;
 	std::shared_ptr<IImage> border;
@@ -273,7 +273,7 @@ public:
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	void updateThorActionState();
 	bool executeThorAction(const ThorActionRequest & request);
-	void onThorActionRequestResult(int requestId, bool success);
+	void onThorActionRequestResult(int requestId);
 	bool hasPendingThorArmyRequest() const { return pendingThorArmyRequestId >= 0; }
 #endif
 

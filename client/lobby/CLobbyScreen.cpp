@@ -112,7 +112,6 @@ namespace
 	void clearThorLobbyContext()
 	{
 		thorActionQueue().clear();
-		thorHeroMeetingRedistributionQueue().clear();
 		ThorContextRecord context;
 		context = thorContextStore().publishNext(std::move(context));
 		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
@@ -262,7 +261,6 @@ void CLobbyScreen::activate()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	thorActionQueue().clear();
-	thorHeroMeetingRedistributionQueue().clear();
 	publishThorLobbyContext(*this);
 #endif
 }
@@ -409,7 +407,6 @@ void CLobbyScreen::publishThorContext()
 	if(context.revision != previous.revision)
 	{
 		thorActionQueue().clear();
-		thorHeroMeetingRedistributionQueue().clear();
 	}
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status,
 		context.details);

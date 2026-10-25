@@ -15,6 +15,31 @@ licensing, and single-display/platform compatibility. Keep Thor code behind the
 existing `TARGET_AYN_THOR`/Android boundaries where appropriate, small enough to
 maintain during upstream updates, and free of proprietary Heroes III assets.
 
+### Product scope decision — 2026-10-25
+
+The fork exists for second-screen additions. Engine, server, saves, AI, ordinary
+gameplay and primary-screen/controller behavior must follow the chosen upstream
+base. Do not select general upstream fixes, API migrations, save formats or
+toolchain modernization as Thor feature slices, or maintain selective semantic
+adaptations of them. Receive those changes through explicit upstream-base updates.
+Earlier roadmap priorities and completed slice contracts do not authorize expanding
+this scope. Preserve their validation history as history.
+
+Keep fork additions in the Android presentation, bounded JNI/plain-data transport,
+MainGUI owner adapters and necessary Thor packaging/lifecycle support. Reuse upstream
+callbacks and rules. Any shared-code change must be directly necessary for an
+identified lower-screen capability, minimal, and documented with its upstream-update
+cost; prefer an adapter or an existing upstream operation. Do not introduce custom
+gameplay rules or wire/save formats to complete a lower-screen feature. If upstream
+cannot support a capability without those changes, report the concrete limitation
+instead of broadening the engine. Existing shared extensions require reconciliation,
+not automatic retention or blind removal; see
+[`docs/AYN_THOR_FORK_SCOPE_AUDIT.md`](docs/AYN_THOR_FORK_SCOPE_AUDIT.md).
+
+An upstream-base update is a distinct maintenance task, not an autonomous next
+feature. Preserve product history and user data, review the Thor-only overlay and
+save/network compatibility, and run the existing CI/device gates before promotion.
+
 ## Sources of truth
 
 Use these sources by responsibility:

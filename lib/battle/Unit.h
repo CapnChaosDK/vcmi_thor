@@ -20,12 +20,11 @@
 #include "IUnitInfo.h"
 #include "BattleHexArray.h"
 
-enum class EMetaText : uint8_t;
 class MetaString;
 class JsonNode;
 class JsonSerializeFormat;
 
-class ITranslator;
+class CombatValueContext;
 
 namespace battle
 {
@@ -92,6 +91,8 @@ public:
 	bool isBallista() const;
 	bool isFirstAidTent() const;
 	bool isAmmoCart() const;
+	/// Level of a spell that the unit casts through an ability of the given level, raised by Magic Plains
+	int32_t getAbilitySpellLevel(int32_t abilityLevel, const spells::Spell * spell) const;
 	virtual bool isValidTarget(bool allowDead = false) const = 0; //non-turret non-ghost stacks (can be attacked or be object of magic effect)
 
 	virtual bool isHypnotized() const = 0;
@@ -107,6 +108,9 @@ public:
 	virtual bool isShooter() const = 0;
 	bool isMeleeAttacker() const;
 	bool isSummoned() const;
+	/// Side whose player controls the unit, which differs from its own side while it is hypnotized
+	BattleSide controllingSide() const;
+	bool isCommander() const;
 	bool hasImmunity(SpellID spell) const;
 	bool hasAbsoluteImmunity(SpellID spell) const;
 
@@ -119,11 +123,20 @@ public:
 	/// returns total amount of killed in this unit
 	virtual int32_t getKilled() const = 0;
 
+	/// returns amount of currently alive creatures that were resurrected temporarily and will be lost after combat
+	virtual int32_t getResurrected() const = 0;
+
 	/// returns total health that unit still has
 	virtual int64_t getAvailableHealth() const = 0;
 
 	/// returns total health that unit had initially
 	virtual int64_t getTotalHealth() const = 0;
+
+	/// Combat value of this unit, estimated from its stats and its current bonuses
+	virtual uint64_t estimateCombatValue() const = 0;
+
+	/// Same, evaluated against the actual opposing units instead of an average battle
+	virtual uint64_t estimateCombatValue(const CombatValueContext & context) const = 0;
 
 	virtual int getTotalAttacks(bool ranged) const = 0;
 
@@ -163,10 +176,10 @@ public:
 	static BattleHex occupiedHex(const BattleHex & assumedPos, bool twoHex, BattleSide side);
 
 	///MetaStrings
-	void addText(MetaString & text, EMetaText type, int32_t serial) const;
 	void addNameReplacement(MetaString & text) const;
 	void addNameReplacement(MetaString & text, TQuantity count) const;
-	std::string formatGeneralMessage(const int32_t baseTextId, const ITranslator * translator) const;
+	/// General text in its singular or plural form for the unit count, with the unit name inserted
+	MetaString formatGeneralMessage(const int32_t baseTextId) const;
 
 	int getRawSurrenderCost() const;
 

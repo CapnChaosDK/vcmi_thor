@@ -64,7 +64,7 @@ public class ThorHeroMeetingArtifactGestureTest
     public void bulkActionsHaveStableIdsAndMasks()
     {
         assertEquals(21, ThorActionIds.HERO_MEETING_TRANSFER_ARTIFACT);
-        assertEquals(22, ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
+        assertEquals(22, ThorActionIds.RESERVED_22);
         assertEquals(23, ThorActionIds.HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT);
         assertEquals(24, ThorActionIds.HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT);
         assertEquals(25, ThorActionIds.HERO_MEETING_SWAP_ARTIFACTS);
@@ -73,7 +73,7 @@ public class ThorHeroMeetingArtifactGestureTest
         assertEquals(24, ThorActionIds.artifactBulkActionForButton(2));
         assertEquals(ThorActionIds.NONE, ThorActionIds.artifactBulkActionForButton(3));
         for (int action = 1; action <= 25; ++action)
-            assertEquals(1L << (action - 1), ThorActionIds.maskFor(action));
+            assertEquals(action == 22 ? 0L : 1L << (action - 1), ThorActionIds.maskFor(action));
         assertEquals(1L << 25, ThorActionIds.maskFor(26));
         assertEquals(1L << 26, ThorActionIds.maskFor(27));
         assertEquals(1L << 27, ThorActionIds.maskFor(28));

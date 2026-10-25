@@ -28,6 +28,7 @@ class RNG;
 class CLegacyConfigParser;
 class CCreatureHandler;
 class CCreature;
+class CombatValue;
 class JsonSerializeFormat;
 
 class DLL_LINKAGE CCreature : public Creature, public CBonusSystemNode
@@ -110,6 +111,7 @@ public:
 		AudioPath killed; // was killed or died
 		AudioPath move;
 		AudioPath shoot; // range attack
+		AudioPath cast; // creature spellcast
 		AudioPath wince; // attacked but did not die
 		AudioPath startMoving;
 		AudioPath endMoving;
@@ -199,10 +201,8 @@ private:
 	void loadAnimationInfo(std::vector<JsonNode> & h3Data) const;
 	/// read one line from cranim.txt
 	void loadUnitAnimInfo(JsonNode & unit, CLegacyConfigParser & parser) const;
-	/// parse crexpbon.txt file from H3
-	void loadStackExp(Bonus & b, BonusList & bl, CLegacyConfigParser & parser) const;
-	/// help function for parsing CREXPBON.txt
-	int stringToNumber(std::string & s) const;
+
+	std::unique_ptr<CombatValue> combatValues;
 
 protected:
 	const std::vector<std::string> & getTypeNames() const override;
@@ -226,13 +226,17 @@ public:
 	CCreatureHandler();
 	~CCreatureHandler();
 
-	/// load all stack experience bonuses from H3 files
-	void loadCrExpBon(CBonusSystemNode & globalEffects);
-
 	/// load all stack modifier bonuses from H3 files. TODO: move this to json
 	void loadCrExpMod();
 
 	const ResourceSet & getCommanderResurrectionPrice(const CCreature * commander) const;
+
+	/// Builds the combat value model. Reads creature stats and resolves script identifiers,
+	/// so it can only be called once all mods are loaded
+	void buildCombatValues();
+
+	/// Estimates combat value of a creature or a battle unit
+	const CombatValue & getCombatValue() const;
 
 	void afterLoadFinalization() override;
 

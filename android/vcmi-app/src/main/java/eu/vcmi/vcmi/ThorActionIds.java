@@ -24,7 +24,7 @@ final class ThorActionIds
     static final int HERO_MEETING_SWAP_ARMIES = 19;
     static final int HERO_MEETING_SPLIT_STACK = 20;
     static final int HERO_MEETING_TRANSFER_ARTIFACT = 21;
-    static final int HERO_MEETING_REDISTRIBUTE_STACK = 22;
+    static final int RESERVED_22 = 22;
     static final int HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT = 23;
     static final int HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT = 24;
     static final int HERO_MEETING_SWAP_ARTIFACTS = 25;
@@ -83,7 +83,7 @@ final class ThorActionIds
 
     static long maskFor(final int actionId)
     {
-        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= MAX_ACTION_ID
+        return actionId >= OPEN_KINGDOM_OVERVIEW && actionId <= MAX_ACTION_ID && actionId != RESERVED_22
                 ? bitForActionId(actionId) : 0L;
     }
 

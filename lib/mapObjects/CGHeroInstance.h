@@ -52,6 +52,13 @@ protected:
 };
 
 
+/// Hero level set by the map, applied by CGHeroInstance::initHero
+struct MapHeroLevel
+{
+	ui32 level = 1;
+	bool addSkills = true; ///< roll level-up skills for every level instead of setting the level directly
+};
+
 class DLL_LINKAGE CGHeroInstance : public CArmedInstance, public IBoatGenerator, public CArtifactSet, public spells::Caster, public AFactionMember, public ICreatureUpgrader, public IOwnableObject, public scripting::ApiRawPointer<CGHeroInstance>
 {
 public:
@@ -73,9 +80,14 @@ private:
 	std::set<SpellID> spells; //known spells (spell IDs)
 	ObjectInstanceID visitedTown; //set if hero is visiting town or in the town garrison
 	ObjectInstanceID boardedBoat; //set to CGBoat when sailing
+	/// Special terrain, such as Cursed Ground, whose bonuses hero receives. Not serialized - restored from hero position
+	BattleField specialTerrain = BattleField::NONE;
 
 	ui32 movement; //remaining movement points
 	bool inTownGarrison; // if hero is in town garrison
+
+	std::optional<MapHeroLevel> mapLevel; ///< applied and cleared by initHero
+	bool cannotGainExperience = false; ///< hero receives no experience and gains no levels
 
 	IGameInfoCallback * getCallback() const final { return cb; }
 
@@ -96,6 +108,8 @@ public:
 	HeroTypeID customPortraitSource;
 	si32 mana; // remaining spell points
 	std::vector<std::pair<SecondarySkill,ui8> > secSkills; //first - ID of skill, second - level of skill (1 - basic, 2 - adv., 3 - expert); if hero has ability (-1, -1) it meansthat it should have default secondary abilities
+	/// Hero level at which each skill with offer cooldown was last gained or upgraded
+	std::map<SecondarySkill, ui32> secSkillsGainedAtLevel;
 	EHeroGender gender;
 
 	std::string nameCustomTextId;
@@ -156,7 +170,12 @@ public:
 	/// Returns ID of existing war machine that will be replaced if hero were to purchase new war machine
 	/// If there is no replaced war machine (for example slot is empty), method will return empty ArtifactID
 	ArtifactID getReplacedWarMachine(ArtifactID newWarMachine) const;
+	/// Returns slot that new war machine will be placed into: first free possible slot, or first possible slot if all are taken
+	ArtifactPosition getWarMachineSlot(ArtifactID warMachine) const;
+	/// Hero has spellbook artifact
 	bool hasSpellbook() const;
+	/// Hero has spellbook or any spell that can be cast without spellbook
+	bool canCastSpells() const;
 	int maxSpellLevel() const;
 	void addSpellToSpellbook(const SpellID & spell);
 	void removeSpellFromSpellbook(const SpellID & spell);
@@ -167,6 +186,8 @@ public:
 	const std::set<SpellID> & getSpellsInSpellbook() const;
 	EAlignment getAlignment() const;
 	bool needsLastStack()const override;
+	/// Whether the hero can get this war machine in a dwelling or blacksmith: only one of each type, and never a catapult. A different machine in the same slot is replaced
+	bool canRecruitWarMachine(const ArtifactID & warMachine) const;
 
 	ResourceSet dailyIncome() const override;
 	std::vector<CreatureID> providedCreatures() const override;
@@ -192,6 +213,8 @@ public:
 
 	/// Returns true if hero has lower level than should upon his experience.
 	bool gainsLevel() const;
+	/// Experience required to gain given number of levels, counted from start of current level
+	TExpType experienceToGainLevels(ui32 levels) const;
 
 	ui8 getSecSkillLevel(const SecondarySkill & skill) const; //0 - no skill
 	int getPrimSkillLevel(PrimarySkill id) const;
@@ -225,7 +248,10 @@ public:
 	/// Army strength as seen by neutral creatures and Thieves Guild - may be scaled by artifacts such as Diplomat's Cloak
 	uint64_t getArmyStrengthPerceivedByOthers() const;
 
-	ui64 getTotalStrength() const; // includes fighting strength and army strength
+	/// Combat value of this hero: value of its army, scaled by contribution of the hero itself
+	ui64 estimateHeroCombatValue() const;
+	/// Returns true if hero is not locked by map options and is below map level limit
+	bool canGainExperience() const;
 	TExpType calculateXp(TExpType exp) const; //apply learning skill
 	int getBasePrimarySkillValue(PrimarySkill which) const; //the value of a base-skill without items or temporary bonuses
 
@@ -311,12 +337,21 @@ public:
 	MetaString getObjectName() const override;
 	MetaString getHoverText(PlayerColor player) const override;
 	MetaString getMovementPointsTextIfOwner(PlayerColor player) const;
+	/// Hero level and experience for UI, or a notice that hero can not gain more levels
+	MetaString getExperienceDescription() const;
 
 	TObjectTypeHandler getObjectHandler() const override;
 
 	void afterAddToMap(CMap * map) override;
 	void afterRemoveFromMap(CMap * map) override;
 	void restoreBonusSystem(CGameState & gs) override;
+	void attachToBonusSystem(CGameState & gs) override;
+	void detachFromBonusSystem(CGameState & gs) override;
+
+	/// Attaches hero to bonuses of special terrain at its current position, if any
+	void updateSpecialTerrain(CGameState & gs);
+	/// Detaches hero from bonuses of its special terrain, for example for duration of a battle
+	void leaveSpecialTerrain(CGameState & gs);
 
 	void updateFrom(const JsonNode & data) override;
 
@@ -335,7 +370,9 @@ protected:
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;
 
 private:
+	void levelUpAutomaticallyOnce(IGameRandomizer & gameRandomizer);
 	void levelUpAutomatically(IGameRandomizer & gameRandomizer);
+	void initializeMapSpecifiedLevel(IGameRandomizer & gameRandomizer);
 	void attachCommanderToArmy();
 
 public:
@@ -355,6 +392,8 @@ public:
 		h & customPortraitSource;
 		h & mana;
 		h & secSkills;
+		if (h.hasFeature(Handler::Version::SECONDARY_SKILL_OFFER_COOLDOWN))
+			h & secSkillsGainedAtLevel;
 		h & movement;
 		h & gender;
 		h & inTownGarrison;
@@ -369,6 +408,9 @@ public:
 
 		h & commander;
 		h & visitedObjects;
+
+		if(h.hasFeature(Handler::Version::HOTA_HERO_LEVEL_OPTIONS))
+			h & cannotGainExperience;
 
 		if(!h.saving && h.loadingGamestate)
 			attachCommanderToArmy();

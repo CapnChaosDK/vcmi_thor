@@ -12,7 +12,7 @@ Returns the bonuses of the bearer that match the filter. Say as much as the filt
 
 ### getBonusesValue
 
-Returns what the matching bonuses are worth together. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
+Returns the combined value of the matching bonuses. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
 
 - param `filter`: [`BonusFilter`](BonusFilter.md) — Which bonuses to count. An empty filter counts every one of them.
 
@@ -82,15 +82,27 @@ Returns the value of one of the hero's primary skills.
 
 Returns the hero's mastery of the given secondary skill.
 
-- param `skill`: `integer` — Secondary skill JSON key.
+- param `skill`: [`Skill`](Skill.md) — Secondary skill, as returned by Services:getSecondarySkillByName.
 
 - returns `integer` — Mastery level (0 = none, 1 = basic, 2 = advanced, 3 = expert).
+
+### getHeroType
+
+Returns the hero type (Orrin, Kyrre, Astral...) of this hero.
+
+- returns [`HeroType`](HeroType.md) — Type of the hero, comparable with the result of Services:getHeroTypeByName.
+
+### getHeroClass
+
+Returns the hero class of this hero.
+
+- returns [`HeroClass`](HeroClass.md) — Class of the hero, comparable with the result of Services:getHeroClassByName.
 
 ### hasArtifact
 
 Returns whether the hero owns the given artifact, either as equipped or in the backpack.
 
-- param `artifact`: `integer` — Artifact JSON key.
+- param `artifact`: [`Artifact`](Artifact.md) — Artifact, as returned by Services:getArtifactByName.
 
 - returns `boolean` — True if the hero owns the artifact.
 
@@ -98,7 +110,7 @@ Returns whether the hero owns the given artifact, either as equipped or in the b
 
 Returns how many copies of the given artifact the hero owns, counting both equipped slots and the backpack.
 
-- param `artifact`: `integer` — Artifact JSON key.
+- param `artifact`: [`Artifact`](Artifact.md) — Artifact, as returned by Services:getArtifactByName.
 
 - returns `integer` — Number of copies of that artifact the hero carries.
 

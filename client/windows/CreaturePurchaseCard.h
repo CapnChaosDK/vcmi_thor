@@ -22,11 +22,11 @@ class CreaturePurchaseCard : public CIntObject
 public:
 	const CCreature * creatureOnTheCard;
 	std::shared_ptr<CSlider> slider;
-	QuickRecruitmentWindow * parent;
+	QuickRecruitmentWindow * owner;
 	int maxAmount;
 	int tierIndex;
 	void sliderMoved(int to);
-	void switchVariant();
+	void switchCreatureLevel();
 	int currentVariantIndex() const;
 	int variantCount() const;
 

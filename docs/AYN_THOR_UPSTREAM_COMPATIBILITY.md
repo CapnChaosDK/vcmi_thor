@@ -1,5 +1,22 @@
 # Controlled upstream compatibility checkpoint
 
+Current reconciliation work uses pinned fresh upstream with a minimal second-screen
+layer. See [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md) for its contract, intentional
+compatibility changes and validation gates. Earlier assessments below are historical
+for their pinned trees; they do not authorize engine feature adaptations.
+
+## Current scope authority — 2026-10-25
+
+The user limited this fork to second-screen additions on an upstream engine base.
+The former selective synchronization priorities below are historical and superseded;
+they are not a queue of Thor features. In particular, chunked saves are not Slice 56.
+General engine changes must arrive through an explicit upstream-base update, with a
+minimal Thor overlay, rather than further independent adaptations. The
+[current scope audit and reconciliation plan](AYN_THOR_FORK_SCOPE_AUDIT.md) pins the
+present product/upstream revisions, classifies existing divergence and records the
+packet/save compatibility blockers. Existing CI/device receipts remain valid for
+their tested trees; this scope decision does not remove code or prove compatibility.
+
 ## Verified comparison — Slice 51, 2026-10-18
 
 Fetched `origin` (CapnChaosDK/vcmi_thor) and `upstream` (vcmi/vcmi), without
@@ -140,7 +157,11 @@ is unverified.
 Current review, candidate receipts and the complete hardware checklist belong in
 [Slice 52](../AYN_THOR_BACKLOG.md#slice-52--complete-army-transfer-authorization-and-integrity).
 
-## Priority and dependency-aware synchronization plan
+## Historical selective synchronization plan — superseded 2026-10-25
+
+This table records the earlier selection policy. It no longer authorizes work;
+use the current scope authority above. Its Slice 55 draft wording describes the
+earlier assessment; Slice 55 is now merged and user-reported hardware validated.
 
 | Priority | Candidate / evidence | Value, risk and decision |
 | --- | --- | --- |
@@ -160,7 +181,7 @@ SDL2/SDL3 renderer/input changes also exist; do not migrate them to obtain #8014
 The current Thor workflow's NDK r29/Linux/JDK17 and Qt packaging remain authoritative;
 the older generic Android developer guide's r25c is not the candidate recipe.
 
-Cadence: assess freshly fetched upstream every two weeks or before three further
+Historical cadence: assess freshly fetched upstream every two weeks or before three further
 gameplay slices, whichever comes first; triage security/serialization/build changes
 immediately. Pin both SHAs, compare changed path sets and subsystem history, rerun
 merge-tree, classify semantic dependencies, then adopt one coherent dependency

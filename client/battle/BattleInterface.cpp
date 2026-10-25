@@ -12,7 +12,6 @@
 
 #include "BattleActionsController.h"
 #include "BattleAnimationClasses.h"
-#include "BattleAnimationWait.h"
 #include "BattleConsole.h"
 #include "BattleEffectsController.h"
 #include "BattleFieldController.h"
@@ -308,38 +307,6 @@ void BattleInterface::newRound()
 #endif
 }
 
-void BattleInterface::giveCommand(EActionType action, const BattleHex & tile, SpellID spell)
-{
-	std::vector<BattleHex> tiles = {tile};
-	giveCommand(action, tiles, spell);
-}
-
-void BattleInterface::giveCommand(EActionType action, const std::vector<BattleHex> & tiles,  SpellID spell)
-{
-	const CStack * actor = nullptr;
-	if(action != EActionType::HERO_SPELL && action != EActionType::RETREAT && action != EActionType::SURRENDER)
-	{
-		actor = stacksController->getActiveStack();
-	}
-
-	auto side = getBattle()->playerToSide(curInt->playerID);
-	if(side == BattleSide::NONE)
-	{
-		logGlobal->error("Player %s is not in battle", curInt->playerID.toString());
-		return;
-	}
-
-	BattleAction ba;
-	ba.side = side;
-	ba.actionType = action;
-
-	for(auto & tile : tiles)
-		ba.aimToHex(tile);
-	ba.spell = spell;
-
-	sendCommand(ba, actor);
-}
-
 void BattleInterface::sendCommand(BattleAction command, const CStack * actor)
 {
 	command.stackNumber = actor ? actor->unitId() : ((command.side == BattleSide::ATTACKER) ? -1 : -2);
@@ -418,6 +385,7 @@ void BattleInterface::battleFinished(const BattleResult& br, QuestionID question
 		if(ownsQuestion)
 			curInt->cb->selectionMade(0, questionID);
 		windowObject->close();
+		CPlayerInterface::battleInt.reset(); // must stay last, it destroys this object
 		return;
 	}
 
@@ -780,12 +748,6 @@ void BattleInterface::appendBattleLog(const std::string & newEntry)
 
 void BattleInterface::startAction(const BattleAction & action)
 {
-	if(action.actionType == EActionType::END_TACTIC_PHASE)
-	{
-		windowObject->tacticPhaseEnded();
-		return;
-	}
-
 	stacksController->startAction(action);
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -984,16 +946,22 @@ void BattleInterface::onAnimationsFinished()
 
 void BattleInterface::waitForAnimations()
 {
-	waitForBattleAnimations(
-		[this]()
+	{
+		auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
+		ongoingAnimationsState.waitWhileBusy();
+	}
+
+	while(!awaitingEvents.empty())
+	{
+		executeStagedAnimations();
+
+		if(hasAnimations())
 		{
-			// Reacquire the interface lock before inspecting or dispatching stages.
 			auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
 			ongoingAnimationsState.waitWhileBusy();
-		},
-		[this]() { return hasAnimations(); },
-		[this]() { return !awaitingEvents.empty(); },
-		[this]() { executeStagedAnimations(); });
+			assert(!hasAnimations());
+		}
+	}
 
 	assert(!hasAnimations());
 	assert(awaitingEvents.empty());

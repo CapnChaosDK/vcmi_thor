@@ -10,8 +10,9 @@
 
 #pragma once
 
-#include "StdInc.h"
+#include "AI/MMAI/common.h" // IWYU pragma: keep
 
+#include "AI/MMAI/schema/base.h"
 #include "battle/AutocombatPreferences.h"
 #include "battle/CPlayerBattleCallback.h"
 #include "callback/CBattleGameInterface.h"
@@ -75,7 +76,6 @@ private:
 	std::shared_ptr<CBattleCallback> cb;
 	std::shared_ptr<CBattleGameInterface> bai; // calls will be delegated to this object
 
-	bool wasWaitingForRealize = false;
 	AutocombatPreferences autocombatPreferences;
 	std::string addrstr = "?";
 	std::string colorname = "?";

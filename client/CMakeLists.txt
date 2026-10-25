@@ -28,8 +28,10 @@ set(vcmiclientcommon_SRCS
 	battle/BattleSiegeController.cpp
 	battle/BattleStacksController.cpp
 	battle/BattleWindow.cpp
+	battle/ClientCommandEntries.cpp
 	battle/CreatureAnimation.cpp
 	battle/HeroInfoWindow.cpp
+	battle/LibActionEntry.cpp
 	battle/QuickSpellPanel.cpp
 	battle/StackInfoBasicPanel.cpp
 	battle/StackQueue.cpp
@@ -43,6 +45,7 @@ set(vcmiclientcommon_SRCS
 	gui/FramerateManager.cpp
 	gui/ShortcutHandler.cpp
 	gui/WindowHandler.cpp
+	thor/ThorArmyController.cpp
 	thor/ThorWindowPublisher.cpp
 	thor/ThorVisualAssetPublisher.cpp
 	windows/ThorRecruitmentSupport.cpp
@@ -114,6 +117,7 @@ set(vcmiclientcommon_SRCS
 	widgets/CGarrisonInt.cpp
 	widgets/CreatureCostBox.cpp
 	widgets/ComboBox.cpp
+	widgets/ControllerPrompt.cpp
 	widgets/ControllerActionButton.cpp
 	widgets/CTextInput.cpp
 	widgets/GraphicalPrimitiveCanvas.cpp
@@ -222,9 +226,9 @@ set(vcmiclientcommon_HEADERS
 	adventureMap/MapAudioPlayer.h
 	adventureMap/TurnTimerWidget.h
 
+	battle/BattleActionEntry.h
 	battle/BattleActionsController.h
 	battle/BattleAnimationClasses.h
-	battle/BattleAnimationWait.h
 	battle/BattleConsole.h
 	battle/BattleEffectsController.h
 	battle/BattleFieldController.h
@@ -239,14 +243,17 @@ set(vcmiclientcommon_HEADERS
 	battle/BattleSiegeController.h
 	battle/BattleStacksController.h
 	battle/BattleWindow.h
+	battle/ClientCommandEntries.h
 	battle/CreatureAnimation.h
 	battle/HeroInfoWindow.h
+	battle/LibActionEntry.h
 	battle/QuickSpellPanel.h
 	battle/StackInfoBasicPanel.h
 	battle/StackQueue.h
 	battle/UnitActionPanel.h
 
 	gui/CIntObject.h
+	gui/ControllerPromptFamily.h
 	gui/CursorHandler.h
 	gui/EventDispatcher.h
 	gui/EventsReceiver.h
@@ -257,6 +264,9 @@ set(vcmiclientcommon_HEADERS
 	gui/ShortcutHandler.h
 	gui/TextAlignment.h
 	gui/WindowHandler.h
+	thor/ThorArmyController.h
+	thor/ThorRequestTracker.h
+	thor/ThorSaveBrowser.h
 	thor/ThorWindowPublisher.h
 	thor/ThorVisualAssetPublisher.h
 
@@ -341,6 +351,7 @@ set(vcmiclientcommon_HEADERS
 	widgets/CGarrisonInt.h
 	widgets/CreatureCostBox.h
 	widgets/ComboBox.h
+	widgets/ControllerPrompt.h
 	widgets/ControllerActionButton.h
 	widgets/CTextInput.h
 	widgets/GraphicalPrimitiveCanvas.h

@@ -139,6 +139,7 @@ final class ThorHapticState
             return ThorContextIds.BATTLE_TACTICS.equals(contextId);
         return actionId >= ThorActionIds.HERO_MEETING_MOVE_STACK
                 && actionId <= ThorActionIds.HERO_MEETING_SWAP_ARTIFACTS
+                && actionId != ThorActionIds.RESERVED_22
                 && ThorContextIds.HERO_MEETING.equals(contextId);
     }
 }

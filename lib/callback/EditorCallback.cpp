@@ -57,15 +57,12 @@ Calendar EditorCallback::getCalendar() const
 
 const TerrainTile * EditorCallback::getTile(int3 tile) const
 {
-	const auto * result = tryGetTile(tile);
-	if(!result)
-		throw std::runtime_error("Invalid editor tile " + tile.toString());
-	return result;
+	return &map->getTile(tile);
 }
 
 const TerrainTile * EditorCallback::tryGetTile(int3 tile) const
 {
-	return map->isInTheMap(tile) ? &map->getTile(tile) : nullptr;
+	return &map->getTile(tile);
 }
 
 const TerrainTile * EditorCallback::getTileUnchecked(int3) const

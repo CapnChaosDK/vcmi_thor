@@ -43,6 +43,9 @@ void CGPandoraBox::init()
 
 void CGPandoraBox::initObj(IGameRandomizer & gameRandomizer)
 {
+	for(auto & visitInfo : configuration.info)
+		visitInfo.reward.removeInvalidCreatures(describeArmy());
+
 	init();
 	
 	CRewardableObject::initObj(gameRandomizer);
@@ -154,8 +157,7 @@ void CGPandoraBox::showRewardMessage(IGameEventCallback & gameEvents, const CGHe
 	temp.heroLevel = 0;
 	temp.secondary.clear();
 	temp.primary.clear();
-	temp.resources.amin(0);
-	temp.resources.amax(0);
+	temp.resources = ResourceSet();
 	temp.manaDiff = 0;
 	temp.manaPercentage = -1;
 	temp.spells.clear();
@@ -221,6 +223,19 @@ void CGPandoraBox::serializeJsonOptions(JsonSerializeFormat & handler)
 		//backward compatibility for VCMI maps that use old Pandora Box format
 		if(!handler.getCurrent()["guards"].Vector().empty())
 			CCreatureSet::serializeJson(handler, "guards", 7);
+
+
+		auto exists = [&handler](std::string keyword)
+		{
+			return !handler.getCurrent()[keyword].isNull();
+		};
+
+		bool isLegacy = false;
+
+		if(exists("experience") || exists("mana") || exists("morale") || exists("luck") ||
+		   exists("resources") || exists("primarySkills") || exists("artifacts") || exists("spells") ||
+		   exists("creatures") || exists("secondarySkills"))
+			isLegacy = true;
 		
 		Rewardable::VisitInfo vinfo;
 		vinfo.visitType = Rewardable::EEventType::EVENT_FIRST_VISIT;
@@ -273,7 +288,8 @@ void CGPandoraBox::serializeJsonOptions(JsonSerializeFormat & handler)
 			}
 		}
 
-		configuration.info.push_back(vinfo);
+		if(isLegacy)
+			configuration.info.push_back(vinfo);
 	}
 }
 

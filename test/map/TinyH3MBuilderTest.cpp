@@ -11,11 +11,18 @@
 #include "StdInc.h"
 
 #include "../mock/TinyH3MBuilder.h"
+#include "../mock/TinyMapGameTest.h"
 
+#include "../../lib/GameLibrary.h"
 #include "../../lib/callback/EditorCallback.h"
+#include "../../lib/callback/GameRandomizer.h"
+#include "../../lib/campaign/CampaignState.h"
+#include "../../lib/entities/hero/CHeroClass.h"
+#include "../../lib/entities/hero/CHeroHandler.h"
 #include "../../lib/entities/artifact/CArtifactInstance.h"
 #include "../../lib/filesystem/CMemoryBuffer.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
+#include "../../lib/mapObjects/army/CCommanderInstance.h"
 #include "../../lib/mapObjects/Quest.h"
 #include "../../lib/mapObjects/MiscObjects.h"
 #include "../../lib/mapping/CMap.h"
@@ -197,6 +204,127 @@ TEST(TinyH3MBuilderTest, HeroesPlacement)
 	EXPECT_EQ(loaded.map->getObjectiveObjectFrom(fixed->anchorPos(), Obj::HERO), fixed);
 }
 
+class HotaHeroLevelTest : public TinyMapGameTest
+{
+protected:
+	CGHeroInstance * startWithHero(const std::function<void(TinyH3M::TinyH3MBuilder &)> & configureHero)
+	{
+		TinyH3M::TinyH3MBuilder builder(EMapFormat::HOTA);
+		builder.hotaVersion(5)
+			.size(36, /*twoLevel*/ false)
+			.playerActive(PlayerColor(0))
+			.hero({5, 5, 0}, HeroTypeID(0), PlayerColor(0));
+		configureHero(builder);
+		startWithMap(std::move(builder));
+		return findHeroByOwner(PlayerColor(0));
+	}
+};
+
+TEST_F(HotaHeroLevelTest, DefaultLevelDoesNotOverrideExperience)
+{
+	auto * hero = startWithHero([](auto & builder) { builder.heroExperience(40000); });
+	ASSERT_NE(hero, nullptr);
+	EXPECT_EQ(hero->exp, 40000);
+	EXPECT_GT(hero->level, 1u);
+}
+
+TEST_F(HotaHeroLevelTest, ExplicitLevelInH3ExperienceOverflowRange)
+{
+	auto * hero = startWithHero([](auto & builder) { builder.heroHotaLevel(100); });
+	ASSERT_NE(hero, nullptr);
+	EXPECT_EQ(hero->level, 100u);
+	EXPECT_EQ(hero->exp, LIBRARY->heroh->reqExp(100));
+}
+
+TEST_F(HotaHeroLevelTest, CannotGainExperienceIsIndependentFromHeroLevel)
+{
+	auto * hero = startWithHero([](auto & builder) { builder.heroHotaLevel(10).heroHotaCannotGainXP(true); });
+	ASSERT_NE(hero, nullptr);
+	EXPECT_EQ(hero->level, 10u);
+	EXPECT_FALSE(hero->canGainExperience());
+}
+
+TEST_F(HotaHeroLevelTest, LevelAboveExperienceTable)
+{
+	auto * hero = startWithHero([](auto & builder) { builder.heroHotaLevel(30000).heroHotaAlwaysAddSkills(false); });
+	ASSERT_NE(hero, nullptr);
+	EXPECT_EQ(hero->level, 30000u);
+	EXPECT_FALSE(hero->canGainExperience());
+}
+
+TEST_F(HotaHeroLevelTest, CommanderStartsAtHeroLevelWithRolledSkills)
+{
+	overrideSettingBeforeInit(EGameSettings::MODULE_COMMANDERS, true);
+	auto * hero = startWithHero([](auto & builder) { builder.heroHotaLevel(10); });
+	ASSERT_NE(hero, nullptr);
+	const auto * commander = hero->getCommander();
+	ASSERT_NE(commander, nullptr);
+	EXPECT_EQ(commander->level, 10u);
+
+	size_t learnedSkills = commander->specialSkills.size();
+	for(auto skillLevel : commander->secondarySkills)
+		learnedSkills += skillLevel;
+	EXPECT_EQ(learnedSkills, 9u);
+}
+
+TEST_F(HotaHeroLevelTest, CommanderFollowsHeroAboveExperienceTable)
+{
+	overrideSettingBeforeInit(EGameSettings::MODULE_COMMANDERS, true);
+	auto * hero = startWithHero([](auto & builder) { builder.heroHotaLevel(300).heroHotaAlwaysAddSkills(false); });
+	ASSERT_NE(hero, nullptr);
+	const auto * commander = hero->getCommander();
+	ASSERT_NE(commander, nullptr);
+	EXPECT_EQ(commander->level, 300u);
+	EXPECT_FALSE(commander->gainsLevel());
+}
+
+TEST_F(HotaHeroLevelTest, MapLevelLimitCapsLevelsGainedFromExperience)
+{
+	auto * hero = startWithHero([](auto & builder) { builder.heroLevelLimit(5).heroExperience(40000); });
+	ASSERT_NE(hero, nullptr);
+	EXPECT_EQ(hero->level, 5u);
+	EXPECT_FALSE(hero->gainsLevel());
+	EXPECT_FALSE(hero->canGainExperience());
+	EXPECT_EQ(hero->experienceToGainLevels(1), 0u);
+}
+
+TEST_F(HotaHeroLevelTest, ExplicitLevelAboveMapLimitRollsSkillsOnlyUpToLimit)
+{
+	overrideSettingBeforeInit(EGameSettings::MODULE_COMMANDERS, true);
+	auto * hero = startWithHero([](auto & builder) { builder.heroLevelLimit(5).heroHotaLevel(10); });
+	ASSERT_NE(hero, nullptr);
+	EXPECT_EQ(hero->level, 10u);
+
+	int primarySkillsGained = 0;
+	for(auto skill : PrimarySkill::ALL_SKILLS())
+		primarySkillsGained += hero->getBasePrimarySkillValue(skill) - hero->getHeroClass()->primarySkillInitial[skill.getNum()];
+	EXPECT_EQ(primarySkillsGained, 4);
+
+	const auto * commander = hero->getCommander();
+	ASSERT_NE(commander, nullptr);
+	EXPECT_EQ(commander->level, 10u);
+
+	size_t learnedSkills = commander->specialSkills.size();
+	for(auto skillLevel : commander->secondarySkills)
+		learnedSkills += skillLevel;
+	EXPECT_EQ(learnedSkills, 4u);
+}
+
+TEST_F(HotaHeroLevelTest, CampaignCrossoverKeepsLevelAndExperienceLock)
+{
+	auto * hero = startWithHero([](auto & builder) { builder.heroHotaLevel(10).heroHotaCannotGainXP(true); });
+	ASSERT_NE(hero, nullptr);
+
+	CampaignState campaign;
+	auto carried = campaign.crossoverDeserialize(campaign.crossoverSerialize(hero), map());
+	GameRandomizer randomizer(*gameState());
+	carried->initHero(randomizer);
+
+	EXPECT_EQ(carried->level, 10u);
+	EXPECT_EQ(carried->exp, hero->exp);
+	EXPECT_FALSE(carried->canGainExperience());
+}
+
 TEST(TinyH3MBuilderTest, SpellScrollLoads)
 {
 	// SpellID 15 = Magic Arrow (always available, no expansion required).
@@ -298,4 +426,38 @@ TEST(TinyH3MBuilderTest, KillCreatureQuest)
 	// Loader resolves the uint32 wire id to an ObjectInstanceID in afterRead;
 	// the resolved target lives in quest.mission.destroyedObjects once mapping completes.
 	EXPECT_FALSE(guard->getQuest().mission.destroyedObjects.empty());
+}
+
+class HotaAbandonedMineTest : public TinyMapGameTest
+{
+protected:
+	const CGMine * startWithMine(CreatureID guard, int32_t minAmount, int32_t maxAmount)
+	{
+		TinyH3M::TinyH3MBuilder builder(EMapFormat::HOTA);
+		builder.hotaVersion(5)
+			.size(36, /*twoLevel*/ false)
+			.playerActive(PlayerColor(0))
+			.abandonedMine({10, 10, 0}, guard, minAmount, maxAmount);
+		startWithMap(std::move(builder));
+		auto mines = findAll<CGMine>();
+		return mines.size() == 1 ? mines.front() : nullptr;
+	}
+};
+
+TEST_F(HotaAbandonedMineTest, CustomGuardsReplaceDefaultOnes)
+{
+	const auto * mine = startWithMine(CreatureID(CreatureID::IMP), 20, 30);
+	ASSERT_NE(mine, nullptr);
+	ASSERT_EQ(mine->stacksCount(), 1);
+	EXPECT_EQ(mine->getCreature(SlotID(0))->getId(), CreatureID(CreatureID::IMP));
+	EXPECT_GE(mine->getStackCount(SlotID(0)), 20);
+	EXPECT_LE(mine->getStackCount(SlotID(0)), 30);
+}
+
+TEST_F(HotaAbandonedMineTest, DefaultGuardsWithoutCustomOnes)
+{
+	const auto * mine = startWithMine(CreatureID::NONE, 0, 0);
+	ASSERT_NE(mine, nullptr);
+	ASSERT_GT(mine->stacksCount(), 0);
+	EXPECT_EQ(mine->getCreature(SlotID(0))->getId(), CreatureID(CreatureID::TROGLODYTES));
 }

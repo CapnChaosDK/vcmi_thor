@@ -135,7 +135,7 @@ public:
 	std::uint64_t getThorScenarioSelectionRevision() const { return thorScenarioSelectionRevision; }
 #endif
 	void setRequiredHumanPlayers(size_t players);
-	void rememberSave(const std::string & savePath) const;
+	static void rememberSave(const std::string & savePath);
 	void rememberCurrentSelection();
 	void restoreLastSelection();
 	bool checkNameFilter(const std::string & fullstring) const;
@@ -167,7 +167,7 @@ private:
 	bool isMapCompatibleWithLobbyPlayerCount(const ElementInfo & info) const;
 	bool isSaveCompatible(const CMapInfo & info, ELoadMode loadMode) const;
 	std::optional<bool> isFolderCompatible(const std::string & folderName, const std::vector<ResourcePath> & files);
-	std::string getLastSaveSettingName() const;
+	static std::string getLastSaveSettingName();
 	bool openSaveDirectory(std::string folder);
 	void restoreLastSave();
 

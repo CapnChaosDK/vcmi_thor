@@ -41,7 +41,7 @@ struct TeleportChannel;
 enum class EGameSettings;
 
 /// The rumor struct consists of a rumor name and text.
-struct DLL_LINKAGE Rumor
+struct Rumor
 {
 	std::string name;
 	MetaString text;
@@ -162,14 +162,17 @@ public:
 	/// Shows previously hiiden object on map
 	void showObject(CGObjectInstance * obj);
 
+	/// Tells whether a hole left by digging is located on the tile
+	bool isHoleAt(const int3 & pos) const;
+
 	/// Remove objects and shifts object indicies.
 	/// Only for use in map editor / RMG
 	std::shared_ptr<CGObjectInstance> removeObject(ObjectInstanceID oldObject);
 
-	/// Replaced map object with specified ID with new object
-	/// Old object must exist and will be removed from map
-	/// Returns pointer to old object, which can be manipulated or dropped
-	std::shared_ptr<CGObjectInstance> replaceObject(ObjectInstanceID oldObject, const std::shared_ptr<CGObjectInstance> & newObject);
+	/// Inserts a new object with the specified id
+	/// If an object with this id already exists, it will be removed
+	/// Returns pointer to old object or nullptr if the object does not exist
+	std::shared_ptr<CGObjectInstance> replaceObject(ObjectInstanceID oldObjectId, const std::shared_ptr<CGObjectInstance> & newObject);
 
 	/// Erases object from map without shifting indices
 	/// Returns pointer to old object, which can be manipulated or dropped
@@ -299,7 +302,6 @@ public:
 	const IGameSettings & getSettings() const;
 
 	void parseUidCounter();
-	static bool compareObjectBlitOrder(const CGObjectInstance * a, const CGObjectInstance * b);
 
 private:
 
@@ -307,6 +309,9 @@ private:
 	MapTilesStorage<TerrainTile> terrain;
 
 	si32 uidCounter; 
+
+	/// holes are neither visitable nor blocking, so tiles do not know about them
+	std::unordered_set<int3> holePositions;
 
 public:
 	template <typename Handler>
@@ -337,6 +342,16 @@ public:
 
 		h & objects;
 		h & heroesOnMap;
+
+		if(!h.saving)
+		{
+			holePositions.clear();
+			for(const auto & object : objects)
+			{
+				if(object && object->ID == Obj::HOLE)
+					holePositions.insert(object->anchorPos());
+			}
+		}
 
 		h & teleportChannels;
 		h & towns;

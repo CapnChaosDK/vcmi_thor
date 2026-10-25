@@ -21,7 +21,7 @@ void CEmptyAI::initGameInterface(std::shared_ptr<Environment> ENV, std::shared_p
 	cb = CB;
 	env = ENV;
 	human=false;
-	playerID = *cb->getPlayerID();
+	playerID = cb->getPlayerID().value();
 }
 
 void CEmptyAI::yourTurn(QuestionID questionID)
@@ -40,14 +40,14 @@ void CEmptyAI::yourTacticPhase(const BattleID & battleID, int distance)
 	cb->battleMakeTacticAction(battleID, BattleAction::makeEndOFTacticPhase(cb->getBattle(battleID)->battleGetTacticsSide()));
 }
 
-void CEmptyAI::heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, const std::vector<SecondarySkill> &skills, QuestionID questionID)
+void CEmptyAI::heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, const std::vector<SecondarySkill> &skills, bool moreLevelsFollow, QuestionID questionID)
 {
-	cb->selectionMade(skills.empty() ? 0 : CRandomGenerator::getDefault().nextInt(static_cast<int>(skills.size()) - 1), questionID);
+	cb->selectionMade(CRandomGenerator::getDefault().nextInt((int)skills.size() - 1), questionID);
 }
 
-void CEmptyAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QuestionID questionID)
+void CEmptyAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, bool moreLevelsFollow, QuestionID questionID)
 {
-	cb->selectionMade(skills.empty() ? 0 : CRandomGenerator::getDefault().nextInt(static_cast<int>(skills.size()) - 1), questionID);
+	cb->selectionMade(CRandomGenerator::getDefault().nextInt((int)skills.size() - 1), questionID);
 }
 
 void CEmptyAI::showBlockingDialog(const std::string &text, const std::vector<Component> &components, QuestionID questionID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept)
@@ -57,10 +57,10 @@ void CEmptyAI::showBlockingDialog(const std::string &text, const std::vector<Com
 
 void CEmptyAI::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QuestionID questionID)
 {
-	cb->selectionMade(-1, questionID);
+	cb->selectionMade(0, questionID);
 }
 
-void CEmptyAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QuestionID questionID, const MetaString & customTitle)
+void CEmptyAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, QuestionID questionID, const MetaString & customTitle)
 {
 	cb->selectionMade(0, questionID);
 }

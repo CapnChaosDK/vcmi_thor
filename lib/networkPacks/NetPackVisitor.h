@@ -30,6 +30,7 @@ public:
 	virtual void visitQuestionResolved(QuestionResolved & pack) {}
 	virtual void visitPackageReceived(PackageReceived & pack) {}
 	virtual void visitSystemMessage(SystemMessage & pack) {}
+	virtual void visitSimturnsContactStatus(SimturnsContactStatus & pack) {}
 	virtual void visitPlayerBlocked(PlayerBlocked & pack) {}
 	virtual void visitPlayerCheated(PlayerCheated & pack) {}
 	virtual void visitPlayerStartsTurn(PlayerStartsTurn & pack) {}
@@ -93,6 +94,7 @@ public:
 	virtual void visitSetObjectProperty(SetObjectProperty & pack) {}
 	virtual void visitSetScriptVariable(SetScriptVariable & pack) {}
 	virtual void visitSetQuestHint(SetQuestHint & pack) {}
+	virtual void visitDisableMapEvent(DisableMapEvent & pack) {}
 	virtual void visitChangeObjectVisitors(ChangeObjectVisitors & pack) {}
 	virtual void visitChangeArtifactsCostume(ChangeArtifactsCostume & pack) {}
 	virtual void visitHeroLevelUp(HeroLevelUp & pack) {}
@@ -122,6 +124,7 @@ public:
 	virtual void visitBattleTriggerEffect(BattleTriggerEffect & pack) {}
 	virtual void visitBattleAnimationPlayed(BattleAnimationPlayed & pack) {}
 	virtual void visitBattleUpdateGateState(BattleUpdateGateState & pack) {}
+	virtual void visitBattleTacticsEnded(BattleTacticsEnded & pack) {}
 	virtual void visitAdvmapSpellCast(AdvmapSpellCast & pack) {}
 	virtual void visitShowWorldViewEx(ShowWorldViewEx & pack) {}
 	virtual void visitEndTurn(EndTurn & pack) {}
@@ -129,7 +132,6 @@ public:
 	virtual void visitMoveHero(MoveHero & pack) {}
 	virtual void visitCastleTeleportHero(CastleTeleportHero & pack) {}
 	virtual void visitArrangeStacks(ArrangeStacks & pack) {}
-	virtual void visitRedistributeArmyStack(RedistributeArmyStack & pack) {}
 	virtual void visitBulkMoveArmy(BulkMoveArmy & pack) {}
 	virtual void visitBulkSplitStack(BulkSplitStack & pack) {}
 	virtual void visitBulkMergeStacks(BulkMergeStacks & pack) {}

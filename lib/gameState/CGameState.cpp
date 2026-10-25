@@ -57,7 +57,6 @@
 #include "../mapping/CMap.h"
 #include "../mapping/CMapEditManager.h"
 #include "../mapping/CMapService.h"
-#include "../modding/ActiveModsInSaveList.h"
 #include "../modding/IdentifierStorage.h"
 #include "../modding/ModScope.h"
 #include "../networkPacks/NetPacksBase.h"
@@ -65,8 +64,6 @@
 #include "../pathfinder/PathfinderOptions.h"
 #include "../rmg/CMapGenerator.h"
 #include "../serializer/CMemorySerializer.h"
-#include "../serializer/CLoadFile.h"
-#include "../serializer/CSaveFile.h"
 #include "../spells/CSpell.h"
 #include "UpgradeInfo.h"
 #include "mapObjects/CGPandoraBox.h"
@@ -237,6 +234,7 @@ void CGameState::init(const IMapService * mapService, StartInfo * si, IGameRando
 	initTowns(randomGenerator);
 	initTownNames(randomGenerator);
 	placeHeroesInTowns();
+	initHeroBoats(gameRandomizer);
 	initMapObjects(gameRandomizer);
 	buildBonusSystemTree();
 	initVisitingAndGarrisonedHeroes();
@@ -305,6 +303,8 @@ void CGameState::updateEntity(Metatype metatype, int32_t index, const JsonNode &
 void CGameState::updateOnLoad(const StartInfo & si)
 {
 	assert(services);
+	repairTownHeroLinks();
+
 	scenarioOps->playerInfos = si.playerInfos;
 	for(auto & i : si.playerInfos)
 	{
@@ -322,9 +322,50 @@ void CGameState::updateOnLoad(const StartInfo & si)
 			town->legacyCustomName.clear();
 		}
 
+	// pre-SEER_HUT_NAME_TEXT_ID saves carry the rolled seer name as free-form text
+	for(auto * hut : getMap().getObjects<SeerHut>())
+		if(!hut->legacySeerName.empty())
+		{
+			hut->setSeerName(getMap(), hut->legacySeerName);
+			hut->legacySeerName.clear();
+		}
+
 	scenarioOps->extraOptionsInfo = si.extraOptionsInfo;
 	scenarioOps->turnTimerInfo = si.turnTimerInfo;
 	scenarioOps->simturnsInfo = si.simturnsInfo;
+}
+
+void CGameState::repairTownHeroLinks()
+{
+	for(auto * town : map->getObjects<CGTownInstance>())
+	{
+		for(auto * slot : {&town->visitingHero, &town->garrisonHero})
+		{
+			const auto * hero = getHero(*slot);
+			const bool garrisoned = slot == &town->garrisonHero;
+			if(!slot->hasValue() || (hero && hero->getVisitedTown() == town && hero->isGarrisoned() == garrisoned && hero->visitablePos() == town->visitablePos()))
+				continue;
+
+			logGlobal->warn("Town %s: removing invalid hero assignment %d", town->getNameTextID(), slot->getNum());
+			if(hero && hero->getVisitedTown() == town)
+				town->setTownHero(*slot, nullptr, false);
+			else
+				*slot = {};
+		}
+		town->updateMoraleBonusFromArmy();
+	}
+
+	for(auto * hero : map->getObjects<CGHeroInstance>())
+	{
+		const auto * town = hero->getVisitedTown();
+		if(!town || town->getVisitingHero() == hero || town->getGarrisonHero() == hero)
+			continue;
+
+		logGlobal->warn("Hero %s: removing invalid link to town %s", hero->getNameTextID(), town->getNameTextID());
+		hero->detachFromBonusSystem(*this);
+		hero->setVisitedTown(nullptr, false);
+		hero->attachToBonusSystem(*this);
+	}
 }
 
 void CGameState::initNewGame(const IMapService * mapService, vstd::RNG & randomGenerator, bool allowSavingRandomMap, Load::ProgressAccumulator & progressTracking)
@@ -425,7 +466,6 @@ void CGameState::initGlobalBonuses()
 		bonus->sid = BonusSourceID(); //there is one global object
 		globalEffects.addNewBonus(bonus);
 	}
-	LIBRARY->creh->loadCrExpBon(globalEffects);
 }
 
 void CGameState::initDifficulty()
@@ -436,11 +476,15 @@ void CGameState::initDifficulty()
 
 	const JsonNode & difficultyAI(config["ai"][GameConstants::DIFFICULTY_NAMES[scenarioOps->difficulty]]);
 	const JsonNode & difficultyHuman(config["human"][GameConstants::DIFFICULTY_NAMES[scenarioOps->difficulty]]);
+	const bool isTutorialScenario = boost::iequals(scenarioOps->mapname, "Maps/Tutorial");
 
-	auto setDifficulty = [this](PlayerState & state, const JsonNode & json)
+	auto setDifficulty = [this, &config, isTutorialScenario](PlayerState & state, const JsonNode & json)
 	{
 		//set starting resources
-		state.resources.resolveFromJson(json["resources"]);
+		if (isTutorialScenario && state.human)
+			state.resources.resolveFromJson(config["tutorial"]["resources"]);
+		else
+			state.resources.resolveFromJson(json["resources"]);
 
 		//handicap
 		const PlayerSettings &ps = scenarioOps->getIthPlayersSettings(state.color);
@@ -689,40 +733,6 @@ void CGameState::initHeroes(IGameRandomizer & gameRandomizer)
 		}
 		hero->initHero(gameRandomizer);
 		hero->armyChanged();
-	}
-
-	// generate boats for all heroes on water
-	for (auto heroID : map->getHeroesOnMap())
-	{
-		auto hero = getHero(heroID);
-		const auto pos = hero->visitablePos();
-
-		if(!map->isInTheMap(pos))
-		{
-			logGlobal->warn(
-				"initHeroes: hero %s has invalid visitablePos %s (outside map) – skipping boat generation",
-				hero->getNameTextID(), pos.toString());
-			continue;
-		}
-
-		const auto & tile = map->getTile(hero->visitablePos());
-
-		if (hero->ID == Obj::PRISON)
-			continue;
-
-		if (tile.isWater())
-		{
-			auto handler = LIBRARY->objtypeh->getHandlerFor(Obj::BOAT, hero->getBoatType().getNum());
-			auto boat = std::dynamic_pointer_cast<CGBoat>(handler->create(this, nullptr));
-			handler->configureObject(boat.get(), gameRandomizer);
-
-			boat->setAnchorPos(hero->anchorPos());
-			boat->appearance = handler->getTemplates().front();
-			map->generateUniqueInstanceName(boat.get());
-			map->addNewObject(boat);
-			map->hideObject(boat.get());
-			hero->setBoat(boat.get());
-		}
 	}
 
 	std::set<HeroTypeID> heroesToCreate = getUnusedAllowedHeroes(); //ids of heroes to be created and put into the pool
@@ -1025,9 +1035,47 @@ void CGameState::initMapObjects(IGameRandomizer & gameRandomizer)
 	// getObjects<SeerHut>() already yields exactly seer huts + quest guards
 	for(auto & q : map->getObjects<SeerHut>())
 		q->setObjToKill();
+	for(auto & q : map->getObjects<QuestSource>())
+		q->resolveRequiredHero(*map);
 	CGSubterraneanGate::postInit(this); //pairing subterranean gates
 
 	map->calculateGuardingGreaturePositions(); //calculate once again when all the guards are placed and initialized
+}
+
+void CGameState::initHeroBoats(IGameRandomizer & gameRandomizer)
+{
+	for (auto heroID : map->getHeroesOnMap())
+	{
+		auto hero = getHero(heroID);
+		const auto pos = hero->visitablePos();
+
+		if(!map->isInTheMap(pos))
+		{
+			logGlobal->warn(
+				"initHeroBoats: hero %s has invalid visitablePos %s (outside map) – skipping boat generation",
+				hero->getNameTextID(), pos.toString());
+			continue;
+		}
+
+		const auto & tile = map->getTile(hero->visitablePos());
+
+		if (hero->ID == Obj::PRISON)
+			continue;
+
+		if (tile.isWater())
+		{
+			auto handler = LIBRARY->objtypeh->getHandlerFor(Obj::BOAT, hero->getBoatType().getNum());
+			auto boat = std::dynamic_pointer_cast<CGBoat>(handler->create(this, nullptr));
+			handler->configureObject(boat.get(), gameRandomizer);
+
+			boat->setAnchorPos(hero->anchorPos());
+			boat->appearance = handler->getTemplates().front();
+			map->generateUniqueInstanceName(boat.get());
+			map->addNewObject(boat);
+			map->hideObject(boat.get());
+			hero->setBoat(boat.get());
+		}
+	}
 }
 
 void CGameState::placeHeroesInTowns()
@@ -1066,16 +1114,11 @@ void CGameState::initVisitingAndGarrisonedHeroes()
 		//init visiting and garrisoned heroes
 		for(CGHeroInstance * h : player.second.getHeroes())
 		{
-			for(CGTownInstance * t : player.second.getTowns())
+			CGTownInstance * t = getTown(map->getTile(h->visitablePos()).objectVisitedBy(h->id));
+			if(t && t->getOwner() == player.first)
 			{
-				if(h->visitablePos().z != t->visitablePos().z)
-					continue;
-
-				if (t->visitableAt(h->visitablePos()))
-				{
-					assert(t->getVisitingHero() == nullptr);
-					t->setVisitingHero(h);
-				}
+				assert(t->getVisitingHero() == nullptr);
+				t->setVisitingHero(h);
 			}
 		}
 	}
@@ -1118,6 +1161,28 @@ BattleInfo * CGameState::getBattle(const BattleID & battle)
 	return nullptr;
 }
 
+BattleField CGameState::getSpecialTerrainAt(const int3 & tile) const
+{
+	//look only for magical terrain-like objects covering given tile
+	for(auto & obj : map->getObjects<CGTerrainPatch>())
+		if(obj->coveringAt(tile) && obj->getBattlefield() != BattleField::NONE)
+			return obj->getBattlefield();
+
+	return BattleField::NONE;
+}
+
+CBonusSystemNode & CGameState::getSpecialTerrainNode(BattleField terrain)
+{
+	auto & node = specialTerrainNodes[terrain];
+	if(!node)
+	{
+		node = std::make_unique<CBonusSystemNode>(BonusNodeType::UNKNOWN);
+		for(const auto & bonus : terrain.getInfo()->bonuses)
+			node->addNewBonus(bonus);
+	}
+	return *node;
+}
+
 BattleField CGameState::battleGetBattlefieldType(int3 tile, vstd::RNG & randomGenerator) const
 {
 	assert(tile.isValid());
@@ -1134,17 +1199,9 @@ BattleField CGameState::battleGetBattlefieldType(int3 tile, vstd::RNG & randomGe
 		return topObject->getBattlefield();
 	}
 
-	for(auto & obj : map->getObjects<CGTerrainPatch>())
-	{
-		//look only for magical terrain-like objects covering given tile
-		if(!obj->coveringAt(tile))
-			continue;
-
-		auto customBattlefield = obj->getBattlefield();
-
-		if(customBattlefield != BattleField::NONE)
-			return customBattlefield;
-	}
+	BattleField specialTerrain = getSpecialTerrainAt(tile);
+	if(specialTerrain != BattleField::NONE)
+		return specialTerrain;
 
 	if(map->isCoastalTile(tile)) //coastal tile is always ground
 		return BattleField(*LIBRARY->identifiers()->getIdentifier("core", "battlefield.sand_shore"));
@@ -1169,6 +1226,17 @@ PlayerRelations CGameState::getPlayerRelations( PlayerColor color1, PlayerColor 
 	if (ts && vstd::contains(ts->players, color2))
 		return PlayerRelations::ALLIES;
 	return PlayerRelations::ENEMIES;
+}
+
+bool CGameState::isContactAllowed(PlayerColor color1, PlayerColor color2) const
+{
+	if (color1 == color2)
+		return true;
+
+	if (color2 < color1)
+		std::swap(color1, color2);
+
+	return !blockedContacts.count({color1, color2});
 }
 
 void CGameState::apply(CPackForClient & pack)
@@ -1495,6 +1563,11 @@ PlayerColor CGameState::checkForStandardWin() const
 				//current candidate has enemy remaining in game -> no vicotry
 				return PlayerColor::NEUTRAL;
 			}
+			else if(!players.at(supposedWinner).human && elem.second.human)
+			{
+				//prefer a human winner over an AI ally from the same surviving team
+				supposedWinner = elem.second.color;
+			}
 		}
 	}
 
@@ -1753,14 +1826,16 @@ CArtifactInstance * CGameState::createArtifact(const ArtifactID & artID, const S
 	return map->createArtifact(artID, spellId);
 }
 
-void CGameState::saveGame(CSaveFile & file) const
+void CGameState::saveHeader(BinarySerializer & h) const
 {
-	ActiveModsInSaveList activeModsDummy;
+	h & *getMapHeader();
+	h & *getStartInfo();
+}
+
+void CGameState::saveGame(BinarySerializer & h) const
+{
 	logGlobal->info("Saving game state");
-	file.save(*getMapHeader());
-	file.save(*getStartInfo());
-	file.save(activeModsDummy);
-	file.save(*this);
+	h & *this;
 }
 
 std::vector<std::byte> CGameState::saveToMemory()
@@ -1789,18 +1864,10 @@ void CGameState::loadFromMemory(std::vector<std::byte> data)
 	serializer.iser & *this;
 }
 
-void CGameState::loadGame(CLoadFile & file)
+void CGameState::loadGame(BinaryDeserializer & h)
 {
 	logGlobal->info("Loading game state...");
-
-	CMapHeader dummyHeader;
-	ActiveModsInSaveList dummyActiveMods;
-
-	file.load(dummyHeader);
-	StartInfo dummyStartInfo;
-	file.load(dummyStartInfo);
-	file.load(dummyActiveMods);
-	file.load(*this);
+	h & *this;
 
 	// Runtime-only object, not serialized; rebuild from the loaded script source.
 	mapEventDispatcher = LIBRARY->scripts()->createMapScriptDispatcher(*this, false);

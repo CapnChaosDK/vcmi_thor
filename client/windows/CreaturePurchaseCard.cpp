@@ -44,10 +44,10 @@ void CreaturePurchaseCard::initMinButton()
 
 void CreaturePurchaseCard::initCreatureSwitcherButton()
 {
-	creatureSwitcher = std::make_shared<CButton>(Point(pos.x + 18, pos.y-37), AnimationPath::builtin("iDv6432.def"), CButton::tooltip(), [&](){ switchVariant(); }, EShortcut::RECRUITMENT_SWITCH_LEVEL);
+	creatureSwitcher = std::make_shared<CButton>(Point(pos.x + 18, pos.y-37), AnimationPath::builtin("iDv6432.def"), CButton::tooltip(), [&](){ switchCreatureLevel(); }, EShortcut::RECRUITMENT_SWITCH_LEVEL);
 }
 
-void CreaturePurchaseCard::switchVariant()
+void CreaturePurchaseCard::switchCreatureLevel()
 {
 	OBJECT_CONSTRUCTION;
 	auto index = vstd::find_pos(upgradesID, creatureOnTheCard->getId());
@@ -55,7 +55,7 @@ void CreaturePurchaseCard::switchVariant()
 	creatureOnTheCard = nextCreatureId.toCreature();
 	picture = std::make_shared<CCreaturePic>(picture->pos.x - pos.x, picture->pos.y - pos.y, creatureOnTheCard);
 	creatureClickArea = std::make_shared<CCreatureClickArea>(Point(picture->pos.x - pos.x, picture->pos.y - pos.y), picture, creatureOnTheCard);
-	parent->updateAllSliders();
+	owner->updateAllSliders();
 	cost->set(creatureOnTheCard->getFullRecruitCost() * slider->getValue());
 }
 
@@ -97,12 +97,12 @@ void CreaturePurchaseCard::sliderMoved(int to)
 {
 	updateAmountInfo(to);
 	cost->set(creatureOnTheCard->getFullRecruitCost() * to);
-	parent->updateAllSliders();
+	owner->updateAllSliders();
 }
 
 CreaturePurchaseCard::CreaturePurchaseCard(const std::vector<CreatureID> & creaturesID, Point position, int creaturesMaxAmount,
 	int tier, QuickRecruitmentWindow * parents)
-	: parent(parents),
+	: owner(parents),
 	maxAmount(creaturesMaxAmount),
 	tierIndex(tier),
 	upgradesID(creaturesID)

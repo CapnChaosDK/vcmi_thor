@@ -100,43 +100,36 @@ void ApplyGhNetPackVisitor::visitArrangeStacks(ArrangeStacks & pack)
 	result = gh.arrangeStacks(pack.id1, pack.id2, pack.what, pack.p1, pack.p2, pack.val, pack.player);
 }
 
-void ApplyGhNetPackVisitor::visitRedistributeArmyStack(RedistributeArmyStack & pack)
-{
-	gh.throwIfWrongOwner(connection, &pack, pack.sourceArmy);
-	result = gh.redistributeArmyStack(pack.leftHero, pack.rightHero, pack.sourceArmy, pack.sourceSlot, pack.expectedCreature,
-		pack.expectedSourceCount, pack.destinations, pack.destinationCount, pack.player);
-}
-
 void ApplyGhNetPackVisitor::visitBulkMoveArmy(BulkMoveArmy & pack)
 {
-	gh.throwIfWrongPlayer(connection, &pack);
+	gh.throwIfCanNotTakeTroops(connection, &pack, pack.srcArmy);
 	gh.throwIfCanNotTrade(connection, &pack, pack.srcArmy, pack.destArmy);
 
-	result = gh.bulkMoveArmy(pack.srcArmy, pack.destArmy, pack.srcSlot, pack.player);
+	result = gh.bulkMoveArmy(pack.srcArmy, pack.destArmy, pack.srcSlot);
 }
 
 void ApplyGhNetPackVisitor::visitBulkSplitStack(BulkSplitStack & pack)
 {
-	gh.throwIfWrongPlayer(connection, &pack);
+	gh.throwIfCanNotTakeTroops(connection, &pack, pack.srcOwner);
 	gh.throwIfCanNotTrade(connection, &pack, pack.srcOwner, pack.srcOwner);
 
-	result = gh.bulkSplitStack(pack.src, pack.srcOwner, pack.amount, pack.player);
+	result = gh.bulkSplitStack(pack.src, pack.srcOwner, pack.amount);
 }
 
 void ApplyGhNetPackVisitor::visitBulkMergeStacks(BulkMergeStacks & pack)
 {
-	gh.throwIfWrongPlayer(connection, &pack);
+	gh.throwIfCanNotTakeTroops(connection, &pack, pack.srcOwner);
 	gh.throwIfCanNotTrade(connection, &pack, pack.srcOwner, pack.srcOwner);
 
-	result = gh.bulkMergeStacks(pack.src, pack.srcOwner, pack.player);
+	result = gh.bulkMergeStacks(pack.src, pack.srcOwner);
 }
 
 void ApplyGhNetPackVisitor::visitBulkSplitAndRebalanceStack(BulkSplitAndRebalanceStack & pack)
 {
-	gh.throwIfWrongPlayer(connection, &pack);
+	gh.throwIfCanNotTakeTroops(connection, &pack, pack.srcOwner);
 	gh.throwIfCanNotTrade(connection, &pack, pack.srcOwner, pack.srcOwner);
 
-	result = gh.bulkSplitAndRebalanceStack(pack.src, pack.srcOwner, pack.player);
+	result = gh.bulkSplitAndRebalanceStack(pack.src, pack.srcOwner);
 }
 
 void ApplyGhNetPackVisitor::visitDisbandCreature(DisbandCreature & pack)
@@ -144,7 +137,7 @@ void ApplyGhNetPackVisitor::visitDisbandCreature(DisbandCreature & pack)
 	gh.throwIfWrongOwner(connection, &pack, pack.id);
 	gh.throwIfCanNotTrade(connection, &pack, pack.id, pack.id);
 
-	result = gh.disbandCreature(pack.id, pack.pos, pack.player);
+	result = gh.disbandCreature(pack.id, pack.pos);
 }
 
 void ApplyGhNetPackVisitor::visitBuildStructure(BuildStructure & pack)
@@ -190,6 +183,8 @@ void ApplyGhNetPackVisitor::visitUpgradeCreature(UpgradeCreature & pack)
 void ApplyGhNetPackVisitor::visitGarrisonHeroSwap(GarrisonHeroSwap & pack)
 {
 	const CGTownInstance * town = gh.gameInfo().getTown(pack.tid);
+	if(!town)
+		gh.throwNotAllowedAction(connection);
 	if(!gh.isPlayerOwns(connection, &pack, pack.tid) && !(town->getGarrisonHero() && gh.isPlayerOwns(connection, &pack, town->getGarrisonHero()->id)))
 		gh.throwNotAllowedAction(connection); //neither town nor garrisoned hero (if present) is ours
 	gh.throwIfPlayerNotActive(connection, &pack);
@@ -283,6 +278,9 @@ void ApplyGhNetPackVisitor::visitTradeOnMarketplace(TradeOnMarketplace & pack)
 	if(!market)
 		gh.throwAndComplain(connection, "market is not-a-market! :/");
 
+	if(!market->allowsTrade(pack.mode))
+		gh.throwAndComplain(connection, "Can not trade - market does not support this trade mode!");
+
 	bool heroCanBeInvalid = false;
 
 	if (pack.mode == EMarketMode::RESOURCE_RESOURCE || pack.mode == EMarketMode::RESOURCE_PLAYER)
@@ -320,21 +318,32 @@ void ApplyGhNetPackVisitor::visitTradeOnMarketplace(TradeOnMarketplace & pack)
 			gh.throwAndComplain(connection, "Can not trade - market not owned!");
 	}
 
+	// modes read their item lists pairwise by index
+	const auto requireSameSize = [&](std::initializer_list<size_t> sizes)
+	{
+		if(std::adjacent_find(sizes.begin(), sizes.end(), std::not_equal_to<>()) != sizes.end())
+			gh.throwAndComplain(connection, "Can not trade - malformed trade request!");
+	};
+
 	result = true;
 
 	switch(pack.mode)
 	{
 	case EMarketMode::RESOURCE_RESOURCE:
+		requireSameSize({pack.r1.size(), pack.r2.size(), pack.val.size()});
 		for(int i = 0; i < pack.r1.size(); ++i)
 			result &= gh.tradeResources(market, pack.val[i], pack.player, pack.r1[i].as<GameResID>(), pack.r2[i].as<GameResID>());
 		break;
 	case EMarketMode::RESOURCE_PLAYER:
 	{
+		requireSameSize({pack.r1.size(), pack.r2.size(), pack.val.size()});
 		ResourceSet resources;
 		for(int i = 0; i < pack.r1.size(); ++i)
 		{
-			result &= gh.sendResources(pack.val[i], pack.player, pack.r1[i].as<GameResID>(), pack.r2[i].as<PlayerColor>());
-			resources[pack.r1[i].as<GameResID>()] = pack.val[i];
+			if(gh.sendResources(pack.val[i], pack.player, pack.r1[i].as<GameResID>(), pack.r2[i].as<PlayerColor>()))
+				resources[pack.r1[i].as<GameResID>()] = pack.val[i];
+			else
+				result = false;
 		}
 		
 		if(pack.r1.size())
@@ -342,14 +351,17 @@ void ApplyGhNetPackVisitor::visitTradeOnMarketplace(TradeOnMarketplace & pack)
 		break;
 	}
 	case EMarketMode::CREATURE_RESOURCE:
+		requireSameSize({pack.r1.size(), pack.r2.size(), pack.val.size()});
 		for(int i = 0; i < pack.r1.size(); ++i)
 			result &= gh.sellCreatures(pack.val[i], market, hero, pack.r1[i].as<SlotID>(), pack.r2[i].as<GameResID>());
 		break;
 	case EMarketMode::RESOURCE_ARTIFACT:
+		requireSameSize({pack.r1.size(), pack.r2.size()});
 		for(int i = 0; i < pack.r1.size(); ++i)
 			result &= gh.buyArtifact(market, hero, pack.r1[i].as<GameResID>(), pack.r2[i].as<ArtifactID>());
 		break;
 	case EMarketMode::ARTIFACT_RESOURCE:
+		requireSameSize({pack.r1.size(), pack.r2.size()});
 		for(int i = 0; i < pack.r1.size(); ++i)
 			result &= gh.sellArtifact(market, hero, pack.r1[i].as<ArtifactInstanceID>(), pack.r2[i].as<GameResID>());
 		break;
@@ -363,6 +375,7 @@ void ApplyGhNetPackVisitor::visitTradeOnMarketplace(TradeOnMarketplace & pack)
 		break;
 	case EMarketMode::CREATURE_EXP:
 	{
+		requireSameSize({pack.r1.size(), pack.val.size()});
 		std::vector<SlotID> slotIDs;
 		std::vector<ui32> count(pack.val.begin(), pack.val.end());
 

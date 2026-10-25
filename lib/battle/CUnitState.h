@@ -11,6 +11,7 @@
 #pragma once
 
 #include "BattleUnitTurnReason.h"
+#include "UnitTurnStatus.h"
 #include "Unit.h"
 #include "../bonuses/BonusCache.h"
 
@@ -63,13 +64,13 @@ private:
 	BonusValueCache shooter;
 };
 
-class DLL_LINKAGE CCasts : public CAmmo
+class CCasts : public CAmmo
 {
 public:
 	explicit CCasts(const battle::Unit * Owner);
 };
 
-class DLL_LINKAGE CRetaliations : public CAmmo
+class CRetaliations : public CAmmo
 {
 public:
 	explicit CRetaliations(const battle::Unit * Owner);
@@ -110,7 +111,8 @@ public:
 	/// returns total initial health
 	int64_t total() const;
 
-	void takeResurrected();
+	/// Removes units resurrected only for this battle, optionally leaving one of them alive
+	void takeResurrected(bool keepLastUnit = false);
 
 	void serializeJson(JsonSerializeFormat & handler);
 private:
@@ -127,17 +129,12 @@ class DLL_LINKAGE CUnitState : public Unit
 {
 public:
 	bool cloned;
-	bool defending;
 	bool drainedMana;
 	bool fear;
 	bool hadMorale;
-	bool castSpellThisTurn;
 	bool ghost;
 	bool ghostPending;
-	bool movedThisRound;
 	bool summoned;
-	bool waiting;
-	bool waitedThisTurn; //"waited()" that stays true for full turn after wait - needed as UI button hackfix
 
 	CCasts casts;
 	CRetaliations counterAttacks;
@@ -205,9 +202,12 @@ public:
 
 	int32_t getKilled() const override;
 	int32_t getCount() const override;
+	int32_t getResurrected() const override;
 	int32_t getFirstHPleft() const override;
 	int64_t getAvailableHealth() const override;
 	int64_t getTotalHealth() const override;
+	uint64_t estimateCombatValue() const override;
+	uint64_t estimateCombatValue(const CombatValueContext & context) const override;
 	uint32_t getMaxHealth() const override;
 
 	BattleHex getPosition() const override;
@@ -224,6 +224,13 @@ public:
 	bool moved(int turn = 0) const override;
 	bool willMove(int turn = 0) const override;
 	bool waited(int turn = 0) const override;
+
+	UnitTurnStatus getTurnStatus() const;
+	void setTurnStatus(UnitTurnStatus status);
+	/// Waited at some point of the current round, unlike waited() also after acting since then
+	bool waitedThisRound() const;
+	bool castSpellThisTurn() const;
+	void setCastSpellThisTurn(bool value);
 
 	std::shared_ptr<Unit> acquire() const override;
 	std::shared_ptr<CUnitState> acquireState() const override;
@@ -262,17 +269,22 @@ public:
 private:
 	const IUnitEnvironment * env;
 
+	UnitTurnStatus turnStatus = UnitTurnStatus::READY;
+	bool hasWaitedThisRound = false;
+	bool hasCastSpellThisTurn = false;
+
 	BonusCachePerTurn immobilizedPerTurn;
 	BonusCachePerTurn stackSpeedPerTurn;
 	UnitBonusValuesProxy bonusCache;
+	BonusDerivedValueCache combatValue;
 
 	void reset();
 };
 
-class DLL_LINKAGE CUnitStateDetached final : public CUnitState
+class CUnitStateDetached final : public CUnitState
 {
 public:
-	explicit CUnitStateDetached(const IUnitInfo * unit_, const IBonusBearer * bonus_);
+	explicit CUnitStateDetached(const IUnitInfo * unit_, const IBonusBearer * bonus_, bool snapshotBonuses = false);
 
 	CUnitStateDetached & operator= (const CUnitState & other);
 
@@ -295,6 +307,8 @@ public:
 private:
 	const IUnitInfo * unit;
 	const IBonusBearer * bonus;
+	TConstBonusListPtr bonusSnapshot;
+	int32_t bonusTreeVersion;
 };
 
 }

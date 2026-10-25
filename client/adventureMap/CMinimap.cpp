@@ -201,9 +201,9 @@ void CMinimap::showAll(Canvas & to)
 
 			for (const auto objectID : visibleHeroes)
 			{
-				const auto * object = GAME->interface()->cb->tryGetObj(objectID);
+				const auto * object = GAME->interface()->cb->getObj(objectID);
 
-				if (!object || object->anchorPos().z != level)
+				if (object->anchorPos().z != level)
 					continue;
 
 				heroIcon->setOverlayColor(graphics->playerColors[object->getOwner().getNum()]);

@@ -11,8 +11,6 @@
 
 #include "Activity.h"
 
-struct BlockingDialog;
-
 /// Asks which town a town portal style spell should teleport its caster to, and completes
 /// the cast once the player has chosen. Holds everything it needs by value, so nothing has
 /// to stay alive while it waits.
@@ -36,13 +34,10 @@ public:
 /// read when it resumes.
 class ScriptDialogActivity : public DialogActivity
 {
-	bool selection;
-	size_t choices;
 public:
 	static constexpr ActivityType TYPE = ActivityType::ScriptDialog;
 
-	ScriptDialogActivity(CGameHandler * owner, const BlockingDialog & dialog);
-	bool acceptsAnswer(int32_t answer) const override;
+	ScriptDialogActivity(CGameHandler * owner, PlayerColor player);
 
 	bool acceptsAnswerWithoutValue() const override;
 	void onRemoval() override;

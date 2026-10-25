@@ -165,7 +165,17 @@ ArtifactID GameRandomizer::rollArtifact()
 		if(!LIBRARY->arth->legalArtifact(artifactID))
 			continue;
 
+		if(!gameInfo.isAllowed(artifactID))
+			continue;
+
 		potentialPicks.insert(artifactID);
+	}
+
+	// Grail can't be banned, so it is the last resort for maps that ban every artifact
+	if(potentialPicks.empty())
+	{
+		logGlobal->error("Failed to find any allowed artifact! Using Grail instead");
+		return ArtifactID::GRAIL;
 	}
 
 	return rollArtifact(potentialPicks);
@@ -196,12 +206,11 @@ ArtifactID GameRandomizer::rollArtifact(EArtifactClass type)
 
 ArtifactID GameRandomizer::rollArtifact(std::set<ArtifactID> potentialPicks)
 {
-	// No allowed artifacts at all - give Grail - this can't be banned (hopefully)
 	// FIXME: investigate how such cases are handled by H3 - some heavily customized user-made maps likely rely on H3 behavior
 	if(potentialPicks.empty())
 	{
-		logGlobal->warn("Failed to find artifact that matches requested parameters!");
-		return ArtifactID::GRAIL;
+		logGlobal->warn("Failed to find artifact that matches requested parameters! Picking artifact of any class instead");
+		return rollArtifact();
 	}
 
 	// Find how many times least used artifacts were picked by randomizer
@@ -357,9 +366,26 @@ std::vector<SecondarySkill> GameRandomizer::rollSecondarySkills(const CGHeroInst
 	int newSkillsAvailable = none.size();
 	int upgradedSkillsToSelect = std::max(maxUpgradedSkills, maxTotalSkills - newSkillsAvailable);
 
+	// skills on offer cooldown are offered only if nothing else can be upgraded
+	std::set<SecondarySkill> withheld;
+	for(const auto & skill : basicAndAdv)
+	{
+		auto gainedAt = hero->secSkillsGainedAtLevel.find(skill);
+		if(gainedAt != hero->secSkillsGainedAtLevel.end() && hero->level < gainedAt->second + static_cast<ui32>(skill.toSkill()->offerCooldown))
+			withheld.insert(skill);
+	}
+
 	while (skills.size() < upgradedSkillsToSelect && !basicAndAdv.empty())
 	{
-		skills.push_back(rollSecondarySkillForLevelup(hero, basicAndAdv));
+		std::set<SecondarySkill> candidates;
+		for(const auto & skill : basicAndAdv)
+			if(!withheld.count(skill))
+				candidates.insert(skill);
+
+		if(candidates.empty())
+			candidates = basicAndAdv;
+
+		skills.push_back(rollSecondarySkillForLevelup(hero, candidates));
 		basicAndAdv.erase(skills.back());
 	}
 

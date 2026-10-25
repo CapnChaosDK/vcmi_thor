@@ -7,6 +7,7 @@ set(lib_SRCS
 	filesystem/CCompressedStream.cpp
 	filesystem/CFileInputStream.cpp
 	filesystem/CFilesystemLoader.cpp
+	filesystem/CInputStream.cpp
 	filesystem/CMemoryBuffer.cpp
 	filesystem/CMemoryStream.cpp
 	filesystem/CZipLoader.cpp
@@ -14,6 +15,7 @@ set(lib_SRCS
 	filesystem/FileInfo.cpp
 	filesystem/Filesystem.cpp
 	filesystem/MinizipExtensions.cpp
+	filesystem/PngStripWriter.cpp
 	filesystem/ResourcePath.cpp
 
 	json/JsonFormatException.cpp
@@ -27,6 +29,7 @@ set(lib_SRCS
 	logging/CLogger.cpp
 	logging/VisualLogger.cpp
 
+	network/HttpDownloader.cpp
 	network/NetworkConnection.cpp
 	network/NetworkDiscovery.cpp
 	network/NetworkHandler.cpp
@@ -59,14 +62,24 @@ set(lib_MAIN_SRCS
 	battle/CBattleInfoCallback.cpp
 	battle/CBattleInfoEssentials.cpp
 	battle/CObstacleInstance.cpp
+	battle/CombatValue.cpp
 	battle/CPlayerBattleCallback.cpp
 	battle/CUnitState.cpp
+	battle/DamageEstimationTexts.cpp
 	battle/Destination.cpp
 	battle/IBattleState.cpp
 	battle/ReachabilityInfo.cpp
 	battle/SideInBattle.cpp
 	battle/SiegeInfo.cpp
 	battle/Unit.cpp
+	battle/actions/BattleActionType.cpp
+	battle/actions/CatapultAction.cpp
+	battle/actions/HealAction.cpp
+	battle/actions/MeleeAttackActions.cpp
+	battle/actions/NoTargetActions.cpp
+	battle/actions/ShootAction.cpp
+	battle/actions/SpellCastActions.cpp
+	battle/actions/WalkAction.cpp
 
 	bonuses/Bonus.cpp
 	bonuses/BonusCache.cpp
@@ -102,6 +115,7 @@ set(lib_MAIN_SRCS
 	campaign/CampaignRegionsHandler.cpp
 
 	constants/EntityIdentifiers.cpp
+	constants/StringConstants.cpp
 	constants/IdentifierBase.cpp
 
 	entities/artifact/ArtifactUtils.cpp
@@ -140,6 +154,7 @@ set(lib_MAIN_SRCS
 	gameState/QuestInfo.cpp
 	gameState/ReplayLog.cpp
 	gameState/RumorState.cpp
+	gameState/SaveMetadata.cpp
 	gameState/TavernHeroesPool.cpp
 	gameState/GameStatistics.cpp
 	gameState/UpgradeInfo.cpp
@@ -168,6 +183,7 @@ set(lib_MAIN_SRCS
 	mapObjects/FlaggableMapObject.cpp
 	mapObjects/IMarket.cpp
 	mapObjects/IObjectInterface.cpp
+	mapObjects/MapObjectDrawOrder.cpp
 	mapObjects/MiscObjects.cpp
 	mapObjects/ObjectTemplate.cpp
 	mapObjects/ObstacleSetHandler.cpp
@@ -260,15 +276,16 @@ set(lib_MAIN_SRCS
 	rmg/modificators/TerrainPainter.cpp
 	rmg/MapProxy.cpp
 
+	serializer/CLegacyLoadFile.cpp
 	serializer/CLoadFile.cpp
 	serializer/CMemorySerializer.cpp
 	serializer/GameConnection.cpp
 	serializer/CSaveFile.cpp
+	serializer/SaveFileFormat.cpp
 	serializer/CTypeList.cpp
 	serializer/JsonDeserializer.cpp
 	serializer/JsonSerializeFormat.cpp
 	serializer/JsonSerializer.cpp
-	serializer/JsonUpdater.cpp
 	serializer/SerializerReflection.cpp
 
 	scripting/ScriptVariablesStorage.cpp
@@ -374,6 +391,7 @@ set(lib_HEADERS
 	filesystem/Filesystem.h
 	filesystem/ISimpleResourceLoader.h
 	filesystem/MinizipExtensions.h
+	filesystem/PngStripWriter.h
 	filesystem/ResourcePath.h
 
 	json/JsonFormatException.h
@@ -387,6 +405,7 @@ set(lib_HEADERS
 	logging/CLogger.h
 	logging/VisualLogger.h
 
+	network/HttpDownloader.h
 	network/NetworkConnection.h
 	network/NetworkDefines.h
 	network/NetworkDiscovery.h
@@ -463,20 +482,32 @@ set(lib_MAIN_HEADERS
 	battle/BattleStateInfoForRetreat.h
 	battle/BattleProxy.h
 	battle/BattleUnitTurnReason.h
+	battle/UnitTurnStatus.h
 	battle/CBattleInfoCallback.h
 	battle/CBattleInfoEssentials.h
 	battle/CObstacleInstance.h
+	battle/CombatValue.h
 	battle/CPlayerBattleCallback.h
 	battle/CUnitState.h
+	battle/DamageEstimationTexts.h
 	battle/Destination.h
 	battle/IBattleInfoCallback.h
 	battle/IBattleState.h
 	battle/IUnitInfo.h
-	battle/PossiblePlayerBattleAction.h
 	battle/ReachabilityInfo.h
 	battle/SideInBattle.h
 	battle/SiegeInfo.h
 	battle/Unit.h
+	battle/actions/ActionOption.h
+	battle/actions/BattleActionType.h
+	battle/actions/CatapultAction.h
+	battle/actions/HealAction.h
+	battle/actions/IBattleActionEnvironment.h
+	battle/actions/MeleeAttackActions.h
+	battle/actions/NoTargetActions.h
+	battle/actions/ShootAction.h
+	battle/actions/SpellCastActions.h
+	battle/actions/WalkAction.h
 
 	bonuses/Bonus.h
 	bonuses/BonusCache.h
@@ -495,6 +526,7 @@ set(lib_MAIN_HEADERS
 
 	callback/CAdventureAI.h
 	callback/Calendar.h
+	callback/CallbackDefines.h
 	callback/CBattleCallback.h
 	callback/CBattleGameInterface.h
 	callback/AIFactory.h
@@ -573,6 +605,7 @@ set(lib_MAIN_HEADERS
 	gameState/InfoAboutArmy.h
 	gameState/ReplayLog.h
 	gameState/RumorState.h
+	gameState/SaveMetadata.h
 	gameState/SThievesGuildInfo.h
 	gameState/TavernHeroesPool.h
 	gameState/GameStatistics.h
@@ -600,6 +633,7 @@ set(lib_MAIN_HEADERS
 	mapObjects/CGHeroInstance.h
 	mapObjects/CGMarket.h
 	mapObjects/CGObjectInstance.h
+	mapObjects/MapObjectDrawOrder.h
 	mapObjects/CGPandoraBox.h
 	mapObjects/TownBuildingInstance.h
 	mapObjects/CGResource.h
@@ -619,8 +653,6 @@ set(lib_MAIN_HEADERS
 	mapObjects/army/CArmedInstance.h
 	mapObjects/army/CCommanderInstance.h
 	mapObjects/army/CCreatureSet.h
-	mapObjects/army/ArmyTransferValidation.h
-	mapObjects/army/ArmyStackRedistribution.h
 	mapObjects/army/CSimpleArmy.h
 	mapObjects/army/CStackBasicDescriptor.h
 	mapObjects/army/CStackInstance.h
@@ -738,11 +770,13 @@ set(lib_MAIN_HEADERS
 
 	serializer/BinaryDeserializer.h
 	serializer/BinarySerializer.h
+	serializer/CLegacyLoadFile.h
 	serializer/CLoadFile.h
 	serializer/CMemorySerializer.h
 	serializer/GameConnection.h
 	serializer/CSaveFile.h
 	serializer/CSerializer.h
+	serializer/SaveFileFormat.h
 	serializer/CTypeList.h
 	serializer/GameConnectionID.h
 	scripting/IScriptVariablesHost.h
@@ -750,7 +784,6 @@ set(lib_MAIN_HEADERS
 	serializer/JsonDeserializer.h
 	serializer/JsonSerializeFormat.h
 	serializer/JsonSerializer.h
-	serializer/JsonUpdater.h
 	serializer/ESerializationVersion.h
 	serializer/PlayerConnectionID.h
 	serializer/RegisterTypes.h
@@ -874,6 +907,10 @@ if(IOS)
 	target_link_libraries(vcmiMain PUBLIC iOS_utils)
 endif()
 
+if(ENABLE_LIBCURL)
+	target_link_libraries(vcmiMain PUBLIC CURL::libcurl)
+endif()
+
 target_include_directories(vcmiMain
 	PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 	PUBLIC ${CMAKE_SOURCE_DIR}
@@ -904,4 +941,8 @@ endif()
 
 if(VCMI_PORTMASTER)
 	target_compile_definitions(vcmiMain PRIVATE VCMI_PORTMASTER)
+endif()
+
+if(VCMI_FLATPAK)
+	target_compile_definitions(vcmiMain PRIVATE VCMI_FLATPAK)
 endif()

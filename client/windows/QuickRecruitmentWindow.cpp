@@ -268,7 +268,7 @@ void QuickRecruitmentWindow::rebuildThorCreaturePurchaseCards()
 			const int targetVariant = static_cast<int>(previousVariant - variants.begin());
 			for(int attempt = 0; attempt < card->variantCount()
 				&& card->currentVariantIndex() != targetVariant; ++attempt)
-				card->switchVariant();
+				card->switchCreatureLevel();
 		}
 		card->slider->scrollTo(std::min(previous->selectedAmount, card->slider->getAmount()));
 		selectedTargetStillAvailable |= card->tierIndex == previousSelectedTarget;
@@ -496,7 +496,7 @@ bool QuickRecruitmentWindow::executeThorAction(const ThorActionRequest & request
 		if((*card)->variantCount() <= 1 || (*card)->currentVariantIndex() < 0
 			|| (*card)->currentVariantIndex() >= (*card)->variantCount())
 			return false;
-		(*card)->switchVariant();
+		(*card)->switchCreatureLevel();
 	}
 	else if(request.recruitmentOperation != ThorRecruitmentOperation::SELECT_ROW)
 	{

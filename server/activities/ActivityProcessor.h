@@ -107,9 +107,6 @@ public:
 	/// Marks the activity as done; it is removed from each stack once it is on top
 	void finishActivity(Activity & activity);
 
-	/// Runtime continuations are not serialized; only idle stacks or a standalone pause are saveable.
-	bool canSave() const;
-
 	ActivityPtr topActivity(PlayerColor player);
 	ActivityPtr getActivity(QuestionID questionID);
 

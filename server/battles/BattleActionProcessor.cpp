@@ -17,10 +17,13 @@
 #include "../../lib/CStack.h"
 #include "../../lib/GameLibrary.h"
 #include "../../lib/IGameSettings.h"
+#include "../../lib/ScopeGuard.h"
 #include "../../lib/battle/CBattleInfoCallback.h"
 #include "../../lib/battle/CObstacleInstance.h"
 #include "../../lib/battle/IBattleState.h"
 #include "../../lib/battle/BattleAction.h"
+#include "../../lib/battle/actions/BattleActionType.h"
+#include "../../lib/battle/actions/IBattleActionEnvironment.h"
 #include "../../lib/bonuses/BonusParameters.h"
 #include "../../lib/scripting/ScriptService.h"
 #include "../../lib/combatScripts/ICombatEventScript.h"
@@ -52,331 +55,69 @@ BattleActionProcessor::BattleActionProcessor(BattleProcessor * owner, CGameHandl
 {
 }
 
-bool BattleActionProcessor::doEmptyAction(const CBattleInfoCallback & battle, const BattleAction & ba)
+void BattleActionProcessor::performAttackSequence(const CBattleInfoCallback & battle, const CStack * attacker, const CStack * defender, const BattleHex & targetHex, int distance, bool longWeaponAttack)
 {
-	return true;
-}
-
-bool BattleActionProcessor::doEndTacticsAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	return true;
-}
-
-bool BattleActionProcessor::doWaitAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	processBattleEventTriggers(battle, CombatEventType::WAIT, stack, nullptr);
-	return true;
-}
-
-bool BattleActionProcessor::doRetreatAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	if (!battle.battleCanFlee(battle.sideToPlayer(ba.side)))
-	{
-		gameHandler->complain("Cannot retreat!");
-		return false;
-	}
-
-	owner->setBattleResult(battle, EBattleResult::ESCAPE, battle.otherSide(ba.side));
-	return true;
-}
-
-bool BattleActionProcessor::doSurrenderAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	PlayerColor player = battle.sideToPlayer(ba.side);
-	int cost = battle.battleGetSurrenderCost(player);
-	if (cost < 0)
-	{
-		gameHandler->complain("Cannot surrender!");
-		return false;
-	}
-
-	if (gameHandler->gameInfo().getResource(player, EGameResID::GOLD) < cost)
-	{
-		gameHandler->complain("Not enough gold to surrender!");
-		return false;
-	}
-
-	gameHandler->giveResource(player, EGameResID::GOLD, -cost);
-	owner->setBattleResult(battle, EBattleResult::SURRENDER, battle.otherSide(ba.side));
-	return true;
-}
-
-bool BattleActionProcessor::doHeroSpellAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	const CGHeroInstance *h = battle.battleGetFightingHero(ba.side);
-	if (!h)
-	{
-		logGlobal->error("Wrong caster!");
-		return false;
-	}
-
-	if (!ba.spell.hasValue())
-	{
-		logGlobal->error("Wrong spell id (%d)!", ba.spell.getNum());
-		return false;
-	}
-
-	const CSpell * s = ba.spell.toSpell();
-	spells::BattleCast parameters(&battle, h, spells::Mode::HERO, s);
-
-	spells::detail::ProblemImpl problem;
-
-	auto m = s->battleMechanics(&parameters);
-
-	if(!m->canBeCast(problem))//todo: should we check aimed cast?
-	{
-		logGlobal->warn("Spell cannot be cast!");
-		std::vector<std::string> texts;
-		problem.getAll(texts);
-		for(const auto & text : texts)
-			logGlobal->warn(text);
-		return false;
-	}
-
-	parameters.cast(gameHandler->spellcastEnvironment(), ba.getTarget(&battle));
-	gameHandler->useChargeBasedSpell(h->id, ba.spell);
-
-	return true;
-}
-
-bool BattleActionProcessor::doWalkAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-	battle::Target target = ba.getTarget(&battle);
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	if(target.empty())
-	{
-		gameHandler->complain("Destination required for move action.");
-		return false;
-	}
-
-	processBattleEventTriggers(battle, CombatEventType::BEFORE_MOVE, stack, nullptr);
-
-	auto movementResult = moveStack(battle, ba.stackNumber, target.at(0).hexValue); //move
-	if (movementResult.invalidRequest)
-	{
-		gameHandler->complain("Stack failed movement!");
-		return false;
-	}
-	processBattleEventTriggers(battle, CombatEventType::AFTER_MOVE, stack, nullptr);
-	return true;
-}
-
-bool BattleActionProcessor::doDefendAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	//defensive stance, TODO: filter out spell boosts from bonus (stone skin etc.)
-	SetStackEffect sse;
-	sse.battleID = battle.getBattle()->getBattleID();
-
-	Bonus defenseBonusToAdd(BonusDuration::STACK_GETS_TURN, BonusType::PRIMARY_SKILL, BonusSource::OTHER, 20, BonusSourceID(), BonusSubtypeID(PrimarySkill::DEFENSE), BonusValueType::PERCENT_TO_ALL);
-	Bonus bonus2(BonusDuration::STACK_GETS_TURN, BonusType::PRIMARY_SKILL, BonusSource::OTHER, stack->valOfBonuses(BonusType::DEFENSIVE_STANCE), BonusSourceID(), BonusSubtypeID(PrimarySkill::DEFENSE), BonusValueType::ADDITIVE_VALUE);
-	Bonus alternativeWeakCreatureBonus(BonusDuration::STACK_GETS_TURN, BonusType::PRIMARY_SKILL, BonusSource::OTHER, 1, BonusSourceID(), BonusSubtypeID(PrimarySkill::DEFENSE), BonusValueType::ADDITIVE_VALUE);
-	Bonus tagBonus(BonusDuration::STACK_GETS_TURN, BonusType::UNIT_DEFENDING, BonusSource::OTHER, 0, BonusSourceID());
-
-	BonusList defence = *stack->getBonuses(Selector::typeSubtype(BonusType::PRIMARY_SKILL, BonusSubtypeID(PrimarySkill::DEFENSE)));
-	int oldDefenceValue = defence.totalValue();
-
-	defence.push_back(std::make_shared<Bonus>(defenseBonusToAdd));
-	defence.push_back(std::make_shared<Bonus>(bonus2));
-
-	int difference = defence.totalValue() - oldDefenceValue;
-	std::vector<Bonus> buffer;
-	if(difference == 0) //give replacement bonus for creatures not reaching 5 defense points (20% of def becomes 0)
-	{
-		difference = 1;
-		buffer.push_back(alternativeWeakCreatureBonus);
-	}
-	else
-	{
-		buffer.push_back(defenseBonusToAdd);
-	}
-
-	buffer.push_back(bonus2);
-	buffer.push_back(tagBonus);
-
-	sse.toUpdate.emplace_back(ba.stackNumber, buffer);
-	gameHandler->sendAndApply(sse);
-
-	BattleLogMessage message;
-	message.battleID = battle.getBattle()->getBattleID();
-
-	MetaString text;
-	stack->addText(text, EMetaText::GENERAL_TXT, 120);
-	stack->addNameReplacement(text);
-	text.replaceNumber(difference);
-
-	message.lines.push_back(text);
-
-	gameHandler->sendAndApply(message);
-
-	processBattleEventTriggers(battle, CombatEventType::DEFEND, stack, nullptr);
-	return true;
-}
-
-bool BattleActionProcessor::doAttackAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-	battle::Target target = ba.getTarget(&battle);
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	if(target.size() < 2)
-	{
-		gameHandler->complain("Two destinations required for attack action.");
-		return false;
-	}
-
-	BattleHex attackPos = target.at(0).hexValue;
-	BattleHex destinationTile = target.at(1).hexValue;
-	const CStack * destinationStack = battle.battleGetStackByPos(destinationTile, true);
-
-	if(!destinationStack)
-	{
-		gameHandler->complain("Invalid target to attack");
-		return false;
-	}
-
-	BattleHex startingPos = stack->getPosition();
-	int beforeAttackSpeed = stack->getMovementRange(0);
-	const auto movementResult = moveStack(battle, ba.stackNumber, attackPos);
-
-	logGlobal->trace("%s will attack %s", stack->nodeName(), destinationStack->nodeName());
-
-	if (movementResult.invalidRequest)
-	{
-		gameHandler->complain("Stack failed attack - unable to reach target!");
-		return false;
-	}
-
-	if(movementResult.obstacleHit)
-	{
-		// we were not able to reach destination tile, nor occupy specified hex
-		// abort attack attempt, but treat this case as legal - we have stepped onto a quicksands/mine
-		return true;
-	}
-
-	if(destinationStack && stack->unitId() == destinationStack->unitId()) //we should just move, it will be handled by following check
-	{
-		destinationStack = nullptr;
-	}
-
-	if(!destinationStack)
-	{
-		gameHandler->complain("Unit can not attack itself");
-		return false;
-	}
-
-	const bool regularMeleeAttack = battle.isMeleeAttackPossible(stack, destinationStack);
-	const bool longWeaponAttack = battle.isLongWeaponAttack(stack, destinationStack);
-
-	if(!regularMeleeAttack && !longWeaponAttack)
-	{
-		gameHandler->complain("Attack cannot be performed!");
-		return false;
-	}
-
-	//attack
-	int totalAttacks = stack->getTotalAttacks(false);
+	int totalAttacks = attacker->getTotalAttacks(false);
 
 	//TODO: move to CUnitState
-	const auto * attackingHero = battle.battleGetFightingHero(ba.side);
+	const auto * attackingHero = battle.battleGetFightingHero(attacker->unitSide());
 	if(attackingHero)
 	{
-		totalAttacks += attackingHero->valOfBonuses(BonusType::HERO_GRANTS_ATTACKS, BonusSubtypeID(stack->creatureId()));
+		totalAttacks += attackingHero->valOfBonuses(BonusType::HERO_GRANTS_ATTACKS, BonusSubtypeID(attacker->creatureId()));
 	}
 
 	static const auto firstStrikeSelector = Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeAll).Or(Selector::typeSubtype(BonusType::FIRST_STRIKE, BonusCustomSubtype::damageTypeMelee));
-	const bool firstStrike = destinationStack->hasBonus(firstStrikeSelector) && !destinationStack->hasBonusOfType(BonusType::NOT_ACTIVE);
+	const bool firstStrike = defender->hasBonus(firstStrikeSelector) && !defender->hasBonusOfType(BonusType::NOT_ACTIVE);
 
 	bool ferocityApplied = false;
-	int32_t defenderInitialQuantity = destinationStack->getCount();
+	int32_t defenderInitialQuantity = defender->getCount();
 
-	BonusList attackerBonusesToRemove = *stack->getAllBonuses(Bonus::untilAfterAttackSequence);	//they need to be gathered here since bonuses with this duration added during attack (like blind) should not be removed
-	BonusList defenderBonusesToRemove = *destinationStack->getAllBonuses(Bonus::untilAfterAttackSequence);
+	// Bonuses added during the sequence, such as Blind, must survive this cleanup.
+	BonusList attackerBonusesToRemove = *attacker->getAllBonuses(Bonus::untilAfterAttackSequence);
+	BonusList defenderBonusesToRemove = *defender->getAllBonuses(Bonus::untilAfterAttackSequence);
 
 	for (int i = 0; i < totalAttacks; ++i)
 	{
-		//first strike
-		if(i == 0 && firstStrike && destinationStack->ableToRetaliate() && !stack->hasBonusOfType(BonusType::BLOCKS_RETALIATION) && !stack->isInvincible() && !longWeaponAttack)
+		if(i == 0 && firstStrike && defender->ableToRetaliate() && !attacker->hasBonusOfType(BonusType::BLOCKS_RETALIATION) && !attacker->isInvincible() && !longWeaponAttack)
 		{
-			makeAttack(battle, destinationStack, stack, {.targetHex = stack->getPosition(), .first = true, .counter = true});
+			makeAttack(battle, defender, attacker, {.targetHex = attacker->getPosition(), .first = true, .counter = true});
 		}
 
-		//move can cause death, eg. by walking into the moat, first strike can cause death or paralysis/petrification
-		if(stack->alive() && !stack->hasBonusOfType(BonusType::NOT_ACTIVE) && destinationStack->alive())
+		// Movement, FIRST_STRIKE, or their handlers may kill or disable either unit.
+		if(attacker->alive() && !attacker->hasBonusOfType(BonusType::NOT_ACTIVE) && defender->alive())
 		{
-			//no distance travelled on second attack
-			makeAttack(battle, stack, destinationStack, {.targetHex = destinationTile, .distance = (i ? 0 : movementResult.distance), .attackIndex = i, .first = i == 0});
+			makeAttack(battle, attacker, defender, {.targetHex = targetHex, .distance = (i ? 0 : distance), .attackIndex = i, .first = i == 0});
 
-			if(!ferocityApplied && stack->hasBonusOfType(BonusType::FEROCITY))
+			if(!ferocityApplied && attacker->hasBonusOfType(BonusType::FEROCITY))
 			{
-				auto ferocityBonus = stack->getBonus(Selector::type()(BonusType::FEROCITY));
+				auto ferocityBonus = attacker->getBonus(Selector::type()(BonusType::FEROCITY));
 				int32_t requiredCreaturesToKill = ferocityBonus->parameters ? ferocityBonus->parameters->toNumber() : 1;
-				if(defenderInitialQuantity - destinationStack->getCount() >= requiredCreaturesToKill)
+				if(defenderInitialQuantity - defender->getCount() >= requiredCreaturesToKill)
 				{
 					ferocityApplied = true;
-					int additionalAttacksCount = stack->valOfBonuses(BonusType::FEROCITY);
+					int additionalAttacksCount = attacker->valOfBonuses(BonusType::FEROCITY);
 					totalAttacks += additionalAttacksCount;
 				}
 			}
 		}
 
-		//counterattack
-		//we check retaliation twice, so if it unblocked during attack it will work only on next attack
-		if(stack->alive()
-			&& !stack->hasBonusOfType(BonusType::BLOCKS_RETALIATION)
-			&& !stack->isInvincible()
+		// FIRST_STRIKE eligibility is fixed before the attack; newly unblocked retaliation waits for the next sequence.
+		if(attacker->alive()
+			&& !attacker->hasBonusOfType(BonusType::BLOCKS_RETALIATION)
+			&& !attacker->isInvincible()
 			&& !longWeaponAttack
 			&& (i == 0 && !firstStrike)
-			&& destinationStack->ableToRetaliate())
+			&& defender->ableToRetaliate())
 		{
-			makeAttack(battle, destinationStack, stack, {.targetHex = stack->getPosition(), .first = true, .counter = true});
+			makeAttack(battle, defender, attacker, {.targetHex = attacker->getPosition(), .first = true, .counter = true});
 		}
 	}
 
-	//return
-	if(stack->hasBonusOfType(BonusType::RETURN_AFTER_STRIKE)
-		&& !stack->hasBonusOfType(BonusType::NOT_ACTIVE)
-		&& !stack->hasBonusOfType(BonusType::BIND_EFFECT)
-		&& target.size() == 3
-		&& startingPos != stack->getPosition()
-		&& startingPos == target.at(2).hexValue
-		&& stack->alive())
-	{
-		assert(stack->unitId() == ba.stackNumber);
-		int afterAttackSpeed = stack->getMovementRange(0);
-		std::pair<BattleHexArray, int> path = battle.getPath(stack->getPosition(), startingPos, stack);
-		size_t maxReachbleIndex = std::max(0, beforeAttackSpeed - afterAttackSpeed);
-		if(maxReachbleIndex < path.first.size())
-			moveStack(battle, ba.stackNumber, path.first[maxReachbleIndex]);
-	}
-
-	removeBonuses(battle, stack, attackerBonusesToRemove);
-	removeBonuses(battle, destinationStack, defenderBonusesToRemove);
-
-	// attacking without moving still triggers the obstacle the unit stands on (e.g. moat damage);
-	// units that moved into the obstacle were already charged during the movement above
-	if(movementResult.distance == 0)
-		battle.handleObstacleTriggersForUnit(*gameHandler->spellEnv, *stack);
-
-	return true;
+	removeBonuses(battle, attacker, attackerBonusesToRemove);
+	removeBonuses(battle, defender, defenderBonusesToRemove);
 }
 
-void BattleActionProcessor::removeBonuses(const CBattleInfoCallback & battle, const battle::Unit * stack, BonusList bonuses)
+void BattleActionProcessor::removeBonuses(const CBattleInfoCallback & battle, const battle::Unit * stack, const BonusList & bonuses)
 {
 	if (!stack)
 	{
@@ -397,37 +138,11 @@ void BattleActionProcessor::removeBonuses(const CBattleInfoCallback & battle, co
 	gameHandler->sendAndApply(sse);
 }
 
-bool BattleActionProcessor::doShootAction(const CBattleInfoCallback & battle, const BattleAction & ba)
+void BattleActionProcessor::makeRangedAttack(const CBattleInfoCallback & battle, const CStack * stack, const BattleHex & destination)
 {
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-	battle::Target target = ba.getTarget(&battle);
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	if(target.empty())
-	{
-		gameHandler->complain("Destination required for shot action.");
-		return false;
-	}
-
-	auto destination = target.at(0).hexValue;
-
 	const CStack * destinationStack = battle.battleGetStackByPos(destination);
-
-	if (!battle.battleCanShoot(stack, destination))
-	{
-		gameHandler->complain("Cannot shoot!");
-		return false;
-	}
-
+	// ShootAction::validate guarantees a target unit for shooters that can't target empty hexes
 	const bool emptyTileAreaAttack = battle.battleCanTargetEmptyHex(stack);
-
-	if (!destinationStack && !emptyTileAreaAttack)
-	{
-		gameHandler->complain("No target to shoot!");
-		return false;
-	}
 
 	bool firstStrike = false;
 	if(!emptyTileAreaAttack)
@@ -439,27 +154,26 @@ bool BattleActionProcessor::doShootAction(const CBattleInfoCallback & battle, co
 	if (!firstStrike)
 		makeAttack(battle, stack, destinationStack, {.targetHex = destination, .first = true, .ranged = true});
 
-	BonusList attackerBonusesToRemove = *stack->getAllBonuses(Bonus::untilAfterAttackSequence);	//they need to be gathered here since bonuses with this duration added during attack (like blind) should not be removed
+	// Bonuses added during the sequence, such as Blind, must survive this cleanup.
+	BonusList attackerBonusesToRemove = *stack->getAllBonuses(Bonus::untilAfterAttackSequence);
 	BonusList defenderBonusesToRemove;
 	if (destinationStack)
 		defenderBonusesToRemove = *destinationStack->getAllBonuses(Bonus::untilAfterAttackSequence);
 
-	//ranged counterattack
 	if (!emptyTileAreaAttack
 		&& destinationStack->hasBonusOfType(BonusType::RANGED_RETALIATION)
 		&& !stack->hasBonusOfType(BonusType::BLOCKS_RANGED_RETALIATION)
 		&& destinationStack->ableToRetaliate()
 		&& battle.battleCanShoot(destinationStack, stack->getPosition())
-		&& stack->alive()) //attacker may have died (fire shield)
+		// Fire Shield may kill the attacker before retaliation.
+		&& stack->alive())
 	{
 		makeAttack(battle, destinationStack, stack, {.targetHex = stack->getPosition(), .first = true, .ranged = true, .counter = true});
 	}
-	//allow more than one additional attack
-
 	int totalRangedAttacks = stack->getTotalAttacks(true);
 
 	//TODO: move to CUnitState
-	const auto * attackingHero = battle.battleGetFightingHero(ba.side);
+	const auto * attackingHero = battle.battleGetFightingHero(stack->unitSide());
 	if(attackingHero)
 	{
 		totalRangedAttacks += attackingHero->valOfBonuses(BonusType::HERO_GRANTS_ATTACKS, BonusSubtypeID(stack->creatureId()));
@@ -479,296 +193,176 @@ bool BattleActionProcessor::doShootAction(const CBattleInfoCallback & battle, co
 
 	removeBonuses(battle, stack, attackerBonusesToRemove);
 	removeBonuses(battle, destinationStack, defenderBonusesToRemove);
-
-	return true;
 }
 
-bool BattleActionProcessor::doCatapultAction(const CBattleInfoCallback & battle, const BattleAction & ba)
+void BattleActionProcessor::complain(const spells::Problem & problem, const std::string & fallback)
 {
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-	battle::Target target = ba.getTarget(&battle);
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	std::shared_ptr<const Bonus> catapultAbility = stack->getFirstBonus(Selector::type()(BonusType::CATAPULT));
-	if(!catapultAbility || catapultAbility->subtype == BonusSubtypeID())
-	{
-		gameHandler->complain("We do not know how to shoot :P");
-	}
-	else
-	{
-		const CSpell * spell = catapultAbility->subtype.as<SpellID>().toSpell();
-		spells::BattleCast parameters(&battle, stack, spells::Mode::SPELL_LIKE_ATTACK, spell); //We can shot infinitely by catapult
-		auto shotLevel = stack->valOfBonuses(Selector::typeSubtype(BonusType::CATAPULT_EXTRA_SHOTS, catapultAbility->subtype));
-		parameters.setSpellLevel(shotLevel);
-		parameters.cast(gameHandler->spellcastEnvironment(), target);
-	}
-	return true;
+	std::vector<std::string> texts;
+	problem.getAll(texts);
+	if(texts.empty())
+		gameHandler->complain(fallback);
+	for(const auto & text : texts)
+		gameHandler->complain(text);
 }
 
-bool BattleActionProcessor::doUnitSpellAction(const CBattleInfoCallback & battle, const BattleAction & ba)
+class BattleActionProcessor::ActionEnvironment final : public IBattleActionEnvironment
 {
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-	battle::Target target = ba.getTarget(&battle);
-	SpellID spellID = ba.spell;
+	BattleActionProcessor & processor;
+	const CBattleInfoCallback & battle;
 
-	if (!canStackAct(battle, stack))
-		return false;
-
-	std::shared_ptr<const Bonus> randSpellcaster = stack->getBonus(Selector::type()(BonusType::RANDOM_SPELLCASTER));
-	std::shared_ptr<const Bonus> spellcaster = stack->getBonus(Selector::typeSubtype(BonusType::SPELLCASTER, BonusSubtypeID(spellID)));
-
-	if (!spellcaster && !randSpellcaster)
+public:
+	ActionEnvironment(BattleActionProcessor & processor, const CBattleInfoCallback & battle)
+		: processor(processor)
+		, battle(battle)
 	{
-		gameHandler->complain("That stack can't cast spells!");
+	}
+
+	void updateUnitBonuses(const battle::Unit & unit, const std::vector<Bonus> & bonuses) override
+	{
+		SetStackEffect sse;
+		sse.battleID = battle.getBattle()->getBattleID();
+		sse.toUpdate.emplace_back(unit.unitId(), bonuses);
+		processor.gameHandler->sendAndApply(sse);
+	}
+
+	void addBattleLogLine(const MetaString & line) override
+	{
+		BattleLogMessage message;
+		message.battleID = battle.getBattle()->getBattleID();
+		message.lines.push_back(line);
+		processor.gameHandler->sendAndApply(message);
+	}
+
+	void fireCombatEvent(CombatEventType event, const battle::Unit * unit, const battle::Unit * other, const CSpell * spell) override
+	{
+		CombatEventPayload payload;
+		payload.spell = spell;
+		processor.processBattleEventTriggers(battle, event, unit, other, payload);
+	}
+
+	void triggerObstaclesUnder(const battle::Unit & unit) override
+	{
+		battle.handleObstacleTriggersForUnit(*processor.gameHandler->spellEnv, unit);
+	}
+
+	UnitMoveResult moveUnit(const battle::Unit & unit, const BattleHex & destination) override
+	{
+		// the action was validated, so moveStack refuses the move only if a BEFORE_MOVE handler changed the battle;
+		// it complains then, and the action still counts as made
+		const auto result = processor.moveStack(battle, unit.unitId(), destination);
+		return {result.distance, !result.obstacleHit && !result.invalidRequest};
+	}
+
+	void meleeAttack(const battle::Unit & attacker, const battle::Unit & defender, const BattleHex & targetHex, int distance, bool longWeapon) override
+	{
+		processor.performAttackSequence(battle, battle.battleGetStackByID(attacker.unitId()), battle.battleGetStackByID(defender.unitId()), targetHex, distance, longWeapon);
+	}
+
+	void rangedAttack(const battle::Unit & attacker, const BattleHex & destination) override
+	{
+		processor.makeRangedAttack(battle, battle.battleGetStackByID(attacker.unitId()), destination);
+	}
+
+	void castSpell(const battle::Unit & caster, const CSpell * spell, spells::Mode mode, int level, const battle::Target & target) override
+	{
+		spells::BattleCast parameters(&battle, &caster, mode, spell);
+		parameters.setSpellLevel(level);
+		parameters.cast(processor.gameHandler->spellcastEnvironment(), target);
+	}
+
+	void castHeroSpell(BattleSide side, const CSpell * spell, const battle::Target & target) override
+	{
+		const CGHeroInstance * hero = battle.battleGetFightingHero(side);
+		spells::BattleCast parameters(&battle, hero, spells::Mode::HERO, spell);
+		parameters.cast(processor.gameHandler->spellcastEnvironment(), target);
+		processor.gameHandler->useChargeBasedSpell(hero->id, spell->getId());
+	}
+
+	vstd::RNG & getRandom() override
+	{
+		return processor.gameHandler->getRandomGenerator();
+	}
+
+	void endBattle(EBattleResult result, BattleSide winner) override
+	{
+		processor.owner->setBattleResult(battle, result, winner);
+	}
+
+	void giveResource(PlayerColor player, GameResID resource, int amount) override
+	{
+		processor.gameHandler->giveResource(player, resource, amount);
+	}
+
+	void endTacticsPhase() override
+	{
+		BattleTacticsEnded pack;
+		pack.battleID = battle.getBattle()->getBattleID();
+		processor.gameHandler->sendAndApply(pack);
+	}
+};
+
+bool BattleActionProcessor::makeBattleActionImpl(const CBattleInfoCallback & battle, const BattleAction & requested)
+{
+	logGlobal->trace("Making action: %s", requested.toString());
+	const CStack * stack = battle.battleGetStackByID(requested.stackNumber);
+
+	const auto * requestedType = BattleActionType::find(requested);
+	if(!requestedType)
+	{
+		gameHandler->complain("Unrecognized action type received!!");
 		return false;
 	}
 
-	if (randSpellcaster)
+	spells::detail::ProblemImpl problem;
+	const bool valid = requestedType->validate(gameHandler->gameInfo(), battle, requested, problem);
+	if(!valid)
 	{
-		if (target.size() != 1)
-		{
-			gameHandler->complain("Invalid target for random spellcaster!");
+		complain(problem, "Battle action refused without a reason: " + requested.toString());
+
+		if(!requested.isUnitAction() || !stack)
 			return false;
-		}
-
-		const battle::Unit * subject = target[0].unitValue;
-		if (target[0].unitValue == nullptr)
-			subject = battle.battleGetStackByPos(target[0].hexValue, true);
-
-		if (subject == nullptr)
-		{
-			gameHandler->complain("Invalid target for random spellcaster!");
-			return false;
-		}
-
-		spellID = battle.getRandomBeneficialSpell(gameHandler->getRandomGenerator(), stack, subject);
-
-		if (spellID == SpellID::NONE)
-		{
-			gameHandler->complain("That stack can't cast spells!");
-			return false;
-		}
 	}
 
-	const CSpell * spell = SpellID(spellID).toSpell();
-	spells::BattleCast parameters(&battle, stack, spells::Mode::CREATURE_ACTIVE, spell);
-	int32_t spellLvl = 0;
-	if(spellcaster)
-		vstd::amax(spellLvl, spellcaster->val);
-	if(randSpellcaster)
-		vstd::amax(spellLvl, randSpellcaster->val);
-	//Magic Plains raises level of spells cast by creatures; must match the client-side preview in BattleActionsController
-	if(spell->getLevel() > 0)
-		vstd::amax(spellLvl, stack->valOfBonuses(BonusType::MAGIC_SCHOOL_SKILL, BonusSubtypeID(SpellSchool::ANY)));
-	parameters.setSpellLevel(spellLvl);
-	parameters.cast(gameHandler->spellcastEnvironment(), target);
+	// an invalid unit action skips the turn of the unit, so that an AI that repeats the action can't stall the battle
+	const BattleAction ba = valid ? requested : BattleAction::makeNoAction(stack);
 
-	processBattleEventTriggers(battle, CombatEventType::UNIT_SPELLCAST, stack, nullptr);
-	return true;
-}
-
-bool BattleActionProcessor::doHealAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-	battle::Target target = ba.getTarget(&battle);
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	if(target.empty())
-	{
-		gameHandler->complain("Destination required for heal action.");
-		return false;
-	}
-
-	const battle::Unit * destStack = nullptr;
-	std::shared_ptr<const Bonus> healerAbility = stack->getFirstBonus(Selector::type()(BonusType::HEALER));
-
-	if(target.at(0).unitValue)
-		destStack = target.at(0).unitValue;
-	else
-		destStack = battle.battleGetUnitByPos(target.at(0).hexValue);
-
-	if(stack == nullptr || destStack == nullptr || !healerAbility || !healerAbility->subtype.hasValue())
-	{
-		gameHandler->complain("There is either no healer, no destination, or healer cannot heal :P");
-	}
-	else
-	{
-		const CSpell * spell = healerAbility->subtype.as<SpellID>().toSpell();
-		spells::BattleCast parameters(&battle, stack, spells::Mode::SPELL_LIKE_ATTACK, spell); //We can heal infinitely by first aid tent
-		auto dest = battle::Destination(destStack, target.at(0).hexValue);
-		parameters.setSpellLevel(0);
-		parameters.cast(gameHandler->spellcastEnvironment(), {dest});
-	}
-	return true;
-}
-
-bool BattleActionProcessor::doWalkAndSpellcastAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
-	battle::Target target = ba.getTarget(&battle);
-	SpellID spellID = ba.spell;
-
-	if (!canStackAct(battle, stack))
-		return false;
-
-	if(target.size() < 2)
-	{
-		gameHandler->complain("Two destinations required for walk and spellcast action.");
-		return false;
-	}
-
-	BattleHex movementDestinationTile = target.at(0).hexValue;
-	BattleHex targetUnitTile = target.at(1).hexValue;
-	const CStack * destinationStack = battle.battleGetStackByPos(targetUnitTile, false);
-
-	if(!destinationStack)
-	{
-		gameHandler->complain("Invalid target for walk and spellcast");
-		return false;
-	}
-
-	auto bonus = stack->getBonus(Selector::typeSubtype(BonusType::ADJACENT_SPELLCASTER, BonusSubtypeID(spellID)));
-	if (!bonus)
-	{
-		gameHandler->complain("Creature cannot walk and spellcast.");
-		return false;
-	}
-
-	const auto movementResult = moveStack(battle, ba.stackNumber, movementDestinationTile);
-
-	if (movementResult.invalidRequest)
-	{
-		gameHandler->complain("Stack failed walk and spellcast - unable to reach target!");
-		return false;
-	}
-
-	if(movementResult.obstacleHit)
-	{
-		return true;
-	}
-
-	const CSpell * spell = spellID.toSpell();
-	spells::BattleCast parameters(&battle, stack, spells::Mode::CREATURE_ACTIVE, spell);
-	battle::Target spellTarget;
-	spellTarget.emplace_back(destinationStack);
-	int32_t spellLvl = std::max(0, bonus->val);
-	//Magic Plains raises level of spells cast by creatures; must match the client-side preview in BattleActionsController
-	if(spell->getLevel() > 0)
-		vstd::amax(spellLvl, stack->valOfBonuses(BonusType::MAGIC_SCHOOL_SKILL, BonusSubtypeID(SpellSchool::ANY)));
-	parameters.setSpellLevel(spellLvl);
-	parameters.cast(gameHandler->spellcastEnvironment(), spellTarget);
-
-	processBattleEventTriggers(battle, CombatEventType::UNIT_SPELLCAST, stack, nullptr);
-
-	return true;
-}
-
-bool BattleActionProcessor::canStackAct(const CBattleInfoCallback & battle, const CStack * stack)
-{
-	if (!stack)
-	{
-		gameHandler->complain("No such stack!");
-		return false;
-	}
-	if (!stack->alive())
-	{
-		gameHandler->complain("This stack is dead: " + stack->nodeName());
-		return false;
-	}
-
-	if (battle.battleTacticDist())
-	{
-		if (stack && stack->unitSide() != battle.battleGetTacticsSide())
-		{
-			gameHandler->complain("This is not a stack of side that has tactics!");
-			return false;
-		}
-	}
-	else
-	{
-		if (stack != battle.battleActiveUnit())
-		{
-			gameHandler->complain("Action has to be about active stack!");
-			return false;
-		}
-	}
-	return true;
-}
-
-bool BattleActionProcessor::dispatchBattleAction(const CBattleInfoCallback & battle, const BattleAction & ba)
-{
-	switch(ba.actionType)
-	{
-		case EActionType::BAD_MORALE:
-		case EActionType::NO_ACTION:
-			return doEmptyAction(battle, ba);
-		case EActionType::END_TACTIC_PHASE:
-			return doEndTacticsAction(battle, ba);
-		case EActionType::RETREAT:
-			return doRetreatAction(battle, ba);
-		case EActionType::SURRENDER:
-			return doSurrenderAction(battle, ba);
-		case EActionType::HERO_SPELL:
-			return doHeroSpellAction(battle, ba);
-		case EActionType::WALK:
-			return doWalkAction(battle, ba);
-		case EActionType::WAIT:
-			return doWaitAction(battle, ba);
-		case EActionType::DEFEND:
-			return doDefendAction(battle, ba);
-		case EActionType::WALK_AND_ATTACK:
-			return doAttackAction(battle, ba);
-		case EActionType::WALK_AND_CAST:
-			return doWalkAndSpellcastAction(battle, ba);
-		case EActionType::SHOOT:
-			return doShootAction(battle, ba);
-		case EActionType::CATAPULT:
-			return doCatapultAction(battle, ba);
-		case EActionType::MONSTER_SPELL:
-			return doUnitSpellAction(battle, ba);
-		case EActionType::STACK_HEAL:
-			return doHealAction(battle, ba);
-	}
-	gameHandler->complain("Unrecognized action type received!!");
-	return false;
-}
-
-bool BattleActionProcessor::makeBattleActionImpl(const CBattleInfoCallback & battle, const BattleAction &ba)
-{
-	logGlobal->trace("Making action: %s", ba.toString());
-	const CStack * stack = battle.battleGetStackByID(ba.stackNumber);
+	// Events outside an action, such as round start or battle setup, add no action participants.
+	actionParticipants.clear();
+	if(stack && ba.isUnitAction())
+		actionParticipants.push_back(stack->unitId());
+	actionInProgress = true;
+	auto finishAction = vstd::makeScopeGuard([this]() { actionInProgress = false; });
 
 	// for these events client does not expects StartAction/EndAction wrapper
 	if (!ba.isBattleEndAction())
 	{
-		StartAction startAction(ba);
-		startAction.battleID = battle.getBattle()->getBattleID();
+		StartAction startAction = BattleActionType::makeStartAction(battle, ba);
 		gameHandler->sendAndApply(startAction);
 	}
 
-	bool result = dispatchBattleAction(battle, ba);
+	ActionEnvironment env(*this, battle);
+	BattleActionType::find(ba)->apply(env, battle, ba);
 
-	if (!ba.isBattleEndAction())
-	{
-		EndAction endAction;
-		endAction.battleID = battle.getBattle()->getBattleID();
-		gameHandler->sendAndApply(endAction);
-	}
+	if(ba.isBattleEndAction())
+		return valid;
 
-	if(ba.actionType == EActionType::WAIT || ba.actionType == EActionType::DEFEND || ba.actionType == EActionType::SHOOT || ba.actionType == EActionType::MONSTER_SPELL)
-		battle.handleObstacleTriggersForUnit(*gameHandler->spellEnv, *stack);
+	// Resolve deaths first so ACTION_FINISHED observes final alive states.
+	flushPendingDeaths(battle);
 
-	return result;
+	// Obstacle triggers may kill a moving unit before ACTION_FINISHED.
+	processActionFinishedTriggers(battle, stack);
+
+	// EndAction closes the client animation batch, so send it after all action effects.
+	EndAction endAction;
+	endAction.battleID = battle.getBattle()->getBattleID();
+	gameHandler->sendAndApply(endAction);
+
+	return valid;
 }
 
 BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBattleInfoCallback & battle, int stack, BattleHex dest)
 {
 	const CStack *currentUnit = battle.battleGetStackByID(stack);
-	const CStack *stackAtEnd = battle.battleGetStackByPos(dest);
 
 	assert(currentUnit);
 	assert(dest < GameConstants::BFIELD_SIZE);
@@ -781,6 +375,29 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 	auto start = currentUnit->getPosition();
 	if (start == dest)
 		return { 0, false, false };
+
+	// Dispatch here to cover every move call. Handlers run before path calculation and may change
+	// movement range.
+	processBattleEventTriggers(battle, CombatEventType::BEFORE_MOVE, currentUnit, nullptr);
+
+	// A handler may kill, replace or displace the unit, so reload all movement state.
+	currentUnit = battle.battleGetStackByID(stack);
+
+	// A removed unit has no matching AFTER_MOVE event.
+	if(!currentUnit)
+		return { 0, false, false };
+
+	// Every exit after BEFORE_MOVE dispatches the matching AFTER_MOVE.
+	auto moveEnded = [&](const MovementResult & result)
+	{
+		processBattleEventTriggers(battle, CombatEventType::AFTER_MOVE, currentUnit, nullptr);
+		return result;
+	};
+
+	if(!currentUnit->alive() || currentUnit->getPosition() != start)
+		return moveEnded({ 0, false, false });
+
+	const CStack *stackAtEnd = battle.battleGetStackByPos(dest);
 
 	//initing necessary tables
 	auto accessibility = battle.getAccessibility(currentUnit);
@@ -801,13 +418,14 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 
 	if((stackAtEnd && stackAtEnd!=currentUnit && stackAtEnd->alive()) || !accessibility.accessible(dest, currentUnit))
 	{
-		gameHandler->complain("Given destination is not accessible!");
-		return { 0, false, true };
+		gameHandler->complain(boost::str(boost::format("Given destination is not accessible! %s can not move from %d to %d%s")
+			% currentUnit->getDescription() % start.toInt() % dest.toInt() % (stackAtEnd ? ", occupied by " + stackAtEnd->getDescription() : "")));
+		return moveEnded({ 0, false, true });
 	}
 
 	bool canUseGate = false;
 	auto dbState = battle.battleGetGateState();
-	if(battle.battleGetFortifications().wallsHealth > 0 && currentUnit->unitSide() == BattleSide::DEFENDER &&
+	if(battle.battleGetFortifications().wallsHealth > 0 && currentUnit->controllingSide() == BattleSide::DEFENDER &&
 		dbState != EGateState::DESTROYED &&
 		dbState != EGateState::BLOCKED)
 	{
@@ -822,10 +440,14 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 	if (battle.battleGetTacticDist() > 0 && unitMovementRange > 0)
 		unitMovementRange = GameConstants::BFIELD_SIZE;
 
+	logGlobal->trace("%s moves from %d to %d, distance %d, movement range %d, path from destination: %s",
+		currentUnit->getDescription(), start.toInt(), dest.toInt(), pathDistance, unitMovementRange, unitPath.toString());
+
 	if (pathDistance > unitMovementRange)
 	{
-		gameHandler->complain("Given destination is not reachable!");
-		return { 0, false, true };
+		gameHandler->complain(boost::str(boost::format("Given destination is not reachable! %s can not move from %d to %d: distance %d, movement range %d, path from destination: %s")
+			% currentUnit->getDescription() % start.toInt() % dest.toInt() % pathDistance % unitMovementRange % unitPath.toString()));
+		return moveEnded({ 0, false, true });
 	}
 
 	bool hasWideMoat = vstd::contains_if(battle.battleGetAllObstaclesOnPos(BattleHex(BattleHex::GATE_BRIDGE), false), [](const std::shared_ptr<const CObstacleInstance> & obst)
@@ -1051,7 +673,7 @@ BattleActionProcessor::MovementResult BattleActionProcessor::moveStack(const CBa
 	//handling obstacle on the final field (separate, because it affects both flying and walking stacks)
 	movementSuccess &= battle.handleObstacleTriggersForUnit(*gameHandler->spellEnv, *currentUnit, passed);
 
-	return { static_cast<int16_t>(pathDistance), !movementSuccess, false };
+	return moveEnded({ static_cast<int16_t>(pathDistance), !movementSuccess, false });
 }
 
 void BattleActionProcessor::rollAttackFlags(const CBattleInfoCallback & battle, const CStack * attacker, BattleAttack & bat) const
@@ -1201,7 +823,7 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 
 	for(const auto * unit : secondaryTargets)
 	{
-		// a reaction to the upcoming attack may have killed it before the blow landed
+		// a reaction to the upcoming attack may have killed it before the hit landed
 		if(!unit->alive())
 			continue;
 
@@ -1219,7 +841,7 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 		bat.attackerChanges.changedStacks.push_back(info);
 	}
 
-	// collected before the blow lands: a stack that dies to it loses its spell effects, and a shield
+	// collected before the hit lands: a stack that dies to it loses its spell effects, and a shield
 	// that was up when the stack was struck answers the strike that killed it
 	std::vector<PendingTrigger> reactions;
 	collectEventTriggers(battle, reactions, CombatEventType::AFTER_ATTACK, attacker, defender);
@@ -1227,6 +849,7 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 	for(const AttackedTarget & target : payload.targets)
 		collectEventTriggers(battle, reactions, CombatEventType::AFTER_ATTACKED, target.unit, attacker);
 
+	noteDeaths(battle, bat.bsa);
 	gameHandler->sendAndApply(bat);
 
 	{
@@ -1255,7 +878,7 @@ void BattleActionProcessor::makeAttack(const CBattleInfoCallback & battle, const
 
 	// priority alone decides what runs first, which is how life drain heals before a fire shield can
 	// burn the attacker down and how a death stare only lands after it. Not gated on anyone being
-	// alive: a reflecting ability answers a lethal blow while dying, so each reaction decides for itself
+	// alive: a reflecting ability answers a lethal hit while dying, so each reaction decides for itself
 	runEventTriggers(battle, reactions, payload);
 }
 
@@ -1411,7 +1034,7 @@ void BattleActionProcessor::applyBattleEffects(const CBattleInfoCallback & battl
 	target.unit = def;
 	target.damage = bsa.damageAmount;
 	target.killed = bsa.killedAmount;
-	// scripts that reflect a strike, such as fire shield, work from the blow that actually landed,
+	// scripts that reflect a strike, such as fire shield, work from the hit that actually landed,
 	// so the roll is scaled back up by what the defences took off it rather than rolled again
 	target.damageBeforeDefense = range.damage.max > 0
 		? bsa.damageAmount * range.damageBeforeDefense.max / range.damage.max
@@ -1450,9 +1073,7 @@ void BattleActionProcessor::addGenericKilledLog(BattleLogMessage & blm, const CS
 
 void BattleActionProcessor::addGenericDamageLog(BattleLogMessage& blm, const std::shared_ptr<battle::CUnitState> &attackerState, int64_t damageDealt) const
 {
-	MetaString text;
-	attackerState->addText(text, EMetaText::GENERAL_TXT, 376);
-	attackerState->addNameReplacement(text);
+	MetaString text = attackerState->formatGeneralMessage(376);
 	text.replaceNumber(damageDealt);
 	blm.lines.push_back(std::move(text));
 }
@@ -1549,14 +1170,18 @@ void BattleActionProcessor::runPredefinedReaction(const CBattleInfoCallback & ba
 	}
 }
 
-void BattleActionProcessor::collectEventTriggers(const CBattleInfoCallback & battle, std::vector<PendingTrigger> & pending, CombatEventType event, const battle::Unit * self, const battle::Unit * other) const
+void BattleActionProcessor::collectEventTriggers(const CBattleInfoCallback & battle, std::vector<PendingTrigger> & pending, CombatEventType event, const battle::Unit * self, const battle::Unit * other)
 {
+	// Record all event targets because a unit may implement only ACTION_FINISHED.
+	if(event != CombatEventType::ACTION_FINISHED && !vstd::contains(actionParticipants, self->unitId()))
+		actionParticipants.push_back(self->unitId());
+
 	auto add = [&pending, event, self, other](const std::shared_ptr<const Bonus> & bonus, int priority, const ICombatEventScript * script)
 	{
 		PendingTrigger trigger;
 		trigger.event = event;
 		trigger.self = self->unitId();
-		trigger.other = other ? other->unitId() : -1;
+		trigger.other = other ? other->unitId() : noUnit;
 		trigger.priority = priority;
 		trigger.bonus = bonus;
 		trigger.script = script;
@@ -1616,7 +1241,7 @@ void BattleActionProcessor::runEventTriggers(const CBattleInfoCallback & battle,
 		if (!self)
 			continue;
 
-		const battle::Unit * other = trigger.other == -1 ? nullptr : battle.battleGetUnitByID(trigger.other);
+		const battle::Unit * other = trigger.other == noUnit ? nullptr : battle.battleGetUnitByID(trigger.other);
 
 		if (!trigger.script)
 		{
@@ -1641,6 +1266,143 @@ void BattleActionProcessor::processBattleEventTriggers(const CBattleInfoCallback
 	std::vector<PendingTrigger> pending;
 	collectEventTriggers(battle, pending, event, target, secondary);
 	runEventTriggers(battle, pending, payload);
+}
+
+void BattleActionProcessor::processActionFinishedTriggers(const CBattleInfoCallback & battle, const battle::Unit * actor)
+{
+	// Clear the member before collecting ACTION_FINISHED handlers to avoid extending this iteration.
+	const std::vector<uint32_t> participants = std::exchange(actionParticipants, {});
+
+	std::vector<PendingTrigger> pending;
+
+	for(uint32_t participant : participants)
+	{
+		const battle::Unit * unit = battle.battleGetUnitByID(participant);
+
+		// Removed units cannot receive ACTION_FINISHED.
+		if(unit)
+			collectEventTriggers(battle, pending, CombatEventType::ACTION_FINISHED, unit, actor);
+	}
+
+	runEventTriggers(battle, pending, CombatEventPayload());
+
+	// Deaths caused by ACTION_FINISHED handlers still belong to this action.
+	flushPendingDeaths(battle);
+}
+
+void BattleActionProcessor::noteDeaths(const CBattleInfoCallback & battle, const std::vector<BattleStackAttacked> & casualties)
+{
+	for(const BattleStackAttacked & casualty : casualties)
+	{
+		// Ignore zero-casualty hits, including subsequent hits on a corpse.
+		if(!casualty.killed() || casualty.killedAmount == 0)
+			continue;
+
+		const battle::Unit * unit = battle.battleGetUnitByID(casualty.stackAttacked);
+		if(!unit)
+			continue;
+
+		PendingDeath death{
+			battle.getBattle()->getBattleID(),
+			casualty.stackAttacked,
+			casualty.attackerID,
+			casualty.killedAmount,
+			casualty.damageAmount,
+			{}
+		};
+		collectEventTriggers(battle, death.triggers, CombatEventType::UNIT_DEATH, unit, battle.battleGetUnitByID(death.killer));
+		pendingDeaths.push_back(std::move(death));
+	}
+}
+
+void BattleActionProcessor::flushPendingDeaths(const CBattleInfoCallback & battle)
+{
+	const BattleID battleID = battle.getBattle()->getBattleID();
+
+	while(true)
+	{
+		// Process newly queued deaths in the next batch and retain deaths from other battles.
+		std::vector<PendingDeath> batch;
+		std::ranges::copy_if(pendingDeaths, std::back_inserter(batch), [battleID](const PendingDeath & death){ return death.battle == battleID; });
+
+		if(batch.empty())
+			return;
+
+		forgetPendingDeaths(battleID);
+
+		CombatEventPayload payload;
+		std::vector<PendingTrigger> pending;
+
+		for(const PendingDeath & death : batch)
+		{
+			const battle::Unit * unit = battle.battleGetUnitByID(death.unit);
+
+			// An earlier death handler may remove the unit.
+			if(!unit)
+				continue;
+
+			AttackedTarget target;
+			target.unit = unit;
+			target.damage = death.damage;
+			target.killed = death.killed;
+			payload.targets.push_back(target);
+
+			pending.insert(pending.end(), death.triggers.begin(), death.triggers.end());
+		}
+
+		// One dispatch preserves priority ordering across units, including rebirth before final-death reactions.
+		runEventTriggers(battle, pending, payload);
+	}
+}
+
+void BattleActionProcessor::forgetPendingDeaths(const BattleID & battleID)
+{
+	std::erase_if(pendingDeaths, [battleID](const PendingDeath & death){ return death.battle == battleID; });
+}
+
+void BattleActionProcessor::processSpellHitTriggers(const CBattleInfoCallback & battle, const spells::Spell & spell, const battle::Unit * casterUnit, const std::vector<std::shared_ptr<const battle::CUnitState>> & unitsBefore)
+{
+	if(!actionInProgress)
+	{
+		actionParticipants.clear();
+		if(casterUnit)
+			actionParticipants.push_back(casterUnit->unitId());
+	}
+
+	CombatEventPayload payload;
+	payload.spell = &spell;
+
+	for(const auto & before : unitsBefore)
+	{
+		AttackedTarget target;
+		target.unitBefore = before.get();
+		target.unit = battle.battleGetUnitByID(before->unitId());
+		target.healthBeforeAttack = before->getAvailableHealth();
+
+		// Healing and resurrection report zero damage; compare with the snapshot for their effect.
+		if(target.unit)
+		{
+			target.damage = std::max<int64_t>(0, target.healthBeforeAttack - target.unit->getAvailableHealth());
+			target.killed = std::max<int32_t>(0, before->getCount() - target.unit->getCount());
+		}
+
+		payload.targets.push_back(target);
+	}
+
+	std::vector<PendingTrigger> pending;
+
+	for(const AttackedTarget & target : payload.targets)
+		if(target.unit)
+			collectEventTriggers(battle, pending, CombatEventType::SPELL_HIT, target.unit, casterUnit);
+
+	runEventTriggers(battle, pending, payload);
+
+	// Enchanter casts run during stack activation, outside a battle action.
+	if(!actionInProgress)
+	{
+		flushPendingDeaths(battle);
+		processActionFinishedTriggers(battle, casterUnit);
+	}
 }
 
 void BattleActionProcessor::processAttackTriggers(const CBattleInfoCallback & battle, CombatEventType attackerEvent, CombatEventType targetEvent, const CStack * attacker, const CStack * defender, const CombatEventPayload & payload)

@@ -49,6 +49,7 @@ class AdventureMapShortcuts
 	void toggleGrid();
 	void toggleVisitable();
 	void toggleBlocked();
+	void screenshotWholeMap();
 	void toggleSleepWake();
 	void setHeroSleeping();
 	void setHeroAwake();
@@ -95,6 +96,7 @@ public:
 	bool optionHeroSleeping();
 	bool optionHeroAwake();
 	bool optionHeroSelected();
+	bool optionHeroCanCastSpells();
 	bool optionHeroCanMove();
 	bool optionHasNextHero();
 	bool optionCanVisitObject();

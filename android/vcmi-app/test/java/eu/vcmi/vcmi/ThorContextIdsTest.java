@@ -144,8 +144,8 @@ public class ThorContextIdsTest
 		assertEquals(262144, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SWAP_ARMIES));
 		assertEquals(524288, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_SPLIT_STACK));
 		assertEquals(21, ThorActionIds.HERO_MEETING_TRANSFER_ARTIFACT);
-		assertEquals(22, ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
-		assertEquals(2097152, ThorActionIds.maskFor(ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK));
+		assertEquals(22, ThorActionIds.RESERVED_22);
+		assertEquals(0, ThorActionIds.maskFor(ThorActionIds.RESERVED_22));
 		assertEquals(23, ThorActionIds.HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT);
 		assertEquals(24, ThorActionIds.HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT);
 		assertEquals(25, ThorActionIds.HERO_MEETING_SWAP_ARTIFACTS);
@@ -192,7 +192,7 @@ public class ThorContextIdsTest
 		assertEquals(0L, ThorActionIds.bitForActionId(65));
 		assertEquals(0, ThorActionIds.maskFor(99));
 		for (int id = 1; id <= 64; ++id)
-			assertEquals(1L << (id - 1), ThorActionIds.maskFor(id));
+			assertEquals(id == 22 ? 0L : 1L << (id - 1), ThorActionIds.maskFor(id));
     }
 
     @Test

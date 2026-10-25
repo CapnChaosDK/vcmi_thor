@@ -121,7 +121,6 @@ static TBonusParametersPtr loadBonusAddInfo(BonusType type, const JsonNode & val
 		case BonusType::SPELLCASTER:
 		case BonusType::FEROCITY:
 		case BonusType::PRIMARY_SKILL:
-		case BonusType::ENCHANTER:
 		case BonusType::SLAYER:
 		case BonusType::SPELL_IMMUNITY:
 		case BonusType::DARKNESS:
@@ -131,6 +130,20 @@ static TBonusParametersPtr loadBonusAddInfo(BonusType type, const JsonNode & val
 			// 1 number
 			var = static_cast<int32_t>(getFirstValue(value).Integer());
 			break;
+		case BonusType::ENCHANTER:
+		{
+			BonusParametersEnchanter loadedData;
+			if (value.isStruct())
+			{
+				loadedData.cooldown = static_cast<int32_t>(value["cooldown"].Integer());
+				if (!value["weight"].isNull())
+					loadedData.weight = std::max<int32_t>(0, static_cast<int32_t>(value["weight"].Integer()));
+			}
+			else
+				loadedData.cooldown = static_cast<int32_t>(getFirstValue(value).Integer());
+			var = loadedData;
+			break;
+		}
 		case BonusType::SPECIAL_UPGRADE:
 			// 1 creature ID
 			LIBRARY->identifiers()->requestIdentifier("creature", getFirstValue(value), [&](si32 identifier) { var = CreatureID(identifier); });
@@ -221,6 +234,10 @@ static TBonusParametersPtr loadBonusAddInfo(BonusType type, const JsonNode & val
 			}
 			break;
 		}
+		case BonusType::SPELL:
+			// spell can be cast without spellbook
+			var = BonusParameters(value.Bool());
+			break;
 		case BonusType::COMBAT_EVENT_TRIGGER:
 		{
 			// the whole addInfo is the script payload - which script runs is the bonus subtype
@@ -644,6 +661,19 @@ static std::shared_ptr<const ILimiter> parseCreatureLevelLimiter(const JsonNode 
 	return levelLimiter;
 }
 
+static std::shared_ptr<const ILimiter> parseExperienceRankLimiter(const JsonNode & limiter)
+{
+	auto rankLimiter = std::make_shared<RankRangeLimiter>(0);
+
+	if (!limiter["minRank"].isNull())
+		rankLimiter->minRank = limiter["minRank"].Integer();
+
+	if (!limiter["maxRank"].isNull())
+		rankLimiter->maxRank = limiter["maxRank"].Integer();
+
+	return rankLimiter;
+}
+
 static std::shared_ptr<const ILimiter> parseTerrainLimiter(const JsonNode & limiter)
 {
 	const JsonNode & parameters = limiter["parameters"];
@@ -707,6 +737,7 @@ std::shared_ptr<const ILimiter> JsonUtils::parseLimiter(const JsonNode & limiter
 		{"FACTION_LIMITER",            parseFactionLimiter          },
 		{"CREATURE_FACTION_LIMITER",   parseFactionLimiter          },
 		{"CREATURE_LEVEL_LIMITER",     parseCreatureLevelLimiter    },
+		{"EXPERIENCE_RANK_LIMITER",    parseExperienceRankLimiter   },
 		{"TERRAIN_LIMITER",            parseTerrainLimiter          },
 		{"CREATURE_TERRAIN_LIMITER",   parseTerrainLimiter          },
 		{"UNIT_ON_HEXES",              parseUnitOnHexLimiter        },
@@ -844,6 +875,15 @@ bool JsonUtils::parseBonus(const JsonNode &ability, Bonus *b, const TextIdentifi
 	if (!value->isNull())
 		b->targetSourceType = static_cast<BonusSource>(parseByMapN(bonusSourceMap, value, "target type "));
 
+	value = &ability["targetSourceID"];
+	if (!value->isNull())
+	{
+		if (b->targetSourceType == BonusSource::OTHER)
+			logMod->warn("Bonus has 'targetSourceID' without 'targetSourceType' - target source ID will be ignored!");
+		else
+			loadBonusSourceInstance(b->targetSourceID, b->targetSourceType, *value);
+	}
+
 	value = &ability["limiters"];
 	if (!value->isNull())
 		b->limiter = parseLimiter(*value);
@@ -909,18 +949,29 @@ CSelector JsonUtils::parseSelector(const JsonNode & ability)
 	value = &ability["type"];
 	if(value->isString())
 	{
-		ret = ret.And(Selector::type()(static_cast<BonusType>(*LIBRARY->identifiers()->getIdentifier("bonus", value->String()))));
+		auto bonusID = LIBRARY->identifiers()->getIdentifier("bonus", *value);
+		if(!bonusID)
+		{
+			logMod->error("Bonus selector from mod '%s' has unknown bonus type '%s'!", value->getModScope(), value->String());
+			return Selector::none;
+		}
+		type = static_cast<BonusType>(*bonusID);
+		ret = ret.And(Selector::type()(type));
 	}
 	value = &ability["subtype"];
 	if(!value->isNull() && type != BonusType::NONE)
 	{
-		BonusSubtypeID subtype;
-		loadBonusSubtype(subtype, type, ability);
-		ret = ret.And(Selector::subtype()(subtype));
+		// subtype is resolved asynchronously, same as source instance below
+		auto subtype = std::make_shared<BonusSubtypeID>();
+		loadBonusSubtype(*subtype, type, *value);
+
+		ret = ret.And(CSelector([subtype](const Bonus * bonus)
+		{
+			return bonus->subtype == *subtype;
+		}));
 	}
 	value = &ability["sourceType"];
 	std::optional<BonusSource> src = std::nullopt; //Fixes for GCC false maybe-uninitialized
-	std::optional<BonusSourceID> id = std::nullopt;
 	if(value->isString())
 	{
 		auto it = bonusSourceMap.find(value->String());
@@ -931,22 +982,46 @@ CSelector JsonUtils::parseSelector(const JsonNode & ability)
 	value = &ability["sourceID"];
 	if(!value->isNull() && src.has_value())
 	{
-		loadBonusSourceInstance(*id, *src, ability);
-	}
+		// source instance is resolved asynchronously, so it becomes known only after library loading is complete.
+		// Selector has to look it up on each use, rather than capture it right away
+		auto sourceId = std::make_shared<BonusSourceID>();
+		loadBonusSourceInstance(*sourceId, *src, *value);
 
-	if(src && id)
-		ret = ret.And(Selector::source(*src, *id));
+		ret = ret.And(CSelector([source = *src, sourceId](const Bonus * bonus)
+		{
+			return bonus->source == source && bonus->sid == *sourceId;
+		}));
+	}
 	else if(src)
 		ret = ret.And(Selector::sourceTypeSel(*src));
 
 
 	value = &ability["targetSourceType"];
+	std::optional<BonusSource> targetSrc = std::nullopt;
 	if(value->isString())
 	{
 		auto it = bonusSourceMap.find(value->String());
 		if(it != bonusSourceMap.end())
-			ret = ret.And(Selector::targetSourceType()(it->second));
+			targetSrc = it->second;
 	}
+
+	value = &ability["targetSourceID"];
+	if(!value->isNull() && targetSrc.has_value())
+	{
+		// source instance is resolved asynchronously, so it becomes known only after library loading is complete.
+		// Selector has to look it up on each use, rather than capture it right away
+		auto targetId = std::make_shared<BonusSourceID>();
+		loadBonusSourceInstance(*targetId, *targetSrc, *value);
+
+		ret = ret.And(CSelector([targetSource = *targetSrc, targetId](const Bonus * bonus)
+		{
+			return bonus->targetSourceType == targetSource
+				&& (*targetId == BonusSourceID() || bonus->targetSourceID == *targetId);
+		}));
+	}
+	else if(targetSrc)
+		ret = ret.And(Selector::targetSource(*targetSrc));
+
 	value = &ability["valueType"];
 	if(value->isString())
 	{

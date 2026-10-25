@@ -19,6 +19,7 @@
 #include "TownPortalEffect.h"
 #include "ViewWorldEffect.h"
 
+#include "../ISpellMechanics.h"
 #include "../Problem.h"
 #include "../CSpell.h"
 
@@ -140,6 +141,13 @@ bool AdventureSpellMechanics::canBeCast(spells::Problem & problem, const IGameIn
 		if(!heroCaster->canCastThisSpell(owner))
 			return false;
 
+		const auto levelLimits = heroCaster->getBonusesOfType(BonusType::BLOCK_MAGIC_ABOVE);
+		if(!levelLimits->empty() && owner->getLevel() > levelLimits->totalValue())
+		{
+			spells::BaseMechanics::describeSpellLevelLimit(heroCaster, problem);
+			return false;
+		}
+
 		if(heroCaster->mana < cost)
 			return false;
 
@@ -168,7 +176,25 @@ bool AdventureSpellMechanics::adventureCast(SpellCastEnvironment * env, const Ad
 	spells::detail::ProblemImpl problem;
 
 	if(!canBeCastAt(problem, env->getCb(), parameters.caster, parameters.pos))
+	{
+		// most checks fail without a problem shown to the player, so the state they look at is logged instead
+		std::vector<std::string> reasons;
+		problem.getAll(reasons);
+		std::string details = "reported problems: [" + boost::algorithm::join(reasons, "; ") + "]";
+
+		if(const auto * hero = parameters.caster->getHeroCaster())
+		{
+			details += boost::str(boost::format(", knows spell: %d, garrisoned: %d, mana: %d of %d, casts today: %d of %d, movement points: %d")
+				% hero->canCastThisSpell(owner)
+				% hero->isGarrisoned()
+				% hero->mana % owner->getCost(hero->getSpellSchoolLevel(owner))
+				% getCastsAlreadyPerformed(hero) % getCastsLimit(hero, env->getCb()->getMapSize())
+				% hero->movementPointsRemaining());
+		}
+
+		logGlobal->error("%s can not cast %s at %s, %s", parameters.caster->getCasterNameTextID(), owner->getNameTextID(), parameters.pos.toString(), details);
 		return false;
+	}
 
 	ESpellCastResult result = getLevel(parameters.caster).effect->beginCast(env, parameters, *this);
 

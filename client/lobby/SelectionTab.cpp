@@ -8,6 +8,9 @@
  *
  */
 #include "StdInc.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../thor/ThorSaveBrowser.h"
+#endif
 
 #include <tbb/parallel_for.h>
 
@@ -49,6 +52,7 @@
 #include "../../lib/mapping/MapFormat.h"
 #include "../../lib/networkPacks/PacksForLobby.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
+#include "../../lib/serializer/SaveFileFormat.h"
 #include "../../lib/texts/TextOperations.h"
 #include "../../lib/TerrainHandler.h"
 #include "../../lib/UnlockGuard.h"
@@ -296,8 +300,8 @@ SelectionTab::SelectionTab(ESelectionScreen Type)
 		sortByDate->setOverlay(std::make_shared<CPicture>(ImagePath::builtin("lobby/selectionTabSortDate")));
 		buttonsSortBy.push_back(sortByDate);
 
-		Rect searchWidgetArea(22, 115, 366, 26);
-		Rect searchTextInputArea(87, 115, 301, 26);
+		Rect searchWidgetArea(22 - (ENGINE->isRoeData() ? 3 : 0), 115, 366 - (ENGINE->isRoeData() ? 33 : 0), 26);
+		Rect searchTextInputArea(87, 115, 301 - (ENGINE->isRoeData() ? 36 : 0), 26);
 
 		searchWidgetBackground = std::make_shared<FilledTexturePlayerColored>(searchWidgetArea);
 		searchWidgetBackground->setPlayerColor(PlayerColor(1));
@@ -986,7 +990,7 @@ void SelectionTab::selectNewestFile(bool skipAutosaves)
 	selectFileName(newestFile);
 }
 
-std::string SelectionTab::getLastSaveSettingName() const
+std::string SelectionTab::getLastSaveSettingName()
 {
 	switch(GAME->server().getLoadMode())
 	{
@@ -999,7 +1003,7 @@ std::string SelectionTab::getLastSaveSettingName() const
 	}
 }
 
-void SelectionTab::rememberSave(const std::string & savePath) const
+void SelectionTab::rememberSave(const std::string & savePath)
 {
 	Settings lastSave = settings.write["general"]["lastSave"];
 	lastSave->String() = savePath;
@@ -1271,13 +1275,13 @@ std::vector<ResourcePath> SelectionTab::parseSaves(const std::unordered_set<Reso
 
 				allItems[offset + i] = mapInfo;
 			}
-			catch(const IdentifierResolutionException & e)
+			catch(const SaveTooOldException & e)
 			{
+				isUnsupported[i] = 1;
 				logGlobal->error("Error: Failed to process %s: %s", file.getName(), e.what());
 			}
 			catch(const std::exception & e)
 			{
-				isUnsupported[i] = 1; // IdentifierResolutionException is not relevant -> not ask to delete, when mods are disabled
 				logGlobal->error("Error: Failed to process %s: %s", file.getName(), e.what());
 			}
 		}
@@ -1533,6 +1537,10 @@ void SelectionTab::installTexts(size_t offset)
 std::unordered_set<ResourcePath> SelectionTab::getFiles(std::string dirURI, EResType resType)
 {
 	boost::to_upper(dirURI);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(resType == EResType::SAVEGAME)
+		return findThorSaveFiles(*CResourceHandler::get("saves"), dirURI);
+#endif
 	CResourceHandler::get()->updateFilteredFiles([&](const std::string & mount)
 	{
 		return boost::algorithm::starts_with(mount, dirURI);

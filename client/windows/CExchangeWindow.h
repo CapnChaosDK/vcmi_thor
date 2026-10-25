@@ -72,7 +72,6 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 	void trackThorArtifactRequest(int requestId, std::optional<ThorActionAcceptance> acceptance);
 #endif
 	bool artifactInputEnabled() const;
-	bool canCloseExchange() const;
 	void moveUnitsShortcut(bool leftToRight);
 	void backpackShortcut(bool leftHero);
 	void questLogShortcut();
@@ -87,7 +86,6 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 		std::optional<ThorActionAcceptance> acceptance;
 		ThorHeroMeetingArtifacts artifactsBefore;
 	};
-	std::vector<std::pair<int, ThorActionAcceptance>> pendingThorRedistributionRequests;
 	std::vector<PendingThorArtifactRequest> pendingThorArtifactRequests;
 	std::shared_ptr<std::atomic_bool> thorWindowAlive = std::make_shared<std::atomic_bool>(true);
 #endif
@@ -116,8 +114,6 @@ public:
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	void updateThorActionState(bool invalidateActions = false);
 	bool executeThorAction(const ThorActionRequest & request);
-	bool executeThorRedistribution(const ThorHeroMeetingRedistributionRequest & request);
-	void onThorRedistributionResult(int requestId, bool success);
 	void onThorArtifactRequestResult(int requestId, bool success);
 	static void completeThorArtifactRequest(int requestId);
 	static void resetThorArtifactRequests();

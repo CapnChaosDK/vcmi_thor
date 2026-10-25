@@ -79,12 +79,14 @@ struct SeerReward
 		EXPERIENCE = 1,
 		MANA       = 2,
 		RESOURCES  = 5,
+		CREATURE   = 10,
 	};
 
 	Kind      kind           = Kind::NOTHING;
-	uint32_t  amount         = 0;             // EXPERIENCE, MANA
+	uint32_t  amount         = 0;             // EXPERIENCE, MANA, CREATURE
 	GameResID resourceType;                   // RESOURCES
 	uint32_t  resourceAmount = 0;             // RESOURCES
+	CreatureID creature;                      // CREATURE
 };
 
 /// Fluent API for building .h3m binary streams in test code.
@@ -106,6 +108,11 @@ public:
 	TinyH3MBuilder & name(std::string s);
 	TinyH3MBuilder & description(std::string s);
 	TinyH3MBuilder & difficulty(EMapDifficulty d);
+	/// Maximum hero level, 0 for no limit. Written only for AB+ formats.
+	TinyH3MBuilder & heroLevelLimit(uint8_t level);
+
+	/// Override terrain for one tile. Tiles not specified here remain grass.
+	TinyH3MBuilder & terrain(const int3 & pos, TerrainId type);
 
 	/// Plain-text Lua script for the built map. Not part of the H3M bytes (H3M cannot embed Lua) -
 	/// retrieve via script() and hand it to the loader/service to set as CMap::scriptSource.
@@ -113,19 +120,29 @@ public:
 	const std::string & script() const { return mapScript; }
 
 	/// HotA sub-format version. Ignored unless the format is EMapFormat::HOTA.
-	/// Only versions 0..3 are emittable; higher values throw at build() time.
+	/// Versions 0..5 are emittable; higher values throw at build() time.
 	TinyH3MBuilder & hotaVersion(uint32_t version);
 
 	/// Mark a player as both human- and computer-playable. Required for any
 	/// object that ownership-validates against canAnyonePlay (towns, heroes).
 	TinyH3MBuilder & playerActive(PlayerColor color);
+	/// Bitmask of factions the player may pick, in map format order. Default allows all factions
+	TinyH3MBuilder & playerFactions(PlayerColor color, uint32_t mask);
 
 	/// Append a fixed-faction Town object owned by `owner`.
-	TinyH3MBuilder & town(const int3 & pos, FactionID faction, PlayerColor owner);
+	/// `specialBuildings` is the raw HotA 1.7 table of faction-specific buildings, 4 entries per faction.
+	TinyH3MBuilder & town(const int3 & pos, FactionID faction, PlayerColor owner, std::vector<uint8_t> specialBuildings = {});
 
 	/// Append a Random Town object owned by `owner`. Builder auto-registers the
 	/// RANDOM_TOWN template on first call. No garrison, standard fort, no events.
-	TinyH3MBuilder & randomTown(const int3 & pos, PlayerColor owner);
+	/// `alignment` is the raw h3m value: 0xff - none, 0-7 - same as player, 8-15 - not as player (HotA).
+	TinyH3MBuilder & randomTown(const int3 & pos, PlayerColor owner, uint8_t alignment = 0xff, std::vector<uint8_t> specialBuildings = {});
+
+	/// Append a standalone shipyard owned by `owner`.
+	TinyH3MBuilder & shipyard(const int3 & pos, PlayerColor owner);
+
+	/// Append a garrison owned by `owner` with up to 7 stacks; `removableUnits` needs AB or later.
+	TinyH3MBuilder & garrison(const int3 & pos, PlayerColor owner, std::vector<std::pair<CreatureID, uint16_t>> stacks, bool removableUnits);
 
 	// ---- heroes --------------------------------------------------------
 
@@ -147,6 +164,15 @@ public:
 
 	/// Total experience points (the engine derives hero level from this).
 	TinyH3MBuilder & heroExperience(uint32_t totalXp);
+
+	/// HotA 1.7.0+ explicit hero level stored in the HotA5 hero extension.
+	TinyH3MBuilder & heroHotaLevel(uint32_t level);
+
+	/// Whether HotA should roll primary/secondary skills while applying the explicit start level.
+	TinyH3MBuilder & heroHotaAlwaysAddSkills(bool value);
+
+	/// HotA per-hero flag that prevents all future positive experience gain.
+	TinyH3MBuilder & heroHotaCannotGainXP(bool value);
 
 	/// Per-skill primary stat overrides (attack, defense, spell power, knowledge).
 	TinyH3MBuilder & heroPrimary(uint8_t attack, uint8_t defense, uint8_t spellPower, uint8_t knowledge);
@@ -173,8 +199,14 @@ public:
 	/// Resource pile. amount=0 means "use default".
 	TinyH3MBuilder & resource(const int3 & pos, GameResID resource, uint32_t amount = 0);
 
+	/// Abandoned mine producing gold; custom guards need HOTA v5+, NONE keeps the default guards.
+	TinyH3MBuilder & abandonedMine(const int3 & pos, CreatureID guard = CreatureID::NONE, int32_t minAmount = 0, int32_t maxAmount = 0);
+
 	/// Empty Pandora's Box - no message, guards or rewards.
-	TinyH3MBuilder & pandora(const int3 & pos);
+	TinyH3MBuilder & pandora(const int3 & pos, std::vector<std::pair<CreatureID, uint16_t>> creatures = {});
+
+	/// Place a terrain overlay without object data, such as Cursed Ground or Magic Plains
+	TinyH3MBuilder & terrainOverlay(const int3 & pos, MapObjectID id);
 
 	/// Specific artifact pickup.
 	TinyH3MBuilder & artifact(const int3 & pos, ArtifactID artifact);
@@ -184,6 +216,14 @@ public:
 
 	/// Fixed creature dwelling owned by `owner`.
 	TinyH3MBuilder & dwelling(const int3 & pos, MapObjectSubID type, PlayerColor owner);
+
+	// ---- teleports ------------------------------------------------------
+
+	/// One-way monolith entrance. Matching entrance/exit subids form a channel.
+	TinyH3MBuilder & oneWayPortalEntrance(const int3 & pos, int channel);
+
+	/// One-way monolith exit. Matching entrance/exit subids form a channel.
+	TinyH3MBuilder & oneWayPortalExit(const int3 & pos, int channel);
 
 	// ---- quest objects -------------------------------------------------
 
@@ -242,6 +282,7 @@ public:
 	static SeerReward rewardExperience(uint32_t amount);
 	static SeerReward rewardMana(uint32_t amount);
 	static SeerReward rewardResource(GameResID resource, uint32_t amount);
+	static SeerReward rewardCreature(CreatureID creature, uint16_t amount);
 
 	// ---- output ---------------------------------------------------------
 
@@ -285,9 +326,28 @@ private:
 		std::vector<std::pair<Quest, SeerReward>> seerOneShots;
 		std::vector<std::pair<Quest, SeerReward>> seerRepeatables;
 
+		// RANDOM_TOWN / TOWN
+		uint8_t        townAlignment = 0xff;
+		std::vector<uint8_t> townSpecialBuildings;
+
+		// MINE subID 7 (abandoned mine)
+		CreatureID     mineGuard = CreatureID::NONE;
+		int32_t        mineGuardMin = 0;
+		int32_t        mineGuardMax = 0;
+
+		// PANDORAS_BOX
+		std::vector<std::pair<CreatureID, uint16_t>> pandoraCreatures;
+
+		// GARRISON
+		std::vector<std::pair<CreatureID, uint16_t>> garrisonStacks;
+		bool                                         garrisonRemovableUnits = true;
+
 		// Hero customisation. Only consumed for HERO / RANDOM_HERO objects.
 		std::vector<std::pair<CreatureID, uint16_t>>           heroGarrisonStacks;
 		std::optional<uint32_t>                                heroExperienceXp;
+		uint32_t                                               heroExplicitHotaLevel = 1;
+		bool                                                   heroHotaAlwaysAddSkills = true;
+		bool                                                   heroHotaCannotGainXP = false;
 		std::optional<std::array<uint8_t, 4>>                  heroPrimarySkills;
 		std::vector<std::pair<SecondarySkill, uint8_t>>        heroSecondarySkills;
 		std::optional<std::vector<SpellID>>                    heroSpells;
@@ -351,8 +411,11 @@ private:
 	std::string    mapDescription;
 	std::string    mapScript;
 	EMapDifficulty mapDifficulty = EMapDifficulty::NORMAL;
+	uint8_t        mapHeroLevelLimit = 0;
 
 	std::array<bool, 8> playerEnabled{};
+	std::array<uint32_t, 8> playerFactionMask = {~0u, ~0u, ~0u, ~0u, ~0u, ~0u, ~0u, ~0u};
+	std::map<int3, TerrainId> terrainOverrides;
 	std::vector<std::pair<MapObjectID, MapObjectSubID>> templates;
 	std::vector<ObjectSpec>                              objects;
 	uint32_t                                             nextWireIdentifier = 1;

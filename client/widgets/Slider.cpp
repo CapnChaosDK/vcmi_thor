@@ -80,12 +80,12 @@ void CSlider::gesturePanning(const Point & initialPosition, const Point & curren
 		mouseDragged(currentPosition, lastUpdateDistance);
 }
 
-void CSlider::gestureCanceled(bool closeWindow)
+void CSlider::gestureCanceled()
 {
 	touchDragging = false;
 	dragOffset = 0;
 	slider->clickCancel(ENGINE->getCursorPosition());
-	Scrollable::gestureCanceled(closeWindow);
+	Scrollable::gestureCanceled();
 }
 
 void CSlider::gesture(bool on, const Point & initialPosition, const Point & finalPosition)
@@ -116,6 +116,11 @@ void CSlider::setScrollBounds(const Rect & bounds )
 void CSlider::clearScrollBounds()
 {
 	scrollBounds = std::nullopt;
+}
+
+void CSlider::setRestrictGestureToOwnBounds(bool on)
+{
+	restrictGestureToOwnBounds = on;
 }
 
 int CSlider::getAmount() const
@@ -260,6 +265,9 @@ bool CSlider::receiveEvent(const Point &position, int eventType) const
 		return true; //capture "clickReleased" also outside of control
 
 	if(eventType != WHEEL && eventType != GESTURE)
+		return CIntObject::receiveEvent(position, eventType);
+
+	if (eventType == GESTURE && restrictGestureToOwnBounds)
 		return CIntObject::receiveEvent(position, eventType);
 
 	if (!scrollBounds)

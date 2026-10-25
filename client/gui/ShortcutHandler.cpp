@@ -25,11 +25,12 @@ ShortcutHandler::ShortcutHandler()
 
 void ShortcutHandler::reloadShortcuts()
 {
-	if(initialized)
+	if(!mappedJoystickShortcuts.empty())
 		ENGINE->input().cancelControllerInput();
-	initialized = true;
 	mappedKeyboardShortcuts = loadShortcuts(keyBindingsConfig["keyboard"]);
-	mappedJoystickShortcuts = loadShortcuts(keyBindingsConfig["joystickButtons"]);
+	for(auto family : {ControllerPrompt::Family::UNKNOWN, ControllerPrompt::Family::GENERIC,
+		ControllerPrompt::Family::PLAYSTATION, ControllerPrompt::Family::XBOX, ControllerPrompt::Family::NINTENDO, ControllerPrompt::Family::NINTENDO_LABELS})
+		mappedJoystickShortcuts[family] = loadShortcuts(keyBindingsConfig["joystickButtons"], family);
 	mappedJoystickAxes = loadShortcuts(keyBindingsConfig["joystickAxes"]);
 
 #ifndef ENABLE_GOLDMASTER
@@ -52,7 +53,24 @@ void ShortcutHandler::reloadShortcuts()
 #endif
 }
 
-std::multimap<std::string, EShortcut> ShortcutHandler::loadShortcuts(const JsonNode & data) const
+const JsonNode & ShortcutHandler::resolveBinding(const JsonNode & binding, ControllerPrompt::Family family) const
+{
+	if(!binding.isStruct())
+		return binding;
+
+	std::string key = "default";
+	switch(family)
+	{
+	case ControllerPrompt::Family::PLAYSTATION: key = "playstation"; break;
+	case ControllerPrompt::Family::XBOX: key = "xbox"; break;
+	case ControllerPrompt::Family::NINTENDO:
+	case ControllerPrompt::Family::NINTENDO_LABELS: key = "nintendo"; break;
+	default: break;
+	}
+	return binding[key].isNull() ? binding["default"] : binding[key];
+}
+
+std::multimap<std::string, EShortcut> ShortcutHandler::loadShortcuts(const JsonNode & data, ControllerPrompt::Family family) const
 {
 	std::multimap<std::string, EShortcut> result;
 
@@ -67,14 +85,15 @@ std::multimap<std::string, EShortcut> ShortcutHandler::loadShortcuts(const JsonN
 			continue;
 		}
 
-		if (entry.second.isString())
+		const auto & binding = resolveBinding(entry.second, family);
+		if (binding.isString())
 		{
-			result.emplace(entry.second.String(), shortcutID);
+			result.emplace(binding.String(), shortcutID);
 		}
 
-		if (entry.second.isVector())
+		if (binding.isVector())
 		{
-			for (auto const & entryVector : entry.second.Vector())
+			for (auto const & entryVector : binding.Vector())
 				result.emplace(entryVector.String(), shortcutID);
 		}
 	}
@@ -105,7 +124,7 @@ std::vector<EShortcut> ShortcutHandler::translateKeycode(const std::string & key
 
 std::vector<EShortcut> ShortcutHandler::translateJoystickButton(const std::string & key) const
 {
-	return translateShortcut(mappedJoystickShortcuts, key);
+	return translateShortcut(mappedJoystickShortcuts.at(ENGINE->input().getActiveControllerPromptFamily()), key);
 }
 
 std::vector<EShortcut> ShortcutHandler::translateJoystickAxis(const std::string & key) const
@@ -116,7 +135,7 @@ std::vector<EShortcut> ShortcutHandler::translateJoystickAxis(const std::string 
 std::vector<std::string> ShortcutHandler::getJoystickButtonBindings(EShortcut shortcut) const
 {
 	std::vector<std::string> result;
-	for(const auto & binding : mappedJoystickShortcuts)
+	for(const auto & binding : mappedJoystickShortcuts.at(ENGINE->input().getActiveControllerPromptFamily()))
 	{
 		if(binding.second == shortcut)
 			result.push_back(binding.first);
@@ -204,6 +223,7 @@ EShortcut ShortcutHandler::findShortcut(const std::string & identifier ) const
 		{"adventureToggleGrid",      EShortcut::ADVENTURE_TOGGLE_GRID     },
 		{"adventureToggleVisitable", EShortcut::ADVENTURE_TOGGLE_VISITABLE},
 		{"adventureToggleBlocked",   EShortcut::ADVENTURE_TOGGLE_BLOCKED  },
+		{"adventureScreenshotWholeMap", EShortcut::ADVENTURE_SCREENSHOT_WHOLE_MAP},
 		{"adventureToggleSleep",     EShortcut::ADVENTURE_TOGGLE_SLEEP    },
 		{"adventureSetHeroAsleep",   EShortcut::ADVENTURE_SET_HERO_ASLEEP },
 		{"adventureSetHeroAwake",    EShortcut::ADVENTURE_SET_HERO_AWAKE  },
@@ -217,6 +237,10 @@ EShortcut ShortcutHandler::findShortcut(const std::string & identifier ) const
 		{"adventureMoveHeroNW",      EShortcut::ADVENTURE_MOVE_HERO_NW    },
 		{"adventureMoveHeroNN",      EShortcut::ADVENTURE_MOVE_HERO_NN    },
 		{"adventureMoveHeroNE",      EShortcut::ADVENTURE_MOVE_HERO_NE    },
+		{"adventureScrollLeft",      EShortcut::ADVENTURE_SCROLL_LEFT     },
+		{"adventureScrollRight",     EShortcut::ADVENTURE_SCROLL_RIGHT    },
+		{"adventureScrollUp",        EShortcut::ADVENTURE_SCROLL_UP       },
+		{"adventureScrollDown",      EShortcut::ADVENTURE_SCROLL_DOWN     },
 		{"adventureViewSelected",    EShortcut::ADVENTURE_VIEW_SELECTED   },
 		{"adventureNextObject",      EShortcut::ADVENTURE_NEXT_OBJECT     },
 		{"adventureNextTown",        EShortcut::ADVENTURE_NEXT_TOWN       },
@@ -246,9 +270,9 @@ EShortcut ShortcutHandler::findShortcut(const std::string & identifier ) const
 		{"adventureDisembark",       EShortcut::ADVENTURE_DISEMBARK       },
 		{"adventureOpenWiki",        EShortcut::ADVENTURE_OPEN_WIKI       },
 		{"battleToggleHeroesStats",  EShortcut::BATTLE_TOGGLE_HEROES_STATS},
-		{"battleToggleCursorMode",   EShortcut::BATTLE_TOGGLE_CURSOR_MODE},
-		{"battlePreviousAttackDirection", EShortcut::BATTLE_PREVIOUS_ATTACK_DIRECTION},
-		{"battleNextAttackDirection", EShortcut::BATTLE_NEXT_ATTACK_DIRECTION},
+		{"battleToggleCursorMode",    EShortcut::BATTLE_TOGGLE_CURSOR_MODE },
+		{"battlePreviousAttackDirection",    EShortcut::BATTLE_PREVIOUS_ATTACK_DIRECTION },
+		{"battleNextAttackDirection",    EShortcut::BATTLE_NEXT_ATTACK_DIRECTION },
 		{"battleToggleQueue",        EShortcut::BATTLE_TOGGLE_QUEUE       },
 		{"battleUseCreatureSpell",   EShortcut::BATTLE_USE_CREATURE_SPELL },
 		{"battleSurrender",          EShortcut::BATTLE_SURRENDER          },

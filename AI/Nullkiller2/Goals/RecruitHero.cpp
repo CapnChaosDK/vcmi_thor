@@ -45,11 +45,16 @@ void RecruitHero::accept(AIGateway * aiGw)
 	}
 
 	auto heroToHire = heroToBuy;
+
+	// hero may have been hired by another task planned in the same pass
+	if(heroToHire && !vstd::contains(heroes, heroToHire))
+		throw cannotFulfillGoalException("Hero " + heroToHire->getNameTextID() + " is no longer available in " + t->nodeName());
+
 	if(!heroToHire)
 	{
 		for(auto hero : heroes)
 		{
-			if(!heroToHire || hero->getTotalStrength() > heroToHire->getTotalStrength())
+			if(!heroToHire || hero->estimateHeroCombatValue() > heroToHire->estimateHeroCombatValue())
 				heroToHire = hero;
 		}
 	}

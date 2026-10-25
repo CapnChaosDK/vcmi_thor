@@ -43,8 +43,8 @@ public class ThorHapticStateTest
         assertFalse(ThorHapticState.isEligible(ThorContextIds.ADVENTURE_MAP, ThorActionIds.NEXT_HERO));
         assertTrue(ThorHapticState.isEligible(ThorContextIds.BATTLE, ThorActionIds.BATTLE_WAIT));
         assertTrue(ThorHapticState.isEligible(ThorContextIds.BATTLE_TACTICS, ThorActionIds.BATTLE_TACTICS_END));
-        assertTrue(ThorHapticState.isEligible(ThorContextIds.HERO_MEETING,
-                ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK));
+        assertFalse(ThorHapticState.isEligible(ThorContextIds.HERO_MEETING,
+                ThorActionIds.RESERVED_22));
         assertTrue(ThorHapticState.isEligible(ThorContextIds.HERO_MEETING,
                 ThorActionIds.HERO_MEETING_TRANSFER_ARTIFACT));
         assertFalse(ThorHapticState.isEligible(ThorContextIds.BATTLE, ThorActionIds.NEXT_HERO));

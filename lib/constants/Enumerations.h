@@ -145,6 +145,9 @@ enum class EActionType : int8_t
 	BAD_MORALE,
 	STACK_HEAL,
 	WALK_AND_CAST,
+	WALK_AND_ATTACK_NO_RETURN, ///< WALK_AND_ATTACK of a unit that stays at the target instead of returning
+	LONG_WEAPON_ATTACK,
+	RANDOM_SPELL, ///< spell of a RANDOM_SPELLCASTER unit, rolled by the server
 };
 
 enum class EDiggingStatus : int8_t
@@ -238,6 +241,16 @@ enum class ColorScheme : int8_t
 	H2_SCHEME
 };
 
+/// How much of the game an AI playing for a human player lets him watch, see the gosolo cheat
+enum class EAiSoloMode : int8_t
+{
+	NONE,         // no AI is playing for the player
+	ASK_EACH_TURN, // asks after every turn whether the AI shall keep playing, carries on if unanswered
+	CONTINUOUS,   // plays on without asking
+	SKIP_BATTLES, // as CONTINUOUS, but combats are not shown
+	HIDDEN        // plays on, without any interface at all
+};
+
 enum class ChangeValueMode : int8_t
 {
 	RELATIVE,
@@ -259,4 +272,7 @@ enum class CombatEventType : int8_t
 	BATTLE_START = 10,
 	ROUND_START = 11,
 	BATTLE_SETUP = 12,
+	SPELL_HIT = 13,
+	ACTION_FINISHED = 14,
+	UNIT_DEATH = 15,
 };

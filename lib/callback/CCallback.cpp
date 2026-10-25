@@ -10,6 +10,8 @@
 #include "StdInc.h"
 #include "CCallback.h"
 
+#include "CallbackDefines.h"
+
 #include "../gameState/CGameState.h"
 #include "../mapObjects/CGHeroInstance.h"
 #include "../mapObjects/CGTownInstance.h"
@@ -17,7 +19,6 @@
 #include "../networkPacks/PacksForServer.h"
 #include "../networkPacks/SaveLocalState.h"
 
-#define ASSERT_IF_CALLED_WITH_PLAYER if(!getPlayerID()) {logGlobal->error(BOOST_CURRENT_FUNCTION); assert(0);}
 
 bool CCallback::teleportHero(const CGHeroInstance *who, const CGTownInstance *where)
 {
@@ -49,7 +50,7 @@ int CCallback::selectionMade(int selection, QuestionID questionID)
 
 int CCallback::sendQuestionAnswer(std::optional<int32_t> reply, QuestionID questionID)
 {
-	ASSERT_IF_CALLED_WITH_PLAYER
+	THROW_IF_CALLED_WITH_PLAYER();
 	if(questionID == QuestionID(-1))
 	{
 		logGlobal->error("Cannot answer question -1!");
@@ -57,7 +58,7 @@ int CCallback::sendQuestionAnswer(std::optional<int32_t> reply, QuestionID quest
 	}
 
 	QuestionAnswer pack(questionID, reply);
-	pack.player = *getPlayerID();
+	pack.player = getPlayerID().value();
 	return sendRequest(pack);
 }
 
@@ -90,62 +91,29 @@ bool CCallback::upgradeCreature(const CArmedInstance *obj, SlotID stackPos, Crea
 
 void CCallback::endTurn()
 {
-	logGlobal->trace("Player %d ended his turn.", getPlayerID()->getNum());
+	logGlobal->trace("Player %d ended his turn.", getPlayerID().value().getNum());
 	EndTurn pack;
 	sendRequest(pack);
 }
 int CCallback::swapCreatures(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
 {
-	swapCreaturesRequest(s1, s2, p1, p2);
-	return 0;
-}
-
-int CCallback::swapCreaturesRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
-{
 	ArrangeStacks pack(1,p1,p2,s1->id,s2->id,0);
-	return sendRequest(pack);
+	sendRequest(pack);
+	return 0;
 }
 
 int CCallback::mergeStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
 {
-	mergeStacksRequest(s1, s2, p1, p2);
-	return 0;
-}
-
-int CCallback::mergeStacksRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2)
-{
 	ArrangeStacks pack(2,p1,p2,s1->id,s2->id,0);
-	return sendRequest(pack);
+	sendRequest(pack);
+	return 0;
 }
 
 int CCallback::splitStack(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val)
 {
-	splitStackRequest(s1, s2, p1, p2, val);
-	return 0;
-}
-
-int CCallback::splitStackRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val)
-{
 	ArrangeStacks pack(3,p1,p2,s1->id,s2->id,val);
-	return sendRequest(pack);
-}
-
-int CCallback::redistributeStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
-	ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
-	int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations)
-{
-	RedistributeArmyStack pack;
-	pack.leftHero = leftHero;
-	pack.rightHero = rightHero;
-	pack.sourceArmy = sourceArmy;
-	pack.sourceSlot = sourceSlot;
-	pack.expectedCreature = expectedCreature;
-	pack.expectedSourceCount = expectedSourceCount;
-	if(destinations.size() > pack.destinations.size())
-		return -1;
-	pack.destinationCount = static_cast<ui8>(destinations.size());
-	std::copy(destinations.begin(), destinations.end(), pack.destinations.begin());
-	return sendRequest(pack);
+	sendRequest(pack);
+	return 0;
 }
 
 int CCallback::bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot)
@@ -187,16 +155,11 @@ bool CCallback::dismissHero(const CGHeroInstance *hero)
 
 bool CCallback::swapArtifacts(const ArtifactLocation &l1, const ArtifactLocation &l2)
 {
-	swapArtifactsRequest(l1, l2);
-	return true;
-}
-
-int CCallback::swapArtifactsRequest(const ArtifactLocation &l1, const ArtifactLocation &l2)
-{
 	ExchangeArtifacts ea;
 	ea.src = l1;
 	ea.dst = l2;
-	return sendRequest(ea);
+	sendRequest(ea);
+	return true;
 }
 
 /**
@@ -209,19 +172,14 @@ int CCallback::swapArtifactsRequest(const ArtifactLocation &l1, const ArtifactLo
  */
 void CCallback::assembleArtifacts(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo)
 {
-	assembleArtifactsRequest(heroID, artifactSlot, assemble, assembleTo);
-}
-
-int CCallback::assembleArtifactsRequest(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo)
-{
 	AssembleArtifacts aa(heroID, artifactSlot, assemble, assembleTo);
-	return sendRequest(aa);
+	sendRequest(aa);
 }
 
-int CCallback::bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped, bool backpack)
+void CCallback::bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped, bool backpack)
 {
 	BulkExchangeArtifacts bma(srcHero, dstHero, swap, equipped, backpack);
-	return sendRequest(bma);
+	sendRequest(bma);
 }
 
 void CCallback::scrollBackpackArtifacts(ObjectInstanceID hero, bool left)
@@ -349,7 +307,7 @@ void CCallback::recruitHero(const CGObjectInstance *townOrTavern, const CGHeroIn
 	assert(hero);
 
 	HireHero pack(hero->getHeroTypeID(), townOrTavern->id, nextHero);
-	pack.player = *getPlayerID();
+	pack.player = getPlayerID().value();
 	sendRequest(pack);
 }
 
@@ -357,7 +315,7 @@ void CCallback::saveLocalState(const JsonNode & data)
 {
 	SaveLocalState state;
 	state.data = data;
-	state.player = *getPlayerID();
+	state.player = getPlayerID().value();
 
 	sendRequest(state);
 }
@@ -379,7 +337,7 @@ void CCallback::gamePause(bool pause)
 	if(pause)
 	{
 		GamePause pack;
-		pack.player = *getPlayerID();
+		pack.player = getPlayerID().value();
 		sendRequest(pack);
 	}
 	else
@@ -390,10 +348,10 @@ void CCallback::gamePause(bool pause)
 
 void CCallback::sendMessage(const std::string &mess, const CGObjectInstance * currentObject)
 {
-	ASSERT_IF_CALLED_WITH_PLAYER
+	THROW_IF_CALLED_WITH_PLAYER();
 	PlayerMessage pm(mess, currentObject? currentObject->id : ObjectInstanceID(-1));
 	if(getPlayerID())
-		pm.player = *getPlayerID();
+		pm.player = getPlayerID().value();
 	sendRequest(pm);
 }
 
@@ -418,6 +376,11 @@ bool CCallback::canMoveBetween(const int3 &a, const int3 &b)
 {
 	//bidirectional
 	return gameState().getMap().canMoveBetween(a, b);
+}
+
+bool CCallback::isContactAllowed(PlayerColor color1, PlayerColor color2) const
+{
+	return gameState().isContactAllowed(color1, color2);
 }
 
 std::optional<PlayerColor> CCallback::getPlayerID() const

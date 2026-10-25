@@ -64,11 +64,11 @@ StepResult MapObjectVisitActivity::advance()
 
 void MapObjectVisitActivity::startVisit()
 {
-	const auto * object = gh->gameInfo().tryGetObj(visitedObject);
+	const auto * object = gh->gameInfo().getObj(visitedObject);
 	const auto * hero = gh->gameState().getHero(visitingHero);
 
-	if(!object || !hero || hero->tempOwner != getPlayers().front())
-		return;
+	if(!object || !hero)
+		throw std::runtime_error("Visit started without its object or hero");
 
 	HeroVisit hv;
 	hv.objId = visitedObject;
@@ -101,8 +101,7 @@ void MapObjectVisitActivity::onChildCompleted(const ActivityPtr & child)
 	// The object may have been removed by the visit itself. A dead hero is passed on
 	// intentionally: objects such as CGCreature handle a battle won by the defender
 	// and check the battle result instead of the hero.
-	if(object && (hero || child->getType() == ActivityType::Battle)
-		&& (!hero || hero->tempOwner == getPlayers().front()))
+	if(object)
 		child->notifyObjectAboutRemoval(object, hero, std::exchange(visitState, {}));
 }
 
@@ -136,7 +135,7 @@ void TownBuildingVisitActivity::onChildCompleted(const ActivityPtr & child)
 	const auto * hero = gh->gameState().getHero(visitingHero);
 
 	// The town may have changed owner or the hero may have died in the meantime
-	if(!visitedTown || !hero || hero->tempOwner != getPlayers().front())
+	if(!visitedTown)
 		return;
 
 	// Activities are started by the building, not by the town - except before the first
@@ -163,7 +162,7 @@ StepResult TownBuildingVisitActivity::advance()
 
 	// Either may be gone if an earlier building started a battle. Skip this pair and
 	// continue with the remaining buildings.
-	if(!visitedTown || !hero || hero->tempOwner != getPlayers().front())
+	if(!visitedTown || !hero)
 		return StepResult::Continue;
 
 	auto building = visitedTown->rewardableBuildings.find(visit.building);
@@ -240,7 +239,7 @@ StepResult TurnStartRoutine::visitNext()
 
 	// The town may have been captured, or the hero moved away or died, between collecting
 	// the visits and reaching this one.
-	if(!object || !hero || hero->tempOwner != getPlayers().front() || object->tempOwner != getPlayers().front())
+	if(!object || !hero)
 		return StepResult::Continue;
 
 	if(hero->visitablePos() != object->visitablePos())

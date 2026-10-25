@@ -16,6 +16,7 @@
 #include "../battle/BattleInfo.h"
 #include "../battle/BattleHexArray.h"
 #include "../battle/BattleUnitTurnReason.h"
+#include "../battle/UnitTurnStatus.h"
 #include "../filesystem/ResourcePath.h"
 #include "../mapObjects/army/CStackBasicDescriptor.h"
 #include "../texts/MetaString.h"
@@ -43,6 +44,20 @@ struct DLL_LINKAGE BattleStart : public CPackForClient
 };
 
 struct DLL_LINKAGE BattleNextRound : public CPackForClient
+{
+	BattleID battleID = BattleID::NONE;
+
+	void visitTyped(ICPackVisitor & visitor) override;
+
+	template <typename Handler> void serialize(Handler & h)
+	{
+		h & battleID;
+		assert(battleID != BattleID::NONE);
+	}
+};
+
+/// Ends the tactics phase of the battle
+struct DLL_LINKAGE BattleTacticsEnded : public CPackForClient
 {
 	BattleID battleID = BattleID::NONE;
 
@@ -192,11 +207,12 @@ struct DLL_LINKAGE BattleUnitsChanged : public CPackForClient, public scripting:
 
 struct BattleStackAttacked
 {
-	ui32 stackAttacked = 0, attackerID = 0;
+	ui32 stackAttacked = 0;
+	ui32 attackerID = -1; ///< no unit; 0 is a valid unit id, so it cannot stand for "nobody"
 	ui32 killedAmount = 0;
 	int64_t damageAmount = 0;
 	UnitChanges newState;
-	enum EFlags { KILLED = 1, SECONDARY = 2, REBIRTH = 4, CLONE_KILLED = 8, SPELL_EFFECT = 16, };
+	enum EFlags { KILLED = 1, SECONDARY = 2, /* 4 was REBIRTH, now a combat script */ CLONE_KILLED = 8, SPELL_EFFECT = 16, };
 	ui32 flags = 0; //uses EFlags (above)
 	SpellID spellID = SpellID::NONE; //only if flag SPELL_EFFECT is set
 
@@ -217,11 +233,6 @@ struct BattleStackAttacked
 	{
 		return flags & SPELL_EFFECT;
 	}
-	bool willRebirth() const//resurrection, e.g. Phoenix
-	{
-		return flags & REBIRTH;
-	}
-
 	template <typename Handler> void serialize(Handler & h)
 	{
 		h & stackAttacked;
@@ -309,6 +320,10 @@ struct DLL_LINKAGE StartAction : public CPackForClient
 
 	BattleID battleID = BattleID::NONE;
 	BattleAction ba;
+	/// New turn status of the acting unit, if the action changes it
+	std::optional<battle::UnitTurnStatus> turnStatus;
+	/// The acting unit uses up its spellcasting for this turn
+	bool castSpellThisTurn = false;
 
 	void visitTyped(ICPackVisitor & visitor) override;
 
@@ -316,6 +331,8 @@ struct DLL_LINKAGE StartAction : public CPackForClient
 	{
 		h & battleID;
 		h & ba;
+		h & turnStatus;
+		h & castSpellThisTurn;
 		assert(battleID != BattleID::NONE);
 	}
 };

@@ -38,7 +38,6 @@ public:
 	void visitMoveHero(MoveHero & pack) override;
 	void visitCastleTeleportHero(CastleTeleportHero & pack) override;
 	void visitArrangeStacks(ArrangeStacks & pack) override;
-	void visitRedistributeArmyStack(RedistributeArmyStack & pack) override;
 	void visitBulkMoveArmy(BulkMoveArmy & pack) override;
 	void visitBulkSplitStack(BulkSplitStack & pack) override;
 	void visitBulkMergeStacks(BulkMergeStacks & pack) override;

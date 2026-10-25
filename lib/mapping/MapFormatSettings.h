@@ -15,7 +15,7 @@
 #include "../campaign/CampaignConstants.h"
 #include "../json/JsonNode.h"
 
-class DLL_LINKAGE MapFormatSettings : boost::noncopyable
+class MapFormatSettings : boost::noncopyable
 {
 	static MapIdentifiersH3M generateMapping(EMapFormat format);
 	static std::map<EMapFormat, MapIdentifiersH3M> generateMappings();
@@ -49,12 +49,12 @@ public:
 		return mapping.at(campaignToMap.at(format));
 	}
 
-	const JsonNode & campaignOverrides(const std::string & campaignName)
+	const JsonNode & campaignOverrides(const std::string & campaignName) const
 	{
 		return campaignOverridesConfig[campaignName];
 	}
 
-	const JsonNode & mapOverrides(const std::string & mapName)
+	const JsonNode & mapOverrides(const std::string & mapName) const
 	{
 		return mapOverridesConfig[mapName];
 	}

@@ -38,6 +38,7 @@
 #include "../entities/hero/CHeroHandler.h"
 #include "../entities/hero/CHeroClass.h"
 #include "../entities/ResourceTypeHandler.h"
+#include "../battle/BattleInfo.h"
 #include "../battle/CBattleInfoEssentials.h"
 #include "../bonuses/BonusParameters.h"
 #include "../campaign/CampaignState.h"
@@ -150,6 +151,9 @@ void CGHeroInstance::setSecSkillLevel(const SecondarySkill & which, int val, Cha
 		}
 	}
 
+	if(newLevelClamped > currentLevel && which.hasValue() && which.toSkill()->offerCooldown > 0)
+		secSkillsGainedAtLevel[which] = level;
+
 	updateSkillBonus(which, newLevelClamped);
 }
 
@@ -207,21 +211,35 @@ int CGHeroInstance::movementPointsLimit() const
 	return getTurnInfo(0)->getMaxMovePoints(layer);
 }
 
+static int getMovementSpeed(const CStackInstance & stack)
+{
+	// artifact speed bonuses (e.g. Ring of the Wayfarer) only apply in battle
+	// so do general hero specialties (e.g. Sir Mullich), only creature-specific specialties have effect on adventure map
+	static const CSelector selector = Selector::type()(BonusType::STACKS_SPEED)
+		.And(Selector::sourceTypeSel(BonusSource::ARTIFACT).Not())
+		.And(Selector::sourceTypeSel(BonusSource::ARTIFACT_INSTANCE).Not())
+		.And([](const Bonus * bonus)
+		{
+			return bonus->source != BonusSource::HERO_SPECIAL || bonus->limiter != nullptr;
+		});
+
+	return stack.valOfBonuses(selector, "type_STACKS_SPEED_noArtifactsNoGeneralSpecialty");
+}
+
 int CGHeroInstance::getLowestCreatureSpeed() const
 {
 	if(stacksCount() != 0)
 	{
 		int minimalSpeed = std::numeric_limits<int>::max();
-		//TODO? should speed modifiers (eg from artifacts) affect hero movement?
 		for(const auto & slot : Slots())
-			minimalSpeed = std::min(minimalSpeed, slot.second->getInitiative());
+			minimalSpeed = std::min(minimalSpeed, getMovementSpeed(*slot.second));
 
 		return minimalSpeed;
 	}
 	else
 	{
 		if(commander && commander->alive)
-			return commander->getInitiative();
+			return getMovementSpeed(*commander);
 	}
 
 	return 10;
@@ -407,6 +425,20 @@ void CGHeroInstance::initHero(IGameRandomizer & gameRandomizer, bool isFake)
 	else
 		spells -= SpellID::SPELLBOOK_PRESET;
 
+	if(!isFake)
+	{
+		for(const auto & slot : ArtifactUtils::commonWornSlots())
+		{
+			const auto * artifact = getArt(slot);
+			if(artifact && ArtifactUtils::checkSpellbookIsNeeded(this, artifact->getTypeId(), slot))
+			{
+				auto spellbook = cb->gameState().createArtifact(ArtifactID::SPELLBOOK);
+				putArtifact(ArtifactPosition::SPELLBOOK, spellbook);
+				break;
+			}
+		}
+	}
+
 	if(!getArt(ArtifactPosition::MACH4) && !isFake)
 	{
 		auto artifact = cb->gameState().createArtifact(ArtifactID::CATAPULT);
@@ -433,7 +465,16 @@ void CGHeroInstance::initHero(IGameRandomizer & gameRandomizer, bool isFake)
 	if (patrol.patrolling)
 		patrol.initialPos = visitablePos();
 
-	if(exp == UNINITIALIZED_EXPERIENCE)
+	// starting skills count as gained at the starting level
+	for(const auto & skill : secSkills)
+		if(skill.first != SecondarySkill::NONE && skill.first.toSkill()->offerCooldown > 0)
+			secSkillsGainedAtLevel[skill.first] = level;
+
+	if(mapLevel.has_value())
+	{
+		initializeMapSpecifiedLevel(gameRandomizer);
+	}
+	else if(exp == UNINITIALIZED_EXPERIENCE)
 	{
 		initExp(gameRandomizer.getDefault());
 	}
@@ -462,6 +503,10 @@ void CGHeroInstance::initHero(IGameRandomizer & gameRandomizer, bool isFake)
 		commander = std::make_unique<CCommanderInstance>(cb, getHeroClass()->commander);
 		commander->setArmy(getArmy()); //TODO: separate function for setting commanders
 		commander->giveTotalStackExperience(exp); //after our exp is set
+		const ui32 automaticLevelLimit = std::min(level, cb->getHeroLevelLimit());
+		while(commander->level < automaticLevelLimit)
+			commander->levelUpAutomatically(gameRandomizer.getDefault());
+		vstd::amax(commander->level, level);
 	}
 
 	//copy active (probably growing) bonuses from hero prototype to hero object
@@ -543,6 +588,11 @@ CGHeroInstance::~CGHeroInstance() = default;
 bool CGHeroInstance::needsLastStack() const
 {
 	return true;
+}
+
+bool CGHeroInstance::canRecruitWarMachine(const ArtifactID & warMachine) const
+{
+	return warMachine != ArtifactID::CATAPULT && !hasArt(warMachine);
 }
 
 void CGHeroInstance::onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance * h) const
@@ -630,6 +680,22 @@ MetaString CGHeroInstance::getMovementPointsTextIfOwner(PlayerColor player) cons
 	}
 
 	return output;
+}
+
+MetaString CGHeroInstance::getExperienceDescription() const
+{
+	if(!canGainExperience())
+	{
+		MetaString text = MetaString::createFromTextID("core.genrltxt.1"); //can gain no more XP
+		text.replaceTextID(getNameTextID());
+		return text;
+	}
+
+	MetaString text = MetaString::createFromTextID("core.genrltxt.2");
+	text.replaceNumber(level);
+	text.replaceNumber(LIBRARY->heroh->reqExp(level + 1));
+	text.replaceNumber(exp);
+	return text;
 }
 
 ui8 CGHeroInstance::maxlevelsToMagicSchool() const
@@ -758,12 +824,12 @@ bool CGHeroInstance::compareCampaignValue(const CGHeroInstance * left, const CGH
 
 	uint32_t leftLevel = left->level;
 	uint64_t leftExperience = left->exp;
-	uint32_t leftPrimary = left->getPrimSkillLevel(PrimarySkill::ATTACK) + left->getPrimSkillLevel(PrimarySkill::DEFENSE) + left->getPrimSkillLevel(PrimarySkill::SPELL_POWER) + left->getPrimSkillLevel(PrimarySkill::DEFENSE);
+	uint32_t leftPrimary = left->getPrimSkillLevel(PrimarySkill::ATTACK) + left->getPrimSkillLevel(PrimarySkill::DEFENSE) + left->getPrimSkillLevel(PrimarySkill::SPELL_POWER) + left->getPrimSkillLevel(PrimarySkill::KNOWLEDGE);
 	uint32_t leftPrimaryAndLevel = leftPrimary + leftLevel;
 
 	uint32_t rightLevel = right->level;
 	uint64_t rightExperience = right->exp;
-	uint32_t rightPrimary = right->getPrimSkillLevel(PrimarySkill::ATTACK) + right->getPrimSkillLevel(PrimarySkill::DEFENSE) + right->getPrimSkillLevel(PrimarySkill::SPELL_POWER) + right->getPrimSkillLevel(PrimarySkill::DEFENSE);
+	uint32_t rightPrimary = right->getPrimSkillLevel(PrimarySkill::ATTACK) + right->getPrimSkillLevel(PrimarySkill::DEFENSE) + right->getPrimSkillLevel(PrimarySkill::SPELL_POWER) + right->getPrimSkillLevel(PrimarySkill::KNOWLEDGE);
 	uint32_t rightPrimaryAndLevel = rightPrimary + rightLevel;
 
 	if (leftPrimaryAndLevel != rightPrimaryAndLevel)
@@ -778,10 +844,14 @@ bool CGHeroInstance::compareCampaignValue(const CGHeroInstance * left, const CGH
 	return left->getHeroTypeID() > right->getHeroTypeID();
 }
 
-ui64 CGHeroInstance::getTotalStrength() const
+ui64 CGHeroInstance::estimateHeroCombatValue() const
 {
-	double ret = getHeroStrength() * getArmyStrength();
-	return static_cast<ui64>(ret);
+	return static_cast<ui64>(getHeroStrength() * estimateCombatValue());
+}
+
+bool CGHeroInstance::canGainExperience() const
+{
+	return !cannotGainExperience && level < cb->getHeroLevelLimit();
 }
 
 TExpType CGHeroInstance::calculateXp(TExpType exp) const
@@ -928,6 +998,19 @@ void CGHeroInstance::spendMana(ServerCallback * server, const int spellCost) con
 	}
 }
 
+static bool castableWithoutSpellbook(const Bonus & spellBonus)
+{
+	return spellBonus.parameters && spellBonus.parameters->toCustom<bool>();
+}
+
+bool CGHeroInstance::canCastSpells() const
+{
+	if(hasSpellbook())
+		return true;
+
+	return std::ranges::any_of(*getBonusesOfType(BonusType::SPELL), [](const auto & bonus){ return castableWithoutSpellbook(*bonus); });
+}
+
 bool CGHeroInstance::canCastThisSpell(const spells::Spell * spell) const
 {
 	const bool inSpellBook = spellbookContainsSpell(spell->getId()) && hasSpellbook();
@@ -938,7 +1021,7 @@ bool CGHeroInstance::canCastThisSpell(const spells::Spell * spell) const
 		{//hero has this spell in spellbook
 			logGlobal->error("Special spell %s in spellbook.", spell->getNameTextID());
 		}
-		return hasBonusOfType(BonusType::SPELL, BonusSubtypeID(spell->getId()));
+		return std::ranges::any_of(*getBonusesOfType(BonusType::SPELL, spell->getId()), [this](const auto & bonus){ return hasSpellbook() || castableWithoutSpellbook(*bonus); });
 	}
 	else if(!cb->isAllowed(spell->getId()))
 	{
@@ -1009,34 +1092,49 @@ CStackBasicDescriptor CGHeroInstance::calculateNecromancy (const BattleResult &b
 		return CStackBasicDescriptor();
 
 	// figure out what to raise - pick strongest creature meeting requirements
-	CreatureID bestCreature = CreatureID::NONE;
 	int necromancerPower = improvedNecromancy->totalValue();
 
-	// pick best bonus available
-	for(const std::shared_ptr<Bonus> & newPick : *improvedNecromancy)
+	// filter out bonuses that can not be used - e.g. hero has necromancy from a temporary source,
+	// but his necromancy power is not enough for any of the available raise types
+	std::vector<std::shared_ptr<Bonus>> availableBonuses;
+	for(const std::shared_ptr<Bonus> & bonus : *improvedNecromancy)
 	{
 		// addInfo[0] = required necromancy skill
 		// MOD COMPATIBILITY: Bonus::convertAddInfo stored multi-element legacy addInfo
 		// as std::vector<int32_t> regardless of bonus type; saves taken with that bug
 		// keep the wrong variant after re-save. Fall back to the first vector element.
 		int requiredSkill = 0;
-		if(newPick->parameters)
+		if(bonus->parameters)
 		{
 			try
 			{
-				requiredSkill = newPick->parameters->toNumber();
+				requiredSkill = bonus->parameters->toNumber();
 			}
 			catch(const std::runtime_error &)
 			{
-				const auto & vec = newPick->parameters->toVector();
+				const auto & vec = bonus->parameters->toVector();
 				if(!vec.empty())
 					requiredSkill = vec.front();
 			}
 		}
-		if(newPick->parameters && requiredSkill > necromancerPower)
+		if(bonus->parameters && requiredSkill > necromancerPower)
 			continue;
 
-		CreatureID newCreature = newPick->subtype.as<CreatureID>();;
+		if(!bonus->subtype.as<CreatureID>().hasValue())
+			continue;
+
+		availableBonuses.push_back(bonus);
+	}
+
+	// nothing to raise - skip necromancy entirely
+	if(availableBonuses.empty())
+		return CStackBasicDescriptor();
+
+	// pick best bonus available
+	CreatureID bestCreature = CreatureID::NONE;
+	for(const std::shared_ptr<Bonus> & newPick : availableBonuses)
+	{
+		CreatureID newCreature = newPick->subtype.as<CreatureID>();
 
 		if(!bestCreature.hasValue())
 		{
@@ -1274,12 +1372,17 @@ bool CGHeroInstance::spellbookContainsSpell(const SpellID & spell) const
 std::vector<BonusSourceID> CGHeroInstance::getSourcesForSpell(const SpellID & spellId) const
 {
 	std::vector<BonusSourceID> sources;
+	const bool spellbook = hasSpellbook();
 
-	if(hasSpellbook() && spellbookContainsSpell(spellId))
+	if(spellbook && spellbookContainsSpell(spellId))
 		sources.emplace_back(getArt(ArtifactPosition::SPELLBOOK)->getId());
 
 	for(const auto & bonus : *getBonusesOfType(BonusType::SPELL, spellId))
-		sources.emplace_back(bonus->sid);
+		if(spellbook || castableWithoutSpellbook(*bonus))
+			sources.emplace_back(bonus->sid);
+
+	if(!spellbook)
+		return sources;
 
 	bool tomesGrantBannedSpells = cb->getSettings().getBoolean(EGameSettings::SPELLS_TOMES_GRANT_BANNED_SPELLS);
 
@@ -1372,6 +1475,44 @@ void CGHeroInstance::restoreBonusSystem(CGameState & gs)
 		if (boat)
 			attachTo(dynamic_cast<CGBoat&>(*boat));
 	}
+
+	// battle participants are detached from special terrain until the battle ends
+	const auto * battle = gs.getBattle(getOwner());
+	if(!battle || (battle->getSide(BattleSide::ATTACKER).heroID != id && battle->getSide(BattleSide::DEFENDER).heroID != id))
+		updateSpecialTerrain(gs);
+}
+
+void CGHeroInstance::attachToBonusSystem(CGameState & gs)
+{
+	CArmedInstance::attachToBonusSystem(gs);
+	updateSpecialTerrain(gs);
+}
+
+void CGHeroInstance::detachFromBonusSystem(CGameState & gs)
+{
+	leaveSpecialTerrain(gs);
+	CArmedInstance::detachFromBonusSystem(gs);
+}
+
+void CGHeroInstance::updateSpecialTerrain(CGameState & gs)
+{
+	// prisons are heroes too, but are not affected by terrain
+	BattleField newTerrain = ID == Obj::HERO ? gs.getSpecialTerrainAt(visitablePos()) : BattleField::NONE;
+
+	if(newTerrain == specialTerrain)
+		return;
+
+	leaveSpecialTerrain(gs);
+	specialTerrain = newTerrain;
+	if(specialTerrain != BattleField::NONE)
+		attachTo(gs.getSpecialTerrainNode(specialTerrain));
+}
+
+void CGHeroInstance::leaveSpecialTerrain(CGameState & gs)
+{
+	if(specialTerrain != BattleField::NONE)
+		detachFrom(gs.getSpecialTerrainNode(specialTerrain));
+	specialTerrain = BattleField::NONE;
 }
 
 CBonusSystemNode & CGHeroInstance::whereShouldBeAttached(CGameState & gs)
@@ -1447,7 +1588,16 @@ void CGHeroInstance::setExperience(si64 value, ChangeValueMode mode)
 
 bool CGHeroInstance::gainsLevel() const
 {
-	return level < LIBRARY->heroh->maxSupportedLevel() && exp >= static_cast<TExpType>(LIBRARY->heroh->reqExp(level+1));
+	return level < cb->getHeroLevelLimit() && exp >= static_cast<TExpType>(LIBRARY->heroh->reqExp(level+1));
+}
+
+TExpType CGHeroInstance::experienceToGainLevels(ui32 levels) const
+{
+	const ui32 targetLevel = std::min(level + levels, cb->getHeroLevelLimit());
+	if(targetLevel <= level)
+		return 0;
+
+	return LIBRARY->heroh->reqExp(targetLevel) - LIBRARY->heroh->reqExp(level);
 }
 
 void CGHeroInstance::levelUp()
@@ -1463,19 +1613,56 @@ void CGHeroInstance::attachCommanderToArmy()
 		commander->setArmy(this);
 }
 
+void CGHeroInstance::levelUpAutomaticallyOnce(IGameRandomizer & gameRandomizer)
+{
+	const auto primarySkill = gameRandomizer.rollPrimarySkillForLevelup(this);
+	const auto proposedSecondarySkills = gameRandomizer.rollSecondarySkills(this);
+
+	// level is raised before the skill is picked, as on server
+	levelUp();
+	setPrimarySkill(primarySkill, 1, ChangeValueMode::RELATIVE);
+	if(!proposedSecondarySkills.empty())
+	{
+		const auto & chosenSkill = proposedSecondarySkills.front();
+		setSecSkillLevel(chosenSkill, 1, ChangeValueMode::RELATIVE);
+		if(chosenSkill.toSkill()->grantsLevelUp())
+			exp += experienceToGainLevels(1);
+	}
+}
+
 void CGHeroInstance::levelUpAutomatically(IGameRandomizer & gameRandomizer)
 {
 	while(gainsLevel())
+		levelUpAutomaticallyOnce(gameRandomizer);
+}
+
+void CGHeroInstance::initializeMapSpecifiedLevel(IGameRandomizer & gameRandomizer)
+{
+	assert(mapLevel.has_value());
+	assert(mapLevel->level > 0);
+
+	const auto [targetLevel, addSkills] = *mapLevel;
+	mapLevel.reset();
+
+	if(exp == UNINITIALIZED_EXPERIENCE)
+		exp = 0;
+
+	if(addSkills && !cannotGainExperience)
 	{
-		const auto primarySkill = gameRandomizer.rollPrimarySkillForLevelup(this);
-		const auto proposedSecondarySkills = gameRandomizer.rollSecondarySkills(this);
-
-		setPrimarySkill(primarySkill, 1, ChangeValueMode::RELATIVE);
-		if(!proposedSecondarySkills.empty())
-			setSecSkillLevel(proposedSecondarySkills.front(), 1, ChangeValueMode::RELATIVE);
-
-		levelUp();
+		const ui32 automaticLevelLimit = std::min(targetLevel, cb->getHeroLevelLimit());
+		while(level < automaticLevelLimit)
+			levelUpAutomaticallyOnce(gameRandomizer);
 	}
+
+	if(level < targetLevel)
+	{
+		level = targetLevel;
+		nodeHasChanged();
+	}
+
+	// A HotA hero with cannotGainXP is a map-authored final snapshot, its experience is kept as is
+	if(!cannotGainExperience && targetLevel <= LIBRARY->heroh->maxSupportedLevel())
+		exp = std::max(exp, LIBRARY->heroh->reqExp(targetLevel));
 }
 
 bool CGHeroInstance::hasVisions(const CGObjectInstance * target, BonusSubtypeID subtype) const
@@ -1538,13 +1725,38 @@ void CGHeroInstance::serializeCommonOptions(JsonSerializeFormat & handler)
 	handler.serializeString("biography", biographyCustomTextId);
 	handler.serializeInt("experience", exp, 0);
 
-	if(!handler.saving && exp != UNINITIALIZED_EXPERIENCE) //do not gain levels if experience is not initialized
+	std::optional<si64> explicitLevel;
+	bool explicitLevelAddsSkills = true;
+
+	if(mapLevel)
 	{
-		while (gainsLevel())
-		{
-			++level;
-		}
+		explicitLevel = mapLevel->level;
+		explicitLevelAddsSkills = mapLevel->addSkills;
 	}
+
+	// level of an initialized hero that can not be derived from experience
+	if(handler.saving && !explicitLevel && level > 1 && level != LIBRARY->heroh->level(exp))
+	{
+		explicitLevel = level;
+		explicitLevelAddsSkills = false;
+	}
+
+	handler.serializeInt("level", explicitLevel);
+	handler.serializeBool("levelAddsSkills", explicitLevelAddsSkills, true);
+	handler.serializeBool("cannotGainExperience", cannotGainExperience, false);
+
+	if(!handler.saving && explicitLevel)
+	{
+		if(*explicitLevel > 0 && *explicitLevel <= std::numeric_limits<ui32>::max())
+		{
+			mapLevel = MapHeroLevel{static_cast<ui32>(*explicitLevel), explicitLevelAddsSkills};
+		}
+		else
+			logGlobal->warn("Hero %s: invalid level %d, ignoring", instanceName, *explicitLevel);
+	}
+
+	if(!handler.saving && !mapLevel && exp != UNINITIALIZED_EXPERIENCE) //do not gain levels if experience is not initialized
+		vstd::amax(level, LIBRARY->heroh->level(exp));
 
 	handler.serializeString("name", nameCustomTextId);
 	handler.serializeInt("gender", gender, 0);
@@ -1762,15 +1974,17 @@ bool CGHeroInstance::isMissionCritical() const
 
 void CGHeroInstance::fillUpgradeInfo(UpgradeInfo & info, const CStackInstance & stack) const
 {
-	TConstBonusListPtr lista = stack.getBonusesOfType(BonusType::SPECIAL_UPGRADE, BonusSubtypeID(stack.getId()));
-	for(const auto & it : *lista)
+	TConstBonusListPtr upgrades = stack.getBonusesOfType(BonusType::SPECIAL_UPGRADE);
+	for (const auto & bonus : *upgrades)
 	{
-		if (it->parameters)
+		if (bonus->parameters &&
+			(bonus->subtype == BonusSubtypeID(stack.getId()) ||
+			(bonus->subtype == BonusSubtypeID() && bonus->limiter)))
 		{
-			auto nid = it->parameters->toCreature();
-			if (nid != stack.getId()) //in very specific case the upgrade is available by default (?)
+			auto upgradeID = bonus->parameters->toCreature();
+			if(upgradeID != stack.getId()) //in very specific case the upgrade is available by default (?)
 				// SPECIAL_UPGRADE value adjusts the default 100% cost; clamp the final modifier to 0%.
-				info.addUpgrade(nid, stack.getType(), std::max(0, 100 + it->val));
+				info.addUpgrade(upgradeID, stack.getType(), std::max(0, 100 + bonus->val));
 		}
 	}
 }
@@ -1820,18 +2034,18 @@ int CGHeroInstance::getBasePrimarySkillValue(PrimarySkill which) const
 
 ArtifactID CGHeroInstance::getReplacedWarMachine(ArtifactID artifactID) const
 {
-	ArtifactID replacedArtifact;
-	auto art = artifactID.toArtifact();
+	const auto * currentArtifact = getArt(getWarMachineSlot(artifactID));
+	return currentArtifact ? currentArtifact->getTypeId() : ArtifactID();
+}
 
-	for(auto slot : art->getPossibleSlots().at(ArtBearer::HERO))
-	{
-		const auto * currentArtifact = getArt(slot);
+ArtifactPosition CGHeroInstance::getWarMachineSlot(ArtifactID warMachine) const
+{
+	const auto & possibleSlots = warMachine.toArtifact()->getPossibleSlots().at(ArtBearer::HERO);
 
-		if(currentArtifact == nullptr)
-			return ArtifactID();
-		else
-			replacedArtifact = currentArtifact->getTypeId();
-	}
-	return replacedArtifact;
+	for(const auto & slot : possibleSlots)
+		if(getArt(slot) == nullptr)
+			return slot;
+
+	return possibleSlots.front();
 }
 

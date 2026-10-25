@@ -50,11 +50,6 @@ bool TimerPauseActivity::endsByPlayerAnswer() const
 	return true;
 }
 
-bool TimerPauseActivity::acceptsAnswer(int32_t answer) const
-{
-	return answer == 0;
-}
-
 void GarrisonDialogActivity::notifyObjectAboutRemoval(const IObjectInterface * visitedObject, const CGHeroInstance * visitingHero, const JsonNode & visitState) const
 {
 	visitedObject->garrisonDialogClosed(*gh, visitingHero, visitState);
@@ -64,8 +59,8 @@ GarrisonDialogActivity::GarrisonDialogActivity(CGameHandler * owner, PlayerColor
 	DialogActivity(owner, TYPE),
 	initiator(initiator)
 {
-	exchangingArmies[0] = up->id;
-	exchangingArmies[1] = down->id;
+	exchangingArmies[0] = up;
+	exchangingArmies[1] = down;
 	addPlayer(initiator);
 }
 
@@ -77,11 +72,6 @@ void GarrisonDialogActivity::addPartner(PlayerColor partner)
 bool GarrisonDialogActivity::acceptsAnswerFrom(PlayerColor player) const
 {
 	return player == initiator;
-}
-
-bool GarrisonDialogActivity::acceptsAnswer(int32_t answer) const
-{
-	return answer == 0;
 }
 
 void GarrisonDialogActivity::onAdded()
@@ -101,9 +91,9 @@ void GarrisonDialogActivity::onRemoval()
 {
 	// An artifact still held by the partner when the initiator closed the window goes back
 	// to its hero; the partner's own request to do so would arrive once trading is over
-	for(const auto army : exchangingArmies)
+	for(const auto * army : exchangingArmies)
 	{
-		const auto * hero = gh->gameInfo().getHero(army);
+		const auto * hero = dynamic_cast<const CGHeroInstance *>(army);
 		if(hero && hero->getArt(ArtifactPosition::TRANSITION_POS))
 			gh->moveArtifact(hero->getOwner(), ArtifactLocation(hero->id, ArtifactPosition::TRANSITION_POS), ArtifactLocation(hero->id, ArtifactPosition::FIRST_AVAILABLE));
 	}
@@ -119,12 +109,8 @@ void GarrisonDialogActivity::onRemoval()
 bool GarrisonDialogActivity::blocksPack(const CPackForServer * pack) const
 {
 	std::set<ObjectInstanceID> ourIds;
-	ourIds.insert(this->exchangingArmies[0]);
-	ourIds.insert(this->exchangingArmies[1]);
-
-	if(auto stacks = dynamic_cast<const RedistributeArmyStack*>(pack))
-		return !vstd::contains(ourIds, stacks->leftHero) || !vstd::contains(ourIds, stacks->rightHero)
-			|| !vstd::contains(ourIds, stacks->sourceArmy);
+	ourIds.insert(this->exchangingArmies[0]->id);
+	ourIds.insert(this->exchangingArmies[1]->id);
 
 	if(auto stacks = dynamic_cast<const ArrangeStacks*>(pack))
 		return !vstd::contains(ourIds, stacks->id1) || !vstd::contains(ourIds, stacks->id2);
@@ -211,11 +197,6 @@ OpenWindowActivity::OpenWindowActivity(CGameHandler * owner, const CGHeroInstanc
 	addPlayer(hero->getOwner());
 }
 
-bool OpenWindowActivity::acceptsAnswer(int32_t answer) const
-{
-	return answer == 0;
-}
-
 bool OpenWindowActivity::blocksPack(const CPackForServer * pack) const
 {
 	if (mode == EOpenWindowMode::RECRUITMENT_FIRST || mode == EOpenWindowMode::RECRUITMENT_ALL)
@@ -271,7 +252,6 @@ void TeleportDialogActivity::notifyObjectAboutRemoval(const IObjectInterface * v
 		throw std::runtime_error("Teleport dialog answered to an object that is not a teleport");
 
 	obj->teleportDialogAnswered(*gh, visitingHero, *answer, td.exits);
-	gh->sendQuestionResolved(getActiveQuestionID());
 }
 
 TeleportDialogActivity::TeleportDialogActivity(CGameHandler * owner, const TeleportDialog & dialog) :
@@ -279,11 +259,6 @@ TeleportDialogActivity::TeleportDialogActivity(CGameHandler * owner, const Telep
 {
 	td = dialog;
 	addPlayer(gh->gameInfo().getHero(dialog.hero)->getOwner());
-}
-
-bool TeleportDialogActivity::acceptsAnswer(int32_t answer) const
-{
-	return answer == -1 || (answer >= 0 && static_cast<size_t>(answer) < td.exits.size());
 }
 
 LevelUpRoutine::LevelUpRoutine(CGameHandler * owner, const CGHeroInstance * hero)
@@ -300,11 +275,11 @@ bool LevelUpRoutine::blocksPack(const CPackForServer * pack) const
 StepResult LevelUpRoutine::advance()
 {
 	const auto * levellingHero = gh->gameInfo().getHero(hero);
-	if(!levellingHero || levellingHero->getOwner() != getPlayers().front())
-		return StepResult::Done;
+	if(!levellingHero)
+		throw std::runtime_error("Hero disappeared during level-up");
 
 	const auto * commander = levellingHero->getCommander();
-	const bool heroLevels = levellingHero->gainsLevel();
+	const bool heroLevels = levellingHero->canGainExperience() && levellingHero->gainsLevel();
 	const bool commanderLevels = commander && commander->gainsLevel();
 
 	if(!heroLevels && !commanderLevels)
@@ -351,8 +326,8 @@ void HeroLevelUpPrompt::onRemoval()
 	gh->sendQuestionResolved(getActiveQuestionID());
 
 	const auto * levellingHero = gh->gameInfo().getHero(hero);
-	if(!levellingHero || levellingHero->getOwner() != getPlayers().front())
-		return;
+	if(!levellingHero)
+		throw std::runtime_error("Hero disappeared during level-up");
 
 	// A hero who knows every skill he can learn is offered none
 	if(levelUp.skills.empty())
@@ -385,8 +360,8 @@ void CommanderLevelUpPrompt::onRemoval()
 	gh->sendQuestionResolved(getActiveQuestionID());
 
 	const auto * levellingHero = gh->gameInfo().getHero(hero);
-	if(!levellingHero || levellingHero->getOwner() != getPlayers().front() || !levellingHero->getCommander())
-		return;
+	if(!levellingHero || !levellingHero->getCommander())
+		throw std::runtime_error("Hero or commander disappeared during level-up");
 
 	// A commander with every skill maxed out is offered none
 	if(levelUp.skills.empty())

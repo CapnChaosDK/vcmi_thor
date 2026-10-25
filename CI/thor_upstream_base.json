@@ -1,0 +1,21 @@
+{
+  "upstream_commit": "46f2e15ec69e0507e6d0195d6357df5a2813dde1",
+  "upstream_repository": "https://github.com/vcmi/vcmi.git",
+  "protected_paths": [
+    "AI", "server", "lib", "include", "luascript", "config", "scripts", "clientsdl2", "clientsdl3",
+    "client/widgets/CExchangeController.cpp", "client/widgets/CExchangeController.h",
+    "client/gui/EventDispatcher.cpp", "client/gui/EventDispatcher.h", "client/gui/EventsReceiver.h",
+    "client/gui/ShortcutHandler.cpp", "client/gui/ShortcutHandler.h", "client/gui/ControllerInputState.h",
+    "client/gui/ControllerPressState.h", "client/battle/BattleFieldController.cpp",
+    "client/battle/BattleFieldController.h", "client/battle/BattleControllerInput.h"
+  ],
+  "allowed_files": {
+    "lib/CAndroidVMHelper.cpp": "Bounded second-screen JNI publication",
+    "lib/CAndroidVMHelper.h": "Bounded second-screen JNI declarations",
+    "lib/CMakeLists.txt": "Register Thor-only value and transport sources",
+    "lib/VCMIDirs.cpp": "Separate Android Thor save directory; upstream serializer is unchanged"
+  },
+  "allowed_prefixes": {
+    "lib/thor/": "Second-screen plain-data snapshots, queues, validation and caches"
+  }
+}

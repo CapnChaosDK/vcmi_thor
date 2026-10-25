@@ -8,6 +8,7 @@
  *
  */
 #include "StdInc.h"
+#include "../thor/ThorRequestTracker.h"
 #include "CWindowWithArtifacts.h"
 
 #include "CHeroWindow.h"
@@ -127,7 +128,7 @@ int CWindowWithArtifacts::requestArtifactSwap(const ArtifactLocation & source, c
 {
 	if(!artifactRequestAllowed())
 		return -1;
-	const auto requestId = GAME->interface()->cb->swapArtifactsRequest(source, destination);
+	const auto requestId = captureThorRequest([&] { GAME->interface()->cb->swapArtifacts(source, destination); });
 	if(requestId >= 0 && artifactSwapRequestCallback)
 		artifactSwapRequestCallback(requestId);
 	return requestId;
