@@ -173,7 +173,13 @@ jobs:
           build_started_at="$(date +%s)"
           # Compile the server boundary first so integration errors surface before the core build.
           cmake --build "$RUNNER_TEMP/native-regression-build" --target vcmiservercommon --parallel 2 -- -k 0
-          cmake --build "$RUNNER_TEMP/native-regression-build" --target vcmitest --parallel 2
+          # vcmi's upstream post-build step deploys config, Mods and scripts beside the tests.
+          # vcmitest links vcmiMain directly, so building it alone skips that deployment.
+          cmake --build "$RUNNER_TEMP/native-regression-build" --target vcmi vcmitest --parallel 2
+          test -f "$RUNNER_TEMP/native-regression-build/bin/config/filesystem.json"
+          test -f "$RUNNER_TEMP/native-regression-build/bin/Mods/vcmi/mod.json"
+          test -f "$RUNNER_TEMP/native-regression-build/bin/test/testdata/vcmi-test/mod.json"
+          test -d "$RUNNER_TEMP/native-regression-build/bin/scripts"
           echo "NATIVE_BUILD_DURATION_SECONDS=$(($(date +%s) - build_started_at))" >> "$GITHUB_ENV"
           # Reuse the standard native test-data procedure from github.yml.
           curl --fail --location --retry 3 \

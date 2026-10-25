@@ -2161,3 +2161,17 @@ Promotion and cleanup receipt (2026-10-22):
   documentation and candidate checklist. Removed a stale CMake custom-packet entry,
   preserved upstream recruitment method naming and fixed current Wait/callback APIs.
   Native runtime, ARM64 and exact-candidate hardware acceptance remain outstanding.
+
+- Initial overlay candidate failure (2026-10-25): run
+  [40226842021](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40226842021)
+  on `ffff61e6fa35125a57a7993646c53fc2d2e1c47b` passed the upstream scope/checklist
+  checks and all 158 focused native Thor tests. The complete native executable
+  compiled (1268 registered tests), but global setup stopped before test execution:
+  `CONFIG/FILESYSTEM` was missing. Building `vcmitest` alone bypassed the upstream
+  `vcmi` facade's asset-deployment post-build step. The workflow now builds both
+  targets and verifies the deployed configuration, shipped mod, scripts and test
+  fixture before running the unchanged full suite. No production source, test
+  assertion, filter or cache policy changed. Separate source review confirmed the
+  upstream deployment owner and test loader paths; YAML and embedded shell syntax,
+  scope/checklist checks and diff hygiene pass locally. Runtime and ARM64 remain
+  pending the corrected candidate; no device pass or promotion is claimed.

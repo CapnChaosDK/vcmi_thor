@@ -63,7 +63,10 @@ the policy does not prove their behavior equivalent to upstream.
 Run `python3 CI/thor_upstream_base.py`, the scope/checklist Python tests, focused
 native/JVM contracts and the normal Thor pipeline. Preflight now builds and runs
 upstream's `vcmitest` plus the registered Thor contracts; no fork-specific server
-test target is retained. Use upstream's 2026-10-13 dependency archive with the
+test target is retained. Build the upstream `vcmi` facade alongside `vcmitest`:
+its post-build step deploys `config`, `Mods` and `scripts` for in-place execution;
+the test target links `vcmiMain` directly and does not trigger that deployment.
+Use upstream's 2026-10-13 dependency archive with the
 existing bounded archive/Gradle/compiler caches and clean generated build trees.
 ARM64 still uses the permanent candidate ref, Linux/JDK 17, signing and package gates.
 
