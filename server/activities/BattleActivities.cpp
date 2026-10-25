@@ -16,7 +16,7 @@
 #include "../../lib/battle/IBattleState.h"
 #include "../../lib/battle/BattleLayout.h"
 #include "../../lib/battle/SideInBattle.h"
-#include "../../lib/mapObjects/CGObjectInstance.h"
+#include "../../lib/mapObjects/army/CArmedInstance.h"
 #include "../../lib/networkPacks/PacksForServer.h"
 
 void BattleActivity::notifyObjectAboutRemoval(const IObjectInterface * visitedObject, const CGHeroInstance * visitingHero, const JsonNode & visitState) const
