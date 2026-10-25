@@ -753,3 +753,45 @@ TEST_F(ArmyManagementTest, ArtifactConflictBetweenNonHeroArmiesUsesDestinationSt
 	EXPECT_EQ(garrison->getStackCount(SlotID(0)), 7);
 	EXPECT_EQ(garrison->getStackPtr(SlotID(0))->getArt(ArtifactPosition::CREATURE_SLOT), sourceArt);
 }
+
+TEST_F(ArmyManagementTest, CoveredAndCompletedDuplicateRepliesAreAcknowledgedWithoutReapplying)
+{
+	int applications = 0;
+	std::optional<int32_t> applied;
+	auto question = std::make_shared<RecordingAnswerActivity>(handler.get(), red,
+		[&](std::optional<int32_t> answer) { ++applications; applied = answer; });
+	auto cover = std::make_shared<TimerPauseActivity>(handler.get(), red);
+	handler->activities->addActivity(question);
+	handler->activities->addActivity(cover);
+	QuestionAnswer first(question->getActiveQuestionID(), 7);
+	QuestionAnswer duplicate(question->getActiveQuestionID(), 8);
+	EXPECT_TRUE(request(first));
+	EXPECT_TRUE(request(duplicate));
+	EXPECT_EQ(applications, 0);
+	cover->finish();
+	EXPECT_EQ(applications, 1);
+	EXPECT_EQ(applied, 7);
+	EXPECT_TRUE(request(duplicate));
+	EXPECT_EQ(applications, 1);
+	EXPECT_EQ(applied, 7);
+}
+
+TEST_F(ArmyManagementTest, TeleportQuestionRejectsUnofferedExitsAndKeepsRandomExit)
+{
+	TeleportDialog dialog;
+	dialog.hero = left->id;
+	dialog.exits.emplace_back(right->id, right->visitablePos());
+	auto question = std::make_shared<TeleportDialogActivity>(handler.get(), dialog);
+	question->askQuestion();
+	handler->activities->addActivity(question);
+	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-2}, std::optional<int32_t>{1}})
+	{
+		QuestionAnswer reply(question->getActiveQuestionID(), answer);
+		EXPECT_FALSE(request(reply));
+		EXPECT_EQ(handler->activities->topActivity(red), question);
+	}
+	EXPECT_TRUE(question->acceptsAnswer(0));
+	QuestionAnswer randomExit(question->getActiveQuestionID(), -1);
+	EXPECT_TRUE(request(randomExit));
+	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
+}

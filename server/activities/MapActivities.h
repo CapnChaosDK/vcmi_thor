@@ -17,8 +17,7 @@ class CGObjectInstance;
 class IObjectInterface;
 class CArmedInstance;
 
-//Created when player starts turn or when player puts game on [ause
-//Removed when player accepts a turn or continur play
+/// Pauses turn time until the player accepts their turn or resumes play.
 class TimerPauseActivity : public Activity
 {
 public:

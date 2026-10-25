@@ -42,12 +42,12 @@ void CEmptyAI::yourTacticPhase(const BattleID & battleID, int distance)
 
 void CEmptyAI::heroGotLevel(const CGHeroInstance *hero, PrimarySkill pskill, const std::vector<SecondarySkill> &skills, QuestionID questionID)
 {
-	cb->selectionMade(CRandomGenerator::getDefault().nextInt((int)skills.size() - 1), questionID);
+	cb->selectionMade(skills.empty() ? 0 : CRandomGenerator::getDefault().nextInt(static_cast<int>(skills.size()) - 1), questionID);
 }
 
 void CEmptyAI::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QuestionID questionID)
 {
-	cb->selectionMade(CRandomGenerator::getDefault().nextInt((int)skills.size() - 1), questionID);
+	cb->selectionMade(skills.empty() ? 0 : CRandomGenerator::getDefault().nextInt(static_cast<int>(skills.size()) - 1), questionID);
 }
 
 void CEmptyAI::showBlockingDialog(const std::string &text, const std::vector<Component> &components, QuestionID questionID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept)
@@ -57,7 +57,7 @@ void CEmptyAI::showBlockingDialog(const std::string &text, const std::vector<Com
 
 void CEmptyAI::showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QuestionID questionID)
 {
-	cb->selectionMade(0, questionID);
+	cb->selectionMade(-1, questionID);
 }
 
 void CEmptyAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QuestionID questionID, const MetaString & customTitle)
@@ -67,7 +67,7 @@ void CEmptyAI::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstanc
 
 void CEmptyAI::showMapObjectSelectDialog(QuestionID questionID, const Component & icon, const MetaString & title, const MetaString & description, const std::vector<ObjectInstanceID> & objects)
 {
-	cb->selectionMade(0, questionID);
+	cb->sendQuestionAnswer(std::nullopt, questionID);
 }
 
 std::optional<BattleAction> CEmptyAI::makeSurrenderRetreatDecision(const BattleID & battleID, const BattleStateInfoForRetreat & battleState)

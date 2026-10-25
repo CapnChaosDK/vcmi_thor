@@ -31,11 +31,6 @@ class Unit;
 class CGameHandler;
 class BattleActivity;
 
-namespace spells
-{
-class Spell;
-}
-
 class BattleActionProcessor;
 class BattleFlowProcessor;
 class BattleResultProcessor;

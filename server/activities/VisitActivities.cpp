@@ -101,7 +101,8 @@ void MapObjectVisitActivity::onChildCompleted(const ActivityPtr & child)
 	// The object may have been removed by the visit itself. A dead hero is passed on
 	// intentionally: objects such as CGCreature handle a battle won by the defender
 	// and check the battle result instead of the hero.
-	if(object)
+	if(object && (hero || child->getType() == ActivityType::Battle)
+		&& (!hero || hero->tempOwner == getPlayers().front()))
 		child->notifyObjectAboutRemoval(object, hero, std::exchange(visitState, {}));
 }
 
@@ -135,7 +136,7 @@ void TownBuildingVisitActivity::onChildCompleted(const ActivityPtr & child)
 	const auto * hero = gh->gameState().getHero(visitingHero);
 
 	// The town may have changed owner or the hero may have died in the meantime
-	if(!visitedTown)
+	if(!visitedTown || !hero || hero->tempOwner != getPlayers().front())
 		return;
 
 	// Activities are started by the building, not by the town - except before the first
@@ -162,7 +163,7 @@ StepResult TownBuildingVisitActivity::advance()
 
 	// Either may be gone if an earlier building started a battle. Skip this pair and
 	// continue with the remaining buildings.
-	if(!visitedTown || !hero)
+	if(!visitedTown || !hero || hero->tempOwner != getPlayers().front())
 		return StepResult::Continue;
 
 	auto building = visitedTown->rewardableBuildings.find(visit.building);

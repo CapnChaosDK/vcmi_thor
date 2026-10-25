@@ -21,6 +21,7 @@
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/spells/CSpell.h"
 #include "../../lib/spells/ISpellMechanics.h"
+#include "../../lib/spells/Problem.h"
 
 TownSelectionActivity::TownSelectionActivity(CGameHandler * owner, PlayerColor player, SpellID spell, ObjectInstanceID caster, std::vector<ObjectInstanceID> offeredTowns)
 	: DialogActivity(owner, TYPE)
@@ -53,16 +54,18 @@ void TownSelectionActivity::onRemoval()
 	const auto * town = gh->gameInfo().getTown(chosen);
 	const auto * hero = gh->gameInfo().getHero(caster);
 
-	if(!town || !hero)
+	if(!town || !hero || hero->getOwner() != getPlayers().front())
 		return;
 
 	AdventureSpellCastParameters parameters;
 	parameters.caster = hero;
 	parameters.pos = town->visitablePos();
 
-	// performCast instead of a new cast: castability was already checked before asking the
-	// player, and a new cast would charge the spell cost twice.
-	spell.toSpell()->getAdventureMechanics().performCast(gh->spellEnv.get(), parameters);
+	// Revalidate the current caster and destination, then complete the pending cast.
+	const auto & mechanics = spell.toSpell()->getAdventureMechanics();
+	spells::detail::ProblemImpl problem;
+	if(mechanics.canBeCastAt(problem, &gh->gameInfo(), hero, parameters.pos))
+		mechanics.performCast(gh->spellEnv.get(), parameters);
 }
 
 ScriptDialogActivity::ScriptDialogActivity(CGameHandler * owner, PlayerColor player)

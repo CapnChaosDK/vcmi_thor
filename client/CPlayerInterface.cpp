@@ -533,8 +533,15 @@ void CPlayerInterface::receivedResource()
 void CPlayerInterface::heroGotLevel(const CGHeroInstance * hero, PrimarySkill pskill, const std::vector<SecondarySkill> & skills, QuestionID questionID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	queueDialog(PendingDialog::Type::LevelUp, questionID, [this, hero, pskill, skills, questionID]()
+	const auto heroID = hero->id;
+	queueDialog(PendingDialog::Type::LevelUp, questionID, [this, heroID, pskill, skills, questionID]()
 	{
+		const auto * hero = cb->getHero(heroID);
+		if(!hero || hero->getOwner() != playerID)
+		{
+			cb->selectionMade(0, questionID);
+			return;
+		}
 		ENGINE->sound().playSound(soundBase::heroNewLevel);
 
 		// Reuse the open window of the previous level, so that a chain of them does not flicker
@@ -552,8 +559,16 @@ void CPlayerInterface::heroGotLevel(const CGHeroInstance * hero, PrimarySkill ps
 void CPlayerInterface::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QuestionID questionID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	queueDialog(PendingDialog::Type::LevelUp, questionID, [this, commander, skills = std::move(skills), questionID]()
+	const auto heroID = commander->getArmy()->id;
+	queueDialog(PendingDialog::Type::LevelUp, questionID, [this, heroID, skills = std::move(skills), questionID]()
 	{
+		const auto * hero = cb->getHero(heroID);
+		if(!hero || hero->getOwner() != playerID || !hero->getCommander())
+		{
+			cb->selectionMade(0, questionID);
+			return;
+		}
+		const auto * commander = hero->getCommander();
 		ENGINE->sound().playSound(soundBase::heroNewLevel);
 
 		closeActiveLevelUpDialog();

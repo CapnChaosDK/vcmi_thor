@@ -47,6 +47,8 @@ class BattleProcessor;
 class TurnOrderProcessor;
 class TurnTimerHandler;
 class ActivityProcessor;
+struct HeroLevelUp;
+struct CommanderLevelUp;
 class MapObjectVisitActivity;
 class NewTurnProcessor;
 class IGameServer;

@@ -34,12 +34,10 @@
 #include "lib/mapObjects/CGTownInstance.h"
 #include "lib/mapObjects/TownBuildingInstance.h"
 #include "lib/bonuses/Bonus.h"
-#include "lib/CPlayerState.h"
 #include "lib/mapObjects/CGHeroInstance.h"
 #include "lib/mapping/CMap.h"
 #include "lib/mapping/CMapEvent.h"
 #include "lib/GameLibrary.h"
-#include "lib/CSkillHandler.h"
 #include "lib/serializer/CMemorySerializer.h"
 
 namespace
@@ -2653,4 +2651,22 @@ TEST_F(ActivityProcessorTest, aReplyCannotMutateAFinishedActivityWaitingForExpos
 	cover->finish();
 	EXPECT_EQ(question->onRemovalCalls, 1);
 	EXPECT_EQ(activities.topActivity(player), nullptr);
+}
+
+TEST_F(LevelUpActivityTest, removingTheHeroWhileItChoosesASkillSettlesTheWholeChain)
+{
+	const PlayerColor player(0);
+	buildHeroAboutToLevel(999);
+	auto * hero = findHeroByOwner(player);
+	ASSERT_NE(hero, nullptr);
+	GameHandlerTestServer server(gameState(), player);
+	CGameHandler gameHandler(server, gameState());
+	gameHandler.giveExperience(hero, 10000);
+	auto prompt = gameHandler.activities->topActivity(player);
+	ASSERT_NE(prompt, nullptr);
+	ASSERT_EQ(prompt->getType(), ActivityType::HeroLevelUpDialog);
+	ASSERT_TRUE(gameHandler.removeObject(hero, player));
+	EXPECT_EQ(gameHandler.activities->submitReply(prompt->getActiveQuestionID(), player, 0), ReplyOutcome::Accepted);
+	EXPECT_EQ(gameHandler.activities->topActivity(player), nullptr);
+	EXPECT_EQ(server.resolvedQuestionIDs, server.levelUpPromptIDs);
 }

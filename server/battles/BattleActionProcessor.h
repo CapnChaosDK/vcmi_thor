@@ -31,11 +31,6 @@ class CGameHandler;
 class BattleProcessor;
 class ICombatEventScript;
 
-namespace spells
-{
-class Spell;
-}
-
 /// Processes incoming battle action requests and applies requested action(s)
 class BattleActionProcessor : boost::noncopyable
 {

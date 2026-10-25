@@ -285,7 +285,7 @@ bool LevelUpRoutine::blocksPack(const CPackForServer * pack) const
 StepResult LevelUpRoutine::advance()
 {
 	const auto * levellingHero = gh->gameInfo().getHero(hero);
-	if(!levellingHero)
+	if(!levellingHero || levellingHero->getOwner() != getPlayers().front())
 		return StepResult::Done;
 
 	const auto * commander = levellingHero->getCommander();
@@ -336,7 +336,7 @@ void HeroLevelUpPrompt::onRemoval()
 	gh->sendQuestionResolved(getActiveQuestionID());
 
 	const auto * levellingHero = gh->gameInfo().getHero(hero);
-	if(!levellingHero)
+	if(!levellingHero || levellingHero->getOwner() != getPlayers().front())
 		return;
 
 	// A hero who knows every skill he can learn is offered none
@@ -370,8 +370,8 @@ void CommanderLevelUpPrompt::onRemoval()
 	gh->sendQuestionResolved(getActiveQuestionID());
 
 	const auto * levellingHero = gh->gameInfo().getHero(hero);
-	if(!levellingHero || !levellingHero->getCommander())
-			return;
+	if(!levellingHero || levellingHero->getOwner() != getPlayers().front() || !levellingHero->getCommander())
+		return;
 
 	// A commander with every skill maxed out is offered none
 	if(levelUp.skills.empty())

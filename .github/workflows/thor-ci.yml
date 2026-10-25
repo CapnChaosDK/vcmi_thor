@@ -168,6 +168,8 @@ jobs:
           grep -E '^CMAKE_C_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/army-transfer-build/CMakeCache.txt"
           grep -E '^CMAKE_CXX_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/army-transfer-build/CMakeCache.txt"
           build_started_at="$(date +%s)"
+          # Compile the server boundary first so integration errors surface before the core build.
+          cmake --build "$RUNNER_TEMP/army-transfer-build" --target vcmiservercommon --parallel 2
           cmake --build "$RUNNER_TEMP/army-transfer-build" --target army-transfer-tests --parallel 2
           echo "NATIVE_BUILD_DURATION_SECONDS=$(($(date +%s) - build_started_at))" >> "$GITHUB_ENV"
           # Reuse the standard native test-data procedure from github.yml.
