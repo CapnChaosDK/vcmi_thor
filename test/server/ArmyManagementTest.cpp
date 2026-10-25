@@ -169,6 +169,17 @@ protected:
 		return result;
 	}
 };
+
+class CommanderArmyManagementTest : public ArmyManagementTest
+{
+protected:
+	void SetUp() override
+	{
+		overrideSettingBeforeInit(EGameSettings::MODULE_COMMANDERS, true);
+		ArmyManagementTest::SetUp();
+		ASSERT_NE(left->getCommander(), nullptr);
+	}
+};
 }
 
 TEST_F(ArmyManagementTest, OwnedHeroesRequireTheirExposedExchange)
@@ -273,7 +284,7 @@ TEST_F(ArmyManagementTest, LevelUpQuestionRejectsUnofferedAndOutOfRangeAnswers)
 	EXPECT_TRUE(question->acceptsAnswer(0));
 }
 
-TEST_F(ArmyManagementTest, CommanderLevelUpQuestionRejectsOutOfRangeAnswers)
+TEST_F(CommanderArmyManagementTest, CommanderLevelUpQuestionRejectsOutOfRangeAnswers)
 {
 	CommanderLevelUp levelUp;
 	levelUp.heroId = left->id;
