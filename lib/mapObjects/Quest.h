@@ -251,6 +251,7 @@ protected:
 	bool isQuestAvailable(const Quest & q) const;
 	/// Move the active quest to the next offerable one (loops within repeatables).
 	void advanceToNextQuest();
+	bool hasAnotherOfferableQuest() const;
 	/// Pick the first offerable quest as active.
 	void selectInitialQuest();
 	/// Mirror the active quest's reward into configuration.info.
@@ -279,7 +280,9 @@ public:
 	std::vector<Component> getPopupComponents(PlayerColor player, const CGHeroInstance * hero) const;
 	void newTurn(IGameEventCallback & gameEvents, IGameRandomizer & gameRandomizer) const override;
 	void onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance * h) const override;
-	void blockingDialogAnswered(IGameEventCallback & gameEvents, const CGHeroInstance *hero, int32_t answer) const override;
+	void blockingDialogAnswered(IGameEventCallback & gameEvents, const CGHeroInstance *hero, int32_t answer, const JsonNode & visitState) const override;
+	void experienceApplied(IGameEventCallback & gameEvents, const CGHeroInstance * hero, const JsonNode & visitState) const override;
+	void garrisonDialogClosed(IGameEventCallback & gameEvents, const CGHeroInstance * hero, const JsonNode & visitState) const override;
 
 	virtual void init(vstd::RNG & rand);
 	void setObjToKill(); //remember creatures / heroes to kill after they are initialized
@@ -295,6 +298,7 @@ protected:
 	/// Object name / seer header followed by the active quest's rollover; onHover
 	/// picks the short hover variant, otherwise the longer description variant.
 	MetaString buildText(PlayerColor player, bool onHover) const;
+	void offerNextQuest(IGameEventCallback & gameEvents, const CGHeroInstance * hero) const;
 	void setPropertyDer(ObjProperty what, ObjPropertyID identifier) override;
 
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;

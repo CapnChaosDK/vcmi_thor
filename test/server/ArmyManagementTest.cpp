@@ -11,8 +11,9 @@
 #include "CGameHandler.h"
 #include "mock/GameHandlerTestServer.h"
 #include "mock/TinyMapGameTest.h"
-#include "../../server/queries/MapQueries.h"
-#include "../../server/queries/QueriesProcessor.h"
+#include "../../server/activities/MapActivities.h"
+#include "../../server/activities/SpellActivities.h"
+#include "../../server/activities/ActivityProcessor.h"
 #include "lib/CPlayerState.h"
 #include "lib/mapObjects/CGHeroInstance.h"
 #include "lib/mapObjects/CGPandoraBox.h"
@@ -33,6 +34,19 @@ const CreatureID halberdier(1);
 constexpr ui8 swapStacks = 1;
 constexpr ui8 mergeStacks = 2;
 constexpr ui8 splitStacks = 3;
+
+class RecordingAnswerActivity : public DialogActivity
+{
+	std::function<void(std::optional<int32_t>)> callback;
+public:
+	RecordingAnswerActivity(CGameHandler * handler, PlayerColor player, std::function<void(std::optional<int32_t>)> callback)
+		: DialogActivity(handler, ActivityType::ScriptDialog), callback(std::move(callback))
+	{
+		addPlayer(player);
+		askQuestion();
+	}
+	void onRemoval() override { callback(answer); }
+};
 
 // Only transport is replaced: requests, authorization, queries, packet application,
 // stack/artifact mutation and acknowledgements all use production code.
@@ -99,9 +113,11 @@ protected:
 		return object.get();
 	}
 
-	void exchange(const CArmedInstance * first, const CArmedInstance * second)
+	void exchange(const CArmedInstance * first, const CArmedInstance * second, PlayerColor initiator = red)
 	{
-		handler->queries->addQuery(std::make_shared<CGarrisonDialogQuery>(handler.get(), first->getOwner(), first, second));
+		auto activity = std::make_shared<GarrisonDialogActivity>(handler.get(), initiator, first, second);
+		activity->askQuestion();
+		handler->activities->addActivity(activity);
 	}
 
 	using Snapshot = std::vector<std::tuple<ObjectInstanceID, SlotID, CreatureID, int, const CStackInstance *, ArtifactInstanceID>>;
@@ -153,6 +169,17 @@ protected:
 		return result;
 	}
 };
+
+class CommanderArmyManagementTest : public ArmyManagementTest
+{
+protected:
+	void SetUp() override
+	{
+		overrideSettingBeforeInit(EGameSettings::MODULE_COMMANDERS, true);
+		ArmyManagementTest::SetUp();
+		ASSERT_NE(left->getCommander(), nullptr);
+	}
+};
 }
 
 TEST_F(ArmyManagementTest, OwnedHeroesRequireTheirExposedExchange)
@@ -163,48 +190,55 @@ TEST_F(ArmyManagementTest, OwnedHeroesRequireTheirExposedExchange)
 	EXPECT_TRUE(request(pack));
 	EXPECT_EQ(left->getStackCount(SlotID(0)), 6);
 	EXPECT_EQ(right->getStackCount(SlotID(0)), 24);
-	handler->queries->popQuery(handler->queries->topQuery(red));
+	handler->activities->topActivity(red)->finish();
 	reject(pack);
 }
 
 TEST_F(ArmyManagementTest, BuriedQuestionRejectsAnotherPlayersAnswer)
 {
 	std::optional<int32_t> appliedAnswer = 42;
-	auto question = std::make_shared<CGenericQuery>(handler.get(), blue,
+	auto question = std::make_shared<RecordingAnswerActivity>(handler.get(), blue,
 		[&](std::optional<int32_t> answer) { appliedAnswer = answer; });
-	auto redCover = std::make_shared<TimerPauseQuery>(handler.get(), red);
-	auto blueCover = std::make_shared<TimerPauseQuery>(handler.get(), blue);
-	handler->queries->addQuery(question);
-	handler->queries->addQuery(redCover);
-	handler->queries->addQuery(blueCover);
+	auto redCover = std::make_shared<TimerPauseActivity>(handler.get(), red);
+	auto blueCover = std::make_shared<TimerPauseActivity>(handler.get(), blue);
+	if(question->getActiveQuestionID() == QuestionID::NONE)
+		question->askQuestion();
+	handler->activities->addActivity(question);
+	handler->activities->addActivity(redCover);
+	handler->activities->addActivity(blueCover);
 
-	ASSERT_EQ(handler->queries->getQuery(question->queryID, blue), question);
-	EXPECT_EQ(handler->queries->getQuery(question->queryID, red), nullptr);
-	QueryReply reply(question->queryID, 7);
+	ASSERT_EQ(handler->activities->getActivity(question->getActiveQuestionID(), blue), question);
+	EXPECT_EQ(handler->activities->getActivity(question->getActiveQuestionID(), red), nullptr);
+	QuestionAnswer reply(question->getActiveQuestionID(), 7);
 	EXPECT_FALSE(request(reply, red));
-	EXPECT_EQ(handler->queries->topQuery(red), redCover);
-	EXPECT_EQ(handler->queries->topQuery(blue), blueCover);
+	EXPECT_EQ(handler->activities->topActivity(red), redCover);
+	EXPECT_EQ(handler->activities->topActivity(blue), blueCover);
 
-	handler->queries->popQuery(blueCover);
-	handler->queries->popQuery(question);
-	handler->queries->popQuery(redCover);
+	EXPECT_EQ(appliedAnswer, 42);
+	blueCover->finish();
+	question->finish();
+	redCover->finish();
 	EXPECT_EQ(appliedAnswer, std::nullopt);
 }
 
 TEST_F(ArmyManagementTest, BuriedQuestionStillStoresItsOwnPlayersAnswer)
 {
 	std::optional<int32_t> appliedAnswer;
-	auto question = std::make_shared<CGenericQuery>(handler.get(), red,
+	auto question = std::make_shared<RecordingAnswerActivity>(handler.get(), red,
 		[&](std::optional<int32_t> answer) { appliedAnswer = answer; });
-	auto cover = std::make_shared<TimerPauseQuery>(handler.get(), red);
-	handler->queries->addQuery(question);
-	handler->queries->addQuery(cover);
+	auto cover = std::make_shared<TimerPauseActivity>(handler.get(), red);
+	if(question->getActiveQuestionID() == QuestionID::NONE)
+		question->askQuestion();
+	handler->activities->addActivity(question);
+	handler->activities->addActivity(cover);
 
-	// The legacy query processor stores this answer until the covered query is removed.
-	EXPECT_FALSE(handler->queryReply(question->queryID, 7, red));
-	handler->queries->popQuery(cover);
-	handler->queries->popQuery(question);
+	// Receipt is acknowledged while the answer waits for its own activity to be exposed.
+	QuestionAnswer reply(question->getActiveQuestionID(), 7);
+	EXPECT_TRUE(request(reply));
+	EXPECT_FALSE(appliedAnswer.has_value());
+	cover->finish();
 	EXPECT_EQ(appliedAnswer, 7);
+	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
 }
 
 TEST_F(ArmyManagementTest, SelectionQuestionRejectsMissingAndOutOfRangeAnswers)
@@ -212,74 +246,78 @@ TEST_F(ArmyManagementTest, SelectionQuestionRejectsMissingAndOutOfRangeAnswers)
 	BlockingDialog dialog(true, true);
 	dialog.player = red;
 	dialog.components.resize(2);
-	auto question = std::make_shared<CBlockingDialogQuery>(handler.get(), nullptr, dialog);
-	handler->queries->addQuery(question);
+	auto question = std::make_shared<BlockingDialogActivity>(handler.get(), dialog);
+	if(question->getActiveQuestionID() == QuestionID::NONE)
+		question->askQuestion();
+	handler->activities->addActivity(question);
 
 	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-1}, std::optional<int32_t>{3}})
 	{
-		QueryReply reply(question->queryID, answer);
+		QuestionAnswer reply(question->getActiveQuestionID(), answer);
 		EXPECT_FALSE(request(reply));
-		EXPECT_EQ(handler->queries->topQuery(red), question);
+		EXPECT_EQ(handler->activities->topActivity(red), question);
 	}
 
-	QueryReply valid(question->queryID, 2);
+	QuestionAnswer valid(question->getActiveQuestionID(), 2);
 	EXPECT_TRUE(request(valid));
-	EXPECT_EQ(handler->queries->topQuery(red), nullptr);
+	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
 }
 
 TEST_F(ArmyManagementTest, LevelUpQuestionRejectsUnofferedAndOutOfRangeAnswers)
 {
 	HeroLevelUp levelUp;
-	levelUp.skills.resize(1);
-	auto question = std::make_shared<CHeroLevelUpDialogQuery>(handler.get(), levelUp, left);
-	handler->queries->addQuery(question);
-
-	QueryReply early(question->queryID, 0);
+	levelUp.heroId = left->id;
+	levelUp.player = red;
+	levelUp.skills = {SecondarySkill::PATHFINDING};
+	auto question = std::make_shared<HeroLevelUpPrompt>(handler.get(), left, levelUp);
+	QuestionAnswer early(question->getActiveQuestionID(), 0);
 	EXPECT_FALSE(request(early));
-	EXPECT_EQ(handler->queries->topQuery(red), question);
+	handler->activities->addActivity(question);
+	ASSERT_NE(question->getActiveQuestionID(), QuestionID::NONE);
 
-	// The tiny map has no client level-up UI; mark the already constructed prompt offered.
-	question->prompted = true;
 	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-1}, std::optional<int32_t>{1}})
 	{
-		QueryReply reply(question->queryID, answer);
+		QuestionAnswer reply(question->getActiveQuestionID(), answer);
 		EXPECT_FALSE(request(reply));
-		EXPECT_EQ(handler->queries->topQuery(red), question);
+		EXPECT_EQ(handler->activities->topActivity(red), question);
 	}
-	EXPECT_TRUE(question->acceptsReply(red, 0));
+	EXPECT_TRUE(question->acceptsAnswer(0));
 }
 
-TEST_F(ArmyManagementTest, CommanderLevelUpQuestionRejectsOutOfRangeAnswers)
+TEST_F(CommanderArmyManagementTest, CommanderLevelUpQuestionRejectsOutOfRangeAnswers)
 {
 	CommanderLevelUp levelUp;
-	levelUp.skills.resize(1);
-	auto question = std::make_shared<CCommanderLevelUpDialogQuery>(handler.get(), levelUp, left);
-	// The actual prompt is covered by the client integration; avoid emitting it in this fixture.
-	question->prompted = true;
-	handler->queries->addQuery(question);
+	levelUp.heroId = left->id;
+	levelUp.player = red;
+	levelUp.skills = {0};
+	auto question = std::make_shared<CommanderLevelUpPrompt>(handler.get(), left, levelUp);
+	handler->activities->addActivity(question);
 
 	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-1}, std::optional<int32_t>{1}})
 	{
-		QueryReply reply(question->queryID, answer);
+		QuestionAnswer reply(question->getActiveQuestionID(), answer);
 		EXPECT_FALSE(request(reply));
-		EXPECT_EQ(handler->queries->topQuery(red), question);
+		EXPECT_EQ(handler->activities->topActivity(red), question);
 	}
-	EXPECT_TRUE(question->acceptsReply(red, 0));
+	EXPECT_TRUE(question->acceptsAnswer(0));
 }
 
 TEST_F(ArmyManagementTest, ExchangePartnerCannotDismissInitiatorsQuestion)
 {
 	auto partner = findHeroAt({20, 20, 0});
 	ASSERT_NE(partner, nullptr);
-	auto question = std::make_shared<CGarrisonDialogQuery>(handler.get(), red, left, partner);
-	handler->queries->addQuery(question);
+	auto question = std::make_shared<GarrisonDialogActivity>(handler.get(), red, left, partner);
+	question->addPartner(blue);
+	if(question->getActiveQuestionID() == QuestionID::NONE)
+		question->askQuestion();
+	handler->activities->addActivity(question);
 
-	EXPECT_FALSE(handler->queryReply(question->queryID, 0, blue));
-	EXPECT_EQ(handler->queries->topQuery(red), question);
-	EXPECT_EQ(handler->queries->topQuery(blue), question);
-	EXPECT_TRUE(handler->queryReply(question->queryID, 0, red));
-	EXPECT_EQ(handler->queries->topQuery(red), nullptr);
-	EXPECT_EQ(handler->queries->topQuery(blue), nullptr);
+	EXPECT_FALSE(handler->answerQuestion(question->getActiveQuestionID(), 0, blue));
+	EXPECT_EQ(handler->activities->topActivity(red), question);
+	EXPECT_EQ(handler->activities->topActivity(blue), question);
+	EXPECT_TRUE(handler->answerQuestion(question->getActiveQuestionID(), 0, red));
+	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
+	EXPECT_EQ(handler->activities->topActivity(blue), nullptr);
 }
 
 TEST_F(ArmyManagementTest, ReverseSplitUsesActualSourceAndExactCount)
@@ -381,7 +419,7 @@ TEST_F(ArmyManagementTest, AnotherPlayersQueryAndCoveredQueriesDoNotAuthorize)
 	right->tempOwner = blue;
 	auto * neutral = addObject<CGPandoraBox>(Obj::PANDORAS_BOX, PlayerColor::UNFLAGGABLE);
 	ASSERT_TRUE(neutral->setCreature(SlotID(0), pikeman, 8));
-	exchange(neutral, right);
+	exchange(neutral, right, blue);
 	BulkMoveArmy steal(neutral->id, left->id, SlotID(0));
 	reject(steal);
 	exchange(left, right);
@@ -389,8 +427,8 @@ TEST_F(ArmyManagementTest, AnotherPlayersQueryAndCoveredQueriesDoNotAuthorize)
 	reject(notInDialog);
 	BlockingDialog dialog;
 	dialog.player = red;
-	auto blocking = std::make_shared<CBlockingDialogQuery>(handler.get(), nullptr, dialog);
-	handler->queries->addQuery(blocking);
+	auto blocking = std::make_shared<BlockingDialogActivity>(handler.get(), dialog);
+	handler->activities->addActivity(blocking);
 	auto owned = arrange(mergeStacks);
 	reject(owned);
 }
@@ -462,9 +500,9 @@ TEST_F(ArmyManagementTest, LockedGarrisonUsesActualDirectionAndSlots)
 
 TEST_F(ArmyManagementTest, DialogLockAlsoProtectsNonGarrisonArmies)
 {
-	auto query = std::make_shared<CGarrisonDialogQuery>(handler.get(), red, right, left);
+	auto query = std::make_shared<GarrisonDialogActivity>(handler.get(), red, right, left);
 	query->removableUnits = false;
-	handler->queries->addQuery(query);
+	handler->activities->addActivity(query);
 	DisbandCreature disband;
 	disband.id = right->id;
 	disband.pos = SlotID(0);
@@ -724,4 +762,86 @@ TEST_F(ArmyManagementTest, ArtifactConflictBetweenNonHeroArmiesUsesDestinationSt
 	EXPECT_EQ(reward->stacksCount(), 0);
 	EXPECT_EQ(garrison->getStackCount(SlotID(0)), 7);
 	EXPECT_EQ(garrison->getStackPtr(SlotID(0))->getArt(ArtifactPosition::CREATURE_SLOT), sourceArt);
+}
+
+TEST_F(ArmyManagementTest, CoveredAndCompletedDuplicateRepliesAreAcknowledgedWithoutReapplying)
+{
+	int applications = 0;
+	std::optional<int32_t> applied;
+	auto question = std::make_shared<RecordingAnswerActivity>(handler.get(), red,
+		[&](std::optional<int32_t> answer) { ++applications; applied = answer; });
+	auto cover = std::make_shared<TimerPauseActivity>(handler.get(), red);
+	handler->activities->addActivity(question);
+	handler->activities->addActivity(cover);
+	QuestionAnswer first(question->getActiveQuestionID(), 7);
+	QuestionAnswer duplicate(question->getActiveQuestionID(), 8);
+	EXPECT_TRUE(request(first));
+	EXPECT_TRUE(request(duplicate));
+	EXPECT_EQ(applications, 0);
+	cover->finish();
+	EXPECT_EQ(applications, 1);
+	EXPECT_EQ(applied, 7);
+	EXPECT_TRUE(request(duplicate));
+	EXPECT_EQ(applications, 1);
+	EXPECT_EQ(applied, 7);
+}
+
+TEST_F(ArmyManagementTest, TeleportQuestionRejectsUnofferedExitsAndKeepsRandomExit)
+{
+	TeleportDialog dialog;
+	dialog.hero = left->id;
+	dialog.exits.emplace_back(right->id, right->visitablePos());
+	auto question = std::make_shared<TeleportDialogActivity>(handler.get(), dialog);
+	question->askQuestion();
+	handler->activities->addActivity(question);
+	for(const auto answer : {std::optional<int32_t>{}, std::optional<int32_t>{-2}, std::optional<int32_t>{1}})
+	{
+		QuestionAnswer reply(question->getActiveQuestionID(), answer);
+		EXPECT_FALSE(request(reply));
+		EXPECT_EQ(handler->activities->topActivity(red), question);
+	}
+	EXPECT_TRUE(question->acceptsAnswer(0));
+	QuestionAnswer randomExit(question->getActiveQuestionID(), -1);
+	EXPECT_TRUE(request(randomExit));
+	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
+}
+
+TEST_F(ArmyManagementTest, PauseAndExchangeQuestionsRejectUnofferedDismissalValues)
+{
+	auto pause = std::make_shared<TimerPauseActivity>(handler.get(), red);
+	pause->askQuestion();
+	handler->activities->addActivity(pause);
+	QuestionAnswer invalidPause(pause->getActiveQuestionID(), 1);
+	EXPECT_FALSE(request(invalidPause));
+	EXPECT_EQ(handler->activities->topActivity(red), pause);
+	QuestionAnswer resume(pause->getActiveQuestionID(), 0);
+	EXPECT_TRUE(request(resume));
+
+	auto exchange = std::make_shared<GarrisonDialogActivity>(handler.get(), red, left, right);
+	exchange->askQuestion();
+	handler->activities->addActivity(exchange);
+	QuestionAnswer invalidDismissal(exchange->getActiveQuestionID(), 1);
+	EXPECT_FALSE(request(invalidDismissal));
+	EXPECT_EQ(handler->activities->topActivity(red), exchange);
+	QuestionAnswer dismiss(exchange->getActiveQuestionID(), 0);
+	EXPECT_TRUE(request(dismiss));
+}
+
+TEST_F(ArmyManagementTest, ScriptQuestionsValidateOfferedChoicesAndKeepNullCancellation)
+{
+	BlockingDialog dialog(true, true);
+	dialog.player = red;
+	dialog.components.resize(2);
+	auto question = std::make_shared<ScriptDialogActivity>(handler.get(), dialog);
+	question->askQuestion();
+	handler->activities->addActivity(question);
+	for(const int answer : {-1, 3})
+	{
+		QuestionAnswer reply(question->getActiveQuestionID(), answer);
+		EXPECT_FALSE(request(reply));
+		EXPECT_EQ(handler->activities->topActivity(red), question);
+	}
+	QuestionAnswer cancel(question->getActiveQuestionID(), std::nullopt);
+	EXPECT_TRUE(request(cancel));
+	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
 }

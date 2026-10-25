@@ -41,7 +41,10 @@ It has two validation levels:
 
 The existing `army-transfer-tests` target also runs the real callback lookup
 regressions from Slice 54 (visibility/access, removal, map bounds and teleport
-probes), alongside army request rejection/acknowledgement checks. Its CTest gate
+probes), alongside army request rejection/acknowledgement checks. Slice 55 adds the
+activity/routine integration suite: covered and duplicate replies, shared settlement,
+visits/rewards, battle/level-up ordering, turn start, spell continuation and save
+compatibility. These remain in the same native gate. Its CTest gate
 retains the name `ArmyTransferBoundary`; this does not add a separate workflow.
 
 The full job cannot start until preflight succeeds. It never runs for pull requests, so signing secrets are not available to fork PRs or arbitrary branches. A manual dispatch from `ci/thor-candidate-validation` can request the same trusted full path with `full_arm64`.

@@ -118,7 +118,7 @@ set(test_SRCS
 		server/battles/SummonGuardiansTest.cpp
 		server/battles/TransmutationTest.cpp
 		server/ArmyManagementTest.cpp
-		server/queries/QueriesProcessorTest.cpp
+		server/activities/ActivityProcessorTest.cpp
 
 		texts/TextOperationsTest.cpp
 
@@ -306,6 +306,7 @@ endforeach()
 add_executable(army-transfer-tests
 	main.cpp CVcmiTestConfig.cpp
 	server/ArmyManagementTest.cpp
+	server/activities/ActivityProcessorTest.cpp
 	callback/InfoCallbackTest.cpp
 	mock/GameHandlerTestServer.cpp
 	mock/TinyMapGameTest.cpp

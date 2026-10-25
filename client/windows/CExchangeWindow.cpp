@@ -69,9 +69,10 @@ static bool isQuickExchangeLayoutAvailable()
 	return CResourceHandler::get()->existsResource(ImagePath::builtin("SPRITES/" + QUICK_EXCHANGE_BG));
 }
 
-CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID queryID)
+CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2, QuestionID questionID)
 	: CWindowObject(PLAYER_COLORED | BORDERED, ImagePath::builtin(isQuickExchangeLayoutAvailable() ? QUICK_EXCHANGE_BG : (ENGINE->isRoeData() ? "TRADE" : "TRADE2"))),
-	controller(hero1, hero2)
+	controller(hero1, hero2),
+	questionID(questionID)
 {
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	setArtifactSwapRequestCallback([this](int requestId)
@@ -229,15 +230,16 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 	}
 
 	quit = std::make_shared<CButton>(Point(732, 567), AnimationPath::builtin("IOKAY.DEF"), LIBRARY->generaltexth->zelp[600],
-		[this, queryID]()
+		[this]()
 		{
-			if(!artifactInputEnabled())
+			if(!canCloseExchange())
 				return;
+			const auto answeredQuestion = this->questionID;
 			close();
-			if(queryID.getNum() > 0)
-				GAME->interface()->cb->selectionMade(0, queryID);
+			if(answeredQuestion.hasValue())
+				GAME->interface()->cb->selectionMade(0, answeredQuestion);
 		}, EShortcut::GLOBAL_ACCEPT);
-	quit->block(!artifactInputEnabled());
+	quit->block(!canCloseExchange());
 
 	questlogButton[0] = std::make_shared<CButton>(Point( qeLayout ? 8 : 10, qeLayout ? 39 : 44), AnimationPath::builtin("hsbtns4.def"), CButton::tooltip(LIBRARY->generaltexth->translate("core.heroscrn.0")), std::bind(&CExchangeWindow::questLogShortcut, this));
 	questlogButton[1] = std::make_shared<CButton>(Point(740, qeLayout ? 39 : 44), AnimationPath::builtin("hsbtns4.def"), CButton::tooltip(LIBRARY->generaltexth->translate("core.heroscrn.0")), std::bind(&CExchangeWindow::questLogShortcut, this));
@@ -436,6 +438,11 @@ void CExchangeWindow::trackThorArtifactRequest(int requestId,
 	quit->block(true);
 }
 #endif
+
+bool CExchangeWindow::canCloseExchange() const
+{
+	return artifactInputEnabled() && (!questionID.hasValue() || heroInst[0]->tempOwner == GAME->interface()->playerID);
+}
 
 bool CExchangeWindow::artifactInputEnabled() const
 {
@@ -912,14 +919,14 @@ void CExchangeWindow::onThorArtifactRequestResult(int requestId, bool success)
 	if(pending == pendingThorArtifactRequests.end())
 	{
 		completeThorArtifactRequest(requestId);
-		quit->block(!artifactInputEnabled());
+		quit->block(!canCloseExchange());
 		return;
 	}
 	const auto acceptance = pending->acceptance;
 	const auto artifactsBefore = pending->artifactsBefore;
 	pendingThorArtifactRequests.erase(pending);
 	completeThorArtifactRequest(requestId);
-	quit->block(!artifactInputEnabled());
+	quit->block(!canCloseExchange());
 	const auto context = thorContextStore().snapshot();
 	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this || !matchesThorContext(context))
 		return;

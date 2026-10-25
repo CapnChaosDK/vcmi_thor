@@ -244,3 +244,30 @@ handoff and local validation reports. It is independent of VCMI's MainGUI/JNI/ga
 state, and hashes the installed `is.xyz.vcmi.thor` APK to identify the tested candidate.
 The existing Thor CI packages the commit-bound validation plan alongside its receipt.
 See [companion contract](THOR_CANDIDATE_COMPANION.md) for ownership and lifecycle details.
+
+
+## Server activities and question continuation (Slice 55)
+
+The legacy server query stacks are replaced by `server/activities/`. Activities own
+server-side work and player blocking; separately allocated `QuestionID` values name
+only offered client questions. `ActivityProcessor` retains valid covered answers,
+settles finished activities once across affected players and resumes explicit
+routines after child completion. Visits keep object-specific continuation JSON and
+stable IDs; hero/commander level-ups, battle results, rewards, Town buildings and
+turn start share this lifecycle. Client dialogs carry question IDs; the former
+interface-ready handshake is no longer required.
+
+Thor still submits bounded revision-bound commands through MainGUI and uses the
+same army/artifact acknowledgement owners. The activity allowlist preserves Thor
+redistribution. Allied exchange partners receive server-driven closure, and pending
+artifact acknowledgement cannot enable their Close button. Teleport path continuation
+waits for its matching `QuestionResolved`, while only a matching rejected request
+aborts the pending movement.
+
+Activities are runtime-only and are not saved. A save therefore requires every
+player stack to be idle or a standalone pause; pausing above pending turn-start
+work does not permit saving. Existing packet type numbers and field order are
+retained, including a no-op interface-ready record for old replays. The creature
+save-version guard reads the legacy refused-joining byte. The complete contract,
+validation status and exact-candidate checklist are maintained in the
+[Slice 55 backlog](../AYN_THOR_BACKLOG.md#slice-55--activity-and-question-lifecycle-migration).

@@ -118,7 +118,6 @@ struct ClientSession
 	std::map<PlayerColor, std::vector<std::shared_ptr<IBattleEventsReceiver>>> additionalBattleInts;
 	std::map<PlayerColor, std::shared_ptr<CBattleCallback>> battleCallbacks;
 	std::map<PlayerColor, std::shared_ptr<CPlayerEnvironment>> playerEnvironments;
-	std::set<PlayerColor> advInterfaceReadySent;
 };
 
 /// Class which handles client - server logic

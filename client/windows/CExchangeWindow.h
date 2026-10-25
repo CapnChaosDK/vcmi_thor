@@ -72,11 +72,13 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 	void trackThorArtifactRequest(int requestId, std::optional<ThorActionAcceptance> acceptance);
 #endif
 	bool artifactInputEnabled() const;
+	bool canCloseExchange() const;
 	void moveUnitsShortcut(bool leftToRight);
 	void backpackShortcut(bool leftHero);
 	void questLogShortcut();
 
 	std::array<const CGHeroInstance *, 2> heroInst;
+	QuestionID questionID;
 	std::array<std::shared_ptr<CArtifactsOfHeroMain>, 2> artifs;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	struct PendingThorArtifactRequest
@@ -93,7 +95,9 @@ class CExchangeWindow : public CStatusbarWindow, public IGarrisonHolder, public 
 	const CGarrisonSlot * getSelectedSlotID() const;
 
 public:
-	CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID queryID);
+	CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2, QuestionID questionID);
+
+	QuestionID getQuestionID() const { return questionID; }
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	~CExchangeWindow() override;
 #endif

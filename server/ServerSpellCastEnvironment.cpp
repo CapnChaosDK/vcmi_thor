@@ -11,8 +11,10 @@
 #include "ServerSpellCastEnvironment.h"
 
 #include "CGameHandler.h"
-#include "queries/QueriesProcessor.h"
-#include "queries/CQuery.h"
+#include "battles/BattleProcessor.h"
+#include "activities/ActivityProcessor.h"
+#include "activities/SpellActivities.h"
+#include "activities/Activity.h"
 
 #include "../lib/battle/IBattleInfoCallback.h"
 #include "../lib/battle/IBattleState.h"
@@ -115,10 +117,13 @@ void ServerSpellCastEnvironment::showGarrisonDialog(ObjectInstanceID upobj, Obje
 	gh->showGarrisonDialog(upobj, hid, removableUnits, customTitle);
 }
 
-void ServerSpellCastEnvironment::genericQuery(Query * request, PlayerColor color, std::function<void(std::optional<int32_t>)> callback)
+void ServerSpellCastEnvironment::askToSelectTown(const MapObjectSelectDialog & request, SpellID spell, ObjectInstanceID caster)
 {
-	auto query = std::make_shared<CGenericQuery>(gh, color, callback);
-	request->queryID = query->queryID;
-	gh->queries->addQuery(query);
-	gh->sendAndApply(*request);
+	auto activity = std::make_shared<TownSelectionActivity>(gh, request.player, spell, caster, request.objects);
+
+	MapObjectSelectDialog pack = request;
+	pack.questionID = activity->askQuestion();
+
+	gh->activities->addActivity(activity);
+	gh->sendAndApply(pack);
 }
