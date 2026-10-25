@@ -22,6 +22,7 @@
 #include "../../lib/spells/CSpell.h"
 #include "../../lib/spells/ISpellMechanics.h"
 #include "../../lib/spells/Problem.h"
+#include "../../lib/networkPacks/PacksForClient.h"
 
 TownSelectionActivity::TownSelectionActivity(CGameHandler * owner, PlayerColor player, SpellID spell, ObjectInstanceID caster, std::vector<ObjectInstanceID> offeredTowns)
 	: DialogActivity(owner, TYPE)
@@ -68,10 +69,15 @@ void TownSelectionActivity::onRemoval()
 		mechanics.performCast(gh->spellEnv.get(), parameters);
 }
 
-ScriptDialogActivity::ScriptDialogActivity(CGameHandler * owner, PlayerColor player)
-	: DialogActivity(owner, TYPE)
+ScriptDialogActivity::ScriptDialogActivity(CGameHandler * owner, const BlockingDialog & dialog)
+	: DialogActivity(owner, TYPE), selection(dialog.selection()), choices(dialog.components.size())
 {
-	addPlayer(player);
+	addPlayer(dialog.player);
+}
+
+bool ScriptDialogActivity::acceptsAnswer(int32_t answer) const
+{
+	return answer >= 0 && (selection ? static_cast<size_t>(answer) <= choices : answer <= 1);
 }
 
 bool ScriptDialogActivity::acceptsAnswerWithoutValue() const

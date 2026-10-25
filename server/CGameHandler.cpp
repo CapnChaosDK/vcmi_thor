@@ -1205,7 +1205,7 @@ void CGameHandler::showScriptDialog(BlockingDialog * iw)
 		return;
 	}
 
-	auto dialogActivity = std::make_shared<ScriptDialogActivity>(this, iw->player);
+	auto dialogActivity = std::make_shared<ScriptDialogActivity>(this, *iw);
 	activities->addActivity(dialogActivity);
 	iw->questionID = dialogActivity->askQuestion();
 	sendAndApply(*iw);

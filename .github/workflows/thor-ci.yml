@@ -169,7 +169,12 @@ jobs:
           grep -E '^CMAKE_CXX_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/army-transfer-build/CMakeCache.txt"
           build_started_at="$(date +%s)"
           # Compile the server boundary first so integration errors surface before the core build.
-          cmake --build "$RUNNER_TEMP/army-transfer-build" --target vcmiservercommon --parallel 2
+          cmake --build "$RUNNER_TEMP/army-transfer-build" --target vcmiservercommon --parallel 2 -- -k 0
+          # Ninja object targets use the exact regression compile flags before the longer link dependencies.
+          cmake --build "$RUNNER_TEMP/army-transfer-build" --target \
+            test/CMakeFiles/army-transfer-tests.dir/server/ArmyManagementTest.cpp.o \
+            test/CMakeFiles/army-transfer-tests.dir/server/activities/ActivityProcessorTest.cpp.o \
+            --parallel 2 -- -k 0
           cmake --build "$RUNNER_TEMP/army-transfer-build" --target army-transfer-tests --parallel 2
           echo "NATIVE_BUILD_DURATION_SECONDS=$(($(date +%s) - build_started_at))" >> "$GITHUB_ENV"
           # Reuse the standard native test-data procedure from github.yml.

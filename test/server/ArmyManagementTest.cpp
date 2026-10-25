@@ -12,10 +12,10 @@
 #include "mock/GameHandlerTestServer.h"
 #include "mock/TinyMapGameTest.h"
 #include "../../server/activities/MapActivities.h"
+#include "../../server/activities/SpellActivities.h"
 #include "../../server/activities/ActivityProcessor.h"
 #include "lib/CPlayerState.h"
 #include "lib/mapObjects/CGHeroInstance.h"
-#include "lib/mapObjects/army/CCommanderInstance.h"
 #include "lib/mapObjects/CGPandoraBox.h"
 #include "lib/mapObjects/CGTownInstance.h"
 #include "lib/mapObjects/MiscObjects.h"
@@ -275,7 +275,6 @@ TEST_F(ArmyManagementTest, LevelUpQuestionRejectsUnofferedAndOutOfRangeAnswers)
 
 TEST_F(ArmyManagementTest, CommanderLevelUpQuestionRejectsOutOfRangeAnswers)
 {
-	left->commander = std::make_unique<CCommanderInstance>(gameState().get(), pikeman);
 	CommanderLevelUp levelUp;
 	levelUp.heroId = left->id;
 	levelUp.player = red;
@@ -793,5 +792,45 @@ TEST_F(ArmyManagementTest, TeleportQuestionRejectsUnofferedExitsAndKeepsRandomEx
 	EXPECT_TRUE(question->acceptsAnswer(0));
 	QuestionAnswer randomExit(question->getActiveQuestionID(), -1);
 	EXPECT_TRUE(request(randomExit));
+	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
+}
+
+TEST_F(ArmyManagementTest, PauseAndExchangeQuestionsRejectUnofferedDismissalValues)
+{
+	auto pause = std::make_shared<TimerPauseActivity>(handler.get(), red);
+	pause->askQuestion();
+	handler->activities->addActivity(pause);
+	QuestionAnswer invalidPause(pause->getActiveQuestionID(), 1);
+	EXPECT_FALSE(request(invalidPause));
+	EXPECT_EQ(handler->activities->topActivity(red), pause);
+	QuestionAnswer resume(pause->getActiveQuestionID(), 0);
+	EXPECT_TRUE(request(resume));
+
+	auto exchange = std::make_shared<GarrisonDialogActivity>(handler.get(), red, left, right);
+	exchange->askQuestion();
+	handler->activities->addActivity(exchange);
+	QuestionAnswer invalidDismissal(exchange->getActiveQuestionID(), 1);
+	EXPECT_FALSE(request(invalidDismissal));
+	EXPECT_EQ(handler->activities->topActivity(red), exchange);
+	QuestionAnswer dismiss(exchange->getActiveQuestionID(), 0);
+	EXPECT_TRUE(request(dismiss));
+}
+
+TEST_F(ArmyManagementTest, ScriptQuestionsValidateOfferedChoicesAndKeepNullCancellation)
+{
+	BlockingDialog dialog(true, true);
+	dialog.player = red;
+	dialog.components.resize(2);
+	auto question = std::make_shared<ScriptDialogActivity>(handler.get(), dialog);
+	question->askQuestion();
+	handler->activities->addActivity(question);
+	for(const int answer : {-1, 3})
+	{
+		QuestionAnswer reply(question->getActiveQuestionID(), answer);
+		EXPECT_FALSE(request(reply));
+		EXPECT_EQ(handler->activities->topActivity(red), question);
+	}
+	QuestionAnswer cancel(question->getActiveQuestionID(), std::nullopt);
+	EXPECT_TRUE(request(cancel));
 	EXPECT_EQ(handler->activities->topActivity(red), nullptr);
 }

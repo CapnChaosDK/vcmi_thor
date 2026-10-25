@@ -56,10 +56,9 @@ bool BattleActivity::blocksPack(const CPackForServer * pack) const
 	return true;
 }
 
-BattleResultActivity::BattleResultActivity(CGameHandler * owner, const IBattleInfo * bi, const std::optional<BattleResult> & Br):
+BattleResultActivity::BattleResultActivity(CGameHandler * owner, const IBattleInfo * bi):
 	DialogActivity(owner, TYPE),
-	bi(bi),
-	result(Br)
+	bi(bi)
 {
 	// Only the defender can be neutral
 	addPlayer(bi->getSidePlayer(BattleSide::ATTACKER));

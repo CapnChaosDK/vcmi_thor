@@ -2079,3 +2079,7 @@ Promotion and cleanup receipt (2026-10-22):
 - Preflight feedback ordering: build `vcmiservercommon` first in the same configured native tree, then build/run the unchanged complete ArmyTransferBoundary target. This catches server integration errors before the longer core build, reuses successful objects within the job and keeps dependency/cache, test and packaging gates intact.
 
 - Follow-up preflight: run `40181880664` passed focused Thor tests and reached the early server build. Battle processor/result translation units compiled; `BattleActivities.cpp` then exposed a missing complete `CArmedInstance` include after the pointer-to-ID conversion. Added the owning header. No server-test or ARM64 pass is claimed.
+
+- Third preflight: run `40182231294` compiled the complete server target and core library, then found test-only compile errors: direct access to the now-private commander member and incomplete serialization types. The answer-boundary test does not need a commander instance; removed that unused setup and included the concrete serialization dependencies. No native runtime pass is claimed. The next preflight compiles both regression translation units early with their real target flags before linking the full gate.
+
+- Final answer-contract review also bounds pause, exchange and open-window dismissal to 0, validates script-dialog choices while retaining null cancellation, and removes an unused copied battle-result field. Real-packet regressions cover the added dismissal/script boundaries.

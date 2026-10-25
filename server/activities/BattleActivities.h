@@ -34,11 +34,10 @@ public:
 class BattleResultActivity : public DialogActivity
 {
 	const IBattleInfo * bi;
-	std::optional<BattleResult> result;
 
 public:
 	static constexpr ActivityType TYPE = ActivityType::BattleDialog;
-	BattleResultActivity(CGameHandler * owner, const IBattleInfo * Bi, const std::optional<BattleResult> & Br);
+	BattleResultActivity(CGameHandler * owner, const IBattleInfo * Bi);
 	bool acceptsAnswer(int32_t answer) const override;
 	void onRemoval() override;
 };

@@ -50,6 +50,11 @@ bool TimerPauseActivity::endsByPlayerAnswer() const
 	return true;
 }
 
+bool TimerPauseActivity::acceptsAnswer(int32_t answer) const
+{
+	return answer == 0;
+}
+
 void GarrisonDialogActivity::notifyObjectAboutRemoval(const IObjectInterface * visitedObject, const CGHeroInstance * visitingHero, const JsonNode & visitState) const
 {
 	visitedObject->garrisonDialogClosed(*gh, visitingHero, visitState);
@@ -72,6 +77,11 @@ void GarrisonDialogActivity::addPartner(PlayerColor partner)
 bool GarrisonDialogActivity::acceptsAnswerFrom(PlayerColor player) const
 {
 	return player == initiator;
+}
+
+bool GarrisonDialogActivity::acceptsAnswer(int32_t answer) const
+{
+	return answer == 0;
 }
 
 void GarrisonDialogActivity::onAdded()
@@ -199,6 +209,11 @@ OpenWindowActivity::OpenWindowActivity(CGameHandler * owner, const CGHeroInstanc
 	: DialogActivity(owner, TYPE), mode(mode)
 {
 	addPlayer(hero->getOwner());
+}
+
+bool OpenWindowActivity::acceptsAnswer(int32_t answer) const
+{
+	return answer == 0;
 }
 
 bool OpenWindowActivity::blocksPack(const CPackForServer * pack) const

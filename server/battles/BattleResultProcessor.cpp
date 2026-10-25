@@ -265,7 +265,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	// in battles against neutrals attacker can ask to replay battle manually, additionally in battles against AI player human side can also ask for replay
 	if(onlyOnePlayerHuman)
 	{
-		auto battleDialogActivity = std::make_shared<BattleResultActivity>(gameHandler, battle.getBattle(), typedBattleActivity.result);
+		auto battleDialogActivity = std::make_shared<BattleResultActivity>(gameHandler, battle.getBattle());
 		battleResult->questionID = battleDialogActivity->askQuestion();
 		gameHandler->activities->addActivity(battleDialogActivity);
 	}

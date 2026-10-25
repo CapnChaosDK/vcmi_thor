@@ -29,6 +29,7 @@ public:
 	void onAdded() override;
 	void onRemoval() override;
 	bool endsByPlayerAnswer() const override;
+	bool acceptsAnswer(int32_t answer) const override;
 };
 
 //Created when hero attempts move and something happens
@@ -73,6 +74,7 @@ public:
 	void addPartner(PlayerColor partner);
 
 	bool acceptsAnswerFrom(PlayerColor player) const override;
+	bool acceptsAnswer(int32_t answer) const override;
 	void onAdded() override;
 	void onRemoval() override;
 	void notifyObjectAboutRemoval(const IObjectInterface * visitedObject, const CGHeroInstance * visitingHero, const JsonNode & visitState) const override;
@@ -101,6 +103,7 @@ public:
 	static constexpr ActivityType TYPE = ActivityType::OpenWindow;
 
 	OpenWindowActivity(CGameHandler * owner, const CGHeroInstance *hero, EOpenWindowMode mode);
+	bool acceptsAnswer(int32_t answer) const override;
 
 	bool blocksPack(const CPackForServer *pack) const override;
 };
