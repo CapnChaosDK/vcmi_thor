@@ -2175,3 +2175,19 @@ Promotion and cleanup receipt (2026-10-22):
   upstream deployment owner and test loader paths; YAML and embedded shell syntax,
   scope/checklist checks and diff hygiene pass locally. Runtime and ARM64 remain
   pending the corrected candidate; no device pass or promotion is claimed.
+
+- ARM64 compile failure and correction (2026-10-26): exact candidate
+  `6d50bec6bf4734d6d619b25ed7ed126ee058be39` passed Thor preflight in
+  [run 40228983086](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40228983086),
+  including the full upstream native regressions and focused Thor contracts.
+  ARM64 compilation stopped in `client/GameEngine.cpp:180` because the port left
+  `thorActionExecuted` unused under `-Werror,-Wunused-variable`. Removed only
+  that obsolete local declaration. Request validation, per-request `executed`,
+  acknowledgements, queue clearing and upstream frame/input handling are unchanged.
+  The existing seven-part candidate checklist remains applicable. The corrected
+  candidate still requires the full Thor workflow and exact-APK hardware acceptance;
+  no APK, device pass or promotion is claimed by this correction.
+  Validation: all 158 focused native Thor tests and all four scope/checklist
+  Python tests passed on the candidate's fetched sources. Diff hygiene and a
+  separate complete-diff self-review passed; no behavioral change was found.
+  Full Android compilation is delegated to the existing candidate workflow.

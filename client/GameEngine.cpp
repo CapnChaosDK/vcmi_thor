@@ -177,7 +177,6 @@ void GameEngine::updateFrame()
 		dwellingRecruitment->refreshThorNativeState();
 	if(auto battleWindow = windows().topWindow<BattleWindow>())
 		battleWindow->updateThorActionState();
-	bool thorActionExecuted = false;
 	while(const auto request = thorActionQueue().pop())
 	{
 		const auto context = thorContextStore().snapshot();
