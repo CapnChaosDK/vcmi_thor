@@ -60,8 +60,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 ## Current state
 
 - Upstream-base reconciliation: `hardware validated` by the user's 2026-10-26
-  “All passed” report, with merge and branch cleanup authorized for
-  [PR #55](https://github.com/CapnChaosDK/vcmi_thor/pull/55). Exact candidate
+  “All passed” report; [PR #55](https://github.com/CapnChaosDK/vcmi_thor/pull/55)
+  is promoted as `6e321c1e5986a915aac0667c156194a413221141`. Exact candidate
   `582c2817e5ac2f2c8b13050e066d5af8fbde9c78` passed both jobs in
   [Thor CI 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
   APK SHA-256: `6191b4ad44db171566c6ac1ced9a915cc1d30e25f7ce2ebc945fc6d16f7149d8`.
@@ -261,8 +261,8 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff (2026-10-26): the upstream-base reconciliation is user-reported
-hardware validated and promotion is authorized; see Current state and its receipts.
+Current handoff (2026-10-26): the upstream-base reconciliation is promoted and
+user-reported hardware validated; see Current state and its receipts.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2223,3 +2223,18 @@ Promotion and cleanup receipt (2026-10-22):
   future feature selection to incomplete second-screen journeys and the executable
   upstream source-boundary policy. These handover changes are Markdown only;
   the hardware-tested product/build/checklist tree remains unchanged.
+
+- Promotion and cleanup (2026-10-26): at the user's explicit request, PR #55 merged
+  normally with head pinned to `01bb33d99517f97e26e0b34ade3c0a8ceabd0e10`, producing
+  product merge `6e321c1e5986a915aac0667c156194a413221141`. Comparison with accepted
+  candidate `582c2817e5ac2f2c8b13050e066d5af8fbde9c78` contains Markdown handover
+  changes only; the tested product/build/checklist tree is identical. Both old
+  product and pinned upstream ancestry remain reachable. The primary checkout
+  fast-forwarded to the merge. The merged `codex/upstream-thor-overlay` branch was
+  deleted locally/remotely; product and permanent candidate branches remain local.
+  Five Dependabot branches remain remote because each still has an open PR; they
+  were not treated as unused work. The permanent candidate ref retains the exact
+  successful CI/device-tested SHA. Earlier uncommitted audit notes were preserved
+  under ignored `out/thor-premerge-audit-notes-20261026` before replacing them with
+  their incorporated, current handover. This receipt changes Markdown only; no new
+  package, device cycle or candidate-branch movement is required.
