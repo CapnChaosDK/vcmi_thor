@@ -23,7 +23,7 @@ class MineInstanceConstructor;
 using TTeleportExitsList = std::vector<std::pair<ObjectInstanceID, int3>>;
 
 /// Legacy class, use CRewardableObject instead
-class DLL_LINKAGE CTeamVisited: public CGObjectInstance
+class CTeamVisited: public CGObjectInstance
 {
 public:
 	using CGObjectInstance::CGObjectInstance;
@@ -70,6 +70,7 @@ public:
 
 	void initObj(IGameRandomizer & gameRandomizer) override;
 	bool passableFor(PlayerColor color) const override;
+	bool isLocked() const override;
 	void onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance * h) const override;
 	void battleFinished(IGameEventCallback & gameEvents, const CGHeroInstance *hero, const BattleResult &result) const override;
 
@@ -130,9 +131,9 @@ class DLL_LINKAGE CGMine : public CArmedInstance, public IOwnableObject
 public:
 	struct InitialGuards
 	{
-		CreatureID creature	= CreatureID::TROGLODYTES;
-		int minAmount = 100;
-		int maxAmount = 199;
+		CreatureID creature	= CreatureID::NONE; // none - use guards from object config
+		int minAmount = 0;
+		int maxAmount = 0;
 
 		template <typename Handler> void serialize(Handler &h)
 		{
@@ -184,7 +185,7 @@ protected:
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;
 };
 
-struct DLL_LINKAGE TeleportChannel : public Serializeable
+struct TeleportChannel : public Serializeable
 {
 	enum EPassability {UNKNOWN, IMPASSABLE, PASSABLE};
 
@@ -229,6 +230,8 @@ public:
 	static bool isConnected(const CGTeleport * src, const CGTeleport * dst);
 	static bool isConnected(const CGObjectInstance * src, const CGObjectInstance * dst);
 	static void addToChannel(std::map<TeleportChannelID, std::shared_ptr<TeleportChannel> > &channelsList, const CGTeleport * obj);
+	/// Warns if the map places this teleport with a template that has no visitable tile, which heroes can neither enter nor leave
+	void warnIfNotVisitable() const;
 	static std::vector<ObjectInstanceID> getPassableExits(const IGameInfoCallback & gameInfo, const CGHeroInstance * h, std::vector<ObjectInstanceID> exits);
 	static bool isExitPassable(const IGameInfoCallback & gameInfo, const CGHeroInstance * h, const CGObjectInstance * obj);
 
@@ -240,7 +243,7 @@ public:
 	}
 };
 
-class DLL_LINKAGE CGMonolith : public CGTeleport
+class CGMonolith : public CGTeleport
 {
 	TeleportChannelID findMeChannel(const std::vector<Obj> & IDs, MapObjectSubID SubID) const;
 
@@ -261,7 +264,7 @@ public:
 	}
 };
 
-class DLL_LINKAGE CGSubterraneanGate : public CGMonolith
+class CGSubterraneanGate : public CGMonolith
 {
 	void onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance * h) const override;
 	void initObj(IGameRandomizer & gameRandomizer) override;
@@ -280,7 +283,7 @@ public:
 	}
 };
 
-class DLL_LINKAGE CGWhirlpool : public CGMonolith
+class CGWhirlpool : public CGMonolith
 {
 	void onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance * h) const override;
 	void teleportDialogAnswered(IGameEventCallback & gameEvents, const CGHeroInstance *hero, ui32 answer, TTeleportExitsList exits) const override;
@@ -289,13 +292,16 @@ class DLL_LINKAGE CGWhirlpool : public CGMonolith
 public:
 	using CGMonolith::CGMonolith;
 
+	/// Tiles of the given whirlpools that a hero can arrive at: tiles where the whirlpool is visitable and no hero stands
+	static TTeleportExitsList getPassableExitTiles(const IGameInfoCallback & gameInfo, const std::vector<ObjectInstanceID> & exits);
+
 	template <typename Handler> void serialize(Handler &h)
 	{
 		h & static_cast<CGMonolith&>(*this);
 	}
 };
 
-class DLL_LINKAGE CGSirens : public CGObjectInstance
+class CGSirens : public CGObjectInstance
 {
 public:
 	using CGObjectInstance::CGObjectInstance;
@@ -313,6 +319,7 @@ public:
 class DLL_LINKAGE CGBoat : public CGObjectInstance, public CBonusSystemNode
 {
 	ObjectInstanceID boardedHeroID;
+	ObjectInstanceID lastHeroID; // hero that used this boat the last time, remains set after hero disembarks
 
 public:
 	using CGObjectInstance::CGObjectInstance;
@@ -332,6 +339,7 @@ public:
 
 	void setBoardedHero(const CGHeroInstance * hero);
 	const CGHeroInstance * getBoardedHero() const;
+	ObjectInstanceID getLastHeroID() const { return lastHeroID; }
 
 	template <typename Handler> void serialize(Handler &h)
 	{
@@ -339,6 +347,10 @@ public:
 		h & static_cast<CBonusSystemNode&>(*this);
 		h & direction;
 		h & boardedHeroID;
+		if(h.hasFeature(Handler::Version::BOAT_LAST_HERO))
+			h & lastHeroID;
+		else
+			lastHeroID = ObjectInstanceID();
 
 		h & layer;
 		h & onboardAssaultAllowed;
@@ -379,7 +391,7 @@ protected:
 	void serializeJsonOptions(JsonSerializeFormat & handler) override;
 };
 
-class DLL_LINKAGE CGMagi : public CGObjectInstance
+class CGMagi : public CGObjectInstance
 {
 public:
 	using CGObjectInstance::CGObjectInstance;
@@ -393,7 +405,7 @@ public:
 	}
 };
 
-class DLL_LINKAGE CGDenOfthieves : public CGObjectInstance
+class CGDenOfthieves : public CGObjectInstance
 {
 	void onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance * h) const override;
 public:
@@ -418,7 +430,7 @@ protected:
 	void setPropertyDer(ObjProperty what, ObjPropertyID identifier) override;
 };
 
-class DLL_LINKAGE CGTerrainPatch : public CGObjectInstance
+class CGTerrainPatch : public CGObjectInstance
 {
 public:
 	using CGObjectInstance::CGObjectInstance;

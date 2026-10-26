@@ -93,7 +93,7 @@
     </message>
     <message>
         <location filename="../aboutProject/aboutproject_moc.ui" line="329"/>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="442"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="311"/>
         <source>Export saves</source>
         <translation type="unfinished"></translation>
     </message>
@@ -102,61 +102,61 @@
         <translation type="obsolete">Сачувај логове</translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="442"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="311"/>
         <source>Zip archives (*.zip)</source>
         <translation type="unfinished">Zip архиве (*.zip)</translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="415"/>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="532"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="284"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="401"/>
         <source>Error</source>
         <translation type="unfinished">Грешка</translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="411"/>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="448"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="280"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="317"/>
         <source>Saves exported to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="415"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="284"/>
         <source>Failed to save archive to selected destination</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="433"/>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="435"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="302"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="304"/>
         <source>Select destination file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="433"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="302"/>
         <source>Please select destination file and save the archive as vcmi-saves.zip.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="435"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="304"/>
         <source>Zip archives (*.zip);;All files (*.*)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="464"/>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="465"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="333"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="334"/>
         <source>Exporting logs...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="464"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="333"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="465"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="334"/>
         <source>Log export</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="532"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="401"/>
         <source>Failed to create archive: %1</source>
         <translation type="unfinished">Није успело креирање архиве: %1</translation>
     </message>
@@ -169,16 +169,24 @@
         <translation type="obsolete">Архива ће бити послата преко друге апликације. Поделите своје логове, нпр. преко Discord-а, са програмерима.</translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="411"/>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="448"/>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="541"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="280"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="317"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="410"/>
         <source>Success</source>
         <translation type="unfinished">Успех</translation>
     </message>
     <message>
-        <location filename="../aboutProject/aboutproject_moc.cpp" line="541"/>
+        <location filename="../aboutProject/dataexporter.cpp" line="410"/>
         <source>Logs saved to %1, please send them to the developers</source>
         <translation type="unfinished">Дневници сачувани у %1, пошаљите их програмерима</translation>
+    </message>
+</context>
+<context>
+    <name>CDownloadManager</name>
+    <message>
+        <location filename="../modManager/cdownloadmanager_moc.cpp" line="171"/>
+        <source>Failed to copy file %1</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -338,8 +346,8 @@
     </message>
     <message>
         <location filename="../modManager/cmodlistview_moc.cpp" line="217"/>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1124"/>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1129"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1183"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1188"/>
         <source>mods repository index</source>
         <translation type="unfinished">индекс репозиторијума модова</translation>
     </message>
@@ -418,29 +426,40 @@
         <source>Open repository</source>
         <translation type="unfinished">Отвори репозиторијум</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../modManager/cmodlistview_moc.cpp" line="886"/>
+        <source>Downloading %n mods. %p% (%v MB out of %m MB) finished</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="877"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="888"/>
         <source>Downloading %1. %p% (%v MB out of %m MB) finished</source>
         <translation type="unfinished">Преузимање %1. %p% (%v MB од %m MB) завршено</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="906"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="923"/>
         <source>Extracting content.zip (%1/%2) for %3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="913"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="930"/>
         <source>Download failed</source>
         <translation type="unfinished">Преузимање није успело</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="914"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="931"/>
         <source>Unable to download all files.
 
 Encountered errors:
 
 </source>
-        <translation type="unfinished">Није могуће преузети све датотеке.\n\nДошло је до грешака:</translation>
+        <translation type="unfinished">Није могуће преузети све датотеке.
+
+Дошло је до грешака:</translation>
     </message>
     <message>
         <source>
@@ -449,109 +468,121 @@ Install successfully downloaded?</source>
         <translation type="obsolete">Да ли је инсталација успешно преузета?</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1097"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1156"/>
         <source>Failed to install file %1.
 Reason: %2.
 Please report this issue to developers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1200"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1259"/>
         <source>Installing Heroes Chronicles</source>
         <translation type="unfinished">Инсталирање Heroes Chronicles</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1232"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1291"/>
         <source>Extracting error!</source>
         <translation type="unfinished">Грешка при издвајању!</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1234"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1293"/>
         <source>Invalid file selected</source>
         <translation type="unfinished">Изабрана је неважећа датотека</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1234"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1293"/>
         <source>You have to select a Heroes Chronicles installer file!</source>
         <translation type="unfinished">Морате да изаберете инсталациону датотеку за Heroes Chronicles!</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1366"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1425"/>
         <source>Save exists</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1367"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1426"/>
         <source>Save &apos;%1&apos; already exists. Do you want to overwrite it?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1387"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1446"/>
         <source>Failed to import saves from %1.
 Reason: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1400"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1459"/>
         <source>Success</source>
         <translation type="unfinished">Успех</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1400"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1459"/>
         <source>Imported %1 save files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1457"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1499"/>
         <source>Installing mod %1</source>
         <translation type="unfinished">Инсталирање мода %1</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1489"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1530"/>
         <source>%1 requires: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1492"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1533"/>
         <source>Failed to enable mod</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1493"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1534"/>
         <source>One or more installed mods could not be enabled:
 
 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1582"/>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1610"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1548"/>
+        <source>Mods disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1549"/>
+        <source>Following mods were disabled due to changes in installed mods:
+
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1616"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1644"/>
         <source>Map exists</source>
         <translation type="unfinished">Мапа постоји</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1582"/>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1610"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1616"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1644"/>
         <source>Map &apos;%1&apos; already exists. Do you want to overwrite it?</source>
         <translation type="unfinished">Мапа „%1“ већ постоји. Да ли желите да је пребришете?</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1003"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1062"/>
         <source>Yes to All</source>
         <translation type="unfinished">Да свима</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1004"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1063"/>
         <source>No to All</source>
         <translation type="unfinished">Не свима</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1629"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1663"/>
         <source>Import complete</source>
         <translation type="unfinished">Увоз завршен</translation>
     </message>
     <message numerus="yes">
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1629"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1663"/>
         <source>%n map(s) successfully imported.</source>
         <translation type="unfinished">
             <numerusform>%n мапа је успешно увезена.</numerusform>
@@ -560,53 +591,70 @@ Reason: %2</source>
         </translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1765"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1799"/>
         <source>Uninstall mod</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1765"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1799"/>
         <source>Are you sure you want to uninstall %1?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1097"/>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1387"/>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1632"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1156"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1446"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1666"/>
         <source>Import failed</source>
         <translation type="unfinished">Увоз није успео</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="915"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="932"/>
         <source>
 
 Process successfully downloaded files?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1632"/>
-        <source>Failed to import the following maps:
-%1</source>
-        <translation type="unfinished">Није успело увоз следећих мапа:\n%1</translation>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1000"/>
+        <source>VCMI could not confirm that it is connected to the real download server.
+
+This usually happens on older systems, such as Windows 7, that are missing recent security updates.
+
+However, it may also mean that someone is tampering with your internet connection, for example on a public Wi-Fi network. In that case, downloaded files could be replaced with harmful ones.
+
+Do you want to turn off this check and try again? You can turn it back on at any time in launcher settings, using the &quot;Ignore SSL errors&quot; option.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1662"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1007"/>
+        <source>Unable to verify download server</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1666"/>
+        <source>Failed to import the following maps:
+%1</source>
+        <translation type="unfinished">Није успело увоз следећих мапа:
+%1</translation>
+    </message>
+    <message>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1696"/>
         <source>Operation failed</source>
         <translation type="unfinished">Операција није успела</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1663"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1697"/>
         <source>Encountered errors:
 </source>
         <translation type="unfinished">Наиђене грешке:</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1715"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1749"/>
         <source>screenshots</source>
         <translation type="unfinished">снимци екрана</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1721"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1755"/>
         <source>Screenshot %1</source>
         <translation type="unfinished">Снимак екрана %1</translation>
     </message>
@@ -620,7 +668,7 @@ Process successfully downloaded files?</source>
     <name>CSettingsView</name>
     <message>
         <location filename="../settingsView/csettingsview_moc.ui" line="166"/>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="125"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="129"/>
         <source>Off</source>
         <translation type="unfinished">Искључено</translation>
     </message>
@@ -630,22 +678,22 @@ Process successfully downloaded files?</source>
         <translation type="unfinished">Вештачка интелигенција</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="552"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="589"/>
         <source>Interface Scaling</source>
         <translation type="unfinished">Скалирање интерфејса</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1298"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1362"/>
         <source>Neutral AI in battles</source>
         <translation type="unfinished">Неутрална вештачка интелигенција у биткама</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="874"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="938"/>
         <source>Enemy AI in battles</source>
         <translation type="unfinished">Непријатељска вештачка интелигенција у биткама</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="911"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="975"/>
         <source>Additional repository</source>
         <translation type="unfinished">Додатни репозиторијум</translation>
     </message>
@@ -660,7 +708,7 @@ Process successfully downloaded files?</source>
         <translation type="unfinished">Онлајн лоби порт</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1163"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1227"/>
         <source>Autocombat AI in battles</source>
         <translation type="unfinished">Аутоматска борба са вештачком интелигенцијом у биткама</translation>
     </message>
@@ -670,24 +718,24 @@ Process successfully downloaded files?</source>
         <translation type="unfinished">Осетљивост штапића</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1210"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1274"/>
         <source>Automatic (Linear)</source>
         <translation type="unfinished">Аутоматски (линеарни)</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="717"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="754"/>
         <source>Haptic Feedback</source>
         <translation type="unfinished">Хаптичке повратне информације</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="845"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="909"/>
         <source>Software Cursor</source>
         <translation type="unfinished">Софтверски курсор</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="498"/>
-        <location filename="../settingsView/csettingsview_moc.ui" line="638"/>
-        <location filename="../settingsView/csettingsview_moc.ui" line="858"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="520"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="675"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="922"/>
         <source>Automatic</source>
         <translation type="unfinished">Аутоматски</translation>
     </message>
@@ -697,7 +745,7 @@ Process successfully downloaded files?</source>
         <translation type="unfinished">Валидација модова</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1348"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1412"/>
         <source>Config editor</source>
         <translation type="unfinished">Уређивач конфигурације</translation>
     </message>
@@ -707,22 +755,22 @@ Process successfully downloaded files?</source>
         <translation type="unfinished">Отвори уређивач</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="503"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="525"/>
         <source>None</source>
         <translation type="unfinished">Ниједан</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="508"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="530"/>
         <source>xBRZ x2</source>
         <translation type="unfinished">xBRZ x2</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="513"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="540"/>
         <source>xBRZ x3</source>
         <translation type="unfinished">xBRZ x3</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="518"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="550"/>
         <source>xBRZ x4</source>
         <translation type="unfinished">xBRZ x4</translation>
     </message>
@@ -732,22 +780,22 @@ Process successfully downloaded files?</source>
         <translation type="unfinished">Пуно</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="881"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="945"/>
         <source>Allow portrait mode</source>
         <translation type="unfinished">Дозволи портретни режим</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1002"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1066"/>
         <source>Use scalable fonts</source>
         <translation type="unfinished">Користите скалабилне фонтове</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1305"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1369"/>
         <source>Online Lobby address</source>
         <translation type="unfinished">Адреса онлајн лобија</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="662"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="699"/>
         <source>Handle back as right mouse button</source>
         <translation type="unfinished">Рукуј назад као десни тастер миша</translation>
     </message>
@@ -757,17 +805,17 @@ Process successfully downloaded files?</source>
         <translation type="unfinished">Скалирање курсора</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="924"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="988"/>
         <source>Scalable</source>
         <translation type="unfinished">Скалабилно</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="583"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="620"/>
         <source>Miscellaneous</source>
         <translation type="unfinished">Разно</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1406"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1470"/>
         <source>Select a display mode for the game
 
 Windowed - the game will run inside a window that covers part of your screen.
@@ -775,7 +823,13 @@ Windowed - the game will run inside a window that covers part of your screen.
 Borderless Windowed Mode - the game will run in a full-screen window, matching your screen&apos;s resolution.
 
 Fullscreen Exclusive Mode - the game will cover the entirety of your screen and will use selected resolution.</source>
-        <translation type="unfinished">Изаберите режим приказа за игру\n\nУ прозору - игра ће се покретати унутар прозора који покрива део екрана.\n\nРежим без ивица у прозору - игра ће се покретати у прозору преко целог екрана, који одговара резолуцији вашег екрана.\n\nЕксклузивни режим преко целог екрана - игра ће покрити цео екран и користити изабрану резолуцију.</translation>
+        <translation type="unfinished">Изаберите режим приказа за игру
+
+У прозору - игра ће се покретати унутар прозора који покрива део екрана.
+
+Режим без ивица у прозору - игра ће се покретати у прозору преко целог екрана, који одговара резолуцији вашег екрана.
+
+Ексклузивни режим преко целог екрана - игра ће покрити цео екран и користити изабрану резолуцију.</translation>
     </message>
     <message>
         <location filename="../settingsView/csettingsview_moc.ui" line="327"/>
@@ -783,12 +837,12 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">Скалирање фонта (експериментално)</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="983"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1047"/>
         <source>Original</source>
         <translation type="unfinished">Оригинал</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="707"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="744"/>
         <source>Upscaling Filter</source>
         <translation type="unfinished">Филтер за повећање скале</translation>
     </message>
@@ -808,42 +862,77 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="593"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="497"/>
+        <source>Sharpening strength for the xBRZ + Sharpen upscaling filters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingsView/csettingsview_moc.ui" line="535"/>
+        <source>xBRZ x2 + Sharpen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingsView/csettingsview_moc.ui" line="545"/>
+        <source>xBRZ x3 + Sharpen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingsView/csettingsview_moc.ui" line="555"/>
+        <source>xBRZ x4 + Sharpen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingsView/csettingsview_moc.ui" line="630"/>
         <source>Show Status in Discord</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="669"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="706"/>
         <source>Use Relative Pointer Mode</source>
         <translation type="unfinished">Користите режим релативног показивача</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1185"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="819"/>
+        <source>HTTP proxy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingsView/csettingsview_moc.ui" line="826"/>
+        <source>Open help</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingsView/csettingsview_moc.ui" line="833"/>
+        <source>Proxy server used for downloads, for example http://host:port or socks5h://host:port. If empty, proxy from environment variables is used</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1249"/>
         <source>Autosaves per game (0 = unlimited)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1200"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1264"/>
         <source>Nearest</source>
         <translation type="unfinished">Најближе</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1205"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1269"/>
         <source>Linear</source>
         <translation type="unfinished">Линеарно</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1245"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1309"/>
         <source>Input - Touchscreen</source>
         <translation type="unfinished">Унос - екран осетљив на додир</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1513"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1577"/>
         <source>Save Before Visit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="792"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="856"/>
         <source>Adventure Map Enemies</source>
         <translation type="unfinished">Непријатељи на мапи авантуре</translation>
     </message>
@@ -863,27 +952,27 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">Мрежа</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="952"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1016"/>
         <source>Audio</source>
         <translation type="unfinished">Аудио</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1399"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1463"/>
         <source>Relative Pointer Speed</source>
         <translation type="unfinished">Релативна брзина показивача</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="904"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="968"/>
         <source>Music Volume</source>
         <translation type="unfinished">Јачина звука музике</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1278"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1342"/>
         <source>Ignore SSL errors</source>
         <translation type="unfinished">Игноришите SSL грешке</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1230"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1294"/>
         <source>Input - Mouse</source>
         <translation type="unfinished">Унос - миш</translation>
     </message>
@@ -893,37 +982,37 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">Трајање дугог додира</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1341"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1405"/>
         <source>Controller Click Tolerance</source>
         <translation type="unfinished">Толеранција клика контролера</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="648"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="685"/>
         <source>Touch Tap Tolerance</source>
         <translation type="unfinished">Толеранција додира</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1175"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1239"/>
         <source>Input - Controller</source>
         <translation type="unfinished">Улаз - Контролер</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1271"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1335"/>
         <source>Sound Volume</source>
         <translation type="unfinished">Јачина звука</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1419"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1483"/>
         <source>Windowed</source>
         <translation type="unfinished">Са прозором</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1424"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1488"/>
         <source>Borderless fullscreen</source>
         <translation type="unfinished">Цео екран без ивица</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1429"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1493"/>
         <source>Exclusive fullscreen</source>
         <translation type="unfinished">Ексклузивни режим целог екрана</translation>
     </message>
@@ -932,7 +1021,7 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="obsolete">Ексклузивни режим целог екрана</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="655"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="692"/>
         <source>Downscaling Filter</source>
         <translation type="unfinished">Ограничење аутоматског чувања (0 = искључено)</translation>
     </message>
@@ -946,12 +1035,12 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="obsolete">Префикс аутоматског чувања</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="724"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="761"/>
         <source>Mouse Click Tolerance</source>
         <translation type="unfinished">Толеранција клика мишем</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1099"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1163"/>
         <source>Sticks Acceleration</source>
         <translation type="unfinished">Убрзање штапова</translation>
     </message>
@@ -970,17 +1059,17 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">Подразумевано спремиште</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1192"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1256"/>
         <source>Renderer</source>
         <translation type="unfinished">Рендерер</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="123"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="127"/>
         <source>On</source>
         <translation type="unfinished">Укључено</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1218"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1282"/>
         <source>Reserved screen area</source>
         <translation type="unfinished">Резервисана област екрана</translation>
     </message>
@@ -995,7 +1084,7 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">Провери при покретању</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="1156"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1220"/>
         <source>Fullscreen</source>
         <translation type="unfinished">Цео екран</translation>
     </message>
@@ -1010,7 +1099,7 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">VCMI језик</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="815"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="879"/>
         <source>Resolution</source>
         <translation type="unfinished">Резолуција</translation>
     </message>
@@ -1025,7 +1114,7 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">VSync</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="822"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="886"/>
         <source>Display index</source>
         <translation type="unfinished">Индекс приказа</translation>
     </message>
@@ -1035,27 +1124,27 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">Мрежни порт</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="967"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1031"/>
         <source>Video</source>
         <translation type="unfinished">Видео</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.ui" line="940"/>
+        <location filename="../settingsView/csettingsview_moc.ui" line="1004"/>
         <source>Show intro</source>
         <translation type="unfinished">Прикажи увод</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="134"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="138"/>
         <source>StupidAI (deprecated)</source>
         <translation type="unfinished">Глупа АИ (застарело)</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="138"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="142"/>
         <source>BattleAI (default, recommended)</source>
         <translation type="unfinished">BattleAI (подразумевано, препоручено)</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="142"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="146"/>
         <source>MMAI (experimental)</source>
         <translation type="unfinished">ММАИ (експериментално)</translation>
     </message>
@@ -1064,37 +1153,37 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="obsolete">Nullkiller (замењен са Nullkiller2)</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="155"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="159"/>
         <source>Nullkiller2 (default, recommended)</source>
         <translation type="unfinished">Nullkiller2 (подразумевано, препоручено)</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="165"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="169"/>
         <source>EmptyAI - No valid AI libraries found!</source>
         <translation type="unfinished">EmptyAI - Нису пронађене валидне AI библиотеке!</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="757"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="765"/>
         <source>Active</source>
         <translation type="unfinished">Активно</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="762"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="770"/>
         <source>Disabled</source>
         <translation type="unfinished">Онемогућено</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="763"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="771"/>
         <source>Enable</source>
         <translation type="unfinished">Омогући</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="768"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="776"/>
         <source>Not Installed</source>
         <translation type="unfinished">Није инсталирано</translation>
     </message>
     <message>
-        <location filename="../settingsView/csettingsview_moc.cpp" line="769"/>
+        <location filename="../settingsView/csettingsview_moc.cpp" line="777"/>
         <source>Install</source>
         <translation type="unfinished">Инсталирај</translation>
     </message>
@@ -1155,7 +1244,7 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
     <name>File size</name>
     <message>
         <location filename="../modManager/modstate.cpp" line="159"/>
-        <location filename="../modManager/modstatemodel.cpp" line="101"/>
+        <location filename="../modManager/modstatemodel.cpp" line="106"/>
         <source>%1 MiB</source>
         <translation type="unfinished">%1 MiB</translation>
     </message>
@@ -1223,6 +1312,12 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="unfinished">Ваше датотеке са подацима за Heroes III су успешно пронађене.</translation>
     </message>
     <message>
+        <location filename="../firstLaunch/firstlaunch_moc.ui" line="543"/>
+        <source>If you own Heroes III on gog.com, you can download a backup offline installer from gog.com. VCMI will then import Heroes III data using the offline installer. 
+Offline installer consists of two files: &quot;.exe&quot; and &quot;.bin&quot; - you must download both.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../firstLaunch/firstlaunch_moc.ui" line="739"/>
         <source>Install a translation of Heroes III in your preferred language</source>
         <translation type="unfinished">Инсталирајте превод игре Heroes III на жељени језик</translation>
@@ -1257,7 +1352,7 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="obsolete">Инсталирајте компатибилну верзију игре „Horn of the Abyss“, екстензије за Heroes III коју су направили фанови, а коју је портовао VCMI тим.</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="798"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="802"/>
         <source>VCMI Extras</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1266,12 +1361,12 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="obsolete">Инсталирајте компатибилну верзију игре „In The Wake of Gods“, проширења за Heroes III које су направили фанови.</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="815"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="819"/>
         <source>A feature-rich expansion that expands gameplay with one alternative unit for each of the 9 standard towns, plus new neutral creatures, creature banks, skills and spells</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="820"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="824"/>
         <source>Descend into the underground realm and uncover Casemate — a new faction where mushrooms, stone and rune magic thrive in the dark, created for VCMI</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1280,12 +1375,12 @@ Fullscreen Exclusive Mode - the game will cover the entirety of your screen and 
         <translation type="obsolete">Инсталирајте мод који пружа разна побољшања интерфејса, као што је бољи интерфејс за насумичне мапе и избор акција у биткама</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="814"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="818"/>
         <source>Tides of War</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="819"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="823"/>
         <source>Fallen of the Depth</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1348,10 +1443,10 @@ Heroes® of Might and Magic® III HD тренутно није подржан!</
         <translation type="unfinished">Копирајте постојеће податке</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.ui" line="543"/>
-        <source>If you own Heroes III on gog.com, you can download a backup offline installer from gog.com. VCMI will then import Heroes III data using the offline installer. 
+        <source>If you own Heroes III on gog.com, you can download a backup offline installer from gog.com. VCMI will then import Heroes III data using the offline installer.
 Offline installer consists of two files: &quot;.exe&quot; and &quot;.bin&quot; - you must download both.</source>
-        <translation type="unfinished">Ако поседујете Heroes III на gog.com, можете преузети резервну копију офлајн инсталера са gog.com. VCMI ће затим увести податке из Heroes III користећи офлајн инсталер.\nОфлајн инсталер се састоји од две датотеке: „.exe“ и „.bin“ - морате преузети обе.</translation>
+        <translation type="obsolete">Ако поседујете Heroes III на gog.com, можете преузети резервну копију офлајн инсталера са gog.com. VCMI ће затим увести податке из Heroes III користећи офлајн инсталер.
+Офлајн инсталер се састоји од две датотеке: „.exe“ и „.bin“ - морате преузети обе.</translation>
     </message>
     <message>
         <location filename="../firstLaunch/firstlaunch_moc.ui" line="596"/>
@@ -1360,7 +1455,7 @@ Offline installer consists of two files: &quot;.exe&quot; and &quot;.bin&quot; -
         <translation type="unfinished">Назад</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="804"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="808"/>
         <source>Horn of the Abyss</source>
         <translation type="unfinished">Рог понора</translation>
     </message>
@@ -1370,7 +1465,7 @@ Offline installer consists of two files: &quot;.exe&quot; and &quot;.bin&quot; -
         <translation type="unfinished">Превод Хероја III</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="809"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="813"/>
         <source>In The Wake of Gods</source>
         <translation type="unfinished">У трагу богова</translation>
     </message>
@@ -1385,36 +1480,38 @@ Offline installer consists of two files: &quot;.exe&quot; and &quot;.bin&quot; -
         <translation type="unfinished">Копирати податке у VCMI фолдер?</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="456"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="460"/>
         <source>GOG file (*.*)</source>
         <translation type="unfinished">ГОГ датотека (*.*)</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="457"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="461"/>
         <source>File selection</source>
         <translation type="unfinished">Избор датотеке</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="468"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="677"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="472"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="681"/>
         <source>GOG installer</source>
         <translation type="unfinished">Инсталатер за GOG</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="561"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="565"/>
         <source>Heroes III: HD Edition files are not supported by VCMI.
 Please select the directory with Heroes III: Complete Edition or Heroes III: Shadow of Death.</source>
-        <translation type="unfinished">VCMI не подржава датотеке за Heroes III: HD Edition.\nИзаберите директоријум са игром Heroes III: Complete Edition или Heroes III: Shadow of Death.</translation>
+        <translation type="unfinished">VCMI не подржава датотеке за Heroes III: HD Edition.
+Изаберите директоријум са игром Heroes III: Complete Edition или Heroes III: Shadow of Death.</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="563"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="567"/>
         <source>Unknown or unsupported Heroes III version found.
 Please select the directory with Heroes III: Complete Edition or Heroes III: Shadow of Death.</source>
-        <translation type="unfinished">Пронађена је непозната или неподржана верзија игре Heroes III.\nИзаберите директоријум са игром Heroes III: Complete Edition или Heroes III: Shadow of Death.</translation>
+        <translation type="unfinished">Пронађена је непозната или неподржана верзија игре Heroes III.
+Изаберите директоријум са игром Heroes III: Complete Edition или Heroes III: Shadow of Death.</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="484"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="690"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="488"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="694"/>
         <source>GOG data</source>
         <translation type="unfinished">Подаци GOG-а</translation>
     </message>
@@ -1424,127 +1521,128 @@ Please select the directory with Heroes III: Complete Edition or Heroes III: Sha
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="400"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="404"/>
         <source>Failed to open file: %1</source>
         <translation type="unfinished">Није успело отварање датотеке: %1</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="420"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="446"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="424"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="450"/>
         <source>You need to select a %1 file!</source>
         <comment>param is file extension</comment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="428"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="432"/>
         <source>Unknown installer selected.
 You need to select the offline GOG installer.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="440"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="444"/>
         <source>You selected a GOG Galaxy installer. This file does not contain the game. Please download the offline backup game installer instead.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="469"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="473"/>
         <source>Select the offline GOG installer (.exe)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="478"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="680"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="482"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="684"/>
         <source>Invalid file selected</source>
         <translation type="unfinished">Изабрана је неважећа датотека</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="485"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="489"/>
         <source>Select the offline GOG installer data file: %1</source>
         <comment>param is file name</comment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="505"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="693"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="509"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="697"/>
         <source>Invalid data file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="600"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="755"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="604"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="759"/>
         <source>Importing Heroes III data...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="639"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="643"/>
         <source>Preparing installer...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="702"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="706"/>
         <source>Extracting installer...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="739"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="743"/>
         <source>Extracting error!</source>
         <translation type="unfinished">Грешка при издвајању!</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="743"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="747"/>
         <source>Hash error!</source>
         <translation type="unfinished">Грешка у хешу!</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="747"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="751"/>
         <source>No Heroes III data!</source>
         <translation type="unfinished">Нема података за Heroes III!</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="747"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="751"/>
         <source>Selected files do not contain Heroes III data!</source>
         <translation type="unfinished">Одабране датотеке не садрже податке за Heroes III!</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="772"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="776"/>
         <source>Scanning selected folder...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="799"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="803"/>
         <source>Adds interface and gameplay improvements such as a better interface for random maps, revisit and search buttons for the adventure map, quick exchange for heroes, bonus and immunity icons, and actions in battle</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="805"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="809"/>
         <source>A polished fan-made expansion that adds Cove, Factory and Bulwark towns, new campaigns, heroes, artifacts, map objects, Interference and Runes skills, balance fixes and new terrains while staying faithful to Heroes III</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="810"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="814"/>
         <source>Deepens Heroes III with Commanders, stack experience, stack artifacts, many new hero and commander artifacts, extra progression systems and interactive adventure map objects</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="824"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="828"/>
         <source>Tears of Ashan</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="825"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="829"/>
         <source>A fan-made expansion inspired by Heroes V that adds alternate creature upgrades, Light and Dark Magic, Gating, a higher secondary skill cap and redesigned Conflux gameplay to Heroes III</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="525"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="558"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="529"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="562"/>
         <source>Failed to detect valid Heroes III data in chosen directory.
 Please select the directory with installed Heroes III data.</source>
-        <translation type="unfinished">Није успело откривање важећих података за Heroes III у изабраном директоријуму.\nИзаберите директоријум са инсталираним подацима за Heroes III.</translation>
+        <translation type="unfinished">Није успело откривање важећих података за Heroes III у изабраном директоријуму.
+Изаберите директоријум са инсталираним подацима за Heroes III.</translation>
     </message>
     <message>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="525"/>
-        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="569"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="529"/>
+        <location filename="../firstLaunch/firstlaunch_moc.cpp" line="573"/>
         <source>Heroes III data not found!</source>
         <translation type="unfinished">Подаци о игри Heroes III нису пронађени!</translation>
     </message>
@@ -1552,27 +1650,37 @@ Please select the directory with installed Heroes III data.</source>
 <context>
     <name>HdExtractor</name>
     <message>
-        <location filename="../modManager/hdextractor.cpp" line="38"/>
+        <location filename="../modManager/hdextractor.cpp" line="42"/>
+        <source>HD Edition installation found!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/hdextractor.cpp" line="42"/>
+        <source>Heroes III HD Edition installation was found. Install HD graphics mod using this installation?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/hdextractor.cpp" line="49"/>
         <source>Select Directory with HD Edition (Steam folder)</source>
         <translation type="unfinished">Изаберите директоријум са HD издањем (Steam фолдер)</translation>
     </message>
     <message>
-        <location filename="../modManager/hdextractor.cpp" line="46"/>
+        <location filename="../modManager/hdextractor.cpp" line="58"/>
         <source>Invalid folder</source>
         <translation type="unfinished">Неважећи фолдер</translation>
     </message>
     <message>
-        <location filename="../modManager/hdextractor.cpp" line="46"/>
+        <location filename="../modManager/hdextractor.cpp" line="58"/>
         <source>The selected folder does not contain HOMM3 2.0.exe! Please select the HD Edition installation folder.</source>
         <translation type="unfinished">Изабрана фасцикла не садржи HOMM3 2.0.exe! Молимо вас да изаберете инсталациону фасциклу HD Edition.</translation>
     </message>
     <message>
-        <location filename="../modManager/hdextractor.cpp" line="98"/>
+        <location filename="../modManager/hdextractor.cpp" line="110"/>
         <source>Extraction error</source>
         <translation type="unfinished">Грешка при екстракцији</translation>
     </message>
     <message>
-        <location filename="../modManager/hdextractor.cpp" line="98"/>
+        <location filename="../modManager/hdextractor.cpp" line="110"/>
         <source>Please delete mod and try again! Failed to copy file %1 to %2</source>
         <translation type="unfinished">Молимо вас да обришете мод и покушате поново! Копирање датотеке %1 у %2 није успело</translation>
     </message>
@@ -1591,7 +1699,8 @@ Please select the directory with installed Heroes III data.</source>
         <location filename="../innoextract.cpp" line="42"/>
         <source>Stream error while extracting files!
 error reason: </source>
-        <translation type="unfinished">Грешка у току приликом распакивања датотека!\nразлог грешке:</translation>
+        <translation type="unfinished">Грешка у току приликом распакивања датотека!
+разлог грешке:</translation>
     </message>
     <message>
         <location filename="../innoextract.cpp" line="55"/>
@@ -1640,7 +1749,9 @@ Bin (%n bytes):
         <source>Internal copy process failed. Enough space on device?
 
 %1</source>
-        <translation type="unfinished">Интерни процес копирања није успео. Довољно простора на уређају?\n\n%1</translation>
+        <translation type="unfinished">Интерни процес копирања није успео. Довољно простора на уређају?
+
+%1</translation>
     </message>
     <message>
         <location filename="../innoextract.cpp" line="157"/>
@@ -1658,7 +1769,10 @@ Bin (%n bytes):
 %1
 
 %2</source>
-        <translation type="unfinished">Језичка неусклађеност!\n%1\n\n%2</translation>
+        <translation type="unfinished">Језичка неусклађеност!
+%1
+
+%2</translation>
     </message>
     <message>
         <location filename="../innoextract.cpp" line="168"/>
@@ -1666,14 +1780,19 @@ Bin (%n bytes):
 %1
 
 %2</source>
-        <translation type="unfinished">Позната је само једна датотека! Можда су датотеке оштећене? Молимо вас да их поново преузмете.\n%1\n\n%2</translation>
+        <translation type="unfinished">Позната је само једна датотека! Можда су датотеке оштећене? Молимо вас да их поново преузмете.
+%1
+
+%2</translation>
     </message>
     <message>
         <location filename="../innoextract.cpp" line="174"/>
         <source>Unknown files! Maybe files are corrupted? Please download again.
 
 %1</source>
-        <translation type="unfinished">Непознате датотеке! Можда су датотеке оштећене? Молимо вас да их поново преузмете.\n\n%1</translation>
+        <translation type="unfinished">Непознате датотеке! Можда су датотеке оштећене? Молимо вас да их поново преузмете.
+
+%1</translation>
     </message>
 </context>
 <context>
@@ -1862,12 +1981,12 @@ Bin (%n bytes):
         <translation type="unfinished">Грешка при покретању извршне датотеке</translation>
     </message>
     <message>
-        <location filename="../mainwindow_moc.cpp" line="460"/>
+        <location filename="../mainwindow_moc.cpp" line="465"/>
         <source>Replace config file?</source>
         <translation type="unfinished">Заменити конфигурациони фајл?</translation>
     </message>
     <message>
-        <location filename="../mainwindow_moc.cpp" line="460"/>
+        <location filename="../mainwindow_moc.cpp" line="465"/>
         <source>Do you want to replace %1?</source>
         <translation type="unfinished">Да ли желите да замените %1?</translation>
     </message>
@@ -1888,79 +2007,101 @@ Bin (%n bytes):
 <context>
     <name>ModStateController</name>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="214"/>
         <source>Can not install submod</source>
-        <translation type="unfinished">Не могу да инсталирам подмод</translation>
+        <translation type="obsolete">Не могу да инсталирам подмод</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="217"/>
         <source>Mod is already installed</source>
-        <translation type="unfinished">Мод је већ инсталиран</translation>
+        <translation type="obsolete">Мод је већ инсталиран</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="226"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="207"/>
         <source>Can not uninstall submod</source>
         <translation type="unfinished">Не могу да деинсталирам подмод</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="229"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="210"/>
         <source>Mod is not installed</source>
         <translation type="unfinished">Не могу да деинсталирам подмод</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="242"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="223"/>
+        <source>Mod is not located in user data directory and can not be managed by launcher</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/modstatecontroller.cpp" line="227"/>
+        <source>Mod directory is a git repository and can not be managed by launcher</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/modstatecontroller.cpp" line="245"/>
         <source>Mod is already enabled</source>
         <translation type="unfinished">Мод је већ омогућен</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="245"/>
-        <location filename="../modManager/modstatecontroller.cpp" line="271"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="248"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="274"/>
         <source>Mod must be installed first</source>
         <translation type="unfinished">Мод мора бити прво инсталиран</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="249"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="252"/>
         <source>Mod is not compatible, please update VCMI and check the latest mod revisions</source>
         <translation type="unfinished">Мод није компатибилан, ажурирајте VCMI и проверите најновије ревизије мода</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="252"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="255"/>
         <source>Can not enable translation mod for a different language!</source>
         <translation type="unfinished">Не могу да омогућим мод за превод за други језик!</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="257"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="260"/>
         <source>Required mod %1 is missing</source>
         <translation type="unfinished">Недостаје потребан мод %1</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="268"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="271"/>
         <source>Mod is already disabled</source>
         <translation type="unfinished">Мод је већ онемогућен</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="281"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="304"/>
         <source>Mod archive is missing</source>
         <translation type="unfinished">Недостаје архива модова</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="286"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="309"/>
         <source>Mod archive is invalid or corrupted</source>
         <translation type="unfinished">Архива модова је неважећа или оштећена</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="312"/>
-        <location filename="../modManager/modstatecontroller.cpp" line="332"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="317"/>
+        <source>Failed to remove directory %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/modstatecontroller.cpp" line="320"/>
+        <source>Failed to create directory %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/modstatecontroller.cpp" line="352"/>
         <source>Failed to extract mod data</source>
         <translation type="unfinished">Није успело издвајање података мода</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="344"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="359"/>
+        <source>Failed to replace directory %1. Close all applications that may be using it, such as file explorer, and try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../modManager/modstatecontroller.cpp" line="386"/>
         <source>Mod data was not found</source>
         <translation type="unfinished">Подаци о моду нису пронађени</translation>
     </message>
     <message>
-        <location filename="../modManager/modstatecontroller.cpp" line="348"/>
+        <location filename="../modManager/modstatecontroller.cpp" line="390"/>
         <source>Mod is located in a protected directory, please remove it manually:
 </source>
         <translation type="unfinished">Мод се налази у заштићеном директоријуму, молимо вас да га ручно уклоните:</translation>
@@ -2088,29 +2229,29 @@ Bin (%n bytes):
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../main.cpp" line="158"/>
+        <location filename="../main.cpp" line="148"/>
         <source>Error starting executable</source>
         <translation type="unfinished">Грешка при покретању извршне датотеке</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="159"/>
+        <location filename="../main.cpp" line="149"/>
         <source>Failed to start %1
 Reason: %2</source>
         <translation type="unfinished">Грешка при покретању извршне датотеке</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1319"/>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1338"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1378"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1397"/>
         <source>Import failed</source>
         <translation type="unfinished">Увоз није успео</translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1319"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1378"/>
         <source>Failed to import save %1 from %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../modManager/cmodlistview_moc.cpp" line="1338"/>
+        <location filename="../modManager/cmodlistview_moc.cpp" line="1397"/>
         <source>Failed to import save file %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2339,7 +2480,13 @@ Reason: %2</source>
  - VCMI mods in zip format (.zip)
  - VCMI configuration files (.json)
 </source>
-        <translation type="obsolete">Ова опција вам омогућава да увезете додатне датотеке са подацима у вашу VCMI инсталацију. Тренутно су подржане следеће опције:\n\n- Мапе за Heroes III (.h3m или .vmap).\n- Кампање за Heroes III (.h3c или .vcmp).\n- Хронике за Heroes III коришћењем офлајн резервне копије инсталера са GOG.com (.exe).\n- VCMI модови у zip формату (.zip)\n- VCMI конфигурационе датотеке (.json)</translation>
+        <translation type="obsolete">Ова опција вам омогућава да увезете додатне датотеке са подацима у вашу VCMI инсталацију. Тренутно су подржане следеће опције:
+
+- Мапе за Heroes III (.h3m или .vmap).
+- Кампање за Heroes III (.h3c или .vcmp).
+- Хронике за Heroes III коришћењем офлајн резервне копије инсталера са GOG.com (.exe).
+- VCMI модови у zip формату (.zip)
+- VCMI конфигурационе датотеке (.json)</translation>
     </message>
     <message>
         <location filename="../startGame/StartGameTab.cpp" line="333"/>
@@ -2391,7 +2538,9 @@ Reason: %2</source>
         <source>A new version of some of the mods that you have installed is now available in mod repository. Use this option to automatically update all your mods to latest version.
 
 WARNING: In some cases, updated versions of mods may not be compatible with your existing saves. You may want to postpone mod update until you finish any of your ongoing games.</source>
-        <translation type="unfinished">Нова верзија неких модова које сте инсталирали сада је доступна у репозиторијуму модова. Користите ову опцију да бисте аутоматски ажурирали све своје модове на најновију верзију.\n\nУПОЗОРЕЊЕ: У неким случајевима, ажуриране верзије модова можда неће бити компатибилне са вашим постојећим сачуваним датотекама. Можда ћете желети да одложите ажурирање модова док не завршите било коју од текућих игара.</translation>
+        <translation type="unfinished">Нова верзија неких модова које сте инсталирали сада је доступна у репозиторијуму модова. Користите ову опцију да бисте аутоматски ажурирали све своје модове на најновију верзију.
+
+УПОЗОРЕЊЕ: У неким случајевима, ажуриране верзије модова можда неће бити компатибилне са вашим постојећим сачуваним датотекама. Можда ћете желети да одложите ажурирање модова док не завршите било коју од текућих игара.</translation>
     </message>
     <message>
         <location filename="../startGame/StartGameTab.cpp" line="476"/>
@@ -2475,12 +2624,12 @@ After installation, you need to set the upscaling filter to x2 or higher in orde
         <translation type="unfinished">Провери ажурирања при покретању</translation>
     </message>
     <message>
-        <location filename="../updatedialog_moc.cpp" line="64"/>
+        <location filename="../updatedialog_moc.cpp" line="71"/>
         <source>Network error</source>
         <translation type="unfinished">Грешка мреже</translation>
     </message>
     <message>
-        <location filename="../updatedialog_moc.cpp" line="101"/>
+        <location filename="../updatedialog_moc.cpp" line="100"/>
         <source>Cannot read JSON from URL or incorrect JSON data</source>
         <translation type="unfinished">Не могу да прочитам JSON са URL-а или су JSON подаци нетачни</translation>
     </message>

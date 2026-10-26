@@ -59,11 +59,35 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Upstream-base reconciliation: `hardware validated` by the user's 2026-10-26
+  “All passed” report, with merge and branch cleanup authorized for
+  [PR #55](https://github.com/CapnChaosDK/vcmi_thor/pull/55). Exact candidate
+  `582c2817e5ac2f2c8b13050e066d5af8fbde9c78` passed both jobs in
+  [Thor CI 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
+  APK SHA-256: `6191b4ad44db171566c6ac1ced9a915cc1d30e25f7ce2ebc945fc6d16f7149d8`.
+  The upstream base is `46f2e15ec69e0507e6d0195d6357df5a2813dde1`. The user approved dropping
+  custom multi-slot redistribution and isolating new saves while preserving the old
+  files on 2026-10-25. [Integration contract](docs/AYN_THOR_UPSTREAM_OVERLAY.md),
+  [source boundary policy](CI/thor_upstream_base.json), and the single current
+  [candidate checklist](CI/thor-validation-plan.json) define acceptance. All seven
+  packaged device checks are user-reported passed; the companion export and
+  installed-byte receipt were not supplied for independent inspection. The permanent
+  candidate ref retains the exact tested SHA. Earlier slice statements describe
+  older trees; their engine adaptations are superseded by this complete upstream base.
+
+
+- Scope decision (2026-10-25): second-screen additions only; engine/server/save/AI,
+  ordinary gameplay and primary-screen/controller behavior follow the chosen upstream
+  base. Further selective engine migrations are excluded. Chunked saves are not the
+  next feature. The [fork scope audit](docs/AYN_THOR_FORK_SCOPE_AUDIT.md) records
+  historical divergence; the [accepted upstream overlay](docs/AYN_THOR_UPSTREAM_OVERLAY.md)
+  defines the resulting implementation. New feature work must concern the second screen.
+
 - Complete Slice 55 integration is `hardware validated` by the user on 2026-10-25, with promotion authorized in [PR #54](https://github.com/CapnChaosDK/vcmi_thor/pull/54). Exact candidate `d275285d37789af0ae3751518e2e82b95b7cedf2` passed both jobs in [Thor CI 40193831750](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40193831750), including the complete native regression gate and ARM64 packaging. APK SHA-256 is `f44b2adae35d1314595272b1c848313e2371607945a340da803332b8076edcf3`. The user reported all five packaged checks passed and authorized merging. The installed-byte receipt was not supplied for independent verification; the full CI and acceptance receipts are below.
 
-- Slice 55 reply-validation stage: `hardware validated` by the user's 2026-10-23 “All passed” report for exact candidate `e9a00c57804f6aa4c44ca866af4a5e22c88b6632`. [Thor CI 39956198463](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39956198463) passed both jobs; [PR #53](https://github.com/CapnChaosDK/vcmi_thor/pull/53) is promoted as `99c3d19d228535e3bcdd50a7973c6499b67bb6c4`, with only backlog Markdown differing from the tested candidate. The installed-byte receipt was not supplied for independent verification. The complete activity runtime migration remains open.
+- Slice 55 reply-validation stage: `hardware validated` by the user's 2026-10-23 “All passed” report for exact candidate `e9a00c57804f6aa4c44ca866af4a5e22c88b6632`. [Thor CI 39956198463](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39956198463) passed both jobs; [PR #53](https://github.com/CapnChaosDK/vcmi_thor/pull/53) is promoted as `99c3d19d228535e3bcdd50a7973c6499b67bb6c4`, with only backlog Markdown differing from the tested candidate. The installed-byte receipt was not supplied for independent verification. This was a prerequisite stage; the complete migration is now promoted through PR #54, as recorded above.
 
-- Covered-query reply isolation: `hardware validated` by the user's 2026-10-23 report for exact candidate `f70ae38382afc1115ef2c286699dc961908183fb`; [Thor CI 39928810263](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39928810263) passed both jobs. The server confines a covered legacy reply to the answering player's query stack. The five-check candidate plan passed according to the user. The companion's installed-byte receipt was not provided here, so its checksum is not independently recorded. [PR #52](https://github.com/CapnChaosDK/vcmi_thor/pull/52) is promoted as `12699f09e83c09c4b9dfd32c32433e41cf941147`, with only backlog Markdown differing from the tested candidate. The activity migration in Slice 55 remains in progress.
+- Covered-query reply isolation: `hardware validated` by the user's 2026-10-23 report for exact candidate `f70ae38382afc1115ef2c286699dc961908183fb`; [Thor CI 39928810263](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39928810263) passed both jobs. The server confines a covered legacy reply to the answering player's query stack. The five-check candidate plan passed according to the user. The companion's installed-byte receipt was not provided here, so its checksum is not independently recorded. [PR #52](https://github.com/CapnChaosDK/vcmi_thor/pull/52) is promoted as `12699f09e83c09c4b9dfd32c32433e41cf941147`, with only backlog Markdown differing from the tested candidate. This was a prerequisite stage; the complete Slice 55 migration is now promoted through PR #54.
 
 - Slice 54: safe callback lookups and stale-action handling is `hardware validated` on exact candidate `9700fba151a0835fbacc7ea3f339d14dc6429a5b` by the user's 2026-10-23 confirmation. It is merged through PR #46 as product commit `77db689b2fbd89ea797d1a3c77c6c642b9b1800f`; candidate-to-product differences are backlog Markdown only. The complete boundary includes strict/optional object, tile and player-state lookups, audited Thor/fork callers, real callback/server regressions and the five-part checklist packaged with that exact candidate. The original implementation passed both jobs in Thor CI 39834081628, and the public [Thor CI 39838066632](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/39838066632) page reports success for the final candidate. The follow-up artifact/APK checksum was not independently available in this environment; no hash or installed-byte verification is asserted by this record.
 
@@ -96,11 +120,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 - Historical validation: The user confirmed the combined Slice 33/34 physical AYN Thor checklist passed for that exact candidate. Thor CI push run [`36723432343`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36723432343) passed preflight, ARM64 packaging, focused Android tests, package verification, and artifact upload; PR run [`36723438501`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36723438501) also passed. Artifact `thor-candidate-arm64-36723432343` (ID `11102417637`) has uploaded ZIP SHA-256 `e79fd65a78e5c1e150aac107aee91971b704c445ee91206dd11d1afa88b1a911`. Its downloaded receipt records package `is.xyz.vcmi.thor`, ABI `arm64-v8a`, and APK SHA-256 `dabba8aed82fdf26065b8ee1eb2e5297232f47c10b6a32f83e6c4a9d24e15e96`; the downloaded APK and checksum file independently match. Device installation details were not in the available evidence and are not asserted here.
 - Slice 29 promotion evidence: PR #16 merged as product commit `9a4b2a0b3f8f3b3c6de8096e0f5e757dfdd79989`. `git diff --name-only 7b04e6df3aa0a903e616baa1575ebb52615215b1 9a4b2a0b3f8f3b3c6de8096e0f5e757dfdd79989` contains only `AYN_THOR_BACKLOG.md`; the product code tree matches the hardware-tested candidate.
 - Slice 30 promotion evidence: candidate `fcf31433944424e6ec003c865dea681a77514876` passed Thor CI run [`36335531648`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36335531648) and the user's complete hardware checklist on the checksum-verified AYN Thor APK. PR #17 merged as product commit `6f09d6e62433c0689c2c76f929da4fb75e7f2eea`.
-- Latest fully hardware-validated numbered slice: Slice 54 (the later Slice 55 prerequisite stages are recorded separately above), candidate `9700fba151a0835fbacc7ea3f339d14dc6429a5b`, successful CI `39838066632`, user-confirmed hardware acceptance on 2026-10-23 and product merge through PR #46. The artifact/APK checksum is not independently recorded in this environment; see the Slice 54 receipt below.
+- Latest fully hardware-validated numbered slice: Slice 55, candidate `d275285d37789af0ae3751518e2e82b95b7cedf2`, successful CI `40193831750`, user-reported acceptance on 2026-10-25 and product merge `009a209ce45a3ab2fe4419de3502fb728bb4a8e1` through PR #54. Installed-byte verification was not independently supplied; see its receipt below.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
-- Product branch: `ayn-thor-dual-screen`; the current baseline is `06ff1c27cb73d0f9174f790dc69680680f3e56ff`, including Slice 54 and the two Slice 55 prerequisites promoted through PRs #52/#53. The complete migration is on draft PR #54, outside the validated product tree. Begin future features from the freshly fetched product ref and verify its tree; older upstream/product checkpoints are historical. The divergent former local product tip `fb8e362e09c7aadeeeae19514f71050919920f69` was preserved under local branch `codex/backup-ayn-thor-before-sync-20261017` at the earlier synchronization checkpoint.
+- Product branch: `ayn-thor-dual-screen`; current implementation is `009a209ce45a3ab2fe4419de3502fb728bb4a8e1`, including the complete Slice 55 migration merged through PR #54. Begin future work from the freshly fetched product ref and verify its tree; older upstream/product checkpoints and backup-branch statements are historical.
 - Remote safety: `origin` points to the CapnChaosDK fork; the local `upstream` push URL is disabled.
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
@@ -237,7 +261,21 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff: Slice 54 callback safety, covered-reply isolation and the reply-validation stage are user-confirmed on their exact candidates and promoted. The latter passed both Thor CI jobs and all five user-reported device checks for exact candidate `e9a00c57804f6aa4c44ca866af4a5e22c88b6632`; PR #53 merged as `99c3d19d228535e3bcdd50a7973c6499b67bb6c4`. The full Slice 55 activity/question migration remains open and will need its own complete candidate checklist. The earlier proposed/next-slice headings below, including old Slice 43/44 handoffs, are historical planning records. The [compatibility assessment](docs/AYN_THOR_UPSTREAM_COMPATIBILITY.md) retains the dependency-aware roadmap.
+Current handoff (2026-10-26): the upstream-base reconciliation is user-reported
+hardware validated and promotion is authorized; see Current state and its receipts.
+The user has superseded the
+selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
+activity, AI or general controller rewrite is queued as the next Thor feature.
+
+The [accepted upstream overlay](docs/AYN_THOR_UPSTREAM_OVERLAY.md) uses fresh upstream,
+removes custom redistribution and isolates new saves under user-approved scope.
+Its implementation, review, CI and reported device gates are complete. Select the
+next complete lower-screen gap only after checking the current owners, tests and
+existing journeys. Do not restart completed milestones or select general engine
+maintenance as a feature. Product history and old saves remain preserved. Earlier proposed/next-slice
+headings and selective compatibility priorities below are historical records.
+Completed haptics and other old milestones must not be selected again without
+checking implementation/history.
 
 ## Proposed next slice: measured deck shell and diagnostics
 
@@ -2093,3 +2131,95 @@ Promotion and cleanup receipt (2026-10-22):
 - Successful candidate receipt (2026-10-25): [Thor CI 40193831750](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40193831750) completed successfully on exact candidate `d275285d37789af0ae3751518e2e82b95b7cedf2`, tree `62c718433f7cbf76148b6b9120bd44a1c1040cef`. Both preflight and ARM64 jobs passed. Preflight passed the checklist, 191 focused native Thor tests and the complete ArmyTransferBoundary runtime gate after correcting all five fixture failures. ARM64 compiled the integrated client/server/AI code, passed the configured Android tests and package checks, and uploaded artifact `thor-candidate-arm64-40193831750` (ID `12600171161`, 40,580,377 bytes). GitHub artifact ZIP digest: `abe34ca9a8e848194f8669ab4acf54b369f2ac70f98c4197bc17346035a64c4e`; job-reported APK SHA-256: `f44b2adae35d1314595272b1c848313e2371607945a340da803332b8076edcf3`; package: `is.xyz.vcmi.thor`. These hashes come from GitHub metadata and job logs; the archive and installed bytes were not downloaded/hashed independently here. Use the companion to verify the artifact, receipt, APK and installed bytes, then complete the five packaged hardware checks. The candidate ref remains on this exact tested implementation; this receipt changes only backlog Markdown. No device acceptance or merge is claimed.
 
 - Hardware acceptance and merge authorization (2026-10-25): after receiving exact candidate `d275285d37789af0ae3751518e2e82b95b7cedf2` from successful run `40193831750`, the user reported “all passed, ready to merger”. This records user-reported completion of all five packaged checks: exchange ownership/transfers, nested rewards and turn start, battle/teleport continuation, save/load, and display/input restoration. No failure or blocked scenario was reported. The companion export and installed-byte verification were not supplied for independent inspection. The user explicitly authorized merging PR #54. The final implementation tip differs from the tested candidate only in backlog Markdown; the native/client/Android/build/test/checklist tree is identical. The latest pre-acceptance PR preflight also passed in run `40197268289`. The permanent candidate branch retains the hardware-tested SHA.
+
+## Upstream-base reconciliation — 2026-10-25
+
+- Contract: use the complete pinned upstream engine, server, serializers, packet
+  registrations, AI and primary input behavior. Retain only second-screen display,
+  bounded transport, current owner/UI routes, acceptance tracking and Thor packaging.
+- Approved compatibility changes: remove custom multi-slot redistribution and reserve
+  action 22; mount new `vcmi-data/Saves-upstream` while leaving old `Saves` files for
+  the old APK. No conversion, old replay support or mixed-version interoperability
+  is claimed. Standard lower transfers/splits and upstream bulk actions remain.
+- Architecture: fresh upstream tree with pre-engine-migration Thor overlay adapted
+  to current APIs. Existing callback APIs stay upstream-owned; a small client-side
+  scoped observer captures their actual request IDs. The lower army adapter delegates
+  bulk behavior to upstream. General Slices 51–55 adaptations are not carried.
+- Acceptance: [upstream overlay contract](docs/AYN_THOR_UPSTREAM_OVERLAY.md) and
+  [CI/thor-validation-plan.json](CI/thor-validation-plan.json). The former Slice 55
+  checklist is retained as [historical JSON](docs/AYN_THOR_SLICE_55_VALIDATION_PLAN.json).
+- Local validation: all 48 changed native production translation units passed Android
+  syntax checks, all eight Thor native test translation units parsed, and 19 affected
+  native translation units also passed without the Thor flag. All 144 JVM cases,
+  three checklist tests and the Git-fixture scope-policy test passed. YAML/JSON and
+  26 embedded shell scripts/Python heredocs parsed. These are host checks using NDK
+  r27 and Java API stubs; they do not establish native runtime or APK behavior.
+- Phase D checkpoint: the complete intended boundary is implemented: upstream-owned
+  engine/packets/saves/AI/input; lower decks and native owner routes; scoped request
+  observation; reserved action 22; fresh save mount and browser; preserved old files;
+  checklist, policy and upstream native CI registration. No user-approved capability
+  omission is deferred. Native runtime, ARM64 and device acceptance remain CI/device
+  gates, not inferred passes.
+- Independent review: a focused delegated review of request observation, army adapter,
+  exchange Close/acknowledgements, save mounting and policy found that unrestricted
+  root refresh could re-expose old saves. Fixed the Thor browser to enumerate only
+  the dedicated save loader; added a real-loader refresh/preservation regression.
+  Focused re-review found no further actionable defect. Separate primary review
+  checked the full changed-file inventory/diff, source boundaries, API port conflicts,
+  guards, action parity/removal, upper ownership, build registration, workflow gates,
+  documentation and candidate checklist. Removed a stale CMake custom-packet entry,
+  preserved upstream recruitment method naming and fixed current Wait/callback APIs.
+  Native runtime, ARM64 and exact-candidate hardware acceptance remain outstanding.
+
+- Initial overlay candidate failure (2026-10-25): run
+  [40226842021](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40226842021)
+  on `ffff61e6fa35125a57a7993646c53fc2d2e1c47b` passed the upstream scope/checklist
+  checks and all 158 focused native Thor tests. The complete native executable
+  compiled (1268 registered tests), but global setup stopped before test execution:
+  `CONFIG/FILESYSTEM` was missing. Building `vcmitest` alone bypassed the upstream
+  `vcmi` facade's asset-deployment post-build step. The workflow now builds both
+  targets and verifies the deployed configuration, shipped mod, scripts and test
+  fixture before running the unchanged full suite. No production source, test
+  assertion, filter or cache policy changed. Separate source review confirmed the
+  upstream deployment owner and test loader paths; YAML and embedded shell syntax,
+  scope/checklist checks and diff hygiene pass locally. Runtime and ARM64 remain
+  pending the corrected candidate; no device pass or promotion is claimed.
+
+- ARM64 compile failure and correction (2026-10-26): exact candidate
+  `6d50bec6bf4734d6d619b25ed7ed126ee058be39` passed Thor preflight in
+  [run 40228983086](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40228983086),
+  including the full upstream native regressions and focused Thor contracts.
+  ARM64 compilation stopped in `client/GameEngine.cpp:180` because the port left
+  `thorActionExecuted` unused under `-Werror,-Wunused-variable`. Removed only
+  that obsolete local declaration. Request validation, per-request `executed`,
+  acknowledgements, queue clearing and upstream frame/input handling are unchanged.
+  The existing seven-part candidate checklist remains applicable. The corrected
+  candidate still requires the full Thor workflow and exact-APK hardware acceptance;
+  no APK, device pass or promotion is claimed by this correction.
+  Validation: all 158 focused native Thor tests and all four scope/checklist
+  Python tests passed on the candidate's fetched sources. Diff hygiene and a
+  separate complete-diff self-review passed; no behavioral change was found.
+  Full Android compilation is delegated to the existing candidate workflow.
+
+
+- Successful candidate and hardware acceptance (2026-10-26): exact candidate
+  `582c2817e5ac2f2c8b13050e066d5af8fbde9c78` passed both jobs in
+  [Thor CI 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
+  Preflight passed the source-boundary/checklist checks, all 158 focused native Thor
+  tests and all 1268 upstream/Thor native regression tests. ARM64 compilation,
+  configured Android tests, package identity and artifact/receipt/checklist gates
+  passed. Package: `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-40288183153`,
+  ID `12636621523`, 40,644,844 bytes, expires 2026-11-02. GitHub artifact ZIP digest:
+  `03c9db8a019cfb494952c12c11dba3dc9c0f5a397ccd1fd07842a2ed50282e26`.
+  Job-reported APK SHA-256:
+  `6191b4ad44db171566c6ac1ced9a915cc1d30e25f7ce2ebc945fc6d16f7149d8`.
+  Hashes are from GitHub metadata/logs; no archive or installed-byte hash was
+  independently computed in this handover. The user reported “All passed” for the
+  exact latest candidate and explicitly authorized commit, merge and unused-branch
+  cleanup. This records all seven packaged checks: save isolation/preservation,
+  menus/setup, Adventure, Hero/Town services, standard Meeting, Battle/upstream
+  primary input and lifecycle/display/input regressions. No skipped or failed case
+  was reported; the companion export was not supplied. Agent guidance now binds
+  future feature selection to incomplete second-screen journeys and the executable
+  upstream source-boundary policy. These handover changes are Markdown only;
+  the hardware-tested product/build/checklist tree remains unchanged.

@@ -13,7 +13,6 @@
 #include <utility>
 
 #include "ThorContext.h"
-#include "../mapObjects/army/ArmyStackRedistribution.h"
 
 /// Stable semantic commands accepted from the AYN Thor companion display.
 enum class ThorAction : std::uint8_t
@@ -40,7 +39,7 @@ enum class ThorAction : std::uint8_t
 	HERO_MEETING_SWAP_ARMIES = 19,
 	HERO_MEETING_SPLIT_STACK = 20,
 	HERO_MEETING_TRANSFER_ARTIFACT = 21,
-	HERO_MEETING_REDISTRIBUTE_STACK = 22,
+	RESERVED_22 = 22,
 	HERO_MEETING_ARTIFACTS_LEFT_TO_RIGHT = 23,
 	HERO_MEETING_ARTIFACTS_RIGHT_TO_LEFT = 24,
 	HERO_MEETING_SWAP_ARTIFACTS = 25,
@@ -92,7 +91,7 @@ static_assert(THOR_MAX_ACTION_ID <= std::numeric_limits<std::uint64_t>::digits,
 constexpr std::uint64_t thorActionMask(ThorAction action)
 {
 	const auto actionId = static_cast<std::uint8_t>(action);
-	return actionId == 0 || actionId > std::numeric_limits<std::uint64_t>::digits
+	return actionId == 0 || action == ThorAction::RESERVED_22 || actionId > std::numeric_limits<std::uint64_t>::digits
 		? 0 : std::uint64_t{1} << (actionId - 1U);
 }
 
@@ -201,40 +200,6 @@ struct DLL_LINKAGE ThorAdventureMovementAuthority
 	std::uint64_t movementSequence = 0;
 };
 
-/// One destination in a bounded Hero Meeting redistribution plan.
-struct DLL_LINKAGE ThorHeroMeetingRedistributionTarget
-{
-	int armyId = -1;
-	int slot = -1;
-	int amount = 0;
-	bool operator==(const ThorHeroMeetingRedistributionTarget &) const = default;
-};
-
-constexpr std::size_t THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS =
-	static_cast<std::size_t>(THOR_HERO_MEETING_SLOT_KEY_COUNT) - 1;
-static_assert(THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS == MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS);
-
-/// Dedicated action-22 payload. The fixed target array bounds both JNI input and game-thread transport.
-struct DLL_LINKAGE ThorHeroMeetingRedistributionRequest
-{
-	std::uint64_t revision = 0;
-	ThorAction action = ThorAction::HERO_MEETING_REDISTRIBUTE_STACK;
-	int leftHeroId = -1;
-	int rightHeroId = -1;
-	int sourceArmyId = -1;
-	int sourceSlot = -1;
-	int sourceCreatureId = -1;
-	int sourceCount = 0;
-	std::size_t destinationCount = 0;
-	std::array<ThorHeroMeetingRedistributionTarget, THOR_MAX_HERO_MEETING_REDISTRIBUTION_DESTINATIONS> destinations{};
-};
-
-/// Decodes equal-length bounded JNI arrays into the fixed native request structure.
-DLL_LINKAGE std::optional<ThorHeroMeetingRedistributionRequest> decodeThorHeroMeetingRedistributionRequest(
-	std::uint64_t revision, int leftHeroId, int rightHeroId, int sourceArmyId, int sourceSlot,
-	int sourceCreatureId, int sourceCount, std::span<const int> destinationArmyIds,
-	std::span<const int> destinationSlots, std::span<const int> amounts);
-
 /// A directional pair of fixed Hero Meeting slot keys. Keys 0-6 are left, 7-13 are right.
 struct DLL_LINKAGE ThorHeroMeetingTransferPair
 {
@@ -307,8 +272,6 @@ DLL_LINKAGE ThorActionValidation validateThorAdventureMapRequest(const ThorActio
 	int width, int height, int levels, int currentLevel);
 DLL_LINKAGE ThorActionValidation validateThorAdventureMovementRequest(const ThorActionRequest & request,
 	const ThorContextRecord & context, const ThorAdventureMovementAuthority & authority);
-DLL_LINKAGE ThorActionValidation validateThorHeroMeetingRedistributionRequest(
-	const ThorHeroMeetingRedistributionRequest & request, const ThorContextRecord & context);
 
 /// Fixed-capacity handoff between the Android UI thread and the VCMI GUI thread.
 /// Overflow deterministically drops the newest request, preserving earlier input order.
@@ -320,33 +283,12 @@ class DLL_LINKAGE ThorActionQueue final
 	std::array<ThorActionRequest, capacity> requests;
 	std::size_t first = 0;
 	std::size_t count = 0;
-	bool controllerResetPending = false;
 
 public:
 	bool submit(ThorActionRequest request);
 	std::optional<ThorActionRequest> pop();
-	void clear(bool cancelController = false);
-	bool takeControllerReset();
-	std::size_t size() const;
-};
-
-DLL_LINKAGE ThorActionQueue & thorActionQueue();
-
-/// Separate fixed-capacity queue for the larger, bounded action-22 allocation payload.
-class DLL_LINKAGE ThorHeroMeetingRedistributionQueue final
-{
-	static constexpr std::size_t capacity = 4;
-
-	mutable std::mutex mutex;
-	std::array<ThorHeroMeetingRedistributionRequest, capacity> requests;
-	std::size_t first = 0;
-	std::size_t count = 0;
-
-public:
-	bool submit(ThorHeroMeetingRedistributionRequest request);
-	std::optional<ThorHeroMeetingRedistributionRequest> pop();
 	void clear();
 	std::size_t size() const;
 };
 
-DLL_LINKAGE ThorHeroMeetingRedistributionQueue & thorHeroMeetingRedistributionQueue();
+DLL_LINKAGE ThorActionQueue & thorActionQueue();

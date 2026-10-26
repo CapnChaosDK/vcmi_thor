@@ -29,10 +29,20 @@ function AdventureServer:markQuestProposed(target, player) end
 ---@param player integer # Player whose quest log gains the entry.
 function AdventureServer:addToQuestLog(target, player) end
 
----Internal plumbing for the setQuestHint helper. Scripts should call setQuestHint instead.
+---Sets the hover / quest-log hint of a scripted quest, and the icons shown with it in the quest log.
 ---@param target MapObject # The quest source (seer hut / quest guard) whose hint changes.
 ---@param text MetaString # New hover / quest-log text for the object's active quest.
-function AdventureServer:setQuestHintText(target, text) end
+---@param components Component[]? # Icons shown with the hint in the quest log; nil for none.
+function AdventureServer:setQuestHint(target, text, components) end
+
+---Turns off a timed player event of the map, so it no longer occurs.
+---@param handler string # Name of the map script handler that the timed player event runs.
+function AdventureServer:disablePlayerEvent(handler) end
+
+---Turns off a timed event of a town, so it no longer occurs.
+---@param town TownInstance # Town that owns the event.
+---@param handler string # Name of the map script handler that the timed town event runs.
+function AdventureServer:disableTownEvent(town, handler) end
 
 ---Returns a random whole number in the given range. Draws from the game's own random generator, so the result stays consistent with saved games and network play - do not use Lua's math.random for gameplay decisions.
 ---@param lower integer # Smallest value that may be returned.
@@ -282,11 +292,22 @@ function Battle:getDefendedTown() end
 ---@return Unit
 function Battle:getUnitByPos(hex, onlyAlive) end
 
----Returns all obstacles on the battlefield.
+---Returns the player currently controlling the unit. Unlike Unit:getOwner, this accounts for Hypnotize, which hands a unit over to the opposing player.
+---@param unit Unit # Unit whose controller is queried.
+---@return integer
+function Battle:getUnitController(unit) end
+
+---True if the actor treats the target as an enemy. Accounts for Hypnotize: a hypnotized unit fights its own army, which still counts it as one of their own.
+---@param actor Unit # Unit that acts, e.g. attacks or casts a spell.
+---@param target Unit # Unit the action is aimed at.
+---@return boolean
+function Battle:isHostile(actor, target) end
+
+---Returns all obstacles on the battlefield, including ones hidden from the caller.
 ---@return Obstacle[]
 function Battle:getAllObstacles() end
 
----Returns the obstacles on the given hex.
+---Returns the obstacles on the given hex, including ones hidden from the caller.
 ---@param hex BattleHex # Hex whose obstacles are queried.
 ---@param onlyBlocking boolean # Pass true to limit results to obstacles that block movement.
 ---@return Obstacle[]
@@ -309,7 +330,7 @@ function Battle:hasNativeStack(side) end
 ---@return BattleHexArray
 function Battle:getAllPossibleHexes() end
 
----Returns the current state of the given wall section, or nil if absent.
+---Returns the number of hitpoints that the given wall section has left, or nil if the town has no such section. Section with no hitpoints left has been destroyed.
 ---@param part WallPart # Wall section to query.
 ---@return integer?
 function Battle:getWallState(part) end
@@ -620,6 +641,7 @@ function Bonus:getParametersAsVector() end
 ---@field sourceType any # Origin class (artifact, spell effect, secondary skill, …) — drives source-based dispels.
 ---@field sourceID any # Identifier of the specific source within its sourceType.
 ---@field targetSourceType any # Source type the bonus is restricted to act upon (used by hero specialty bonuses).
+---@field targetSourceID any # Optional identifier of the specific source object within `targetSourceType` this bonus is restricted to.
 ---@field addInfo any # Optional auxiliary payload — meaning depends on the bonus type.
 ---@field limiters any # JSON-defined limiter chain that definea whether the bonus applies to a given bearer.
 ---@field propagator any # Rule for propagating the bonus upwards for area effect (army-wide, player-wide, …).
@@ -632,7 +654,7 @@ local BonusDescriptor = {}
 ---@field type string? # Bonus type to look for, by its json key.
 ---@field subtype string? # Subtype to look for, by its json key. Requires a type.
 ---@field sourceType BonusSource? # Where the bonus has to come from - an artifact, a spell effect, ...
----@field shooting boolean? # Kind of blow the bonus has to count for - pass the `shooting` flag of the attack. Bonuses limited to the other kind are left out, those limited to neither always count.
+---@field shooting boolean? # Kind of attack the bonus has to count for - pass the `shooting` flag of the attack. Bonuses limited to the other kind are left out, those limited to neither always count.
 local BonusFilter = {}
 
 ---A collection of Bonus values returned by `getBonuses(...)`. Use `size()` and `getBonus(index)` to iterate. A copy of the engine's internal list at the moment of the call — changes to holder afterwards will not affect this snapshot.
@@ -665,8 +687,8 @@ local Building = {}
 ---@return string # Identifier of this building, scoped by the mod providing it.
 function Building:getJsonKey() end
 
----Returns which of the buildings known to the game this one is. Unlike the json key this is the same in every town, so it is what to test against when a rule speaks of a fort or a town hall rather than of one particular mod's version of it.
----@return string? # "fort", "villageHall", ...; nil for a building the game has no name of its own for.
+---Returns the predefined building type shared across towns.
+---@return string? # 'fort', 'villageHall', ...; nil for buildings without a predefined type.
 function Building:getBuildingType() end
 
 ---Whether this building is an upgrade of another, as a citadel is of a fort.
@@ -711,9 +733,10 @@ function Calendar:getWeeksInMonth() end
 
 ---Descriptor for an icon shown in a message window (a creature, artifact, resource, skill, ... with an optional amount). `type` selects the kind and `subType` the specific entity.
 ---@class Component
----@field type integer # Component kind (ComponentType index).
+---@field type integer # Component kind, one of ENUM.ComponentType.
 ---@field subType integer # Identifier index of the entity, interpreted according to `type`.
 ---@field value integer? # Optional amount: positive means gained, negative means lost.
+---@field faction integer? # Faction index of the town building, required by building components.
 local Component = {}
 
 ---A creature type from the database (e.g. "pikeman"). Carries base stats, faction, recruitment cost, and the bonuses every instance starts with. Concrete battlefield or army-slot instances are Unit and StackInstance respectively.
@@ -787,6 +810,7 @@ function Creature:isDoubleWide() end
 ---@field PrimarySkill PrimarySkill # The four primary hero skills.
 ---@field PlayerColor PlayerColor # Player colours, plus the neutral owner used by unowned objects.
 ---@field PlayerStatus PlayerStatus # Whether a player is still playing, has won, or has lost.
+---@field ComponentType ComponentType # Kinds of icons shown in message windows, used by Component `type`.
 local Enums = {}
 
 ---Outcome categories for the heal action: plain heal / resurrect / overheal.
@@ -1074,6 +1098,43 @@ local PlayerStatus = {
     winner = 2,
 }
 
+---Kinds of icons shown in message windows, used by Component `type`.
+---@enum ComponentType
+local ComponentType = {
+    ---Primary skill; `subType` is the skill, `value` the change.
+    primarySkill = 0,
+    ---Secondary skill; `subType` is the skill, `value` the mastery level (1-3).
+    secondarySkill = 1,
+    ---Resource; `subType` is the resource, `value` the amount.
+    resource = 2,
+    ---Daily resource income; `subType` is the resource, `value` the amount per day.
+    resourcePerDay = 3,
+    ---Creature; `subType` is the creature, `value` the optional count.
+    creature = 4,
+    ---Artifact; `subType` is the artifact.
+    artifact = 5,
+    ---Spell scroll; `subType` is the spell in the scroll.
+    spellScroll = 6,
+    ---Spell points; `value` is the change.
+    mana = 7,
+    ---Experience; `value` is the amount.
+    experience = 8,
+    ---Hero levels; `value` is the number of levels.
+    level = 9,
+    ---Spell; `subType` is the spell.
+    spell = 10,
+    ---Morale; `value` is the change.
+    morale = 11,
+    ---Luck; `value` is the change.
+    luck = 12,
+    ---Town building; `subType` is the building and `faction` its faction.
+    building = 13,
+    ---Hero portrait; `subType` is the hero.
+    heroPortrait = 14,
+    ---Player flag; `subType` is the player.
+    flag = 15,
+}
+
 ---A town/army faction definition (Castle, Rampart, Inferno, …). Identifies the kind, not a placed town; use Game lookups for the latter.
 ---@class Faction
 local Faction = {}
@@ -1178,7 +1239,7 @@ local HeroInstance = {}
 ---@return BonusList # Bonuses of the bearer the filter describes.
 function HeroInstance:getBonuses(filter) end
 
----Returns what the matching bonuses are worth together. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
+---Returns the combined value of the matching bonuses. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
 ---@param filter BonusFilter # Which bonuses to count. An empty filter counts every one of them.
 ---@return integer # Value of the matching bonuses taken together.
 function HeroInstance:getBonusesValue(filter) end
@@ -1223,17 +1284,25 @@ function HeroInstance:getExperience() end
 function HeroInstance:getPrimarySkill(skill) end
 
 ---Returns the hero's mastery of the given secondary skill.
----@param skill integer # Secondary skill JSON key.
+---@param skill Skill # Secondary skill, as returned by Services:getSecondarySkillByName.
 ---@return integer # Mastery level (0 = none, 1 = basic, 2 = advanced, 3 = expert).
 function HeroInstance:getSecondarySkill(skill) end
 
+---Returns the hero type (Orrin, Kyrre, Astral...) of this hero.
+---@return HeroType # Type of the hero, comparable with the result of Services:getHeroTypeByName.
+function HeroInstance:getHeroType() end
+
+---Returns the hero class of this hero.
+---@return HeroClass # Class of the hero, comparable with the result of Services:getHeroClassByName.
+function HeroInstance:getHeroClass() end
+
 ---Returns whether the hero owns the given artifact, either as equipped or in the backpack.
----@param artifact integer # Artifact JSON key.
+---@param artifact Artifact # Artifact, as returned by Services:getArtifactByName.
 ---@return boolean # True if the hero owns the artifact.
 function HeroInstance:hasArtifact(artifact) end
 
 ---Returns how many copies of the given artifact the hero owns, counting both equipped slots and the backpack.
----@param artifact integer # Artifact JSON key.
+---@param artifact Artifact # Artifact, as returned by Services:getArtifactByName.
 ---@return integer # Number of copies of that artifact the hero carries.
 function HeroInstance:ownedArtifacts(artifact) end
 
@@ -1624,6 +1693,14 @@ function StackInstance:getType() end
 ---@return integer
 function StackInstance:getCount() end
 
+---Cursor and status bar texts that the game shows while the player chooses one destination of a spell target. Returned by the `describeTargetStep` function of a spell effect script.
+---@class TargetStepDescriptor
+---@field cursor string # Identifier of the cursor from `config/cursors.json` shown over a hex that is valid for the destination.
+---@field text MetaString # Status bar text for a hex that is valid for the destination.
+---@field blockedText MetaString # Status bar text for a hex that is not valid for the destination. No text if not set.
+---@field healthGainTextID string # If set, the health change of the spell at the hovered hex is appended to `text` in brackets. A health gain uses the plural forms of this text ID.
+local TargetStepDescriptor = {}
+
 ---A town on the adventure map. Provides its owner and what has been built in it.
 ---@class TownInstance
 local TownInstance = {}
@@ -1636,6 +1713,18 @@ function TownInstance:getOwner() end
 ---@return Building[] # Every building standing in this town.
 function TownInstance:getBuildings() end
 
+---Returns the hero that stands in the town entrance, or nil when there is none.
+---@return HeroInstance # Hero visiting the town, or nil.
+function TownInstance:getVisitingHero() end
+
+---Returns the hero that guards the town as part of its garrison, or nil when there is none.
+---@return HeroInstance # Hero in the town garrison, or nil.
+function TownInstance:getGarrisonHero() end
+
+---Returns the faction (Castle, Rampart, Tower...) of this town.
+---@return Faction # Faction of the town, comparable with the result of Services:getFactionByName.
+function TownInstance:getFaction() end
+
 ---Represents a creature stack participating in the current battle. Provides access to the live combat state — position, owner, current health, applied bonuses, ability checks. To stage modifications, copy into a UnitState, edit it, then commit via server.
 ---@class Unit
 local Unit = {}
@@ -1645,7 +1734,7 @@ local Unit = {}
 ---@return BonusList # Bonuses of the bearer the filter describes.
 function Unit:getBonuses(filter) end
 
----Returns what the matching bonuses are worth together. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
+---Returns the combined value of the matching bonuses. Not a plain sum - percentages, independent floors and ceilings combine by the rules of the engine. Prefer this over adding up `getBonuses` where possible.
 ---@param filter BonusFilter # Which bonuses to count. An empty filter counts every one of them.
 ---@return integer # Value of the matching bonuses taken together.
 function Unit:getBonusesValue(filter) end
@@ -1674,6 +1763,14 @@ function Unit:getAttack(ranged) end
 ---@param ranged boolean # True for defense against ranged attacks, false for defense against melee.
 ---@return integer
 function Unit:getDefense(ranged) end
+
+---Returns effective luck after caps and unit exclusions. Returns 0 when luck does not apply. Prefer this method to summing LUCK bonuses.
+---@return integer
+function Unit:getLuck() end
+
+---Returns effective morale after caps and unit exclusions.
+---@return integer
+function Unit:getMorale() end
 
 ---True if the stack has at least one alive creature.
 ---@return boolean
@@ -1713,11 +1810,15 @@ function Unit:hasAbsoluteImmunity(spell) end
 ---@return boolean
 function Unit:isSummoned() end
 
+---True if the stack is a hero's commander.
+---@return boolean
+function Unit:isCommander() end
+
 ---True if the stack is a living creature - not undead, not a golem-like non-living unit.
 ---@return boolean
 function Unit:isLiving() end
 
----Returns the player color controlling this unit.
+---Returns the player owning this unit. A hypnotized unit keeps its owner; Battle:getUnitController returns who controls it.
 ---@return integer
 function Unit:getOwner() end
 
@@ -1725,7 +1826,7 @@ function Unit:getOwner() end
 ---@return integer
 function Unit:getSlot() end
 
----Returns the battle side (attacker or defender) this unit belongs to.
+---Returns the battle side (attacker or defender) this unit belongs to. A hypnotized unit keeps its side; use Battle:isHostile to tell friend from foe.
 ---@return BattleSide
 function Unit:getSide() end
 
@@ -1753,12 +1854,16 @@ function Unit:getFirstHPleft() end
 ---@return boolean
 function Unit:isShooter() end
 
+---True when the unit is alive and has an unused retaliation this round. Attacker-side retaliation blocking is not considered.
+---@return boolean
+function Unit:ableToRetaliate() end
+
 ---True if the stack is one of the towers of a besieged town.
 ---@return boolean
 function Unit:isTurret() end
 
----Which of the three towers of a besieged town this stack is.
----@return string? # "keep", "upper" or "lower"; nil when the stack is no tower.
+---Returns the tower position of a besieged-town stack.
+---@return string? # 'keep', 'upper' or 'lower'; nil for non-turret units.
 function Unit:getTurretPart() end
 
 ---Returns the maximum hit points of a single creature in the stack.
@@ -1802,7 +1907,7 @@ function Unit:getLevel() end
 ---@return integer
 function Unit:unitID() end
 
----Editable copy of a battle Unit. Obtained via `Unit:copy()`; scripts edit fields (position, defending, clone, summoned, …) and inflict damage locally, then hand the result to ServerCallback `changeUnit` or `addUnit` to broadcast the update through a battle pack.
+---Editable copy of a battle Unit. Obtained via `Unit:copy()`; scripts edit fields (position, clone, summoned, …) and inflict damage locally, then hand the result to ServerCallback `changeUnit` or `addUnit` to broadcast the update through a battle pack.
 ---@class UnitState
 local UnitState = {}
 
@@ -1905,10 +2010,6 @@ function UnitState:getCreature() end
 ---@return BattleHexArray
 function UnitState:getHexes() end
 
----Sets whether unit has defended in this round.
----@param value boolean # New defending flag.
-function UnitState:setDefending(value) end
-
 ---Marks the stack as a clone.
 ---@param value boolean # New cloned flag.
 function UnitState:setCloned(value) end
@@ -1937,21 +2038,9 @@ function UnitState:setGhost(value) end
 ---@param value boolean # New ghost-pending flag.
 function UnitState:setGhostPending(value) end
 
----Marks that the unit has moved this round.
----@param value boolean # New moved-this-round flag.
-function UnitState:setMoved(value) end
-
 ---Marks the unit as summoned during combat.
 ---@param value boolean # New summoned flag.
 function UnitState:setSummoned(value) end
-
----Marks that the unit is currently waiting.
----@param value boolean # New waiting flag.
-function UnitState:setWaiting(value) end
-
----Marks that the unit has already used its wait this turn.
----@param value boolean # New waited-this-turn flag.
-function UnitState:setWaitedThisTurn(value) end
 
 ---Moves the unit to the given hex.
 ---@param hex BattleHex # Destination hex for the unit.

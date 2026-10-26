@@ -17,24 +17,17 @@
 
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
-#include "../../lib/mapObjects/army/CStackInstance.h"
 
 CExchangeController::CExchangeController(ObjectInstanceID hero1, ObjectInstanceID hero2)
-	: CExchangeController(GAME->interface()->cb->getHero(hero1), GAME->interface()->cb->getHero(hero2))
+	: left(GAME->interface()->cb->getHero(hero1))
+	, right(GAME->interface()->cb->getHero(hero2))
 {
 }
 
-CExchangeController::CExchangeController(const CArmedInstance * army1, const CArmedInstance * army2)
-	: left(army1)
-	, right(army2)
-{
-}
-
-bool CExchangeController::swapArmy()
+void CExchangeController::swapArmy()
 {
 	const auto & leftSlots = left->Slots();
 	const auto & rightSlots = right->Slots();
-	bool submittedChange = false;
 
 	auto leftIt = leftSlots.begin();
 	auto rightIt = rightSlots.begin();
@@ -44,10 +37,7 @@ bool CExchangeController::swapArmy()
 	for (SlotID slotID(0); slotID < GameConstants::ARMY_SIZE; ++slotID)
 	{
 		if (left->hasStackAtSlot(slotID) && right->hasStackAtSlot(slotID))
-		{
 			GAME->interface()->cb->swapCreatures(left, right, slotID, slotID);
-			submittedChange = true;
-		}
 	}
 
 	// Swap pairs of stacks in different slots and correct their positions
@@ -69,7 +59,6 @@ bool CExchangeController::swapArmy()
 
 		GAME->interface()->cb->swapCreatures(left, left, leftIt->first, rightIt->first);
 		GAME->interface()->cb->swapCreatures(right, right, rightIt->first, leftIt->first);
-		submittedChange = true;
 
 		leftIt++;
 		rightIt++;
@@ -79,18 +68,11 @@ bool CExchangeController::swapArmy()
 	// [A] [ ] => [ ] [A]
 	for(; leftIt != leftSlots.end(); leftIt++)
 		if (!right->hasStackAtSlot(leftIt->first))
-		{
 			GAME->interface()->cb->swapCreatures(left, right, leftIt->first, leftIt->first);
-			submittedChange = true;
-		}
 
 	for(; rightIt != rightSlots.end(); rightIt++)
 		if (!left->hasStackAtSlot(rightIt->first))
-		{
 			GAME->interface()->cb->swapCreatures(left, right, rightIt->first, rightIt->first);
-			submittedChange = true;
-		}
-	return submittedChange;
 }
 
 void CExchangeController::moveArmy(bool leftToRight, std::optional<SlotID> heldSlot)
@@ -112,19 +94,6 @@ void CExchangeController::moveArmy(bool leftToRight, std::optional<SlotID> heldS
 		return;
 
 	GAME->interface()->cb->bulkMoveArmy(source->id, target->id, heldSlot.value());
-}
-
-bool CExchangeController::canMoveStack(bool leftToRight, SlotID sourceSlot) const
-{
-	const auto source = leftToRight ? left : right;
-	const auto target = leftToRight ? right : left;
-	if(!source || !target || !sourceSlot.validSlot())
-		return false;
-	const auto * creature = source->getCreature(sourceSlot);
-	if(!creature)
-		return false;
-	const auto targetSlot = target->getSlotFor(creature);
-	return targetSlot.validSlot() && canTransferStack(leftToRight, sourceSlot, !leftToRight, targetSlot);
 }
 
 void CExchangeController::moveStack(bool leftToRight, SlotID sourceSlot)
@@ -151,139 +120,6 @@ void CExchangeController::moveStack(bool leftToRight, SlotID sourceSlot)
 	}
 }
 
-bool CExchangeController::canTransferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
-	SlotID destinationSlot) const
-{
-	const auto source = sourceLeft ? left : right;
-	const auto destination = destinationLeft ? left : right;
-	if(!source || !destination || !sourceSlot.validSlot() || !destinationSlot.validSlot()
-		|| (sourceSlot == destinationSlot && source == destination))
-		return false;
-	const auto * sourceStack = source->getStackPtr(sourceSlot);
-	if(!sourceStack)
-		return false;
-	const auto * destinationStack = destination->getStackPtr(destinationSlot);
-	const auto sourceIsLastRequiredStack = source != destination && source->stacksCount() == 1 && source->needsLastStack();
-	if(!destinationStack && sourceIsLastRequiredStack)
-		return sourceStack->getCount() > 1;
-	if(destinationStack && destinationStack->getCreature() == sourceStack->getCreature())
-	{
-		if(sourceIsLastRequiredStack)
-			return sourceStack->getCount() > 1;
-	}
-	return true;
-}
-
-bool CExchangeController::transferStack(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
-	SlotID destinationSlot)
-{
-	return transferStackRequest(sourceLeft, sourceSlot, destinationLeft, destinationSlot) >= 0;
-}
-
-int CExchangeController::transferStackRequest(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
-	SlotID destinationSlot)
-{
-	if(!canTransferStack(sourceLeft, sourceSlot, destinationLeft, destinationSlot))
-		return -1;
-	const auto source = sourceLeft ? left : right;
-	const auto destination = destinationLeft ? left : right;
-	const auto * sourceStack = source->getStackPtr(sourceSlot);
-	const auto * destinationStack = destination->getStackPtr(destinationSlot);
-	const auto sourceIsLastRequiredStack = source != destination && source->stacksCount() == 1 && source->needsLastStack();
-	if(!destinationStack && sourceIsLastRequiredStack)
-	{
-		const auto amount = sourceStack->getCount() - 1;
-		return GAME->interface()->cb->splitStackRequest(source, destination, sourceSlot, destinationSlot, amount);
-	}
-	if(destinationStack && destinationStack->getCreature() == sourceStack->getCreature())
-	{
-		if(sourceIsLastRequiredStack)
-		{
-			const auto amount = sourceStack->getCount() - 1 + destinationStack->getCount();
-			return GAME->interface()->cb->splitStackRequest(source, destination, sourceSlot, destinationSlot, amount);
-		}
-		return GAME->interface()->cb->mergeStacksRequest(source, destination, sourceSlot, destinationSlot);
-	}
-	return GAME->interface()->cb->swapCreaturesRequest(source, destination, sourceSlot, destinationSlot);
-}
-
-bool CExchangeController::canSplitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
-	SlotID destinationSlot, int amount) const
-{
-	const auto source = sourceLeft ? left : right;
-	const auto destination = destinationLeft ? left : right;
-	if(!source || !destination || !sourceSlot.validSlot() || !destinationSlot.validSlot()
-		|| (source == destination && sourceSlot == destinationSlot) || amount < 1)
-		return false;
-	const auto * sourceStack = source->getStackPtr(sourceSlot);
-	const auto * destinationStack = destination->getStackPtr(destinationSlot);
-	if(!sourceStack || sourceStack->getCount() <= amount
-		|| (destinationStack && destinationStack->getCreature() != sourceStack->getCreature()))
-		return false;
-	const auto destinationCount = destinationStack ? destinationStack->getCount() : 0;
-	return destinationCount <= std::numeric_limits<int>::max() - amount;
-}
-
-bool CExchangeController::splitStackExact(bool sourceLeft, SlotID sourceSlot, bool destinationLeft,
-	SlotID destinationSlot, int amount)
-{
-	if(!canSplitStackExact(sourceLeft, sourceSlot, destinationLeft, destinationSlot, amount))
-		return false;
-	const auto source = sourceLeft ? left : right;
-	const auto destination = destinationLeft ? left : right;
-	const auto destinationCount = destination->getStackCount(destinationSlot);
-	GAME->interface()->cb->splitStack(source, destination, sourceSlot, destinationSlot, destinationCount + amount);
-	return true;
-}
-
-bool CExchangeController::canRedistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot,
-	CreatureID expectedCreature, int expectedSourceCount,
-	const std::vector<ArmyStackRedistributionTarget> & destinations) const
-{
-	const auto sourceIsLeft = left && sourceArmy == left->id;
-	const auto sourceIsRight = right && sourceArmy == right->id;
-	if((!sourceIsLeft && !sourceIsRight) || !sourceSlot.validSlot() || expectedCreature == CreatureID::NONE
-		|| expectedSourceCount < 2 || destinations.empty()
-		|| destinations.size() > MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS)
-		return false;
-	const auto source = sourceIsLeft ? left : right;
-	const auto * sourceStack = source->getStackPtr(sourceSlot);
-	if(!sourceStack || sourceStack->getCreatureID() != expectedCreature || sourceStack->getCount() != expectedSourceCount)
-		return false;
-
-	std::int64_t total = 0;
-	for(std::size_t index = 0; index < destinations.size(); ++index)
-	{
-		const auto & target = destinations[index];
-		const bool destinationIsLeft = left && target.armyId == left->id;
-		const bool destinationIsRight = right && target.armyId == right->id;
-		if((!destinationIsLeft && !destinationIsRight) || !target.slot.validSlot() || target.amount <= 0
-			|| (target.armyId == sourceArmy && target.slot == sourceSlot))
-			return false;
-		for(std::size_t earlier = 0; earlier < index; ++earlier)
-		{
-			if(destinations[earlier].armyId == target.armyId && destinations[earlier].slot == target.slot)
-				return false;
-		}
-		if(!canSplitStackExact(sourceIsLeft, sourceSlot, destinationIsLeft, target.slot, target.amount))
-			return false;
-		total += target.amount;
-		if(total > static_cast<std::int64_t>(expectedSourceCount) - 1)
-			return false;
-	}
-	return total > 0;
-}
-
-int CExchangeController::redistributeStack(ObjectInstanceID sourceArmy, SlotID sourceSlot,
-	CreatureID expectedCreature, int expectedSourceCount,
-	const std::vector<ArmyStackRedistributionTarget> & destinations)
-{
-	if(!canRedistributeStack(sourceArmy, sourceSlot, expectedCreature, expectedSourceCount, destinations))
-		return -1;
-	return GAME->interface()->cb->redistributeStack(left->id, right->id, sourceArmy, sourceSlot, expectedCreature,
-		expectedSourceCount, destinations);
-}
-
 void CExchangeController::moveSingleStackCreature(bool leftToRight, SlotID sourceSlot, bool forceEmptySlotTarget)
 {
 	const auto source = leftToRight ? left : right;
@@ -300,15 +136,15 @@ void CExchangeController::moveSingleStackCreature(bool leftToRight, SlotID sourc
 	}
 }
 
-int CExchangeController::swapArtifacts(bool equipped, bool baclpack)
+void CExchangeController::swapArtifacts(bool equipped, bool baclpack)
 {
-	return GAME->interface()->cb->bulkMoveArtifacts(left->id, right->id, true, equipped, baclpack);
+	GAME->interface()->cb->bulkMoveArtifacts(left->id, right->id, true, equipped, baclpack);
 }
 
-int CExchangeController::moveArtifacts(bool leftToRight, bool equipped, bool baclpack)
+void CExchangeController::moveArtifacts(bool leftToRight, bool equipped, bool baclpack)
 {
 	const auto source = leftToRight ? left : right;
 	const auto target = leftToRight ? right : left;
 
-	return GAME->interface()->cb->bulkMoveArtifacts(source->id, target->id, false, equipped, baclpack);
+	GAME->interface()->cb->bulkMoveArtifacts(source->id, target->id, false, equipped, baclpack);
 }

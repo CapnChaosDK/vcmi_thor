@@ -34,19 +34,11 @@
 #define LOGFL(text, formattingEl) print(boost::str(boost::format(text) % formattingEl))
 
 CBattleAI::CBattleAI()
-	: side(BattleSide::NONE),
-	wasWaitingForRealize(false)
+	: side(BattleSide::NONE)
 {
 }
 
-CBattleAI::~CBattleAI()
-{
-	if(cb)
-	{
-		//Restore previous state of CB - it may be shared with the main AI (like VCAI)
-		cb->waitTillRealize = wasWaitingForRealize;
-	}
-}
+CBattleAI::~CBattleAI() = default;
 
 void logHexNumbers()
 {
@@ -63,9 +55,7 @@ void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::share
 {
 	env = ENV;
 	cb = CB;
-	playerID = *CB->getPlayerID();
-	wasWaitingForRealize = CB->waitTillRealize;
-	CB->waitTillRealize = false;
+	playerID = CB->getPlayerID().value();
 	movesSkippedByDefense = 0;
 
 	logHexNumbers();
@@ -75,22 +65,6 @@ void CBattleAI::initBattleInterface(std::shared_ptr<Environment> ENV, std::share
 {
 	initBattleInterface(ENV, CB);
 	autobattlePreferences = autocombatPreferences;
-}
-
-BattleAction CBattleAI::useHealingTent(const BattleID & battleID, const CStack *stack)
-{
-	auto healingTargets = cb->getBattle(battleID)->battleGetStacks(CBattleInfoEssentials::ONLY_MINE);
-	std::map<int, const CStack*> woundHpToStack;
-	for(const auto * stack : healingTargets)
-	{
-		if(auto woundHp = stack->getMaxHealth() - stack->getFirstHPleft())
-			woundHpToStack[woundHp] = stack;
-	}
-
-	if(woundHpToStack.empty())
-		return BattleAction::makeDefend(stack);
-	else
-		return BattleAction::makeHeal(stack, woundHpToStack.rbegin()->second); //last element of the woundHpToStack is the most wounded stack
 }
 
 void CBattleAI::yourTacticPhase(const BattleID & battleID, int distance)
@@ -106,20 +80,19 @@ void CBattleAI::actionFinished(const BattleID & battleID, const BattleAction & a
 static float getStrengthRatio(std::shared_ptr<CBattleInfoCallback> cb, BattleSide side)
 {
 	auto stacks = cb->battleGetAllStacks();
-	auto our = 0;
-	auto enemy = 0;
+	uint64_t our = 0;
+	uint64_t enemy = 0;
+
+	// evaluate each side against its actual opponent, to account for bonuses useful only against that opponent
+	const auto ourEnemy = CombatValueContext::against(*cb, side);
+	const auto theirEnemy = CombatValueContext::against(*cb, CBattleInfoEssentials::otherSide(side));
 
 	for(auto stack : stacks)
 	{
-		auto creature = stack->creatureId().toCreature();
-
-		if(!creature)
-			continue;
-
 		if(stack->unitSide() == side)
-			our += stack->getCount() * creature->getAIValue();
+			our += stack->estimateCombatValue(ourEnemy);
 		else
-			enemy += stack->getCount() * creature->getAIValue();
+			enemy += stack->estimateCombatValue(theirEnemy);
 	}
 
 	return enemy == 0 ? 1.0f : static_cast<float>(our) / enemy;
@@ -152,7 +125,7 @@ void CBattleAI::activeStack(const BattleID & battleID, const CStack * stack )
 	}
 	if(stack->hasBonusOfType(BonusType::SIEGE_WEAPON) && stack->hasBonusOfType(BonusType::HEALER))
 	{
-		cb->battleMakeUnitAction(battleID, useHealingTent(battleID, stack));
+		cb->battleMakeUnitAction(battleID, BattleAction::makeHeal(stack));
 		return;
 	}
 
@@ -199,50 +172,13 @@ void CBattleAI::activeStack(const BattleID & battleID, const CStack * stack )
 
 BattleAction CBattleAI::useCatapult(const BattleID & battleID, const CStack * stack)
 {
-	BattleAction attack;
-	BattleHex targetHex = BattleHex::INVALID;
-
-	if(cb->getBattle(battleID)->battleGetGateState() == EGateState::CLOSED)
-	{
-		targetHex = cb->getBattle(battleID)->wallPartToBattleHex(EWallPart::GATE);
-	}
-	else
-	{
-		std::array wallParts {
-			EWallPart::KEEP,
-			EWallPart::BOTTOM_TOWER,
-			EWallPart::UPPER_TOWER,
-			EWallPart::BELOW_GATE,
-			EWallPart::OVER_GATE,
-			EWallPart::BOTTOM_WALL,
-			EWallPart::UPPER_WALL
-		};
-
-		for(auto wallPart : wallParts)
-		{
-			auto wallState = cb->getBattle(battleID)->battleGetWallState(wallPart);
-
-			if(wallState != EWallState::NONE && wallState != EWallState::DESTROYED)
-			{
-				targetHex = cb->getBattle(battleID)->wallPartToBattleHex(wallPart);
-				break;
-			}
-		}
-	}
-
-	if(!targetHex.isValid())
-	{
+	if(cb->getBattle(battleID)->getAttackableWallParts().empty())
 		return BattleAction::makeDefend(stack);
-	}
-
-	attack.aimToHex(targetHex);
-	attack.actionType = EActionType::CATAPULT;
-	attack.side = side;
-	attack.stackNumber = stack->unitId();
 
 	movesSkippedByDefense = 0;
 
-	return attack;
+	// catapult will pick a target on its own, according to its targeting rules
+	return BattleAction::makeCatapultShot(stack);
 }
 
 void CBattleAI::battleStart(const BattleID & battleID, const CCreatureSet *army1, const CCreatureSet *army2, int3 tile, const CGHeroInstance *hero1, const CGHeroInstance *hero2, BattleSide Side, bool replayAllowed)

@@ -38,5 +38,6 @@ public:
 
 	const IGameSettings & getSettings() const override;
 	const CMapHeader * getMapHeader() const override;
+	ui32 getHeroLevelLimit() const override;
 
 };

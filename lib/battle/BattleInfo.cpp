@@ -736,35 +736,32 @@ void BattleInfo::updateUnit(uint32_t id, const JsonNode & data, int64_t healthDe
 
 	if(!changedStack->alive() && healthDelta > 0)
 	{
-		//checking if we resurrect a stack that is under a living stack
-		auto accessibility = getAccessibility();
-
-		if(!accessibility.accessible(changedStack->getPosition(), changedStack))
+		// Accessibility is not used here, since double-wide war machines stand partially on side columns,
+		// which are never accessible to units
+		for(const auto & hex : changedStack->getHexes())
 		{
-			logNetwork->error("Cannot resurrect %s because hex %d is occupied!", changedStack->nodeName(), changedStack->getPosition());
-			return; //position is already occupied
+			if(battleGetUnitByPos(hex, true) != nullptr || !battleGetAllObstaclesOnPos(hex, true).empty())
+			{
+				logNetwork->error("Cannot resurrect %s because hex %d is occupied!", changedStack->nodeName(), hex.toInt());
+				return; //position is already occupied
+			}
 		}
 	}
 
-	bool killed = (-healthDelta) >= changedStack->getAvailableHealth();//todo: check using alive state once rebirth will be handled separately
-
-	bool resurrected = !changedStack->alive() && healthDelta > 0;
+	const bool wasAlive = changedStack->alive();
 
 	//applying changes
 	changedStack->load(data);
 
+	// Use the alive-state transition because a zero-health-change pack may update an existing corpse.
+	const bool killed = wasAlive && !changedStack->alive();
+	const bool resurrected = !wasAlive && changedStack->alive();
 
 	if(healthDelta < 0)
 	{
 		changedStack->removeBonusesRecursive(Bonus::UntilBeingAttacked);
-	}
-
-	if(healthDelta < 0)
-	{
 		changedStack->nodeHasChanged();	//bonuses with TIMES_STACK_SIZE updater may change
 	}
-
-	resurrected = resurrected || (killed && changedStack->alive());
 
 	if(killed)
 	{
@@ -935,6 +932,10 @@ void BattleInfo::addObstacle(const ObstacleChanges & changes)
 	auto obstacle = std::make_shared<SpellCreatedObstacle>();
 	obstacle->fromInfo(changes);
 	obstacles.push_back(obstacle);
+
+	logGlobal->debug("Battle %d: obstacle %d from spell %s placed by side %d, hidden: %d, affected hexes: %s, stopping hexes: %s",
+		battleID.getNum(), obstacle->uniqueID, SpellID::encode(obstacle->ID), static_cast<int>(obstacle->casterSide), obstacle->hidden,
+		obstacle->getAffectedTiles().toString(), obstacle->getStoppingTile().toString());
 }
 
 void BattleInfo::updateObstacle(const ObstacleChanges& changes)

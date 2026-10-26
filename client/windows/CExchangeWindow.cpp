@@ -8,6 +8,7 @@
  *
  */
 #include "StdInc.h"
+#include "../thor/ThorRequestTracker.h"
 #include "CExchangeWindow.h"
 
 #include "CHeroBackpackWindow.h"
@@ -49,6 +50,7 @@
 #include "../../lib/CAndroidVMHelper.h"
 #include "../../lib/thor/ThorContext.h"
 #include "../thor/ThorWindowPublisher.h"
+#include "../thor/ThorArmyController.h"
 
 #endif
 
@@ -210,11 +212,7 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 		experienceAreas[b] = std::make_shared<LRClickableAreaWText>();
 		experienceAreas[b]->pos = Rect(Point(pos.x + 105 + 490 * b, pos.y + (qeLayout ? 41 : 45)), Point(32, 32));
 		experienceAreas[b]->hoverText = LIBRARY->generaltexth->translate("core.heroscrn.9");
-		MetaString experienceText = MetaString::createFromTextID("core.genrltxt.2");
-		experienceText.replaceNumber(hero->level);
-		experienceText.replaceNumber(LIBRARY->heroh->reqExp(hero->level+1));
-		experienceText.replaceNumber(hero->exp);
-		experienceAreas[b]->text = experienceText.toString(&GAME->translator());
+		experienceAreas[b]->text = hero->getExperienceDescription().toString(&GAME->translator());
 
 		spellPointsAreas[b] = std::make_shared<LRClickableAreaWText>();
 		spellPointsAreas[b]->pos = Rect(Point(pos.x + 141 + 490 * b, pos.y + (qeLayout ? 41 : 45)), Point(32, 32));
@@ -229,17 +227,13 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 		luck[b] = std::make_shared<MoraleLuckBox>(false,  Rect(Point(212 + 490 * b, 39), Point(32, 32)), true);
 	}
 
-	quit = std::make_shared<CButton>(Point(732, 567), AnimationPath::builtin("IOKAY.DEF"), LIBRARY->generaltexth->zelp[600],
-		[this]()
-		{
-			if(!canCloseExchange())
-				return;
-			const auto answeredQuestion = this->questionID;
-			close();
-			if(answeredQuestion.hasValue())
-				GAME->interface()->cb->selectionMade(0, answeredQuestion);
-		}, EShortcut::GLOBAL_ACCEPT);
-	quit->block(!canCloseExchange());
+	quit = std::make_shared<CButton>(Point(732, 567), AnimationPath::builtin("IOKAY.DEF"), LIBRARY->generaltexth->zelp[600], std::bind(&CExchangeWindow::close, this), EShortcut::GLOBAL_RETURN);
+	if(questionID.getNum() > 0)
+		quit->addCallback([=](){ GAME->interface()->cb->selectionMade(0, questionID); });
+
+	// An ally who started the exchange with us decides when it ends, the server then closes this window
+	if(questionID.getNum() > 0 && heroInst[0]->tempOwner != GAME->interface()->playerID)
+		quit->block(true);
 
 	questlogButton[0] = std::make_shared<CButton>(Point( qeLayout ? 8 : 10, qeLayout ? 39 : 44), AnimationPath::builtin("hsbtns4.def"), CButton::tooltip(LIBRARY->generaltexth->translate("core.heroscrn.0")), std::bind(&CExchangeWindow::questLogShortcut, this));
 	questlogButton[1] = std::make_shared<CButton>(Point(740, qeLayout ? 39 : 44), AnimationPath::builtin("hsbtns4.def"), CButton::tooltip(LIBRARY->generaltexth->translate("core.heroscrn.0")), std::bind(&CExchangeWindow::questLogShortcut, this));
@@ -329,7 +323,7 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 					AnimationPath::builtin("quick-exchange/unitLeft.DEF"),
 					CButton::tooltip(LIBRARY->generaltexth->translate("vcmi.quickExchange.moveUnit")),
 					[this, i]() { creatureArrowButtonCallback(false, SlotID(i)); }));
-			moveUnitFromRightToLeftButtons.back()->block(leftHeroBlock);
+			moveUnitFromRightToLeftButtons.back()->block(rightHeroBlock);
 
 			moveUnitFromLeftToRightButtons.push_back(
 				std::make_shared<CButton>(
@@ -337,7 +331,7 @@ CExchangeWindow::CExchangeWindow(ObjectInstanceID hero1, ObjectInstanceID hero2,
 					AnimationPath::builtin("quick-exchange/unitRight.DEF"),
 					CButton::tooltip(LIBRARY->generaltexth->translate("vcmi.quickExchange.moveUnit")),
 					[this, i]() { creatureArrowButtonCallback(true, SlotID(i)); }));
-			moveUnitFromLeftToRightButtons.back()->block(rightHeroBlock);
+			moveUnitFromLeftToRightButtons.back()->block(leftHeroBlock);
 		}
 	}
 
@@ -410,7 +404,7 @@ void CExchangeWindow::swapArtifactsCallback()
 
 void CExchangeWindow::moveArtifactsOperation(bool leftToRight, bool equipped, bool backpack)
 {
-	const auto requestId = controller.moveArtifacts(leftToRight, equipped, backpack);
+	const auto requestId = captureThorRequest([&] { controller.moveArtifacts(leftToRight, equipped, backpack); });
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(requestId > 0)
 		trackThorArtifactRequest(requestId, std::nullopt);
@@ -419,7 +413,7 @@ void CExchangeWindow::moveArtifactsOperation(bool leftToRight, bool equipped, bo
 
 void CExchangeWindow::swapArtifactsOperation(bool equipped, bool backpack)
 {
-	const auto requestId = controller.swapArtifacts(equipped, backpack);
+	const auto requestId = captureThorRequest([&] { controller.swapArtifacts(equipped, backpack); });
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(requestId > 0)
 		trackThorArtifactRequest(requestId, std::nullopt);
@@ -438,11 +432,6 @@ void CExchangeWindow::trackThorArtifactRequest(int requestId,
 	quit->block(true);
 }
 #endif
-
-bool CExchangeWindow::canCloseExchange() const
-{
-	return artifactInputEnabled() && (!questionID.hasValue() || heroInst[0]->tempOwner == GAME->interface()->playerID);
-}
 
 bool CExchangeWindow::artifactInputEnabled() const
 {
@@ -655,8 +644,7 @@ void CExchangeWindow::updateThorActionState(bool invalidateActions)
 		context.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_MOVE_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_TRANSFER_STACK)
 			| thorActionMask(ThorAction::HERO_MEETING_SWAP_ARMIES)
-			| thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK)
-			| thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
+			| thorActionMask(ThorAction::HERO_MEETING_SPLIT_STACK);
 		if(context.heroMeetingArtifacts
 			&& context.heroMeetingArtifacts->artifactSlots.size() == THOR_HERO_MEETING_ARTIFACT_COUNT
 			&& getPickedArtifact() == nullptr && GAME->interface()->makingTurn)
@@ -706,7 +694,7 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 			GAME->interface()->playerID.getNum()))
 		return rejectWithoutCallback();
 	if(request.action == ThorAction::HERO_MEETING_MOVE_STACK
-		&& !controller.canMoveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
+		&& !ThorArmyController(heroInst[0], heroInst[1]).canMoveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
 			SlotID(request.targetId % static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE))))
 		return rejectWithoutCallback();
 	if(request.action == ThorAction::HERO_MEETING_TRANSFER_STACK)
@@ -714,7 +702,7 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		const auto pair = decodeThorHeroMeetingTransferPair(request.targetId);
 		if(!pair)
 			return false;
-		if(!controller.canTransferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
+		if(!ThorArmyController(heroInst[0], heroInst[1]).canTransferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
 			pair->destinationIsLeft, SlotID(pair->destinationSlot)))
 			return rejectWithoutCallback();
 	}
@@ -723,7 +711,7 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		const auto & armies = *context.heroMeetingArmies;
 		const bool sourceLeft = request.sourceArmyId == armies.leftArmyId;
 		const bool destinationLeft = request.destinationArmyId == armies.leftArmyId;
-		if(!controller.canSplitStackExact(sourceLeft, SlotID(request.sourceSlot), destinationLeft,
+		if(!ThorArmyController(heroInst[0], heroInst[1]).canSplitStackExact(sourceLeft, SlotID(request.sourceSlot), destinationLeft,
 			SlotID(request.destinationSlot), request.amount))
 			return rejectWithoutCallback();
 	}
@@ -768,7 +756,7 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	switch(request.action)
 	{
 	case ThorAction::HERO_MEETING_MOVE_STACK:
-		controller.moveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
+		ThorArmyController(heroInst[0], heroInst[1]).moveStack(request.targetId < static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE),
 			SlotID(request.targetId % static_cast<int>(THOR_HERO_MEETING_ARMY_SIZE)));
 		executed = true;
 		break;
@@ -777,26 +765,26 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		const auto pair = decodeThorHeroMeetingTransferPair(request.targetId);
 		if(pair)
 		{
-			executed = controller.transferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
+			executed = ThorArmyController(heroInst[0], heroInst[1]).transferStack(pair->sourceIsLeft, SlotID(pair->sourceSlot),
 				pair->destinationIsLeft, SlotID(pair->destinationSlot));
 		}
 		break;
 	}
 	case ThorAction::HERO_MEETING_ARMY_LEFT_TO_RIGHT:
-		controller.moveArmy(true, std::nullopt);
+		ThorArmyController(heroInst[0], heroInst[1]).moveArmy(true, std::nullopt);
 		executed = true;
 		break;
 	case ThorAction::HERO_MEETING_ARMY_RIGHT_TO_LEFT:
-		controller.moveArmy(false, std::nullopt);
+		ThorArmyController(heroInst[0], heroInst[1]).moveArmy(false, std::nullopt);
 		executed = true;
 		break;
 	case ThorAction::HERO_MEETING_SWAP_ARMIES:
-		executed = controller.swapArmy();
+		executed = ThorArmyController(heroInst[0], heroInst[1]).swapArmy();
 		break;
 	case ThorAction::HERO_MEETING_SPLIT_STACK:
 	{
 		const auto & armies = *context.heroMeetingArmies;
-		executed = controller.splitStackExact(request.sourceArmyId == armies.leftArmyId, SlotID(request.sourceSlot),
+		executed = ThorArmyController(heroInst[0], heroInst[1]).splitStackExact(request.sourceArmyId == armies.leftArmyId, SlotID(request.sourceSlot),
 			request.destinationArmyId == armies.leftArmyId, SlotID(request.destinationSlot), request.amount);
 		break;
 	}
@@ -807,9 +795,9 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 		{
 			const auto & slots = context.heroMeetingArtifacts->artifactSlots;
 			constexpr int perHero = static_cast<int>(THOR_HERO_MEETING_ARTIFACT_COUNT / 2);
-			const auto requestId = GAME->interface()->cb->swapArtifactsRequest(
+			const auto requestId = captureThorRequest([&] { GAME->interface()->cb->swapArtifacts(
 				ArtifactLocation(heroInst[pair->first / perHero]->id, ArtifactPosition(slots[pair->first].position)),
-				ArtifactLocation(heroInst[pair->second / perHero]->id, ArtifactPosition(slots[pair->second].position)));
+				ArtifactLocation(heroInst[pair->second / perHero]->id, ArtifactPosition(slots[pair->second].position))); });
 			if(requestId > 0)
 			{
 				trackThorArtifactRequest(requestId,
@@ -825,8 +813,8 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	{
 		const auto operation = thorBulkArtifactOperation(request.action);
 		const int requestId = operation == ThorBulkArtifactOperation::SWAP
-			? controller.swapArtifacts(true, true)
-			: controller.moveArtifacts(operation == ThorBulkArtifactOperation::LEFT_TO_RIGHT, true, true);
+			? ThorArmyController(heroInst[0], heroInst[1]).swapArtifacts(true, true)
+			: ThorArmyController(heroInst[0], heroInst[1]).moveArtifacts(operation == ThorBulkArtifactOperation::LEFT_TO_RIGHT, true, true);
 		if(requestId > 0)
 		{
 			trackThorArtifactRequest(requestId,
@@ -843,75 +831,6 @@ bool CExchangeWindow::executeThorAction(const ThorActionRequest & request)
 	return executed;
 }
 
-bool CExchangeWindow::executeThorRedistribution(const ThorHeroMeetingRedistributionRequest & request)
-{
-	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this)
-		return false;
-	const auto rejectWithoutCallback = [this]()
-	{
-		updateThorActionState(true);
-		updateThorActionState();
-		return false;
-	};
-	auto context = thorContextStore().snapshot();
-	if(!matchesThorContext(context)
-		|| validateThorHeroMeetingRedistributionRequest(request, context) != ThorActionValidation::VALID
-		|| thorHeroMeetingArmies(heroInst) != *context.heroMeetingArmies
-		|| !GAME->interface()->makingTurn
-		|| heroInst[0]->tempOwner != GAME->interface()->playerID
-		|| heroInst[1]->tempOwner != GAME->interface()->playerID)
-		return rejectWithoutCallback();
-
-	std::vector<ArmyStackRedistributionTarget> destinations;
-	destinations.reserve(request.destinationCount);
-	for(std::size_t index = 0; index < request.destinationCount; ++index)
-	{
-		const auto & target = request.destinations[index];
-		destinations.push_back({ObjectInstanceID(target.armyId), SlotID(target.slot), target.amount});
-	}
-	if(!controller.canRedistributeStack(ObjectInstanceID(request.sourceArmyId), SlotID(request.sourceSlot),
-		CreatureID(request.sourceCreatureId), request.sourceCount, destinations))
-		return rejectWithoutCallback();
-
-	// Consume this rendered action revision before queuing one server-validated batch.
-	updateThorActionState(true);
-	const auto requestId = controller.redistributeStack(ObjectInstanceID(request.sourceArmyId),
-		SlotID(request.sourceSlot), CreatureID(request.sourceCreatureId), request.sourceCount, destinations);
-	if(requestId <= 0)
-		return rejectWithoutCallback();
-	pendingThorRedistributionRequests.emplace_back(requestId,
-		ThorActionAcceptance{request.revision, ThorAction::HERO_MEETING_REDISTRIBUTE_STACK});
-	return true;
-}
-
-void CExchangeWindow::onThorRedistributionResult(int requestId, bool success)
-{
-	const auto pending = std::find_if(pendingThorRedistributionRequests.begin(),
-		pendingThorRedistributionRequests.end(), [requestId](const auto & entry) { return entry.first == requestId; });
-	if(pending == pendingThorRedistributionRequests.end())
-		return;
-	const auto acceptance = pending->second;
-	pendingThorRedistributionRequests.erase(pending);
-	const auto context = thorContextStore().snapshot();
-	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this || !matchesThorContext(context))
-		return;
-	if(success)
-	{
-		// The server package may publish one or more same-context revisions before this result arrives.
-		if(const auto accepted = thorActionAcceptance(
-			ThorActionRequest{.revision = context.revision, .action = acceptance.action},
-			ThorActionValidation::VALID, true))
-			CAndroidVMHelper().acknowledgeThorAction(accepted->revision, accepted->action, acceptance.revision);
-		updateThorActionState();
-	}
-	else
-	{
-		// A rejected server request has no garrison update to publish a replacement revision.
-		updateThorActionState(true);
-		updateThorActionState();
-	}
-}
-
 void CExchangeWindow::onThorArtifactRequestResult(int requestId, bool success)
 {
 	const auto pending = std::find_if(pendingThorArtifactRequests.begin(),
@@ -919,14 +838,16 @@ void CExchangeWindow::onThorArtifactRequestResult(int requestId, bool success)
 	if(pending == pendingThorArtifactRequests.end())
 	{
 		completeThorArtifactRequest(requestId);
-		quit->block(!canCloseExchange());
+		quit->block(!artifactInputEnabled()
+		|| (questionID.getNum() > 0 && heroInst[0]->tempOwner != GAME->interface()->playerID));
 		return;
 	}
 	const auto acceptance = pending->acceptance;
 	const auto artifactsBefore = pending->artifactsBefore;
 	pendingThorArtifactRequests.erase(pending);
 	completeThorArtifactRequest(requestId);
-	quit->block(!canCloseExchange());
+	quit->block(!artifactInputEnabled()
+		|| (questionID.getNum() > 0 && heroInst[0]->tempOwner != GAME->interface()->playerID));
 	const auto context = thorContextStore().snapshot();
 	if(!isActive() || ENGINE->windows().topWindow<CExchangeWindow>().get() != this || !matchesThorContext(context))
 		return;

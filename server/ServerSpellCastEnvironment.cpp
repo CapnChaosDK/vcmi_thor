@@ -79,6 +79,11 @@ void ServerSpellCastEnvironment::apply(SetStackEffect & pack)
 
 void ServerSpellCastEnvironment::apply(StacksInjured & pack)
 {
+	// Spell, moat, obstacle and script damage use this non-attack pack.
+	const auto * battle = gh->gameState().getBattle(pack.battleID);
+	if(battle)
+		gh->battles->noteDeaths(*battle, pack.stacks);
+
 	gh->sendAndApply(pack);
 }
 
@@ -97,6 +102,11 @@ const IGameInfoCallback * ServerSpellCastEnvironment::getCb() const
 	return &gh->gameInfo();
 }
 
+void ServerSpellCastEnvironment::spellHasHit(const CBattleInfoCallback & battle, const spells::Spell & spell, const battle::Unit * casterUnit, const std::vector<std::shared_ptr<const battle::CUnitState>> & unitsBefore)
+{
+	gh->battles->spellHasHit(battle, spell, casterUnit, unitsBefore);
+}
+
 const CMap * ServerSpellCastEnvironment::getMap() const
 {
 	return &gh->gameState().getMap();
@@ -112,9 +122,9 @@ void ServerSpellCastEnvironment::createBoat(const int3 & visitablePosition, Boat
 	return gh->createBoat(visitablePosition, type, initiator);
 }
 
-void ServerSpellCastEnvironment::showGarrisonDialog(ObjectInstanceID upobj, ObjectInstanceID hid, bool removableUnits, const MetaString & customTitle)
+void ServerSpellCastEnvironment::showGarrisonDialog(ObjectInstanceID upobj, ObjectInstanceID hid, const MetaString & customTitle)
 {
-	gh->showGarrisonDialog(upobj, hid, removableUnits, customTitle);
+	gh->showGarrisonDialog(upobj, hid, customTitle);
 }
 
 void ServerSpellCastEnvironment::askToSelectTown(const MapObjectSelectDialog & request, SpellID spell, ObjectInstanceID caster)

@@ -79,7 +79,7 @@ Scrollable::Scrollable(int used, Point position, Orientation orientation)
 {
 }
 
-void Scrollable::gestureCanceled(bool)
+void Scrollable::gestureCanceled()
 {
 	panningDistanceAccumulated = 0;
 	inertialAccum = 0.0;

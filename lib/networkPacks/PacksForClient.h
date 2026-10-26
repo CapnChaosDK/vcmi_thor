@@ -146,6 +146,21 @@ struct DLL_LINKAGE SystemMessage : public CPackForClient
 	}
 };
 
+/// Notification about players that are playing their turns simultaneously without contact yet.
+/// Such players can not interact with objects owned by each other (see TurnOrderProcessor on server)
+struct DLL_LINKAGE SimturnsContactStatus : public CPackForClient
+{
+	/// pairs of players that are still playing simultaneous turns and have not yet made contact
+	std::set<std::pair<PlayerColor, PlayerColor>> blockedContacts;
+
+	void visitTyped(ICPackVisitor & visitor) override;
+
+	template <typename Handler> void serialize(Handler & h)
+	{
+		h & blockedContacts;
+	}
+};
+
 struct DLL_LINKAGE PlayerBlocked : public CPackForClient
 {
 	enum EReason { UPCOMING_BATTLE, ONGOING_MOVEMENT };
@@ -172,6 +187,7 @@ struct DLL_LINKAGE PlayerCheated : public CPackForClient
 
 	bool losingCheatCode = false;
 	bool winningCheatCode = false;
+	EAiSoloMode aiSolo = EAiSoloMode::NONE;
 	ColorScheme colorScheme = ColorScheme::KEEP;
 
 	void visitTyped(ICPackVisitor & visitor) override;
@@ -183,6 +199,7 @@ struct DLL_LINKAGE PlayerCheated : public CPackForClient
 		h & losingCheatCode;
 		h & winningCheatCode;
 		h & colorScheme;
+		h & aiSolo;
 	}
 };
 
@@ -1276,6 +1293,7 @@ struct DLL_LINKAGE SetQuestHint : public CPackForClient
 {
 	ObjectInstanceID object;
 	MetaString hint;
+	std::vector<Component> components;
 
 	SetQuestHint() = default;
 
@@ -1285,6 +1303,25 @@ struct DLL_LINKAGE SetQuestHint : public CPackForClient
 	{
 		h & object;
 		h & hint;
+		h & components;
+	}
+};
+
+/// Turns off a scripted timed event, so it no longer occurs
+struct DLL_LINKAGE DisableMapEvent : public CPackForClient
+{
+	/// Town that owns the event, or NONE for player events of the map
+	ObjectInstanceID town;
+	std::string scriptHandler;
+
+	DisableMapEvent() = default;
+
+	void visitTyped(ICPackVisitor & visitor) override;
+
+	template <typename Handler> void serialize(Handler & h)
+	{
+		h & town;
+		h & scriptHandler;
 	}
 };
 
@@ -1350,6 +1387,7 @@ struct DLL_LINKAGE HeroLevelUp : public Question
 
 	PrimarySkill primskill = PrimarySkill::ATTACK;
 	std::vector<SecondarySkill> skills;
+	bool moreLevelsFollow = false; ///< hero gains another level after this one, so its window can stay open
 
 	void visitTyped(ICPackVisitor & visitor) override;
 
@@ -1360,6 +1398,7 @@ struct DLL_LINKAGE HeroLevelUp : public Question
 		h & heroId;
 		h & primskill;
 		h & skills;
+		h & moreLevelsFollow;
 	}
 };
 
@@ -1369,6 +1408,7 @@ struct DLL_LINKAGE CommanderLevelUp : public Question
 	ObjectInstanceID heroId;
 
 	std::vector<ui32> skills; //0-5 - secondary skills, val-100 - special skill
+	bool moreLevelsFollow = false; ///< commander gains another level after this one, so its window can stay open
 
 	void visitTyped(ICPackVisitor & visitor) override;
 
@@ -1378,6 +1418,7 @@ struct DLL_LINKAGE CommanderLevelUp : public Question
 		h & player;
 		h & heroId;
 		h & skills;
+		h & moreLevelsFollow;
 	}
 };
 
@@ -1431,7 +1472,6 @@ struct DLL_LINKAGE GarrisonDialog : public Question
 {
 	ObjectInstanceID objid;
 	ObjectInstanceID hid;
-	bool removableUnits = false;
 	MetaString customTitle;
 
 	void visitTyped(ICPackVisitor & visitor) override;
@@ -1441,7 +1481,11 @@ struct DLL_LINKAGE GarrisonDialog : public Question
 		h & questionID;
 		h & objid;
 		h & hid;
-		h & removableUnits;
+		if (!h.hasFeature(Handler::Version::GARRISON_DIALOG_REMOVABLE_UNITS_REMOVED))
+		{
+			bool removableUnits = false;
+			h & removableUnits;
+		}
 		if (h.hasFeature(Handler::Version::CUSTOM_GARRISON_TITLE))
 			h & customTitle;
 	}

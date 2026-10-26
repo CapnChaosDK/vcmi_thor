@@ -65,7 +65,6 @@ struct StackAttackedInfo
 
 	bool indirectAttack; //if true, stack was attacked indirectly - spell or ranged attack
 	bool killed; //if true, stack has been killed
-	bool rebirth; //if true, play rebirth animation after all
 	bool cloneKilled;
 };
 
@@ -160,8 +159,6 @@ public:
 	void activateStack(); //sets activeStack to stackToActivate etc. //FIXME: No, it's not clear at all
 	void requestAutofightingAIToTakeAction();
 
-	void giveCommand(EActionType action, const BattleHex & tile = BattleHex(), SpellID spell = SpellID::NONE);
-	void giveCommand(EActionType action, const std::vector<BattleHex> & tiles, SpellID spell = SpellID::NONE);
 
 	void sendCommand(BattleAction command, const CStack * actor = nullptr);
 

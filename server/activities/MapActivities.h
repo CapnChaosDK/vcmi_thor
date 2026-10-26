@@ -17,7 +17,8 @@ class CGObjectInstance;
 class IObjectInterface;
 class CArmedInstance;
 
-/// Pauses turn time until the player accepts their turn or resumes play.
+//Created when player starts turn or when player puts game on [ause
+//Removed when player accepts a turn or continur play
 class TimerPauseActivity : public Activity
 {
 public:
@@ -29,7 +30,6 @@ public:
 	void onAdded() override;
 	void onRemoval() override;
 	bool endsByPlayerAnswer() const override;
-	bool acceptsAnswer(int32_t answer) const override;
 };
 
 //Created when hero attempts move and something happens
@@ -65,8 +65,7 @@ class GarrisonDialogActivity : public DialogActivity
 public:
 	static constexpr ActivityType TYPE = ActivityType::GarrisonDialog;
 
-	std::array<ObjectInstanceID, 2> exchangingArmies;
-	bool removableUnits = true;
+	std::array<const CArmedInstance *,2> exchangingArmies;
 
 	GarrisonDialogActivity(CGameHandler * owner, PlayerColor initiator, const CArmedInstance *up, const CArmedInstance *down);
 
@@ -74,7 +73,6 @@ public:
 	void addPartner(PlayerColor partner);
 
 	bool acceptsAnswerFrom(PlayerColor player) const override;
-	bool acceptsAnswer(int32_t answer) const override;
 	void onAdded() override;
 	void onRemoval() override;
 	void notifyObjectAboutRemoval(const IObjectInterface * visitedObject, const CGHeroInstance * visitingHero, const JsonNode & visitState) const override;
@@ -103,7 +101,6 @@ public:
 	static constexpr ActivityType TYPE = ActivityType::OpenWindow;
 
 	OpenWindowActivity(CGameHandler * owner, const CGHeroInstance *hero, EOpenWindowMode mode);
-	bool acceptsAnswer(int32_t answer) const override;
 
 	bool blocksPack(const CPackForServer *pack) const override;
 };
@@ -116,7 +113,6 @@ public:
 	TeleportDialog td; //copy of pack... debug purposes
 
 	TeleportDialogActivity(CGameHandler * owner, const TeleportDialog & dialog);
-	bool acceptsAnswer(int32_t answer) const override;
 
 	void notifyObjectAboutRemoval(const IObjectInterface * visitedObject, const CGHeroInstance * visitingHero, const JsonNode & visitState) const override;
 };

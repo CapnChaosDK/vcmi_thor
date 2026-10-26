@@ -14,8 +14,7 @@
 #include <SDL3/SDL_gamepad.h>
 
 #include "lib/Point.h"
-#include "gui/ControllerInputState.h"
-#include "ControllerPromptFamily.h"
+#include "gui/ControllerPromptFamily.h"
 #include "gui/Shortcut.h"
 
 /// Class that handles game controller input from SDL events
@@ -26,7 +25,6 @@ class InputSourceGameController
 
 	std::map<int, GameControllerPtr> gameControllerMap;
 	int activeController = -1;
-	std::map<std::pair<int, int>, ControllerInput::AxisLatch> axisLatches;
 
 	std::chrono::steady_clock::time_point lastCheckTime;
 	double cursorAxisValueX;
@@ -48,11 +46,10 @@ class InputSourceGameController
 	const double configAxisSpeed;
 	const double configAxisScale;
 
-	void latchHeldControls(int instance);
 	void openGameController(SDL_JoystickID instanceID);
 	int getJoystickIndex(SDL_Gamepad * controller);
 	double getRealAxisValue(int value) const;
-	void dispatchAxisShortcuts(int instance, int axisValue, const std::string & axisName);
+	void dispatchAxisShortcuts(int instance, int axisValue, const std::string & axisName, bool consumed = false);
 	void tryToConvertCursor();
 	void doCursorMove(int deltaX, int deltaY);
 	int getMoveDis(float planDis);
@@ -68,7 +65,7 @@ public:
 	ControllerPrompt::Family getActiveControllerPromptFamily() const;
 	void tryOpenAllGameControllers();
 	void handleEventDeviceAdded(const SDL_GamepadDeviceEvent & device);
-	bool handleEventDeviceRemoved(const SDL_GamepadDeviceEvent & device);
+	void handleEventDeviceRemoved(const SDL_GamepadDeviceEvent & device);
 	void handleEventDeviceRemapped(const SDL_GamepadDeviceEvent & device);
 	void handleEventAxisMotion(const SDL_GamepadAxisEvent & axis);
 	void handleEventButtonDown(const SDL_GamepadButtonEvent & button);

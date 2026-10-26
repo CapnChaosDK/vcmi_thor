@@ -57,31 +57,6 @@ InputHandler::~InputHandler() = default;
 
 void InputHandler::handleCurrentEvent(const SDL_Event & current)
 {
-	if(current.type == SDL_CONTROLLERDEVICEADDED)
-	{
-		gameControllerHandler->handleEventDeviceAdded(current.cdevice);
-		return;
-	}
-
-	if(current.type == SDL_CONTROLLERDEVICEREMOVED)
-	{
-		if(gameControllerHandler->handleEventDeviceRemoved(current.cdevice))
-			setCurrentInputMode(InputMode::KEYBOARD_AND_MOUSE);
-		return;
-	}
-
-	if(current.type == SDL_CONTROLLERDEVICEREMAPPED)
-	{
-		gameControllerHandler->handleEventDeviceRemapped(current.cdevice);
-		return;
-	}
-
-	if(current.type == SDL_APP_WILLENTERBACKGROUND || (current.type == SDL_WINDOWEVENT && current.window.event == SDL_WINDOWEVENT_FOCUS_LOST))
-	{
-		cancelControllerInput();
-		return;
-	}
-
 	switch (current.type)
 	{
 		case SDL_KEYDOWN:
@@ -177,10 +152,7 @@ void InputHandler::setCurrentInputMode(InputMode modi)
 {
 	if(currentInputMode != modi)
 	{
-		// A fresh controller event is about to be dispatched. Leaving a mode already
-		// canceled its input; do not suppress this new intent when entering controller mode.
-		if(modi != InputMode::CONTROLLER)
-			cancelControllerInput();
+		cancelControllerInput();
 		currentInputMode = modi;
 		ENGINE->events().dispatchInputModeChanged(modi);
 	}
@@ -305,10 +277,6 @@ void InputHandler::preprocessEvent(const SDL_Event & ev)
 	else if(ev.type == SDL_APP_WILLENTERBACKGROUND)
 	{
 		std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
-		{
-			std::lock_guard queueLock(eventsMutex);
-			eventsQueue.push_back(ev);
-		}
 		ENGINE->user().onAppPaused();
 		return;
 	}
@@ -369,10 +337,6 @@ void InputHandler::preprocessEvent(const SDL_Event & ev)
 			case SDL_WINDOWEVENT_FOCUS_LOST:
 			{
 				std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
-				{
-					std::lock_guard queueLock(eventsMutex);
-					eventsQueue.push_back(ev);
-				}
 				if(settings["general"]["audioMuteFocus"].Bool()) {
 					ENGINE->music().setVolume(0);
 					ENGINE->sound().setVolume(0);
@@ -389,6 +353,21 @@ void InputHandler::preprocessEvent(const SDL_Event & ev)
 		{
 			NotificationHandler::handleSdlEvent(ev);
 		}
+	}
+	else if(ev.type == SDL_CONTROLLERDEVICEADDED)
+	{
+		gameControllerHandler->handleEventDeviceAdded(ev.cdevice);
+		return;
+	}
+	else if(ev.type == SDL_CONTROLLERDEVICEREMOVED)
+	{
+		gameControllerHandler->handleEventDeviceRemoved(ev.cdevice);
+		return;
+	}
+	else if(ev.type == SDL_CONTROLLERDEVICEREMAPPED)
+	{
+		gameControllerHandler->handleEventDeviceRemapped(ev.cdevice);
+		return;
 	}
 
 #ifndef VCMI_EMULATE_TOUCHSCREEN_WITH_MOUSE
@@ -474,9 +453,9 @@ void InputHandler::setCursorPosition(const Point & position)
 	ENGINE->events().dispatchMouseMoved(Point(0, 0), position);
 }
 
-void InputHandler::startTextInput(const Rect & where)
+void InputHandler::startTextInput(const Rect & where, bool numbersOnly)
 {
-	textHandler->startTextInput(where);
+	textHandler->startTextInput(where, numbersOnly);
 }
 
 void InputHandler::stopTextInput()

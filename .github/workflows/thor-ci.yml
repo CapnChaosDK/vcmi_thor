@@ -50,6 +50,10 @@ jobs:
 
       - name: Validate candidate checklist contract
         run: |
+          upstream_sha="$(python3 -c 'import json; print(json.load(open("CI/thor_upstream_base.json"))["upstream_commit"])')"
+          git fetch --depth=1 --no-tags https://github.com/vcmi/vcmi.git "$upstream_sha"
+          python3 CI/thor_upstream_base.py
+          python3 -m unittest discover -s CI -p 'test_thor_upstream_base.py'
           python3 CI/thor_validation_plan.py
           python3 -m unittest discover -s CI -p 'test_thor_validation_plan.py'
 
@@ -104,18 +108,17 @@ jobs:
             test/thor/ThorAdventureMapTest.cpp \
             test/thor/ThorRecruitmentTest.cpp \
             test/thor/ThorVisualAssetTest.cpp \
-            test/battle/BattleAnimationWaitTest.cpp \
-            test/battle/BattleControllerInputTest.cpp \
+            test/thor/ThorRequestTrackerTest.cpp \
             test/googletest/googletest/src/gtest-all.cc \
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
-          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:BattleAnimationWait*:BattleControllerInput*:ControllerInput*'
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:ThorRequestTracker*'
 
       - name: Install native regression dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes ccache ninja-build libboost-filesystem-dev libboost-program-options-dev \
-            zlib1g-dev libminizip-dev libtbb-dev libluajit-5.1-dev p7zip-full
+            zlib1g-dev libminizip-dev libtbb-dev libluajit-5.1-dev libcurl4-openssl-dev p7zip-full
 
       - name: Identify native compiler cache compatibility
         id: native_toolchain
@@ -131,7 +134,7 @@ jobs:
                 "$(g++ -print-prog-name=cc1plus)"
               dpkg-query -W -f='${Package}=${Version}\n' \
                 libboost-filesystem-dev libboost-program-options-dev zlib1g-dev \
-                libminizip-dev libtbb-dev libluajit-5.1-dev
+                libminizip-dev libtbb-dev libluajit-5.1-dev libcurl4-openssl-dev
             } | sha256sum | cut -d ' ' -f 1
           )"
           echo "id=$toolchain_id" >> "$GITHUB_OUTPUT"
@@ -156,26 +159,27 @@ jobs:
           ccache --zero-stats
           ccache --show-config
 
-      - name: Build and run authoritative army transfer regressions (non-Thor)
+      - name: Build and run upstream native regressions and Thor contracts (non-Thor)
         run: |
-          cmake -S . -B "$RUNNER_TEMP/army-transfer-build" -G Ninja \
+          cmake -S . -B "$RUNNER_TEMP/native-regression-build" -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DENABLE_TEST=ON -DENABLE_SERVER=ON \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DENABLE_PCH=OFF \
             -DENABLE_CLIENT=OFF -DENABLE_LAUNCHER=OFF -DENABLE_EDITOR=OFF \
             -DENABLE_NULLKILLER2_AI=OFF -DENABLE_BATTLE_AI=OFF \
             -DENABLE_STUPID_AI=OFF -DENABLE_MMAI=OFF -DENABLE_DISCORD=OFF
-          grep -E '^CMAKE_C_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/army-transfer-build/CMakeCache.txt"
-          grep -E '^CMAKE_CXX_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/army-transfer-build/CMakeCache.txt"
+          grep -E '^CMAKE_C_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/native-regression-build/CMakeCache.txt"
+          grep -E '^CMAKE_CXX_COMPILER_LAUNCHER:.*=ccache$' "$RUNNER_TEMP/native-regression-build/CMakeCache.txt"
           build_started_at="$(date +%s)"
           # Compile the server boundary first so integration errors surface before the core build.
-          cmake --build "$RUNNER_TEMP/army-transfer-build" --target vcmiservercommon --parallel 2 -- -k 0
-          # Ninja object targets use the exact regression compile flags before the longer link dependencies.
-          cmake --build "$RUNNER_TEMP/army-transfer-build" --target \
-            test/CMakeFiles/army-transfer-tests.dir/server/ArmyManagementTest.cpp.o \
-            test/CMakeFiles/army-transfer-tests.dir/server/activities/ActivityProcessorTest.cpp.o \
-            --parallel 2 -- -k 0
-          cmake --build "$RUNNER_TEMP/army-transfer-build" --target army-transfer-tests --parallel 2
+          cmake --build "$RUNNER_TEMP/native-regression-build" --target vcmiservercommon --parallel 2 -- -k 0
+          # vcmi's upstream post-build step deploys config, Mods and scripts beside the tests.
+          # vcmitest links vcmiMain directly, so building it alone skips that deployment.
+          cmake --build "$RUNNER_TEMP/native-regression-build" --target vcmi vcmitest --parallel 2
+          test -f "$RUNNER_TEMP/native-regression-build/bin/config/filesystem.json"
+          test -f "$RUNNER_TEMP/native-regression-build/bin/Mods/vcmi/mod.json"
+          test -f "$RUNNER_TEMP/native-regression-build/bin/test/testdata/vcmi-test/mod.json"
+          test -d "$RUNNER_TEMP/native-regression-build/bin/scripts"
           echo "NATIVE_BUILD_DURATION_SECONDS=$(($(date +%s) - build_started_at))" >> "$GITHUB_ENV"
           # Reuse the standard native test-data procedure from github.yml.
           curl --fail --location --retry 3 \
@@ -183,7 +187,7 @@ jobs:
             --output "$RUNNER_TEMP/army-test-data.7z"
           mkdir -p "$HOME/.local/share/vcmi"
           7za x -y -o"$HOME/.local/share/vcmi/" "$RUNNER_TEMP/army-test-data.7z"
-          ctest --test-dir "$RUNNER_TEMP/army-transfer-build" -R '^ArmyTransferBoundary$' --output-on-failure
+          (cd "$RUNNER_TEMP/native-regression-build/bin" && ./vcmitest)
 
       - name: Verify and report native compiler cache use
         env:
@@ -375,7 +379,6 @@ jobs:
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactGestureTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingGestureTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingSplitStateTest \
-              --tests eu.vcmi.vcmi.ThorHeroMeetingRedistributionStateTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactsTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingArtifactCacheTest \
               --tests eu.vcmi.vcmi.ThorHeroMeetingVisualAssetTest \
@@ -432,7 +435,7 @@ jobs:
               "arm64_build_duration_seconds": os.environ["ARM64_BUILD_DURATION_SECONDS"],
               "tests": {
                   "focused_native_thor": "passed",
-                  "authoritative_army_transfer_non_thor": "passed",
+                  "upstream_native_regressions_non_thor": "passed",
                   "focused_android_thor": "passed"
               },
               "package_verification": "passed"

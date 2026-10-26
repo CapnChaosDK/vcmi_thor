@@ -483,25 +483,6 @@ TEST(ThorContextStoreTest, TownHallRejectsDuplicateOrMismatchedNativeBuildingIde
 	EXPECT_EQ(validateThorActionRequest({mismatched.revision, ThorAction::WINDOW_CLOSE}, mismatched), ThorActionValidation::VALID);
 }
 
-TEST(ThorContextStoreTest, HeroMeetingRedistributionConsumptionAndRestoreAreSemanticRevisions)
-{
-	ThorContextStore store;
-	ThorContextRecord meeting;
-	meeting.contextId = ThorContextIds::HERO_MEETING;
-	meeting.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
-	const auto ready = store.publishNext(meeting);
-	const auto unchanged = store.publishNext(meeting);
-	EXPECT_EQ(unchanged.revision, ready.revision);
-	meeting.actionEpoch = ready.actionEpoch + 1;
-	meeting.enabledActionMask = 0;
-	const auto consumed = store.publishNext(meeting);
-	EXPECT_GT(consumed.revision, ready.revision);
-	meeting.enabledActionMask = thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK);
-	const auto restored = store.publishNext(meeting);
-	EXPECT_GT(restored.revision, consumed.revision);
-	EXPECT_EQ(restored.enabledActionMask, thorActionMask(ThorAction::HERO_MEETING_REDISTRIBUTE_STACK));
-}
-
 TEST(ThorContextStoreTest, AdventureUtilityTransitionsReceiveNewerRevisions)
 {
 	ThorContextStore store;

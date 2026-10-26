@@ -11,8 +11,11 @@
 #include "../../server/IGameServer.h"
 #include "../../lib/GameConstants.h"
 
+#include "../../lib/networkPacks/PacksForClient.h"
+
 #include <memory>
 #include <optional>
+#include <vector>
 
 class CGameState;
 
@@ -32,6 +35,9 @@ public:
 
 	/// Question ids of the level-up dialogs that the server sent, in order.
 	std::vector<QuestionID> levelUpPromptIDs;
+
+	/// Whether each of those dialogs announced a further level.
+	std::vector<bool> levelUpMoreLevelsFollow;
 
 	/// Question ids that the server reported as resolved, in order.
 	std::vector<QuestionID> resolvedQuestionIDs;

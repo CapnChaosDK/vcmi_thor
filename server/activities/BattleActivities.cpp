@@ -16,7 +16,7 @@
 #include "../../lib/battle/IBattleState.h"
 #include "../../lib/battle/BattleLayout.h"
 #include "../../lib/battle/SideInBattle.h"
-#include "../../lib/mapObjects/army/CArmedInstance.h"
+#include "../../lib/mapObjects/CGObjectInstance.h"
 #include "../../lib/networkPacks/PacksForServer.h"
 
 void BattleActivity::notifyObjectAboutRemoval(const IObjectInterface * visitedObject, const CGHeroInstance * visitingHero, const JsonNode & visitState) const
@@ -31,8 +31,8 @@ BattleActivity::BattleActivity(CGameHandler * owner, const IBattleInfo * bi):
 	Activity(owner, TYPE),
 	battleID(bi->getBattleID())
 {
-	belligerents[BattleSide::ATTACKER] = bi->getSideArmy(BattleSide::ATTACKER)->id;
-	belligerents[BattleSide::DEFENDER] = bi->getSideArmy(BattleSide::DEFENDER)->id;
+	belligerents[BattleSide::ATTACKER] = bi->getSideArmy(BattleSide::ATTACKER);
+	belligerents[BattleSide::DEFENDER] = bi->getSideArmy(BattleSide::DEFENDER);
 
 	// Only the defender can be neutral
 	addPlayer(bi->getSidePlayer(BattleSide::ATTACKER));
@@ -56,9 +56,10 @@ bool BattleActivity::blocksPack(const CPackForServer * pack) const
 	return true;
 }
 
-BattleResultActivity::BattleResultActivity(CGameHandler * owner, const IBattleInfo * bi):
+BattleResultActivity::BattleResultActivity(CGameHandler * owner, const IBattleInfo * bi, const std::optional<BattleResult> & Br):
 	DialogActivity(owner, TYPE),
-	bi(bi)
+	bi(bi),
+	result(Br)
 {
 	// Only the defender can be neutral
 	addPlayer(bi->getSidePlayer(BattleSide::ATTACKER));

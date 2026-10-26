@@ -26,7 +26,7 @@ using TSlots = std::map<SlotID, std::unique_ptr<CStackInstance>>;
 using TPairCreatureSlot = std::pair<const CCreature *, SlotID>;
 using TMapCreatureSlot = std::map<const CCreature *, SlotID>;
 
-struct DLL_LINKAGE CreatureSlotComparer
+struct CreatureSlotComparer
 {
 	bool operator()(const TPairCreatureSlot & lhs, const TPairCreatureSlot & rhs);
 };
@@ -126,7 +126,9 @@ public:
 	bool slotEmpty(const SlotID & slot) const;
 	int stacksCount() const;
 	virtual bool needsLastStack() const; //true if last stack cannot be taken
-	ui64 getArmyStrength(int fortLevel = 0) const; //sum of AI values of creatures
+	ui64 getArmyStrength() const; //sum of AI values of creatures
+	/// Combat value of this army, estimated from creature stats and abilities instead of configured AI value
+	ui64 estimateCombatValue(int fortLevel = 0) const;
 	ui64 getArmyCost() const; //sum of cost of creatures
 	ui64 getPower(const SlotID & slot) const; //value of specific stack
 	MetaString getRoughAmount(const SlotID & slot, int mode = 0) const; //rough size of specific stack
@@ -136,7 +138,7 @@ public:
 	bool contains(const CStackInstance * stack) const;
 	bool canBeMergedWith(const CCreatureSet & cs, bool allowMergingStacks = true) const;
 
-	/// Returns true if this creature set contains all listed units
+	/// Returns true if this creature set contains all listed units, with repeated entries of a creature added up
 	/// If requireLastStack is true, then this function will also
 	/// require presence of any unit other than requested (or more units than requested)
 	bool hasUnits(const std::vector<CStackBasicDescriptor> & units, bool requireLastStack = true) const;

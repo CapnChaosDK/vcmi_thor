@@ -13,12 +13,14 @@
 #include "../../lib/filesystem/ResourcePath.h"
 #include "../widgets/MiscWidgets.h"
 #include "CWindowObject.h"
+#include "../gui/Shortcut.h"
 
 class CCommanderInstance;
 class CStackInstance;
 class CStack;
 class UpgradeInfo;
 
+class CPlayerInterface;
 class UnitView;
 class CTabbedInt;
 class CButton;
@@ -68,7 +70,7 @@ class CStackWindow : public CWindowObject
 	private:
 		std::shared_ptr<CPicture> background;
 	protected:
-		CStackWindow * parent;
+		CStackWindow * stackWindow;
 	public:
 		CWindowSection(CStackWindow * parent, const ImagePath & backgroundPath, int yOffset);
 	};
@@ -102,7 +104,7 @@ class CStackWindow : public CWindowObject
 	class ButtonsSection : public CWindowSection
 	{
 		std::shared_ptr<CButton> dismiss;
-		std::array<std::shared_ptr<CButton>, 3> upgrade;// no more than 3 buttons - space limit
+		std::array<std::shared_ptr<CButton>, 4> upgrade;// no more than 4 buttons - space limit
 		std::shared_ptr<CButton> exit;
 	public:
 		ButtonsSection(CStackWindow * owner, int yOffset);
@@ -166,13 +168,14 @@ class CStackWindow : public CWindowObject
 	class StackExperienceDetailsWindow;
 
 
-	std::shared_ptr<CFilledTexture> background;
+	std::shared_ptr<CFilledTexture> backgroundTexture;
 
 	std::shared_ptr<CArtPlace> stackArtifact;
 	std::shared_ptr<CButton> stackArtifactButton;
 
 
 	std::unique_ptr<UnitView> info;
+	EShortcut closeShortcut = EShortcut::GLOBAL_RETURN;
 	std::unique_ptr<CStackInstance> fakeNode;
 	std::vector<BonusInfo> activeBonuses;
 	size_t activeTab;
@@ -200,7 +203,7 @@ class CStackWindow : public CWindowObject
 	void submitSelection();
 
 	void init();
-	void initCommanderLevelUpData(const CCommanderInstance * commander, const std::vector<ui32> & skills, QuestionID question);
+	void initCommanderLevelUpData(CPlayerInterface * askedInterface, const CCommanderInstance * commander, const std::vector<ui32> & skills, bool moreLevels, QuestionID question);
 	void answer(ui32 selection);
 	void showStackExperienceDetailsWindow();
 
@@ -208,7 +211,7 @@ class CStackWindow : public CWindowObject
 
 public:
 	// for battles
-	CStackWindow(const CStack * stack, bool popup);
+	CStackWindow(const CStack * stack, bool popup, EShortcut closeShortcut = EShortcut::GLOBAL_RETURN);
 
 	// for non-existing stacks, e.g. recruit screen
 	CStackWindow(const CCreature * creature, bool popup);
@@ -219,7 +222,7 @@ public:
 
 	// for commanders & commander level-up dialog
 	CStackWindow(const CCommanderInstance * commander, bool popup);
-	CStackWindow(const CCommanderInstance * commander, const std::vector<ui32> & skills, QuestionID question);
+	CStackWindow(CPlayerInterface * askedInterface, const CCommanderInstance * commander, const std::vector<ui32> & skills, bool moreLevels, QuestionID question);
 	bool isCommanderLevelUpDialog() const;
 	void close() override;
 
@@ -228,5 +231,7 @@ public:
 
 private:
 	QuestionID questionID;
+	CPlayerInterface * owner = nullptr; ///< interface that was asked; in hotseat it may not be the current one
+	bool moreLevelsFollow = false; ///< level-up window stays open for the next level instead of closing on selection
 	bool selectionSubmitted = false;
 };

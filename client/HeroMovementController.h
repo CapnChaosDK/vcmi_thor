@@ -34,8 +34,6 @@ class HeroMovementController
 #endif
 
 	bool waitingForQueryApplyReply = false;
-	QuestionID pendingTeleportQuestion = QuestionID::NONE;
-	int pendingTeleportReplyRequest = -1;
 
 	const CGHeroInstance * currentlyMovingHero = nullptr;
 	AudioPath currentMovementSoundName;
@@ -66,8 +64,7 @@ public:
 
 	// netpack handlers
 	void onMoveHeroApplied();
-	void onQuestionAnswerApplied(int requestID, bool success);
-	void onQuestionResolved(QuestionID questionID);
+	void onQuestionAnswerApplied();
 	void onPlayerTurnStarted();
 	void onBattleStarted();
 	void showTeleportDialog(const CGHeroInstance * hero, TeleportChannelID channel, TTeleportExitsList exits, bool impassable, QuestionID questionID);

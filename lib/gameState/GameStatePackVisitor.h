@@ -29,7 +29,6 @@ class GameStatePackVisitor final : public ICPackVisitor
 	void updateMoraleOnArtifactChange(const ObjectInstanceID & artHolder);
 private:
 	CGameState & gs;
-	void applyRebalanceStacks(RebalanceStacks & pack);
 
 public:
 	GameStatePackVisitor(CGameState & gs)
@@ -63,6 +62,7 @@ public:
 	void visitDischargeArtifact(DischargeArtifact & pack) override;
 	void visitHeroVisit(HeroVisit & pack) override;
 	void visitNewTurn(NewTurn & pack) override;
+	void visitSimturnsContactStatus(SimturnsContactStatus & pack) override;
 	void visitGiveBonus(GiveBonus & pack) override;
 	void visitChangeObjPos(ChangeObjPos & pack) override;
 	void visitPlayerEndsTurn(PlayerEndsTurn & pack) override;
@@ -79,6 +79,7 @@ public:
 	void visitSetObjectProperty(SetObjectProperty & pack) override;
 	void visitSetScriptVariable(SetScriptVariable & pack) override;
 	void visitSetQuestHint(SetQuestHint & pack) override;
+	void visitDisableMapEvent(DisableMapEvent & pack) override;
 	void visitHeroLevelUp(HeroLevelUp & pack) override;
 	void visitCommanderLevelUp(CommanderLevelUp & pack) override;
 	void visitBattleStart(BattleStart & pack) override;
@@ -114,6 +115,7 @@ public:
 	void visitSetRewardableConfiguration(SetRewardableConfiguration & pack) override;
 	void visitBattleSetStackProperty(BattleSetStackProperty & pack) override;
 	void visitBattleNextRound(BattleNextRound & pack) override;
+	void visitBattleTacticsEnded(BattleTacticsEnded & pack) override;
 	void visitBattleCancelled(BattleCancelled & pack) override;
 	void visitBattleResultsApplied(BattleResultsApplied & pack) override;
 	void visitBattleEnded(BattleEnded & pack) override;
@@ -121,7 +123,7 @@ public:
 	void visitTurnTimeUpdate(TurnTimeUpdate & pack) override;
 };
 
-class DLL_LINKAGE BattleStatePackVisitor final : public ICPackVisitor
+class BattleStatePackVisitor final : public ICPackVisitor
 {
 	IBattleState & battleState;
 public:

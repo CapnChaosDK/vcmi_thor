@@ -16,10 +16,12 @@
 
 #include "../battle/IBattleState.h"
 #include "../battle/CBattleInfoCallback.h"
+#include "../battle/DamageEstimationTexts.h"
 #include "../battle/Unit.h"
 #include "../networkPacks/PacksForClientBattle.h"
 #include "../networkPacks/SetStackEffect.h"
 #include "../CStack.h"
+#include "effects/Effect.h"
 
 #include <vstd/RNG.h>
 
@@ -193,8 +195,6 @@ bool BattleSpellMechanics::canBeCast(Problem & problem) const
 				logGlobal->debug("CSpell::canBeCast: invalid caster");
 				genProblem = ESpellCastProblem::NO_HERO_TO_CAST_SPELL;
 			}
-			else if(!castingHero->getArt(ArtifactPosition::SPELLBOOK))
-				genProblem = ESpellCastProblem::NO_SPELLBOOK;
 			else if(!castingHero->canCastThisSpell(owner))
 				genProblem = ESpellCastProblem::HERO_DOESNT_KNOW_SPELL;
 			else if(castingHero->mana < battle()->battleGetSpellCost(owner, castingHero)) //not enough mana
@@ -386,7 +386,8 @@ void BattleSpellMechanics::cast(ServerCallback * server, const Target & target)
 			int manaChannel = 0;
 			for(const auto * stack : battle()->battleGetAllStacks(true)) //TODO: shouldn't bonus system handle it somehow?
 			{
-				if(stack->unitOwner() == otherHero->tempOwner && stack->alive())
+				// a hypnotized familiar channels mana to the player controlling it
+				if(battle()->battleGetOwner(stack) == otherHero->tempOwner && stack->alive())
 					vstd::amax(manaChannel, stack->valOfBonuses(BonusType::MANA_CHANNELING));
 			}
 			sc.manaGained = (manaChannel * spellCost) / 100;
@@ -423,6 +424,15 @@ void BattleSpellMechanics::cast(ServerCallback * server, const Target & target)
 		break;
 	}
 
+	// Capture target states before applying effects for the SPELL_HIT payload.
+	std::vector<std::shared_ptr<const battle::CUnitState>> unitsBeforeCast;
+	if(sc.activeCast)
+	{
+		unitsBeforeCast.reserve(affectedUnits.size());
+		for(const auto * unit : affectedUnits)
+			unitsBeforeCast.push_back(unit->acquireState());
+	}
+
 	doRemoveEffects(server, affectedUnits, std::bind(&BattleSpellMechanics::counteringSelector, this, _1));
 
 	for(auto & unit : affectedUnits)
@@ -452,6 +462,15 @@ void BattleSpellMechanics::cast(ServerCallback * server, const Target & target)
 	StacksInjured fakeEvent;
 	fakeEvent.battleID = battle()->getBattle()->getBattleID();
 	server->apply(fakeEvent);
+
+	// Notify after applying all effects. Only deliberate casts generate SPELL_HIT.
+	if(sc.activeCast)
+	{
+		// Hero and unit IDs share a numeric range, so hero casts have no caster unit.
+		const auto * casterUnit = sc.castByHero ? nullptr : battle()->battleGetUnitByID(sc.casterStack);
+
+		server->spellHasHit(*battle(), *owner, casterUnit, unitsBeforeCast);
+	}
 }
 
 void BattleSpellMechanics::beforeCast(BattleSpellCast & sc, vstd::RNG & rng, const Target & target)
@@ -734,6 +753,97 @@ BattleHexArray BattleSpellMechanics::rangeInHexes(const BattleHex & centralHex) 
 	return effectRange;
 }
 
+MetaString BattleSpellMechanics::describeEffectValue(MetaString text, const Target & aim, const std::string & healTextID) const
+{
+	const auto value = battle()->getSpellEffectValue(owner, caster, mode, aim);
+
+	if(value->unitsDelta > 0)
+	{
+		text.appendRawString(" (+ " + std::to_string(value->unitsDelta) + " ");
+		text.appendTextID(value->unitsDelta == 1 ? value->unitType->getNameSingularTextID() : value->unitType->getNamePluralTextID());
+		text.appendRawString(")");
+		return text;
+	}
+
+	if(value->hpDelta == 0)
+		return text;
+
+	text.appendRawString(" (");
+	if(value->hpDelta > 0)
+	{
+		text.append(DamageEstimationTexts::healthGain(value->hpDelta, healTextID));
+	}
+	else
+	{
+		text.append(DamageEstimationTexts::plural({-value->hpDelta, -value->hpDelta}, "vcmi.battleWindow.damageEstimation.damage"));
+		if(value->unitsDelta < 0)
+		{
+			text.appendRawString(", ");
+			text.append(DamageEstimationTexts::plural({-value->unitsDelta, -value->unitsDelta}, "vcmi.battleWindow.damageEstimation.kills"));
+		}
+	}
+	text.appendRawString(")");
+	return text;
+}
+
+TargetStepDescription BattleSpellMechanics::describeTargetStep(const Target & partialTarget, const BattleHex & hoveredHex) const
+{
+	static const std::string healTextID = "vcmi.battleWindow.healValuePreview";
+
+	const auto types = getTargetTypes();
+	const size_t step = partialTarget.size();
+
+	if(step >= types.size() || types.at(step) == AimType::NOTHING || !hoveredHex.isValid())
+		return {};
+
+	const battle::Unit * hoveredUnit = battle()->battleGetUnitOrCorpseByPos(hoveredHex);
+
+	Target aim = partialTarget;
+	aim.emplace_back(hoveredHex);
+
+	// the unit is the last destination of a one-destination aim, so that an effect without a target of its own describes the hovered unit
+	if(types.size() == 1 && hoveredUnit)
+		aim.emplace_back(hoveredUnit);
+
+	std::optional<effects::EffectTargetStep> described;
+	effects->forEachEffect(getEffectLevel(), [&](const effects::Effect * e, bool & stop)
+	{
+		described = e->describeTargetStep(this, partialTarget, hoveredHex);
+		stop = described.has_value();
+	});
+
+	if(described)
+	{
+		if(!described->healthGainTextID.empty())
+			described->text = describeEffectValue(described->text, aim, described->healthGainTextID);
+		return *described;
+	}
+
+	if(types.at(step) == AimType::CREATURE)
+	{
+		// "Cast %s on %s"
+		MetaString text = MetaString::createFromTextID("core.genrltxt.27");
+		text.replaceName(getSpellId());
+		if(hoveredUnit)
+			text.replaceName(hoveredUnit->creatureId(), hoveredUnit->getCount());
+		return {"castSpell", describeEffectValue(text, aim, healTextID), MetaString::createFromTextID("core.genrltxt.23")};
+	}
+
+	// "Cast %s"
+	MetaString text = MetaString::createFromTextID("core.genrltxt.26");
+	text.replaceName(getSpellId());
+
+	if(requiresClearTiles())
+	{
+		// "No room to place %s here"
+		MetaString blockedText = MetaString::createFromTextID("core.genrltxt.181");
+		blockedText.replaceName(getSpellId());
+		return {"castSpell", text, blockedText};
+	}
+
+	return {"castSpell", describeEffectValue(text, aim, healTextID), {}};
+}
+
 Target BattleSpellMechanics::canonicalizeTarget(const Target & aim) const
 {
 	return transformSpellTarget(aim);
@@ -746,4 +856,3 @@ const Spell * BattleSpellMechanics::getSpell() const
 
 
 }
-

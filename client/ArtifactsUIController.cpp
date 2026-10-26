@@ -9,6 +9,7 @@
  */
  
 #include "StdInc.h"
+#include "thor/ThorRequestTracker.h"
 #include "ArtifactsUIController.h"
 #include "CPlayerInterface.h"
 
@@ -63,7 +64,7 @@ bool ArtifactsUIController::askToAssemble(const CGHeroInstance * hero, const Art
 
 	if(numOfArtsAskAssembleSession != 0)
 		numOfArtsAskAssembleSession--;
-	auto assemblyPossibilities = ArtifactUtils::assemblyPossibilities(hero, art->getTypeId(), onlyEquipped);
+	auto assemblyPossibilities = ArtifactUtils::assemblyPossibilities(GAME->interface()->cb->getSettings(), hero, art->getTypeId(), onlyEquipped);
 	if(!assemblyPossibilities.empty())
 	{
 		auto askThread = new std::thread([this, hero, slot, assemblyPossibilities, checkIgnored,
@@ -95,8 +96,8 @@ bool ArtifactsUIController::askToAssemble(const CGHeroInstance * hero, const Art
 							assembleConfirmed = true;
 							if(requestAllowedCallback && !requestAllowedCallback())
 								return;
-							const auto requestId = GAME->interface()->cb->assembleArtifactsRequest(
-								hero->id, slot, true, combinedArt->getId());
+							const auto requestId = captureThorRequest([&] { GAME->interface()->cb->assembleArtifacts(
+								hero->id, slot, true, combinedArt->getId()); });
 							if(requestId > 0 && requestCallback)
 								requestCallback(requestId);
 						}, nullptr, {std::make_shared<CComponent>(ComponentType::ARTIFACT, combinedArt->getId())});
@@ -125,7 +126,7 @@ bool ArtifactsUIController::askToDisassemble(const CGHeroInstance * hero, const 
 	if(hero->tempOwner != GAME->interface()->playerID)
 		return false;
 
-	if(art->hasParts())
+	if(art->hasParts() && !ArtifactUtils::isCombinationDisabled(GAME->interface()->cb->getSettings(), art->getTypeId()))
 	{
 		if(ArtifactUtils::isSlotBackpack(slot) && !ArtifactUtils::isBackpackFreeSlots(hero, art->getType()->getConstituents().size() - 1))
 			return false;
@@ -140,7 +141,7 @@ bool ArtifactsUIController::askToDisassemble(const CGHeroInstance * hero, const 
 			{
 				if(requestAllowedCallback && !requestAllowedCallback())
 					return;
-				const auto requestId = GAME->interface()->cb->assembleArtifactsRequest(hero->id, slot, false, ArtifactID());
+				const auto requestId = captureThorRequest([&] { GAME->interface()->cb->assembleArtifacts(hero->id, slot, false, ArtifactID()); });
 				if(requestId > 0 && requestCallback)
 					requestCallback(requestId);
 			}, nullptr);

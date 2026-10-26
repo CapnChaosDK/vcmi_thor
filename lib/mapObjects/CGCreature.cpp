@@ -122,8 +122,8 @@ MetaString CGCreature::getPopupText(const CGHeroInstance * hero) const
 		hoverName.appendTextID("vcmi.adventureMap.monsterThreat.title");
 
 		int choice;
-		uint64_t armyStrength = getArmyStrength();
-		uint64_t heroStrength = hero->getTotalStrength();
+		uint64_t armyStrength = estimateCombatValue();
+		uint64_t heroStrength = hero->estimateHeroCombatValue();
 		double ratio = static_cast<double>(armyStrength) / heroStrength;
 		if (ratio < 0.1)  choice = 0;
 		else if (ratio < 0.25) choice = 1;
@@ -220,9 +220,17 @@ const CCreature * CGCreature::getCreature() const
 	return getCreatureID().toCreature();
 }
 
+int CGCreature::getEffectiveJoiningPercentage() const
+{
+	if(joiningPercentage >= 0)
+		return joiningPercentage;
+
+	return cb->getSettings().getInteger(EGameSettings::CREATURES_JOINING_PERCENTAGE);
+}
+
 TQuantity CGCreature::getJoiningAmount() const
 {
-	return std::max(static_cast<int64_t>(1), getStackCount(SlotID(0)) * cb->getSettings().getInteger(EGameSettings::CREATURES_JOINING_PERCENTAGE) / 100);
+	return std::max(static_cast<int64_t>(1), static_cast<int64_t>(getStackCount(SlotID(0))) * getEffectiveJoiningPercentage() / 100);
 }
 
 void CGCreature::pickRandomObject(IGameRandomizer & gameRandomizer)
@@ -364,10 +372,11 @@ int CGCreature::takenAction(const CGHeroInstance *h, bool allowJoin) const
 
 	for(const auto & elem : h->Slots())
 	{
+		bool isSameCreature = elem.second->getCreatureID() == getCreatureID();
 		bool isOurUpgrade = vstd::contains(getCreature()->upgrades, elem.second->getCreatureID());
 		bool isOurDowngrade = vstd::contains(elem.second->getCreature()->upgrades, getCreatureID());
 
-		if(isOurUpgrade || isOurDowngrade)
+		if(isSameCreature || isOurUpgrade || isOurDowngrade)
 			count += elem.second->getCount();
 		totalCount += elem.second->getCount();
 	}
@@ -387,7 +396,7 @@ int CGCreature::takenAction(const CGHeroInstance *h, bool allowJoin) const
 	if(charisma < agression)
 		return FIGHT;
 
-	if (allowJoin && cb->getSettings().getInteger(EGameSettings::CREATURES_JOINING_PERCENTAGE) > 0)
+	if (allowJoin && getEffectiveJoiningPercentage() > 0)
 	{
 		if((cb->getSettings().getBoolean(EGameSettings::CREATURES_ALLOW_JOINING_FOR_FREE) || initialCharacter == Character::COMPLIANT) && diplomacy + sympathy + 1 >= agression && !joinOnlyForMoney)
 			return JOIN_FOR_FREE;
@@ -526,9 +535,26 @@ void CGCreature::battleFinished(IGameEventCallback & gameEvents, const CGHeroIns
 	}
 	else
 	{
+		const CCreature * cre = getCreature();
+
+		// creatures of other types, e.g. demons raised by pit lords, would break the single-type army
+		std::vector<SlotID> foreignSlots;
+		for(const auto & [slot, stack] : stacks)
+			if(stack->getCreature() != cre && !cre->isMyDirectUpgrade(stack->getCreature()))
+				foreignSlots.push_back(slot);
+
+		if(foreignSlots.size() == stacks.size())
+		{
+			// none of the original creatures survived
+			gameEvents.removeObject(this, result.attacker);
+			return;
+		}
+
+		for(const auto & slot : foreignSlots)
+			gameEvents.eraseStack(StackLocation(id, slot), true);
+
 		//merge stacks into one
 		TSlots::const_iterator i;
-		const CCreature * cre = getCreature();
 		for(i = stacks.begin(); i != stacks.end(); i++)
 		{
 			if(cre->isMyDirectUpgrade(i->second->getCreature()))
@@ -596,20 +622,19 @@ bool CGCreature::containsUpgradedStack() const
 
 int CGCreature::getNumberOfStacks(const CGHeroInstance * hero) const
 {
-	if(stacksCount > 0)
-		return stacksCount;
+	// non-positive values select the HotA split modes, applied by getDefaultNumberOfStacks
+	int64_t split = std::max<int64_t>(stacksCount, 0);
 
-	int split = 0;
-	if (hero->hasBonusOfType(BonusType::FORCE_NEUTRAL_ENCOUNTER_STACK_COUNT))
+	if (split == 0 && hero->hasBonusOfType(BonusType::FORCE_NEUTRAL_ENCOUNTER_STACK_COUNT))
 		split = getNumberOfStacksFromBonus(hero);
 
 	if(split == 0)
-	 split = getDefaultNumberOfStacks(hero);
+		split = getDefaultNumberOfStacks(hero);
 
 	vstd::amin(split, getStack(SlotID(0)).getCount()); //can't divide into more stacks than creatures total
-	vstd::amin(split, 7);   
+	vstd::amin(split, GameConstants::ARMY_SIZE);
 	vstd::amax(split, 1);
-	return split;
+	return static_cast<int>(split);
 }
 
 int CGCreature::getNumberOfStacksFromBonus(const CGHeroInstance * hero) const
@@ -665,19 +690,25 @@ int CGCreature::getDefaultNumberOfStacks(const CGHeroInstance *hero) const
 	else
 		split = 2;
 
-	ui32 R2 = hashByPosition();
-
-	int R4 = R2 % 100 + 1;
-
-	if(stacksCount == -3)
-		;
-	else if (stacksCount == -2 || R4 <= 20)
-		split -= 1;
-	else if(stacksCount == 0 || R4 >= 80)
-		split += 1;
-
-	vstd::amin(split, getStack(SlotID(0)).getCount()); //can't divide into more stacks than creatures total
-	vstd::amin(split, 7); //can't have more than 7 stacks
+	switch(stacksCount)
+	{
+		case -3: // HotA: average
+			break;
+		case -2: // HotA: one less
+			split -= 1;
+			break;
+		case 0: // HotA: one more
+			split += 1;
+			break;
+		default:
+		{
+			int R4 = hashByPosition() % 100 + 1;
+			if (R4 <= 20)
+				split -= 1;
+			else if (R4 >= 80)
+				split += 1;
+		}
+	}
 
 	return split;
 }
@@ -730,6 +761,13 @@ static const std::vector<std::string> CHARACTER_JSON  =
 	"compliant", "friendly", "aggressive", "hostile", "savage", "custom"
 };
 
+//UpgradedStackPresence starts at RANDOM = -1, while serializeEnum indexes from zero
+static const std::vector<std::string> UPGRADED_STACK_PRESENCE_JSON =
+{
+	"random", "never", "always"
+};
+static constexpr int32_t UPGRADED_STACK_PRESENCE_OFFSET = static_cast<int32_t>(CGCreature::UpgradedStackPresence::RANDOM);
+
 void CGCreature::serializeJsonOptions(JsonSerializeFormat & handler)
 {
 	handler.serializeEnum("character", initialCharacter, CHARACTER_JSON);
@@ -759,4 +797,21 @@ void CGCreature::serializeJsonOptions(JsonSerializeFormat & handler)
 	handler.serializeBool("noGrowing", notGrowingTeam);
 	handler.serializeBool("neverFlees", neverFlees);
 	handler.serializeStruct("rewardMessage", message);
+
+	//Per-object settings introduced by the HotA map format - without these a HotA map
+	//loses them as soon as it is saved in VCMI format. Aggression is only read by
+	//initObj() for Character::CUSTOM, so storing it for any other character would be
+	//dead data.
+	if(!handler.saving || initialCharacter == Character::CUSTOM)
+		handler.serializeInt("aggression", agression, static_cast<int8_t>(0));
+
+	handler.serializeBool("joinOnlyForMoney", joinOnlyForMoney, false);
+	handler.serializeInt("joiningPercentage", joiningPercentage, static_cast<int8_t>(-1));
+	handler.serializeInt("stacksCount", stacksCount, static_cast<int64_t>(-1));
+
+	//written as a string like every other enum here, so shift RANDOM = -1 into range
+	auto upgradedPresence = static_cast<int32_t>(upgradedStackPresence) - UPGRADED_STACK_PRESENCE_OFFSET;
+	handler.serializeEnum("upgradedStackPresence", upgradedPresence, static_cast<int32_t>(UpgradedStackPresence::RANDOM) - UPGRADED_STACK_PRESENCE_OFFSET, UPGRADED_STACK_PRESENCE_JSON);
+	if(!handler.saving)
+		upgradedStackPresence = static_cast<UpgradedStackPresence>(upgradedPresence + UPGRADED_STACK_PRESENCE_OFFSET);
 }

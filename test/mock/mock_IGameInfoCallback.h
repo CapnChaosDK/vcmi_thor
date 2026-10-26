@@ -23,6 +23,7 @@ public:
 	MOCK_CONST_METHOD0(getCalendar, Calendar());
 	MOCK_CONST_METHOD0(getStartInfo, const StartInfo *());
 	MOCK_CONST_METHOD0(getMapHeader, const CMapHeader *());
+	MOCK_CONST_METHOD0(getHeroLevelLimit, ui32());
 	MOCK_CONST_METHOD0(getMapSize, int3());
 	MOCK_CONST_METHOD0(getInitialStartInfo, const StartInfo *());
 
@@ -41,7 +42,7 @@ public:
 	//objects
 	MOCK_CONST_METHOD1(getObj, const CGObjectInstance *(ObjectInstanceID));
 	MOCK_CONST_METHOD1(tryGetObj, const CGObjectInstance *(ObjectInstanceID));
-	MOCK_CONST_METHOD1(getVisitableObjs, std::vector<const CGObjectInstance*>(int3));
+	MOCK_CONST_METHOD2(getVisitableObjs, std::vector<const CGObjectInstance*>(int3, bool));
 
 	const scripting::Pool & getScriptContextPool() const override { throw std::runtime_error("not implemented");}
 	CGameState & gameState() override { throw std::runtime_error("not implemented");}

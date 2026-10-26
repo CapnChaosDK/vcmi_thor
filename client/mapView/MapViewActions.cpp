@@ -134,7 +134,7 @@ void MapViewActions::gesturePinch(const Point & centerPosition, double lastUpdat
 	pinchZoomFactor = newZoom;
 }
 
-void MapViewActions::gestureCanceled(bool)
+void MapViewActions::gestureCanceled()
 {
 	dragActive = false;
 	pinchZoomFactor = 1.0;

@@ -66,7 +66,8 @@ ui64 FuzzyHelper::evaluateDanger(const int3 & tile, const CGHeroInstance * visit
 		{
 			//check guard on the other side of the gate
 			auto it = aiNk->memory->knownSubterraneanGates.find(dangerousObject);
-			if(it != aiNk->memory->knownSubterraneanGates.end())
+			// exit may be hidden again after it was seen, e.g. by Cover of Darkness
+			if(it != aiNk->memory->knownSubterraneanGates.end() && cb->isVisible(it->second->visitablePos()))
 			{
 				auto guards = cb->getGuardingCreatures(it->second->visitablePos());
 
@@ -99,7 +100,7 @@ ui64 FuzzyHelper::evaluateDanger(const CGObjectInstance * obj)
 	case Obj::TOWN:
 	{
 		const CGTownInstance * town = dynamic_cast<const CGTownInstance *>(obj);
-		auto danger = town->getUpperArmy()->getArmyStrength();
+		auto danger = town->getUpperArmy()->estimateCombatValue();
 
 		if(danger || town->getVisitingHero())
 		{
@@ -131,7 +132,7 @@ ui64 FuzzyHelper::evaluateDanger(const CGObjectInstance * obj)
 	{
 		const CArmedInstance * a = dynamic_cast<const CArmedInstance *>(obj);
 		if (a)
-			return a->getArmyStrength();
+			return a->estimateCombatValue();
 		else
 			return 0;
 	}

@@ -11,6 +11,7 @@
 #include <limits>
 
 #include "Nullkiller.h"
+#include "../../../lib/battle/CombatValue.h"
 #include "../../../lib/entities/artifact/CArtifact.h"
 #include "../../../lib/entities/ResourceTypeHandler.h"
 #include "../../../lib/mapObjects/CGResource.h"
@@ -19,6 +20,7 @@
 #include "../../../lib/RoadHandler.h"
 #include "../../../lib/CCreatureHandler.h"
 #include "../../../lib/GameLibrary.h"
+#include "../../../lib/entities/hero/CHeroHandler.h"
 #include "../../../lib/StartInfo.h"
 #include "../../../lib/GameSettings.h"
 #include "../../../lib/filesystem/Filesystem.h"
@@ -34,6 +36,7 @@
 #include "../Markers/HeroExchange.h"
 #include "../Markers/ArmyUpgrade.h"
 #include "../Markers/DefendTown.h"
+#include "../Markers/OneWayPortalProbe.h"
 
 #include <vcmi/spells/Service.h>
 #include <vcmi/spells/Spell.h>
@@ -95,6 +98,7 @@ EvaluationContext::EvaluationContext(const Nullkiller* aiNk)
 	isArmyUpgrade(false),
 	isHero(false),
 	isEnemy(false),
+	isOneWayPortalProbe(false),
 	explorePriority(0),
 	powerRatio(0)
 {
@@ -183,7 +187,7 @@ uint64_t getDwellingArmyValue(CCallback * cb, const CGObjectInstance * target, b
 			if(!creaturesAreFree && checkGold && !cb->getResourceAmount().canAfford(creature->getFullRecruitCost() * creLevel.first))
 				continue;
 
-			score += creature->getAIValue() * creLevel.first;
+			score += LIBRARY->creh->getCombatValue().getAIValue(creature) * creLevel.first;
 		}
 	}
 
@@ -203,7 +207,7 @@ uint64_t getDwellingArmyGrowth(CCallback * cb, const CGObjectInstance * target, 
 		if(creLevel.second.size())
 		{
 			auto creature = creLevel.second.back().toCreature();
-			score += creature->getAIValue() * creature->getGrowth();
+			score += LIBRARY->creh->getCombatValue().getAIValue(creature) * creature->getGrowth();
 
 			// Increase priority towards the end of the week if units are lost afterwards
 			if(!cb->getSettings().getBoolean(EGameSettings::DWELLINGS_ACCUMULATE_WHEN_OWNED))
@@ -275,7 +279,7 @@ uint64_t RewardEvaluator::getArmyReward(
 		return evaluateArtifactArmyValue(dynamic_cast<const CGArtifact *>(target)->getArtifactInstance()->getType());
 	case Obj::HERO:
 		return  relations == PlayerRelations::ENEMIES
-			? enemyArmyEliminationRewardRatio * dynamic_cast<const CGHeroInstance *>(target)->getArmyStrength()
+			? enemyArmyEliminationRewardRatio * dynamic_cast<const CGHeroInstance *>(target)->estimateCombatValue()
 			: 0;
 	case Obj::PANDORAS_BOX:
 		return 5000;
@@ -303,7 +307,7 @@ uint64_t RewardEvaluator::getArmyReward(
 				rewardValue += evaluateSpellScrollArmyValue(scroll);
 
 			for(const auto & stackInfo : info.reward.creatures)
-				rewardValue += stackInfo.getType()->getAIValue() * stackInfo.getCount();
+				rewardValue += LIBRARY->creh->getCombatValue().getAIValue(stackInfo.getType()) * stackInfo.getCount();
 
 			const auto combined_size = std::min(static_cast<size_t>(1),
 			                                    info.reward.grantedArtifacts.size() + info.reward.creatures.size() +
@@ -445,7 +449,7 @@ uint64_t RewardEvaluator::townArmyGrowth(const CGTownInstance * town) const
 			continue;
 
 		auto creature = creatureInfo.second.back().toCreature();
-		result += creature->getAIValue() * town->getGrowthInfo(creature->getLevel() - 1).totalGrowth();
+		result += LIBRARY->creh->getCombatValue().getAIValue(creature) * town->getGrowthInfo(creature->getLevel() - 1).totalGrowth();
 	}
 
 	return result;
@@ -461,10 +465,10 @@ float RewardEvaluator::getCombinedResourceRequirementStrength(const TResources &
 {
 	float sum = 0.0f;
 
-	for(TResources::nziterator it(res); it.valid(); it++)
+	for(const auto & [resource, amount] : res.nonZeroEntries())
 	{
-		auto calculation = 0.5f * getNowResourceRequirementStrength(it->resType)
-			+ 0.5f * getTotalResourceRequirementStrength(it->resType);
+		auto calculation = 0.5f * getNowResourceRequirementStrength(resource)
+			+ 0.5f * getTotalResourceRequirementStrength(resource);
 
 		// Even not required resources should be valuable because they shouldn't be left for the enemies to collect
 		sum += std::min(MINIMUM_STRATEGICAL_VALUE_NON_TOWN, calculation);
@@ -704,6 +708,15 @@ float RewardEvaluator::getSkillReward(const CGObjectInstance * target, const CGH
 					totalValue += value;
 				}
 			}
+
+			// each gained level is worth as much as a Tree of Knowledge visit
+			TExpType gainedExp = 0;
+			if(info.reward.heroLevel > 0)
+				gainedExp += hero->experienceToGainLevels(info.reward.heroLevel);
+			if(info.reward.heroExperience > 0)
+				gainedExp += hero->calculateXp(info.reward.heroExperience);
+			if(gainedExp > 0)
+				totalValue += LIBRARY->heroh->level(hero->exp + gainedExp) - hero->level;
 		}
 
 		return totalValue;
@@ -815,7 +828,9 @@ public:
 		// TODO: Mircea: See how we can get some kind of balance between MAINs in terms of army delivery
 		// See: GatherArmyBehavior::deliverArmyToHero
 		const uint64_t additionalArmyStrength = heroExchange.getReinforcementArmyStrength(evaluationContext.evaluator.aiNk);
-		const float additionalArmyRatio = additionalArmyStrength / heroExchange.hero->getArmyStrength();
+		// hero with no army would divide by zero, so treat its value as 1
+		const float additionalArmyRatio = static_cast<float>(additionalArmyStrength)
+			/ std::max<uint64_t>(1, heroExchange.hero->estimateCombatValue());
 
 		evaluationContext.addNonCriticalStrategicalValue(additionalArmyRatio);
 		evaluationContext.armyGrowth = additionalArmyStrength;
@@ -890,6 +905,37 @@ public:
 				evaluationContext.explorePriority = 2;
 			else
 				evaluationContext.explorePriority = 3;
+		}
+	}
+};
+
+class OneWayPortalProbeEvaluator : public IEvaluationContextBuilder
+{
+public:
+	void buildEvaluationContext(EvaluationContext & evaluationContext, Goals::TSubgoal task) const override
+	{
+		if(task->goalType != Goals::ONE_WAY_PORTAL_PROBE)
+			return;
+
+		const auto & probe = dynamic_cast<Goals::OneWayPortalProbe &>(*task);
+		if(probe.rewardsBehind.empty())
+		{
+			evaluationContext.isOneWayPortalProbe = true;
+			return;
+		}
+
+		const auto & evaluator = evaluationContext.evaluator;
+		const auto role = evaluator.aiNk->heroManager->getHeroRoleOrDefaultInefficient(probe.hero);
+		for(const ObjectInstanceID objectId : probe.rewardsBehind)
+		{
+			const auto * target = evaluator.aiNk->cc->tryGetObj(objectId);
+			if(!target)
+				continue;
+
+			evaluationContext.goldReward += evaluator.getGoldReward(target, probe.hero);
+			evaluationContext.armyReward += evaluator.getArmyReward(target, probe.hero, probe.hero, false);
+			evaluationContext.skillReward += evaluator.getSkillReward(target, probe.hero, role);
+			evaluationContext.addNonCriticalStrategicalValue(evaluator.getStrategicalValue(target, probe.hero));
 		}
 	}
 };
@@ -1072,41 +1118,19 @@ public:
 		if(heroRole == HeroRole::MAIN)
 			evaluationContext.heroRole = heroRole;
 
-		// Assuming Slots() returns a collection of slots with slot.second->getCreatureID() and slot.second->getPower()
-		float heroPower = 0;
+		const float armyPower = army->estimateCombatValue();
 		float totalPower = 0;
 
-		// Map to store the aggregated power of creatures by CreatureID
-		std::map<CreatureID, float> totalPowerByCreatureID;
+		std::set<CreatureID> armyCreatures;
+		for(const auto & slot : army->Slots())
+			armyCreatures.insert(slot.second->getCreatureID());
 
-		// Calculate hero power and total power by CreatureID
-		for (const auto & slot : hero->Slots())
-		{
-			CreatureID creatureID = slot.second->getCreatureID();
-			float slotPower = slot.second->getPower();
+		for(const auto & creatureID : armyCreatures)
+			totalPower += aiNk->armyManager->getTotalCreaturesAvailable(creatureID).power;
 
-			// Add the power of this slot to the heroPower
-			heroPower += slotPower;
-
-			// Accumulate the total power for the specific CreatureID
-			if (totalPowerByCreatureID.find(creatureID) == totalPowerByCreatureID.end())
-			{
-				// First time encountering this CreatureID, retrieve total creatures' power
-				totalPowerByCreatureID[creatureID] = aiNk->armyManager->getTotalCreaturesAvailable(creatureID).power;
-			}
-		}
-
-		// Calculate total power based on unique CreatureIDs
-		for (const auto& entry : totalPowerByCreatureID)
-		{
-			totalPower += entry.second;
-		}
-
-		// Compute the power ratio if total power is greater than zero
-		if (totalPower > 0)
-		{
-			evaluationContext.powerRatio = heroPower / totalPower;
-		}
+		// Planned army may hold creatures that are not owned yet, to be upgraded or bought on the way
+		if(armyPower > 0)
+			evaluationContext.powerRatio = totalPower > armyPower ? armyPower / totalPower : 1.0f;
 
 		if (target)
 		{
@@ -1124,11 +1148,11 @@ public:
 				evaluationContext.defenseValue = dynamic_cast<const CGTownInstance*>(target)->fortLevel();
 			evaluationContext.goldCost += evaluationContext.evaluator.getGoldCost(target, hero, army);
 			if(evaluationContext.danger > 0)
-				evaluationContext.skillReward += (float)evaluationContext.danger / (float)hero->getArmyStrength();
+				evaluationContext.skillReward += (float)evaluationContext.danger / (float)hero->estimateCombatValue();
 		}
 		evaluationContext.armyInvolvement += army->getArmyCost();
 
-		vstd::amax(evaluationContext.armyLossRatio, (float)path.getTotalArmyLoss() / (float)army->getArmyStrength());
+		vstd::amax(evaluationContext.armyLossRatio, (float)path.getTotalArmyLoss() / (float)army->estimateCombatValue());
 		addTileDanger(evaluationContext, path.targetTile(), path.turn(), path.getHeroStrength());
 		vstd::amax(evaluationContext.turn, path.turn());
 	}
@@ -1215,7 +1239,7 @@ public:
 			evaluationContext.movementCostByRole.at(static_cast<size_t>(defenderRole)) += mpLeft;
 			evaluationContext.heroRole = defenderRole;
 			evaluationContext.isDefend = true;
-			evaluationContext.armyInvolvement = garrisonHero->getArmyStrength();
+			evaluationContext.armyInvolvement = garrisonHero->estimateCombatValue();
 			logAi->debug("evaluationContext.isDefend: %d", evaluationContext.isDefend);
 		}
 	}
@@ -1373,6 +1397,7 @@ PriorityEvaluator::PriorityEvaluator(const Nullkiller * aiNk) : aiNk(aiNk)
 	evaluationContextBuilders.push_back(std::make_shared<StayAtTownManaRecoveryEvaluator>());
 	evaluationContextBuilders.push_back(std::make_shared<AdventureSpellCastEvaluator>());
 	evaluationContextBuilders.push_back(std::make_shared<ExplorePointEvaluator>());
+	evaluationContextBuilders.push_back(std::make_shared<OneWayPortalProbeEvaluator>());
 }
 
 EvaluationContext PriorityEvaluator::buildEvaluationContext(const Goals::TSubgoal & goal) const
@@ -1454,6 +1479,9 @@ float PriorityEvaluator::evaluate(
 	const int priorityTier,
 	const EvaluationContext & evaluationContext)
 {
+	if(task->goalType == Goals::ATTACK_ONE_WAY_PORTAL_GUARD)
+		return priorityTier == PriorityTier::ESCAPE ? 1.0f : 0.0f;
+
 	const bool amIWithoutCastle = aiNk->cc->getPlayerState(aiNk->playerID)->daysWithoutCastle.has_value();
 	double result = 0;
 
@@ -1461,10 +1489,14 @@ float PriorityEvaluator::evaluate(
 		float score = 0;
 
 		// TODO: Mircea: Shouldn't it default to 0 instead of 1.0 in the end?
-		const float maxWillingToLose = amIWithoutCastle ? 1
-									 : aiNk->settings->getMaxArmyLossTarget() * evaluationContext.powerRatio > 0
-										 ? aiNk->settings->getMaxArmyLossTarget() * evaluationContext.powerRatio
-										 : 1.0;
+		float maxWillingToLose = 1.0f;
+		if(!amIWithoutCastle && evaluationContext.powerRatio > 0)
+		{
+			// Convert the player-wide loss budget to a fraction of the committed army.
+			maxWillingToLose = std::min(
+				aiNk->settings->getMaxArmyLossTarget() / evaluationContext.powerRatio,
+				1.0f);
+		}
 		const float maxEnemyDangerRatio = evaluationContext.powerRatio > 0 ? evaluationContext.powerRatio : 1.0;
 		auto calendar = aiNk->cc->getCalendar();
 		const bool arriveNextWeek = calendar.getDayOfWeek() + evaluationContext.turn > calendar.getDaysInWeek();
@@ -1518,7 +1550,7 @@ float PriorityEvaluator::evaluate(
 				if(evaluationContext.movementCost >= 1)
 					return 0;
 
-				// TODO: Mircea: Ensure defenseValue is taken into account. See AINodeStorage::evaluateArmyLoss and CCreatureSet::getArmyStrength
+				// TODO: Mircea: Ensure defenseValue is taken into account. See AINodeStorage::evaluateArmyLoss and CCreatureSet::estimateCombatValue
 				// TODO: Mircea: make it dynamic, allow higher risk for killing a higher risk hero if it leads to killing an entire player. See conquestValue
 				if(maxWillingToLoseForTask - evaluationContext.armyLossRatio < 0)
 					return 0;
@@ -1566,7 +1598,7 @@ float PriorityEvaluator::evaluate(
 			{
 				if(evaluationContext.isDefend)
 					return 0;
-				// TODO: Mircea: Ensure defenseValue is taken into account. See AINodeStorage::evaluateArmyLoss and CCreatureSet::getArmyStrength
+				// TODO: Mircea: Ensure defenseValue is taken into account. See AINodeStorage::evaluateArmyLoss and CCreatureSet::estimateCombatValue
 				// if (evaluationContext.defenseValue < 2 && evaluationContext.enemyHeroDangerRatio > involvedStrengthOutOfTotalRatio)
 					// return 0;
 				if (evaluationContext.turn > 0 && evaluationContext.isHero)
@@ -1610,7 +1642,7 @@ float PriorityEvaluator::evaluate(
 				if(priorityTier == ESCAPE && task->hero)
 				{
 					const auto currentTileThreat = aiNk->dangerHitMap->getTileThreat(task->hero->visitablePos());
-					if(currentTileThreat.fastestDanger.turn < 1 && currentTileThreat.fastestDanger.danger > task->hero->getTotalStrength())
+					if(currentTileThreat.fastestDanger.turn < 1 && currentTileThreat.fastestDanger.danger > task->hero->estimateHeroCombatValue())
 					{
 						// Encourage routes which go away of the threat
 						const auto currentTileThreatVal = currentTileThreat.fastestDanger.threat;
@@ -1699,6 +1731,14 @@ float PriorityEvaluator::evaluate(
 
 				break;
 			}
+			case ONE_WAY_PORTAL_PROBE:
+			{
+				if(!evaluationContext.isOneWayPortalProbe)
+					return 0;
+
+				score = evaluateMovement(1.0f, evaluationContext.movementCost);
+				break;
+			}
 			case DEFEND: //Defend whatever if nothing else is to do
 			{
 				if (evaluationContext.enemyHeroDangerRatio > maxEnemyDangerRatio)
@@ -1750,8 +1790,8 @@ float PriorityEvaluator::evaluate(
 					if(!resourcesAvailable.canAfford(evaluationContext.buildingCost))
 					{
 						TResources needed = evaluationContext.buildingCost - resourcesAvailable;
-						needed.positive();
-						int turnsTo = needed.maxPurchasableCount(income);
+						needed.removeNegative();
+						int turnsTo = needed.turnsToAccumulate(income);
 						bool haveEverythingButGold = true;
 
 						for(const GameResID & i : LIBRARY->resourceTypeHandler->getAllObjects())

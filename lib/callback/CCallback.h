@@ -32,6 +32,10 @@ public:
 
 	std::optional<PlayerColor> getPlayerID() const override;
 
+	/// Returns false if both players still play simultaneous turns without contact,
+	/// which means that interaction between them is not allowed yet
+	bool isContactAllowed(PlayerColor color1, PlayerColor color2) const;
+
 //commands
 	void moveHero(const CGHeroInstance *h, const std::vector<int3> & path, bool transit, const EPathfindingLayer & layer) override;
 	void moveHero(const CGHeroInstance *h, const int3 & destination, bool transit, const EPathfindingLayer & layer = EPathfindingLayer::AUTO) override;
@@ -39,25 +43,17 @@ public:
 	int selectionMade(int selection, QuestionID questionID) override;
 	int sendQuestionAnswer(std::optional<int32_t> reply, QuestionID questionID) override;
 	int swapCreatures(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override;
-	int swapCreaturesRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2);
 	int mergeOrSwapStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override; //first goes to the second
 	int mergeStacks(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2) override; //first goes to the second
-	int mergeStacksRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2);
 	int splitStack(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val) override;
-	int splitStackRequest(const CArmedInstance *s1, const CArmedInstance *s2, SlotID p1, SlotID p2, int val);
-	int redistributeStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
-		ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
-		int expectedSourceCount, const std::vector<ArmyStackRedistributionTarget> & destinations) override;
 	int bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot) override;
 	int bulkSplitStack(ObjectInstanceID armyId, SlotID srcSlot, int howMany = 1) override;
 	int bulkSplitAndRebalanceStack(ObjectInstanceID armyId, SlotID srcSlot) override;
 	int bulkMergeStacks(ObjectInstanceID armyId, SlotID srcSlot) override;
 	bool dismissHero(const CGHeroInstance * hero) override;
 	bool swapArtifacts(const ArtifactLocation &l1, const ArtifactLocation &l2) override;
-	int swapArtifactsRequest(const ArtifactLocation &l1, const ArtifactLocation &l2);
 	void assembleArtifacts(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo) override;
-	int assembleArtifactsRequest(const ObjectInstanceID & heroID, ArtifactPosition artifactSlot, bool assemble, ArtifactID assembleTo);
-	int bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped = true, bool backpack = true) override;
+	void bulkMoveArtifacts(ObjectInstanceID srcHero, ObjectInstanceID dstHero, bool swap, bool equipped = true, bool backpack = true) override;
 	void scrollBackpackArtifacts(ObjectInstanceID hero, bool left) override;
 	void sortBackpackArtifactsBySlot(const ObjectInstanceID hero) override;
 	void sortBackpackArtifactsByCost(const ObjectInstanceID hero) override;

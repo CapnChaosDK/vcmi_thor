@@ -73,14 +73,6 @@ void ActivityProcessor::addActivity(PlayerColor player, ActivityPtr activity)
 	markStackChanged(player);
 }
 
-bool ActivityProcessor::canSave() const
-{
-	return std::ranges::all_of(activities, [](const ActivityStack & stack)
-	{
-		return stack.empty() || (stack.size() == 1 && stack.front()->getType() == ActivityType::TimerPause);
-	});
-}
-
 ActivityPtr ActivityProcessor::topActivity(PlayerColor player)
 {
 	if(!player.isValidPlayer())
@@ -121,8 +113,6 @@ void ActivityProcessor::unregisterVisit(MapObjectVisitActivity * visit)
 
 ActivityPtr ActivityProcessor::getActivity(QuestionID questionID)
 {
-	if(questionID == QuestionID::NONE)
-		return nullptr;
 	for(auto & playerActivities : activities)
 		for(auto & activity : playerActivities)
 			if(activity->getActiveQuestionID() == questionID)
@@ -317,11 +307,6 @@ void ActivityProcessor::settle()
 
 ReplyOutcome ActivityProcessor::submitReply(QuestionID questionID, PlayerColor player, std::optional<int32_t> reply)
 {
-	if(!player.isValidPlayer())
-		return ReplyOutcome::RejectedWrongPlayer;
-	if(questionID == QuestionID::NONE)
-		return ReplyOutcome::RejectedUnknownActivity;
-
 	auto activity = getActivity(questionID, player);
 
 	if(!activity)
@@ -341,7 +326,7 @@ ReplyOutcome ActivityProcessor::submitReply(QuestionID questionID, PlayerColor p
 	if(!activity->acceptsAnswerFrom(player))
 		return ReplyOutcome::RejectedWrongPlayer;
 
-	if(activity->isFinished())
+	if(activity->isAnswered())
 		return ReplyOutcome::IgnoredAlreadyAnswered;
 
 	// Only an activity that the player can cancel, e.g. town selection, may be answered

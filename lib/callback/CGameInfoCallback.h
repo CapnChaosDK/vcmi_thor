@@ -69,7 +69,6 @@ public:
 
 	const CGObjectInstance * tryGetObj(ObjectInstanceID objId) const override; // Get with some checks and visibility checks. Raw get is MapInfoCallback::getObjInstance
 	std::vector<const CGObjectInstance *> getBlockingObjs(int3 pos) const;
-	/// Requires a currently visible tile; throws otherwise.
 	std::vector<const CGObjectInstance *> getVisitableObjs(int3 pos) const;
 	std::vector<const CGObjectInstance *> getAllVisitableObjs() const;
 	std::vector<const CGObjectInstance *> getFlaggableObjects(int3 pos) const;
@@ -95,6 +94,8 @@ public:
 	std::vector<const CGHeroInstance *> getAvailableHeroes(const CGObjectInstance * townOrTavern) const;
 	std::string getTavernRumor(const CGObjectInstance * townOrTavern, const ITranslator * translator) const;
 	EBuildingState canBuildStructure(const CGTownInstance *t, BuildingID ID) const;
+	/// Returns false if grail structure can not be built in the town, e.g. if map wants it in another town
+	bool isGrailAllowed(const CGTownInstance * town) const;
 	bool getTownInfo(const CGObjectInstance * town, InfoAboutTown & dest, const CGObjectInstance * selectedObject = nullptr) const;
 
 	//from gs

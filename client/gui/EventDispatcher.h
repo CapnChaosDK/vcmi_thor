@@ -9,8 +9,6 @@
  */
 #pragma once
 
-#include "ControllerPressState.h"
-
 class Point;
 
 class AEventsReceiver;
@@ -43,8 +41,14 @@ class EventDispatcher
 
 	std::vector<AEventsReceiver *> touchPressedElements;
 
-	ControllerPressState controllerPresses;
-	uint64_t controllerEpoch = 0;
+	struct ControllerPress
+	{
+		std::vector<EShortcut> shortcuts;
+		std::weak_ptr<IShowActivatable> window;
+		bool canceled = false;
+		bool popup = false;
+	};
+	std::map<std::pair<int, std::string>, ControllerPress> controllerPresses;
 
 	void handleLeftButtonClick(const Point & position, int tolerance, bool isPressed);
 	void handleDoubleButtonClick(const Point & position, int tolerance);
@@ -67,12 +71,12 @@ public:
 	void dispatchShortcutPressed(const std::vector<EShortcut> & shortcuts);
 	void dispatchShortcutReleased(const std::vector<EShortcut> & shortcuts);
 
-	void blockControllerButton(int instance, const std::string & control);
-	void dispatchControllerButtonPressed(int instance, const std::string & control);
+	void dispatchControllerButtonPressed(int instance, const std::string & control, bool consumed = false);
 	void dispatchControllerButtonReleased(int instance, const std::string & control);
 	void cancelControllerInput(bool dismissPopup);
 	void forgetController(int instance);
-	void dispatchGesturePanningCanceled(bool closeWindow);
+	bool isControllerShortcutPressed(EShortcut shortcut) const;
+	void dispatchGesturePanningCanceled();
 
 	bool dispatchControllerAxis(const std::vector<EShortcut> & axes, double value);
 	std::vector<EShortcut> translateControllerShortcuts(std::vector<EShortcut> shortcuts);

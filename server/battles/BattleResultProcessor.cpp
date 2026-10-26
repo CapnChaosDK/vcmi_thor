@@ -59,6 +59,24 @@ CasualtiesAfterBattle::CasualtiesAfterBattle(const CBattleInfoCallback & battle,
 		return true;
 	});
 
+	// Hero whose army would consist only of units resurrected for this battle keeps one of them,
+	// otherwise a victorious hero would be removed from the map
+	const CStack * lastResurrectedStack = nullptr;
+	bool hasPermanentUnits = false;
+	for(const CStack * st : allStacks)
+	{
+		if(st->unitSlot() == SlotID::COMMANDER_SLOT_PLACEHOLDER && st->alive())
+			hasPermanentUnits = true;
+
+		if(!st->unitSlot().validSlot() || !st->alive())
+			continue;
+
+		if(st->health.available() > static_cast<int64_t>(st->health.getResurrected()) * st->getMaxHealth())
+			hasPermanentUnits = true;
+		else
+			lastResurrectedStack = st;
+	}
+
 	for(const CStack * stConst : allStacks)
 	{
 		// Use const cast - in order to call non-const "takeResurrected" for proper calculation of casualties
@@ -67,7 +85,7 @@ CasualtiesAfterBattle::CasualtiesAfterBattle(const CBattleInfoCallback & battle,
 
 		logGlobal->debug("Calculating casualties for %s", st->nodeName());
 
-		st->health.takeResurrected();
+		st->health.takeResurrected(!hasPermanentUnits && stConst == lastResurrectedStack);
 
 		if(st->unitSlot() == SlotID::WAR_MACHINES_SLOT)
 		{
@@ -218,6 +236,9 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 		r.exp[BattleSide::DEFENDER] = 0;
 		for (auto i = r.casualties[battle.otherSide(r.winner)].begin(); i!=r.casualties[battle.otherSide(r.winner)].end(); i++)
 		{
+			// war machines do not grant experience
+			if (i->first.toCreature()->hasBonusOfType(BonusType::SIEGE_WEAPON))
+				continue;
 			r.exp[r.winner] += i->first.toCreature()->valOfBonuses(BonusType::STACK_HEALTH) * i->second;
 		}
 	};
@@ -265,7 +286,7 @@ void BattleResultProcessor::endBattle(const CBattleInfoCallback & battle)
 	// in battles against neutrals attacker can ask to replay battle manually, additionally in battles against AI player human side can also ask for replay
 	if(onlyOnePlayerHuman)
 	{
-		auto battleDialogActivity = std::make_shared<BattleResultActivity>(gameHandler, battle.getBattle());
+		auto battleDialogActivity = std::make_shared<BattleResultActivity>(gameHandler, battle.getBattle(), typedBattleActivity.result);
 		battleResult->questionID = battleDialogActivity->askQuestion();
 		gameHandler->activities->addActivity(battleDialogActivity);
 	}
@@ -310,7 +331,9 @@ void BattleResultProcessor::endBattleConfirm(const CBattleInfoCallback & battle)
 		if (winnerHero)
 		{
 			gameHandler->giveExperienceWithoutLevelUp(winnerHero, battleResult->exp[finishingBattle->winnerSide]);
-			levellingHero = winnerHero->id;
+			// the game ends right after a battle-only battle, nobody would use the new level
+			if(!gameHandler->gameState().getMap().battleOnly)
+				levellingHero = winnerHero->id;
 		}
 	}
 
@@ -323,7 +346,7 @@ void BattleResultProcessor::endBattleConfirm(const CBattleInfoCallback & battle)
 		if (loserHero != nullptr)
 		{
 			for(auto & hero : gameHandler->gameState().getPlayerState(finishingBattle->loser)->getHeroes())
-				if(!strongestHero || hero->exp > strongestHero->exp)
+				if(!strongestHero || std::tie(hero->level, hero->exp) > std::tie(strongestHero->level, strongestHero->exp))
 					strongestHero = hero;
 			if(strongestHero->id == finishingBattle->loserId && strongestHero->level > 5 && finishingBattle->victor.isValidPlayer())
 				gameHandler->statistics->getPlayerAccumulator(finishingBattle->victor).lastDefeatedStrongestHeroDay = gameHandler->gameState().getCalendar().getCurrentDay();
@@ -500,10 +523,10 @@ void BattleResultProcessor::battleFinalize(const BattleID & battleID, const Batt
 	}
 
 	// Moving artifacts handling
-	if(result.result == EBattleResult::NORMAL && winnerHero && winnerHasUnitsLeft)
+	if(result.result == EBattleResult::NORMAL && winnerHero && winnerHasUnitsLeft && !gameHandler->gameState().getMap().battleOnly)
 	{
 		CArtifactFittingSet artFittingSet(*winnerHero);
-		const auto addArtifactToTransfer = [&artFittingSet, &dyingArtifacts](BulkMoveArtifacts & pack, const ArtifactPosition & srcSlot, const CArtifactInstance * art)
+		const auto addArtifactToTransfer = [this, &artFittingSet, &dyingArtifacts, winnerHero](BulkMoveArtifacts & pack, const ArtifactPosition & srcSlot, const CArtifactInstance * art)
 		{
 			assert(art);
 			if (vstd::contains(dyingArtifacts, art->getId()))
@@ -512,6 +535,10 @@ void BattleResultProcessor::battleFinalize(const BattleID & battleID, const Batt
 			const auto dstSlot = ArtifactUtils::getArtAnyPosition(&artFittingSet, art->getTypeId());
 			if(dstSlot != ArtifactPosition::PRE_FIRST)
 			{
+				// Battle loot prepares the artifact transfer directly, bypassing CGameHandler artifact placement handlers.
+				if(ArtifactUtils::checkSpellbookIsNeeded(winnerHero, art->getTypeId(), dstSlot))
+					gameHandler->giveHeroNewArtifact(winnerHero, ArtifactID::SPELLBOOK, ArtifactPosition::SPELLBOOK);
+
 				pack.artsPack0.emplace_back(MoveArtifactInfo(srcSlot, dstSlot));
 				if(ArtifactUtils::isSlotEquipment(dstSlot))
 					pack.artsPack0.back().askAssemble = true;

@@ -16,17 +16,19 @@ class BattleHexArray;
 
 // Reachability info is result of BFS calculation. It's dependent on stack (it's owner, whether it's flying),
 // startPosition and perspective.
-struct DLL_LINKAGE ReachabilityInfo
+struct ReachabilityInfo
 {
 	using TDistances = std::array<uint32_t, GameConstants::BFIELD_SIZE>;
 	using TPredecessors = std::array<BattleHex, GameConstants::BFIELD_SIZE>;
 
 	enum { INFINITE_DIST = 1000000 };
 
-	struct DLL_LINKAGE Parameters
+	struct Parameters
 	{
 		BattleSide side = BattleSide::NONE;
 		bool doubleWide = false;
+		/// Defending units pass through the gate, including attacking units hypnotized by the defender
+		bool canUseGate = false;
 		bool flying = false;
 		bool ignoreKnownAccessible = false; //Ignore obstacles if it is in accessible hexes
 		bool bypassEnemyStacks = false; // in case of true will count amount of turns needed to kill enemy and thus move forward
@@ -41,6 +43,7 @@ struct DLL_LINKAGE ReachabilityInfo
 			destructibleEnemyTurns.fill(-1);
 		}
 		Parameters(const battle::Unit * Stack, const BattleHex & StartPosition);
+		Parameters(BattleSide perspective, const battle::Unit * Stack, const BattleHex & StartPosition, const BattleHexArray & accessibleHexes);
 	};
 
 	Parameters params;

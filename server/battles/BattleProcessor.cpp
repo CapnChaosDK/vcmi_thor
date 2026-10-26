@@ -96,8 +96,8 @@ void BattleProcessor::restartBattle(const BattleID & battleID, const CArmedInsta
 
 	lastBattleActivity.result = std::nullopt;
 
-	assert(lastBattleActivity.belligerents[BattleSide::ATTACKER] == battle->getSideArmy(BattleSide::ATTACKER)->id);
-	assert(lastBattleActivity.belligerents[BattleSide::DEFENDER] == battle->getSideArmy(BattleSide::DEFENDER)->id);
+	assert(lastBattleActivity.belligerents[BattleSide::ATTACKER] == battle->getSideArmy(BattleSide::ATTACKER));
+	assert(lastBattleActivity.belligerents[BattleSide::DEFENDER] == battle->getSideArmy(BattleSide::DEFENDER));
 
 	resultProcessor->battleCancelled(battleID);
 
@@ -348,9 +348,15 @@ bool BattleProcessor::makePlayerBattleAction(const BattleID & battleID, PlayerCo
 	if (!battle)
 		return false;
 
+	const bool tacticsPhase = battle->battleGetTacticDist() != 0;
 	bool result = actionsProcessor->makePlayerBattleAction(*battle, player, ba);
-	if (gameHandler->gameState().getBattle(battleID) != nullptr && !resultProcessor->battleIsEnding(*battle))
-		flowProcessor->onActionMade(*battle, ba);
+	if (gameHandler->gameState().getBattle(battleID) == nullptr || resultProcessor->battleIsEnding(*battle))
+		return result;
+
+	if (tacticsPhase && battle->battleGetTacticDist() == 0)
+		flowProcessor->onTacticsEnded(*battle);
+	else
+		flowProcessor->onActionMade(*battle, ba, result);
 	return result;
 }
 
@@ -390,8 +396,13 @@ void BattleProcessor::cheatBattleVictory(PlayerColor player)
 
 void BattleProcessor::setBattleResult(const CBattleInfoCallback & battle, EBattleResult resultType, BattleSide victoriusSide)
 {
+	const BattleID battleID = battle.getBattle()->getBattleID();
+
 	resultProcessor->setBattleResult(battle, resultType, victoriusSide);
 	resultProcessor->endBattle(battle);
+
+	// No event dispatch is valid after battle removal.
+	actionsProcessor->forgetPendingDeaths(battleID);
 }
 
 bool BattleProcessor::makeAutomaticBattleAction(const CBattleInfoCallback & battle, const BattleAction &ba)
@@ -402,6 +413,24 @@ bool BattleProcessor::makeAutomaticBattleAction(const CBattleInfoCallback & batt
 void BattleProcessor::processBattleEventTriggers(const CBattleInfoCallback & battle, CombatEventType event, const battle::Unit * target, const battle::Unit * secondary)
 {
 	actionsProcessor->processBattleEventTriggers(battle, event, target, secondary);
+
+	// This entry point has no action boundary that could flush deaths later.
+	actionsProcessor->flushPendingDeaths(battle);
+}
+
+void BattleProcessor::spellHasHit(const CBattleInfoCallback & battle, const spells::Spell & spell, const battle::Unit * casterUnit, const std::vector<std::shared_ptr<const battle::CUnitState>> & unitsBefore)
+{
+	actionsProcessor->processSpellHitTriggers(battle, spell, casterUnit, unitsBefore);
+}
+
+void BattleProcessor::noteDeaths(const CBattleInfoCallback & battle, const std::vector<BattleStackAttacked> & casualties)
+{
+	actionsProcessor->noteDeaths(battle, casualties);
+}
+
+void BattleProcessor::flushPendingDeaths(const CBattleInfoCallback & battle)
+{
+	actionsProcessor->flushPendingDeaths(battle);
 }
 
 void BattleProcessor::endBattleConfirm(const BattleID & battleID)

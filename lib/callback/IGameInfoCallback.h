@@ -95,6 +95,8 @@ public:
 
 	//// Returns game settings for current map
 	virtual const IGameSettings & getSettings() const = 0;
+	/// Returns highest level that heroes and commanders can reach by gaining experience on current map
+	virtual ui32 getHeroLevelLimit() const = 0;
 
 	/// Returns dimesions for current map. 'z' coordinate indicates number of level (2 for maps with underground layer)
 	virtual int3 getMapSize() const = 0;
@@ -124,9 +126,9 @@ public:
 	virtual const CGHeroInstance * getHero(ObjectInstanceID objid) const = 0;
 	/// Returns pointer to town using provided object ID. Returns null on failure
 	virtual const CGTownInstance * getTown(ObjectInstanceID objid) const = 0;
-	/// Returns pointer to object using provided object ID. Throws if object does not exist or is not accessible
+	/// Returns pointer to object using provided object ID. Throws if object does not exist or is not visible
 	virtual const CGObjectInstance * getObj(ObjectInstanceID objid) const = 0;
-	/// Returns pointer to object using provided object ID, or nullptr if object does not exist or is not accessible
+	/// Returns pointer to object using provided object ID, or nullptr if object does not exist or is not visible
 	virtual const CGObjectInstance * tryGetObj(ObjectInstanceID objid) const = 0;
 	/// Returns pointer to object using provided object ID. Returns null on failure
 	virtual const CGObjectInstance * getObjInstance(ObjectInstanceID oid) const = 0;
@@ -139,7 +141,7 @@ public:
 	virtual const TerrainTile * tryGetTile(int3 tile) const = 0;
 	/// Returns pointer to specified tile without checking for permissions. Avoid its usage!
 	virtual const TerrainTile * getTileUnchecked(int3 tile) const = 0;
-	/// Returns pointer to top-most object on specified tile, or nullptr on error
+	/// Returns pointer to top-most object on specified tile, or nullptr if tile is not visible or has no visitable objects
 	virtual const CGObjectInstance * getTopObj(int3 pos) const = 0;
 	/// Returns whether it is possible to dig for Grail on specified tile
 	virtual EDiggingStatus getTileDigStatus(int3 tile) const = 0;

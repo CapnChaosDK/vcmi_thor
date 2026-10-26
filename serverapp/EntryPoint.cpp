@@ -12,6 +12,7 @@
 #include <vstd/DateUtils.h>
 
 #include "../server/CVCMIServer.h"
+#include "../server/CreatureValueEstimator.h"
 
 #include "../lib/CConsoleHandler.h"
 #include "../lib/logging/CBasicLogConfigurator.h"
@@ -145,6 +146,17 @@ static void generateTranslations(const std::string & modID)
 		}
 
 		LIBRARY->generaltexth->exportAllTexts(textsByMod, false);
+
+		// map and campaign texts are owned by maps and campaigns themselves, not by the library
+		for (auto const & map : loadedMaps)
+			map->texts->exportAllTexts(textsByMod, false);
+
+		for (auto const & campaign : loadedCampaigns)
+		{
+			campaign->getTexts()->exportAllTexts(textsByMod, false);
+			for (auto const & scenarioTexts : campaign->getScenarioTexts())
+				scenarioTexts.second->exportAllTexts(textsByMod, false);
+		}
 	}
 
 	for(const auto & modEntry : textsByMod)
@@ -234,6 +246,7 @@ static void handleCommandOptions(int argc, const char * argv[], boost::program_o
 	("version,v", "display version information and exit")
 	("run-by-client", "indicate that server launched by client on same machine")
 	("dummy-run", "Shutdown immediately after loading was sucessful")
+	("creature-values", "Compute AI values and fight values of all creatures and compare them against configured values")
 	("translate-mod", boost::program_options::value<std::string>(), "Export translations for specified mod")
 	("export-lua-docs", boost::program_options::value<std::string>(), "Export Lua scripting API documentation to specified directory")
 	("port", boost::program_options::value<ui16>(), "port at which server will listen to connections from client")
@@ -305,7 +318,11 @@ int main(int argc, const char * argv[])
 
 	LIBRARY->initializeLibrary();
 
-	if(!opts.count("dummy-run"))
+	if(opts.count("creature-values"))
+	{
+		CreatureValueEstimator::run();
+	}
+	else if(!opts.count("dummy-run"))
 	{
 		bool connectToLobby = opts.count("lobby");
 		bool runByClient = opts.count("runByClient");

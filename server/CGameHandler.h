@@ -15,7 +15,6 @@
 #include "../lib/LoadProgress.h"
 #include "../lib/gameState/GameStatistics.h"
 #include "../lib/networkPacks/PacksForServer.h"
-#include "../lib/mapObjects/army/ArmyStackRedistribution.h"
 #include "../lib/serializer/GameConnectionID.h"
 #include "../lib/serializer/PlayerConnectionID.h"
 
@@ -33,9 +32,10 @@ struct StartInfo;
 struct TerrainTile;
 struct CPackForServer;
 struct NewTurn;
+struct HeroLevelUp;
+struct CommanderLevelUp;
 struct CArtifactOperationPack;
 struct CGarrisonOperationPack;
-struct BulkRebalanceStacks;
 struct SetResources;
 struct NewStructures;
 
@@ -47,8 +47,6 @@ class BattleProcessor;
 class TurnOrderProcessor;
 class TurnTimerHandler;
 class ActivityProcessor;
-struct HeroLevelUp;
-struct CommanderLevelUp;
 class MapObjectVisitActivity;
 class NewTurnProcessor;
 class IGameServer;
@@ -94,10 +92,10 @@ public:
 
 	bool isBlockedByActivities(const CPackForServer *pack, PlayerColor player);
 	bool isAllowedExchange(PlayerColor player, ObjectInstanceID id1, ObjectInstanceID id2);
+	/// Whether the army is one of the two armies of the garrison window the player has open
 	bool isInGarrisonDialog(PlayerColor player, ObjectInstanceID army);
+	/// Whether the player may remove units from the army: own armies, or armies without owner shown in the player's garrison window. Does not check CArmedInstance::isLocked
 	bool canTakeTroopsFrom(PlayerColor player, const CArmedInstance * army);
-	bool canMoveTroopsBetween(PlayerColor player, const CArmedInstance * source, const CArmedInstance * destination);
-	bool applyArmyTransferPlan(BulkRebalanceStacks & plan);
 	void giveSpells(const CGTownInstance *t, const CGHeroInstance *h);
 
 	IGameInfoCallback & gameInfo();
@@ -123,7 +121,8 @@ public:
 	void buildStructureForced(ObjectInstanceID townID, BuildingID building) override;
 	bool removeObject(const CGObjectInstance * obj, const PlayerColor & initiator) override;
 	void addQuest(const PlayerColor & player, const QuestInfo & quest) override;
-	void setQuestHintText(ObjectInstanceID obj, const MetaString & hint) override;
+	void setQuestHint(ObjectInstanceID obj, const MetaString & hint, const std::vector<Component> & components) override;
+	void disableMapEvent(ObjectInstanceID town, const std::string & scriptHandler) override;
 	void setOwner(const CGObjectInstance * obj, PlayerColor owner) override;
 	void giveExperience(const CGHeroInstance * hero, TExpType val) override;
 	void giveExperienceWithoutLevelUp(const CGHeroInstance * hero, TExpType val);
@@ -135,7 +134,7 @@ public:
 	void setVisitState(const CGHeroInstance * hero, const JsonNode & state) override;
 	void showScriptDialog(BlockingDialog *iw) override;
 	void showTeleportDialog(TeleportDialog *iw) override;
-	void showGarrisonDialog(ObjectInstanceID upobj, ObjectInstanceID hid, bool removableUnits, const MetaString & customTitle) override;
+	void showGarrisonDialog(ObjectInstanceID upobj, ObjectInstanceID hid, const MetaString & customTitle) override;
 	void showObjectWindow(const CGObjectInstance * object, EOpenWindowMode window, const CGHeroInstance * visitor, bool addActivity) override;
 
 	/// Runs a converted map event handler under a LuaScriptActivity, so that blocking script
@@ -160,6 +159,7 @@ public:
 	bool moveStack(const StackLocation &src, const StackLocation &dst, TQuantity count = -1) override;
 
 	void removeAfterVisit(const ObjectInstanceID & id) override;
+	bool isObjectBeingVisited(const ObjectInstanceID & id) const override;
 
 	bool giveHeroNewArtifact(const CGHeroInstance * h, const CArtifact * artType, const SpellID & spellId, const ArtifactPosition & pos);
 	bool giveHeroNewArtifact(const CGHeroInstance * h, const ArtifactID & artId, const ArtifactPosition & pos) override;
@@ -253,17 +253,12 @@ public:
 	bool visitTownBuilding(ObjectInstanceID tid, BuildingID bid);
 	bool razeStructure(ObjectInstanceID tid, BuildingID bid);
 	bool spellResearch(ObjectInstanceID tid, SpellID spellAtSlot, bool accepted);
-	bool disbandCreature(ObjectInstanceID id, SlotID pos, PlayerColor player);
+	bool disbandCreature( ObjectInstanceID id, SlotID pos );
 	bool arrangeStacks( ObjectInstanceID id1, ObjectInstanceID id2, ui8 what, SlotID p1, SlotID p2, si32 val, PlayerColor player);
-	bool redistributeArmyStack(ObjectInstanceID leftHero, ObjectInstanceID rightHero,
-		ObjectInstanceID sourceArmy, SlotID sourceSlot, CreatureID expectedCreature,
-		si32 expectedSourceCount,
-		const std::array<ArmyStackRedistributionTarget, MAX_ARMY_STACK_REDISTRIBUTION_DESTINATIONS> & destinations,
-		ui8 destinationCount, PlayerColor player);
-	bool bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot, PlayerColor player);
-	bool bulkSplitStack(SlotID src, ObjectInstanceID srcOwner, si32 howMany, PlayerColor player);
-	bool bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner, PlayerColor player);
-	bool bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID srcOwner, PlayerColor player);
+	bool bulkMoveArmy(ObjectInstanceID srcArmy, ObjectInstanceID destArmy, SlotID srcSlot);
+	bool bulkSplitStack(SlotID src, ObjectInstanceID srcOwner, si32 howMany);
+	bool bulkMergeStacks(SlotID slotSrc, ObjectInstanceID srcOwner);
+	bool bulkSplitAndRebalanceStack(SlotID slotSrc, ObjectInstanceID srcOwner);
 	bool responseStatistic(PlayerColor player);
 	void save(const std::string &fname, PlayerColor playerToNotifyOnSuccess, int autosaveCountLimit = 0);
 	void load(const StartInfo &info);
@@ -310,6 +305,8 @@ public:
 	void throwIfCanNotTrade(GameConnectionID connectionID, const CPackForServer * pack, ObjectInstanceID id1, ObjectInstanceID id2);
 	/// Throws if object is not owned by pack sender
 	void throwIfWrongOwner(GameConnectionID connectionID, const CPackForServer * pack, ObjectInstanceID id);
+	/// Throws if pack sender may not remove units from this army
+	void throwIfCanNotTakeTroops(GameConnectionID connectionID, const CPackForServer * pack, ObjectInstanceID id);
 	/// Throws if player is not present on connection of this pack
 	void throwIfWrongPlayer(GameConnectionID connectionID, const CPackForServer * pack, PlayerColor player);
 	void throwIfWrongPlayer(GameConnectionID connectionID, const CPackForServer * pack);
@@ -332,10 +329,15 @@ public:
 	friend class CVCMIServer;
 private:
 	void getVictoryLossMessage(PlayerColor player, const EVictoryLossCheckResult & victoryLossCheckResult, InfoWindow & out) const;
+	/// Returns army of the object, throws if the object does not exist or has no army
+	const CArmedInstance * getArmyOrThrow(ObjectInstanceID id, const std::string & context);
+	/// Gives the war machine to the hero, replacing the artifact in CGHeroInstance::getWarMachineSlot if needed
+	bool giveHeroWarMachine(const CGHeroInstance * hero, const ArtifactID & warMachine);
 
 	const std::string complainNoCreatures;
 	const std::string complainNotEnoughCreatures;
 	const std::string complainInvalidSlot;
+	const std::string complainNotRemovable;
 };
 
 class ExceptionNotAllowedAction : public std::exception

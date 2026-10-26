@@ -5,12 +5,19 @@ import android.os.Build;
 import android.os.Messenger;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.util.Base64;
 
 import org.libsdl.app.SDL;
 import org.libsdl.app.SDLActivity;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
+import java.security.KeyStore;
+import java.security.cert.X509Certificate;
+
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 import eu.vcmi.vcmi.util.Log;
 import eu.vcmi.vcmi.util.Notifications;
@@ -119,24 +126,6 @@ public class NativeMethods
 
     private static native boolean submitThorHeroMeetingSplitNative(long revision, int sourceArmyId, int sourceSlot,
             int destinationArmyId, int destinationSlot, int amount);
-    public static boolean submitThorHeroMeetingRedistribution(final long revision, final int leftHeroId,
-            final int rightHeroId, final int sourceArmyId, final int sourceSlot, final int sourceCreatureId,
-            final int sourceCount, final int[] destinationArmyIds, final int[] destinationSlots, final int[] amounts)
-    {
-        final Context ctx = context();
-        final VcmiSDLActivity activity = ctx instanceof VcmiSDLActivity ? (VcmiSDLActivity) ctx : null;
-        if (BuildConfig.AYN_THOR_BUILD && activity != null)
-            activity.registerThorActionSubmission(revision, ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
-        final boolean submitted = submitThorHeroMeetingRedistributionNative(revision, leftHeroId, rightHeroId,
-                sourceArmyId, sourceSlot, sourceCreatureId, sourceCount, destinationArmyIds, destinationSlots, amounts);
-        if (!submitted && BuildConfig.AYN_THOR_BUILD && activity != null)
-            activity.cancelThorActionSubmission(revision, ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
-        return submitted;
-    }
-
-    private static native boolean submitThorHeroMeetingRedistributionNative(long revision, int leftHeroId,
-            int rightHeroId, int sourceArmyId, int sourceSlot, int sourceCreatureId, int sourceCount,
-            int[] destinationArmyIds, int[] destinationSlots, int[] amounts);
     public static native void clearThorActions();
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
@@ -400,6 +389,42 @@ public class NativeMethods
         String root = new File(ctx.getFilesDir(), Const.VCMI_DATA_ROOT_FOLDER_NAME).getAbsolutePath();
         Log.i("Accessing internal data root: " + root);
         return root;
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static String applicationId()
+    {
+        return context().getPackageName();
+    }
+
+    /// CA certificates trusted by the system, in PEM format, for TLS connections made by native code
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static String getSystemCACertificates()
+    {
+        final StringBuilder result = new StringBuilder();
+        try
+        {
+            final TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            factory.init((KeyStore) null);
+            for (final TrustManager manager : factory.getTrustManagers())
+            {
+                if (!(manager instanceof X509TrustManager))
+                {
+                    continue;
+                }
+                for (final X509Certificate certificate : ((X509TrustManager) manager).getAcceptedIssuers())
+                {
+                    result.append("-----BEGIN CERTIFICATE-----\n");
+                    result.append(Base64.encodeToString(certificate.getEncoded(), Base64.DEFAULT));
+                    result.append("-----END CERTIFICATE-----\n");
+                }
+            }
+        }
+        catch (final Exception e)
+        {
+            Log.e("Failed to read system CA certificates", e);
+        }
+        return result.toString();
     }
 
     /// shown when the game wants the player's attention while it is in the background

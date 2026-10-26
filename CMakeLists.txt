@@ -60,6 +60,8 @@ option(ENABLE_MMAI "Enable compilation of MMAI AI library" ON)
 # Compilation options
 
 option(ENABLE_PCH "Enable compilation using precompiled headers" ON)
+# Release presets take the value from the VCMI_ENABLE_LTO environment variable
+option(ENABLE_LTO "Enable link-time optimization in non-Debug builds" OFF)
 option(ENABLE_DEBUG_CONSOLE "Enable debug console for Windows builds" ON)
 option(ENABLE_STRICT_COMPILATION "Treat all compiler warnings as errors" OFF)
 option(ENABLE_COLORIZED_COMPILER_OUTPUT "Colorize compilation output (Clang/GNU)." ON)
@@ -167,6 +169,14 @@ cmake_dependent_option(ENABLE_GITVERSION "Enable Version.cpp with Git commit has
 cmake_dependent_option(ENABLE_TEMPLATE_EDITOR "Enable template editor inside map editor" ON "ENABLE_EDITOR" OFF)
 
 option(VCMI_PORTMASTER "PortMaster build" OFF)
+
+# flatpak-builder sets FLATPAK_ID for the build environment
+if(DEFINED ENV{FLATPAK_ID})
+	set(VCMI_FLATPAK_DEFAULT ON)
+else()
+	set(VCMI_FLATPAK_DEFAULT OFF)
+endif()
+option(VCMI_FLATPAK "Flatpak build" ${VCMI_FLATPAK_DEFAULT})
 
 ############################################
 #        Miscellaneous options             #
@@ -298,6 +308,55 @@ include(UseDoxygen OPTIONAL)
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Emit every function and variable into its own section so that the linker can
+# drop the ones nothing references. Saves ~5% of the stripped binaries; the
+# discarded exception tables account for a quarter of that.
+if(MSVC)
+	# /Gy and /Gw are the MSVC equivalents, /OPT:REF performs the collection
+	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Gy> $<$<COMPILE_LANGUAGE:CXX>:/Gw>)
+	# not in Debug - /OPT:REF disables incremental linking
+	add_link_options($<$<NOT:$<CONFIG:Debug>>:/OPT:REF> $<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>)
+	# RelWithDebInfo defaults to /Ob1 that only inlines functions explicitly marked as inline
+	# Use same inlining as in Release, debug information is not affected by this
+	foreach(lang C CXX)
+		string(REPLACE "/Ob1" "/Ob2" CMAKE_${lang}_FLAGS_RELWITHDEBINFO "${CMAKE_${lang}_FLAGS_RELWITHDEBINFO}")
+	endforeach()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	add_compile_options(-ffunction-sections -fdata-sections)
+	if(APPLE)
+		add_link_options(-Wl,-dead_strip)
+	else()
+		add_link_options(-Wl,--gc-sections)
+	endif()
+endif()
+
+# GCC assumes any exported function may be interposed at load time and so cannot
+# inline calls to it from within the same library. VCMI is never interposed, and
+# clang already defaults to this behaviour.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT WIN32)
+	add_compile_options(-fno-semantic-interposition)
+endif()
+
+if(ENABLE_LTO)
+	include(CheckIPOSupported)
+	check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
+	if(IPO_SUPPORTED)
+		# Debug is left alone - LTO makes incremental relinking several times slower
+		foreach(config RELEASE RELWITHDEBINFO MINSIZEREL)
+			set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_${config} ON)
+		endforeach()
+
+		# lto1 repeats optimization while linking, raising false positives inside
+		# libstdc++ internals that differ between compiler versions. Compilation
+		# itself stays strict - this only relaxes the link step.
+		if(ENABLE_STRICT_COMPILATION AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+			add_link_options(-Wno-error)
+		endif()
+	else()
+		message(WARNING "ENABLE_LTO requested but not supported by toolchain: ${IPO_ERROR}")
+	endif()
+endif()
+
 #General visibility options
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
@@ -334,6 +393,12 @@ endif()
 
 if(ENABLE_LAUNCHER)
 	add_definitions(-DENABLE_LAUNCHER)
+endif()
+
+# libcurl is used only for downloads in launcher
+set(ENABLE_LIBCURL ${ENABLE_LAUNCHER})
+if(ENABLE_LIBCURL)
+	add_definitions(-DENABLE_LIBCURL)
 endif()
 
 if(ENABLE_EDITOR)
@@ -535,6 +600,10 @@ if(NOT minizip_FOUND)
 	add_library(minizip::minizip ALIAS MINIZIP::minizip-ng)
 endif()
 
+if(ENABLE_LIBCURL)
+	find_package(CURL REQUIRED)
+endif()
+
 if (ENABLE_CLIENT)
 	if (ENABLE_VIDEO)
 		find_package(ffmpeg REQUIRED COMPONENTS avutil swscale avformat avcodec swresample)
@@ -616,8 +685,8 @@ endif()
 
 if(ENABLE_LAUNCHER OR ENABLE_EDITOR)
 	# Widgets finds its own dependencies (QtGui and QtCore).
-	find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
-	find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
+	find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
+	find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 	if(ENABLE_TEMPLATE_EDITOR)
 		find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Svg Xml)

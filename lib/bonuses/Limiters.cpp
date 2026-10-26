@@ -304,11 +304,14 @@ ILimiter::EDecision TerrainLimiter::limit(const BonusLimitationContext &context)
 	if (!allowedNodes.contains(nodeType))
 		return ILimiter::EDecision::NOT_APPLICABLE;
 
-	ETerrainId currentTerrain;
+	ETerrainId currentTerrain = ETerrainId::NONE;
 
 	if (stackNodes.contains(nodeType))
 	{
-		if (const auto * stack = retrieveStackInstance(&context.node))
+		// in battle use the battle terrain (e.g. town's native terrain in siege), not the army's map tile
+		if (const auto * battleStack = retrieveStackBattle(&context.node))
+			currentTerrain = battleStack->getCurrentTerrain();
+		else if (const auto * stack = retrieveStackInstance(&context.node))
 			currentTerrain = stack->getCurrentTerrain();
 	}
 	else if (const auto * army = dynamic_cast<const CArmedInstance *>(&context.node))
@@ -480,12 +483,24 @@ ILimiter::EDecision RankRangeLimiter::limit(const BonusLimitationContext &contex
 	{
 		if (csi->getNodeType() == BonusNodeType::COMMANDER) //no stack exp bonuses for commander creatures
 			return ILimiter::EDecision::DISCARD;
-		if (csi->getExpRank() > minRank && csi->getExpRank() < maxRank)
+		if (csi->getExpRank() >= minRank && csi->getExpRank() < maxRank)
 			return ILimiter::EDecision::ACCEPT;
 
 		return ILimiter::EDecision::DISCARD;
 	}
 	return ILimiter::EDecision::NOT_APPLICABLE;
+}
+
+JsonNode RankRangeLimiter::toJsonNode() const
+{
+	JsonNode root;
+
+	root["type"].String() = "EXPERIENCE_RANK_LIMITER";
+	root["minRank"].Integer() = minRank;
+	if(maxRank != std::numeric_limits<ui8>::max())
+		root["maxRank"].Integer() = maxRank;
+
+	return root;
 }
 
 OppositeSideLimiter::OppositeSideLimiter()

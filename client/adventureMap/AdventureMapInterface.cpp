@@ -45,6 +45,7 @@
 #include "../../lib/StartInfo.h"
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/texts/CGeneralTextHandler.h"
+#include "../../lib/mapObjects/MapObjectDrawOrder.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/MiscObjects.h"
@@ -697,6 +698,7 @@ void AdventureMapInterface::deactivate()
 {
 	const bool wasActive = isActive();
 	CIntObject::deactivate();
+	heldScrollShortcuts.clear();
 	ENGINE->cursor().set(Cursor::Map::POINTER);
 
 	if(GAME->interface())
@@ -753,6 +755,7 @@ void AdventureMapInterface::dim(Canvas & to)
 
 void AdventureMapInterface::tick(uint32_t msPassed)
 {
+	handleKeyboardScrollingUpdate(msPassed);
 	handleMapScrollingUpdate(msPassed);
 
 	// we want animations to be active during enemy turn but map itself to be non-interactive
@@ -768,6 +771,41 @@ void AdventureMapInterface::tick(uint32_t msPassed)
 		thorViewportElapsed = 0;
 	}
 #endif
+}
+
+AdventureMapInterface::KeyboardModifiers AdventureMapInterface::currentKeyboardModifiers()
+{
+	return {ENGINE->isKeyboardCtrlDown(), ENGINE->isKeyboardAltDown(), ENGINE->isKeyboardShiftDown()};
+}
+
+void AdventureMapInterface::handleKeyboardScrollingUpdate(uint32_t timePassed)
+{
+	// a key release is reported as the shortcut of the modifiers that were held on last key press,
+	// so a shortcut pressed with different modifiers will never be reported as released
+	if (!ENGINE->screenHandler().hasFocus() || currentKeyboardModifiers() != heldScrollModifiers)
+		heldScrollShortcuts.clear();
+
+	Point scrollDirection;
+
+	if (heldScrollShortcuts.contains(EShortcut::ADVENTURE_SCROLL_LEFT))
+		scrollDirection.x -= 1;
+
+	if (heldScrollShortcuts.contains(EShortcut::ADVENTURE_SCROLL_RIGHT))
+		scrollDirection.x += 1;
+
+	if (heldScrollShortcuts.contains(EShortcut::ADVENTURE_SCROLL_UP))
+		scrollDirection.y -= 1;
+
+	if (heldScrollShortcuts.contains(EShortcut::ADVENTURE_SCROLL_DOWN))
+		scrollDirection.y += 1;
+
+	if (scrollDirection == Point(0,0) || !shortcuts->optionMapScrollingActive())
+		return;
+
+	int32_t scrollSpeedPixels = settings["adventure"]["scrollSpeedPixels"].Float();
+	int32_t scrollDistance = scrollSpeedPixels * timePassed / 1000;
+
+	widget->getMapView()->onMapScrolled(scrollDirection * scrollDistance);
 }
 
 void AdventureMapInterface::handleMapScrollingUpdate(uint32_t timePassed)
@@ -866,12 +904,35 @@ int3 AdventureMapInterface::getMapViewCenter() const
 
 void AdventureMapInterface::keyPressed(EShortcut key)
 {
+	switch(key)
+	{
+		case EShortcut::ADVENTURE_SCROLL_LEFT:
+		case EShortcut::ADVENTURE_SCROLL_RIGHT:
+		case EShortcut::ADVENTURE_SCROLL_UP:
+		case EShortcut::ADVENTURE_SCROLL_DOWN:
+			heldScrollModifiers = currentKeyboardModifiers();
+			heldScrollShortcuts.insert(key);
+			break;
+		default:
+			break;
+	}
+
 	if (key == EShortcut::GLOBAL_CANCEL && spellBeingCasted)
 		hotkeyAbortCastingMode();
 	if (key == EShortcut::GLOBAL_CANCEL && getState() == EAdventureState::DISEMBARKING)
 		exitDisembarkMode();
 	//fake mouse use to trigger onTileHovered()
 	ENGINE->fakeMouseMove();
+}
+
+void AdventureMapInterface::keyCanceled(EShortcut key)
+{
+	keyReleased(key);
+}
+
+void AdventureMapInterface::keyReleased(EShortcut key)
+{
+	heldScrollShortcuts.erase(key);
 }
 
 void AdventureMapInterface::onSelectionChanged(const CArmedInstance *sel)
@@ -953,6 +1014,16 @@ void AdventureMapInterface::onEnemyTurnStarted(PlayerColor playerID, bool isHuma
 	widget->getMinimap()->setAIRadar(!isHuman);
 	widget->getInfoBar()->startEnemyTurn(playerID);
 	setState(isHuman ? EAdventureState::MAKING_TURN : EAdventureState::AI_PLAYER_TURN);
+
+	int totalOtherPlayers = static_cast<int>(GAME->interface()->cb->getStartInfo()->playerInfos.size()) - 1;
+	if (totalOtherPlayers > 1)
+	{
+		float progress = static_cast<float>(enemyTurnsCompletedThisRound) / totalOtherPlayers;
+		ENGINE->screenHandler().setTaskbarProgress(TaskbarProgress::NORMAL, progress);
+	}
+	else
+		ENGINE->screenHandler().setTaskbarProgress(TaskbarProgress::INDETERMINATE, 0.f);
+	enemyTurnsCompletedThisRound++;
 }
 
 EAdventureState AdventureMapInterface::getState() const
@@ -999,6 +1070,9 @@ void AdventureMapInterface::onPlayerTurnStarted(PlayerColor playerID)
 	{
 		widget->getMinimap()->setAIRadar(false);
 		widget->getInfoBar()->showSelection();
+
+		enemyTurnsCompletedThisRound = 0;
+		ENGINE->screenHandler().setTaskbarProgress(TaskbarProgress::HIDDEN, 0.f);
 	}
 
 	widget->getHeroList()->updateWidget();
@@ -1085,10 +1159,8 @@ const CGObjectInstance* AdventureMapInterface::getActiveObject(const int3 &mapPo
 {
 	std::vector < const CGObjectInstance * > bobjs = GAME->interface()->cb->getBlockingObjs(mapPos);  //blocking objects at tile
 
-	if (bobjs.empty())
-		return nullptr;
-
-	return *std::ranges::max_element(bobjs, &CMap::compareObjectBlitOrder);
+	//FIXME: remove mh access
+	return MapObjectDrawOrder::findTopObject(*GAME->map().getMap(), bobjs, mapPos);
 }
 
 void AdventureMapInterface::onTileLeftClicked(const int3 &targetPosition)
@@ -1569,6 +1641,11 @@ void AdventureMapInterface::hotkeySwitchMapLevel()
 void AdventureMapInterface::hotkeyZoom(int delta, bool useDeadZone)
 {
 	widget->getMapView()->onMapZoomLevelChanged(delta, useDeadZone);
+}
+
+void AdventureMapInterface::hotkeyScreenshotWholeMap()
+{
+	widget->getMapView()->exportScreenshot();
 }
 
 void AdventureMapInterface::onScreenResize()

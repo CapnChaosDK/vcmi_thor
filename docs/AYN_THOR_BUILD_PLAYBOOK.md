@@ -7,7 +7,11 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Upstream baseline: `819259d97f1de9262b97811ccb081346c20ffef2`
+- Current hardware-accepted candidate: `582c2817e5ac2f2c8b13050e066d5af8fbde9c78`,
+  [Thor CI 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
+  The user confirmed all seven packaged device checks on 2026-10-26 and authorized
+  promotion. Exact artifact/APK evidence and promotion state live in backlog Current state.
+- Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
 - Slice 11 final product commit: `873faeaedc153f400d39c2677cfe495bf3d07bd9` — Adventure Map semantic utility actions.
 - Slice 11 candidate CI run: `35256657759`; package `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-35256657759`; artifact ZIP SHA-256 `354302b412dab6d99a0869dd67f02589007006283b2e8e0d73c8ca0d453a31c6`; APK SHA-256 `30adbcff7c4a8082e373abf6f7038378f00e40c012ab8829b8115189a060f4dc`.
@@ -36,16 +40,15 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 
 It has two validation levels:
 
-1. Relevant pushes to `ayn-thor-dual-screen` and pull requests targeting it run a no-secret preflight. It restores the immutable Conan dependency archive when available and runs the focused host-native Thor suites (including the Slice 53 native controller input/confirmation/cancellation contract) plus the real non-Thor army-transfer server boundary. The latter builds the `army-transfer-tests` CMake target with system native dependencies and uses the standard `github.yml` test-data setup; details and acceptance are in Slice 52 of the backlog. Documentation-only changes do not trigger it.
+1. Relevant pushes to `ayn-thor-dual-screen` and pull requests targeting it run a no-secret preflight. It restores the immutable Conan dependency archive when available and runs the focused host-native Thor suites plus upstream native regressions through `vcmitest`, with system dependencies and the standard `github.yml` test-data setup. Documentation-only changes do not trigger it.
 2. A trusted push to the permanent `ci/thor-candidate-validation` transport branch runs that preflight, then a dependent full ARM64 candidate job. The full job uses Ubuntu 24.04, Temurin JDK 17, recursive submodules, the official Android Conan bundle and profiles, `android-thor-release`, `arm64-v8a`, the required Qt compatibility hook, validation signing, focused Android Thor tests, package verification, checksum generation, receipt generation, and artifact upload.
 
-The existing `army-transfer-tests` target also runs the real callback lookup
-regressions from Slice 54 (visibility/access, removal, map bounds and teleport
-probes), alongside army request rejection/acknowledgement checks. Slice 55 adds the
-activity/routine integration suite: covered and duplicate replies, shared settlement,
-visits/rewards, battle/level-up ordering, turn start, spell continuation and save
-compatibility. These remain in the same native gate. Its CTest gate
-retains the name `ArmyTransferBoundary`; this does not add a separate workflow.
+The current preflight builds upstream's `vcmitest` and runs its native regressions,
+including registered Thor contracts. Earlier `army-transfer-tests` / ArmyTransferBoundary
+instructions describe the pre-reconciliation fork. General engine/server/packet/save/AI
+code must match the pinned base outside the documented JNI/build/save-location seams;
+`CI/thor_upstream_base.py` checks this before compilation. The full job uses upstream's
+2026-10-13 Conan dependency archive; the installer retains bounded archive caching.
 
 The full job cannot start until preflight succeeds. It never runs for pull requests, so signing secrets are not available to fork PRs or arbitrary branches. A manual dispatch from `ci/thor-candidate-validation` can request the same trusted full path with `full_arm64`.
 

@@ -196,3 +196,4 @@ public:
 protected:
 	std::optional<ui32> answer;
 };
+

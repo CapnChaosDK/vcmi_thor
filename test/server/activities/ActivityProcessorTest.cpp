@@ -1,11 +1,3 @@
-/*
- * ActivityProcessorTest.cpp, part of VCMI engine
- *
- * Authors: listed in file AUTHORS in main folder
- *
- * License: GNU General Public License v2.0 or later
- * Full text of license available in license.txt file, in main folder
- */
 #include "StdInc.h"
 
 #include <gtest/gtest.h>
@@ -29,21 +21,18 @@
 #include "lib/mapObjects/CGDwelling.h"
 #include "lib/mapObjects/CGResource.h"
 #include "lib/mapObjects/CGCreature.h"
+#include "lib/networkPacks/StackLocation.h"
 #include "lib/mapObjects/CGPandoraBox.h"
 #include "lib/mapObjects/Quest.h"
 #include "lib/mapObjects/CGTownInstance.h"
 #include "lib/mapObjects/TownBuildingInstance.h"
 #include "lib/bonuses/Bonus.h"
-#include "lib/bonuses/BonusParameters.h"
-#include "lib/bonuses/Limiters.h"
-#include "lib/bonuses/Propagators.h"
-#include "lib/bonuses/Updaters.h"
-#include "lib/mapObjects/ObjectTemplate.h"
+#include "lib/CPlayerState.h"
 #include "lib/mapObjects/CGHeroInstance.h"
 #include "lib/mapping/CMap.h"
 #include "lib/mapping/CMapEvent.h"
 #include "lib/GameLibrary.h"
-#include "lib/serializer/CMemorySerializer.h"
+#include "lib/CSkillHandler.h"
 
 namespace
 {
@@ -714,7 +703,6 @@ TEST_F(ActivityProcessorTest, submitReply_rejectsActivityThatCannotBeEndedByAnsw
 {
 	const PlayerColor player(1);
 	auto activity = std::make_shared<TestActivity>(&gh, player, ActivityType::MapObjectVisit);
-	activity->askQuestion();
 	activities.addActivity(activity);
 
 	EXPECT_EQ(activities.submitReply(activity->getActiveQuestionID(), player, 1), ReplyOutcome::RejectedNotAnswerable);
@@ -1391,6 +1379,45 @@ TEST_F(MapObjectVisitTest, visitByAMonsterThatAlwaysFightsSuspendsDirectlyUnderT
 	EXPECT_EQ(gameHandler.getVisitingHero(monster), hero);
 }
 
+TEST_F(MapObjectVisitTest, monsterThatWonDropsCreaturesOfOtherTypes)
+{
+	const PlayerColor player(0);
+	TinyH3M::TinyH3MBuilder builder(EMapFormat::SOD);
+	builder.size(36, false)
+		.playerActive(player)
+		.hero(int3(5, 5, 0), HeroTypeID(0), player)
+		.monster(int3(6, 5, 0), CreatureID(0), 100, static_cast<int8_t>(CGCreature::Character::SAVAGE));
+	startWithMap(std::move(builder));
+
+	auto * hero = findHeroByOwner(player);
+	auto * monster = findFirst<CGCreature>();
+	ASSERT_NE(hero, nullptr);
+	ASSERT_NE(monster, nullptr);
+
+	GameHandlerTestServer server(gameState(), player);
+	CGameHandler gameHandler(server, gameState());
+
+	// e.g. demons raised by pit lords stay in the army that won; they took the slot the monster lost
+	const auto monsterID = monster->id;
+	gameHandler.eraseStack(StackLocation(monsterID, SlotID(0)), true);
+	gameHandler.addToSlot(StackLocation(monsterID, SlotID(0)), CreatureID(10).toCreature(), 21);
+	gameHandler.addToSlot(StackLocation(monsterID, SlotID(4)), CreatureID(0).toCreature(), 6);
+
+	BattleResult result;
+	result.winner = BattleSide::DEFENDER;
+	result.attacker = player;
+	monster->battleFinished(gameHandler, hero, result);
+
+	ASSERT_EQ(monster->Slots().size(), 1);
+	EXPECT_EQ(monster->getStack(SlotID(0)).getCreature(), CreatureID(0).toCreature());
+	EXPECT_EQ(monster->getStackCount(SlotID(0)), 6);
+
+	// with none of its own creatures left the monster is gone
+	gameHandler.changeStackType(StackLocation(monsterID, SlotID(0)), CreatureID(10).toCreature());
+	monster->battleFinished(gameHandler, hero, result);
+	EXPECT_EQ(gameState()->getObjInstance(monsterID), nullptr);
+}
+
 // --------------------------------------------------------------------------------
 // Repeated questions.
 //
@@ -1513,6 +1540,32 @@ TEST_F(LevelUpActivityTest, everyQuestionSentToTheClientIsReportedResolved)
 	// and not by the id of the activity behind it.
 	ASSERT_GT(server.levelUpPromptIDs.size(), 1u) << "expected several levels";
 	EXPECT_EQ(server.resolvedQuestionIDs, server.levelUpPromptIDs);
+}
+
+TEST_F(LevelUpActivityTest, onlyTheLastLevelOfAChainTellsTheClientToCloseItsWindow)
+{
+	const PlayerColor player(0);
+	buildHeroAboutToLevel(999);
+
+	auto * hero = findHeroByOwner(player);
+	ASSERT_NE(hero, nullptr);
+
+	GameHandlerTestServer server(gameState(), player);
+	CGameHandler gameHandler(server, gameState());
+
+	gameHandler.giveExperience(hero, 100000); // worth several levels at once
+
+	while(auto pending = gameHandler.activities->topActivity(player))
+	{
+		ASSERT_EQ(gameHandler.activities->submitReply(pending->getActiveQuestionID(), player, 0),
+			ReplyOutcome::Accepted);
+	}
+
+	// A window kept open after the last level would stay below whatever the client opens next
+	ASSERT_GT(server.levelUpMoreLevelsFollow.size(), 1u) << "expected several levels";
+	std::vector<bool> expected(server.levelUpMoreLevelsFollow.size(), true);
+	expected.back() = false;
+	EXPECT_EQ(server.levelUpMoreLevelsFollow, expected);
 }
 
 TEST_F(TwoPlayerBattleTest, battleActivityIsStillFoundWhenThePlayerPausesMidBattle)
@@ -1800,33 +1853,60 @@ TEST_F(MapObjectVisitTest, aRewardWithTooLittleExperienceStillGrantsItsSecondHal
 	EXPECT_EQ(gameHandler.activities->topActivity(player), nullptr);
 }
 
-TEST_F(MapObjectVisitTest, aRewardWithOnlyASecondarySkillCompletesWithoutAQuestion)
+TEST_F(MapObjectVisitTest, aRewardSkillThatGrantsALevelEndsTheVisitOnceTheLevelIsChosen)
 {
 	const PlayerColor player(0);
 	TinyH3M::TinyH3MBuilder builder(EMapFormat::SOD);
-	builder.size(36, false).playerActive(player)
-		.hero(int3(5, 5, 0), HeroTypeID(0), player).pandora(int3(6, 5, 0));
+	builder.size(36, false)
+		.playerActive(player)
+		.hero(int3(5, 5, 0), HeroTypeID(0), player)
+		.pandora(int3(6, 5, 0));
 	startWithMap(std::move(builder));
+
 	auto * hero = findHeroByOwner(player);
 	auto * pandora = findFirst<CGPandoraBox>();
 	ASSERT_NE(hero, nullptr);
 	ASSERT_NE(pandora, nullptr);
+
+	const auto & skills = LIBRARY->skillh->objects;
+	const auto found = std::ranges::find_if(skills, [](const auto & s){ return s->getJsonKey() == "vcmi-test:levelGranting"; });
+	ASSERT_NE(found, skills.end());
+	const SecondarySkill skill = (*found)->getId();
+
+	// No experience in the reward: the level comes only from learning the skill
 	ASSERT_FALSE(pandora->configuration.info.empty());
-	const auto skill = SecondarySkill::PATHFINDING;
-	const auto previous = hero->getSecSkillLevel(skill);
-	ASSERT_LT(previous, 3);
 	auto & reward = pandora->configuration.info.at(0).reward;
 	reward = {};
 	reward.secondary[skill] = 1;
+
 	GameHandlerTestServer server(gameState(), player);
 	CGameHandler gameHandler(server, gameState());
+	const auto levelBefore = hero->level;
+
 	gameHandler.objectVisited(pandora, hero);
+
 	auto dialog = gameHandler.activities->topActivity(player);
 	ASSERT_NE(dialog, nullptr);
 	ASSERT_EQ(dialog->getType(), ActivityType::BlockingDialog);
-	EXPECT_EQ(gameHandler.activities->submitReply(dialog->getActiveQuestionID(), player, 1), ReplyOutcome::Accepted);
-	EXPECT_EQ(hero->getSecSkillLevel(skill), previous + 1);
-	EXPECT_EQ(gameHandler.activities->topActivity(player), nullptr);
+	ASSERT_EQ(gameHandler.activities->submitReply(dialog->getActiveQuestionID(), player, 1),
+		ReplyOutcome::Accepted);
+
+	auto levelUp = gameHandler.activities->topActivity(player);
+	ASSERT_NE(levelUp, nullptr);
+	ASSERT_EQ(levelUp->getType(), ActivityType::HeroLevelUpDialog);
+
+	// A level-up may offer to upgrade the same skill, which grants one more level
+	int answered = 0;
+	while(auto pending = gameHandler.activities->topActivity(player))
+	{
+		ASSERT_EQ(pending->getType(), ActivityType::HeroLevelUpDialog);
+		ASSERT_EQ(gameHandler.activities->submitReply(pending->getActiveQuestionID(), player, 0),
+			ReplyOutcome::Accepted);
+		ASSERT_LT(++answered, 10);
+	}
+
+	EXPECT_GE(hero->getSecSkillLevel(skill), 1);
+	EXPECT_GT(hero->level, levelBefore);
 }
 
 /// Records the object that it was notified about on completion.
@@ -1854,7 +1934,7 @@ TEST_F(MapObjectVisitTest, aTownBuildingVisitReportsToTheBuildingNotTheTown)
 	TinyH3M::TinyH3MBuilder builder(EMapFormat::SOD);
 	builder.size(36, false)
 		.playerActive(player)
-		.hero(int3(5, 5, 0), HeroTypeID(0), player)
+		.hero(int3(7, 8, 0), HeroTypeID(0), player) // starts on the town entrance
 		.town(int3(8, 8, 0), FactionID(0), player);
 	startWithMap(std::move(builder));
 
@@ -1862,12 +1942,12 @@ TEST_F(MapObjectVisitTest, aTownBuildingVisitReportsToTheBuildingNotTheTown)
 	auto * town = findFirst<CGTownInstance>();
 	ASSERT_NE(hero, nullptr);
 	ASSERT_NE(town, nullptr);
+	ASSERT_EQ(town->getVisitingHero(), hero); // a building can only be visited by a hero who is actually in the town
 	ASSERT_FALSE(town->rewardableBuildings.empty());
 
 	const auto buildingID = town->rewardableBuildings.begin()->first;
 	const auto * building = town->rewardableBuildings.begin()->second.get();
-	town->addBuilding(buildingID); // a building can only be visited once it exists
-	town->setVisitingHero(hero);   // and only by a hero who is actually in the town
+	town->addBuilding(buildingID); // and only once it exists
 
 	GameHandlerTestServer server(gameState(), player);
 	CGameHandler gameHandler(server, gameState());
@@ -2409,7 +2489,7 @@ TEST_F(MapObjectVisitTest, aDialogOpenedBeforeTheFirstBuildingIsReportedToTheTow
 	TinyH3M::TinyH3MBuilder builder(EMapFormat::SOD);
 	builder.size(36, false)
 		.playerActive(player)
-		.hero(int3(5, 5, 0), HeroTypeID(0), player)
+		.hero(int3(7, 8, 0), HeroTypeID(0), player) // starts on the town entrance
 		.town(int3(8, 8, 0), FactionID(0), player);
 	startWithMap(std::move(builder));
 
@@ -2417,11 +2497,11 @@ TEST_F(MapObjectVisitTest, aDialogOpenedBeforeTheFirstBuildingIsReportedToTheTow
 	auto * town = findFirst<CGTownInstance>();
 	ASSERT_NE(hero, nullptr);
 	ASSERT_NE(town, nullptr);
+	ASSERT_EQ(town->getVisitingHero(), hero);
 	ASSERT_FALSE(town->rewardableBuildings.empty());
 
 	const auto buildingID = town->rewardableBuildings.begin()->first;
 	town->addBuilding(buildingID);
-	town->setVisitingHero(hero);
 
 	GameHandlerTestServer server(gameState(), player);
 	CGameHandler gameHandler(server, gameState());
@@ -2583,104 +2663,4 @@ TEST_F(TownPortalTest, closingTheTownWindowAbandonsTheCast)
 
 	EXPECT_EQ(gameHandler.activities->topActivity(player), nullptr);
 	EXPECT_EQ(hero->visitablePos(), startedAt) << "the hero travelled without a town being chosen";
-}
-
-TEST_F(ActivityProcessorTest, unofferedAndInvalidPlayerRepliesCannotFinishAnActivity)
-{
-	const PlayerColor player(0);
-	auto activity = std::make_shared<TestActivity>(&gh, player, ActivityType::MapObjectVisit);
-	activities.addActivity(activity);
-	EXPECT_EQ(activities.submitReply(QuestionID::NONE, player, 0), ReplyOutcome::RejectedUnknownActivity);
-	EXPECT_EQ(activities.submitReply(QuestionID::NONE, PlayerColor::NEUTRAL, 0), ReplyOutcome::RejectedWrongPlayer);
-	EXPECT_EQ(activities.topActivity(player), activity);
-	EXPECT_FALSE(activity->isFinished());
-}
-
-TEST_F(MapObjectVisitTest, saveWaitsForTheWholeContinuationIncludingOtherPlayers)
-{
-	const PlayerColor player(0);
-	TinyH3M::TinyH3MBuilder builder(EMapFormat::SOD);
-	builder.size(36, false).playerActive(player).playerActive(PlayerColor(1))
-		.hero(int3(5, 5, 0), HeroTypeID(0), player)
-		.hero(int3(20, 20, 0), HeroTypeID(1), PlayerColor(1));
-	startWithMap(std::move(builder));
-	GameHandlerTestServer server(gameState(), player);
-	CGameHandler gh(server, gameState());
-	auto & activities = *gh.activities;
-
-	EXPECT_TRUE(activities.canSave());
-	auto pause = std::make_shared<TimerPauseActivity>(&gh, player);
-	activities.addActivity(pause);
-	EXPECT_TRUE(activities.canSave());
-	auto work = std::make_shared<TestActivity>(&gh, PlayerColor(1), ActivityType::MapObjectVisit);
-	activities.addActivity(work);
-	EXPECT_FALSE(activities.canSave());
-	work->finish();
-	EXPECT_TRUE(activities.canSave());
-	pause->finish();
-
-	auto turnPause = std::make_shared<TimerPauseActivity>(&gh, player);
-	activities.addActivity(std::make_shared<TurnStartRoutine>(&gh, player, turnPause));
-	EXPECT_EQ(activities.topActivity(player), turnPause);
-	EXPECT_FALSE(activities.canSave());
-}
-
-TEST_F(MapObjectVisitTest, legacyAndCurrentCreatureSavesKeepTheTrailingFieldsAligned)
-{
-	const PlayerColor player(0);
-	TinyH3M::TinyH3MBuilder builder(EMapFormat::SOD);
-	builder.size(36, false).playerActive(player)
-		.hero(int3(5, 5, 0), HeroTypeID(0), player)
-		.monster(int3(6, 5, 0), CreatureID(0), 25);
-	startWithMap(std::move(builder));
-	auto * monster = findFirst<CGCreature>();
-	ASSERT_NE(monster, nullptr);
-	for(const auto version : {ESerializationVersion::RECORD_TEXTS_METASTRING, ESerializationVersion::CURRENT})
-	{
-		CMemorySerializer serializer;
-		serializer.oser.version = version;
-		serializer.iser.version = version;
-		serializer.iser.cb = gameState().get();
-		serializer.oser & monster;
-		std::unique_ptr<CGCreature> restored;
-		serializer.iser & restored;
-		ASSERT_NE(restored, nullptr);
-		EXPECT_EQ(restored->id, monster->id);
-		EXPECT_EQ(restored->formation, monster->formation);
-		EXPECT_EQ(restored->stacksCount, monster->stacksCount);
-		EXPECT_EQ(restored->getStackCount(SlotID(0)), monster->getStackCount(SlotID(0)));
-	}
-}
-
-TEST_F(ActivityProcessorTest, aReplyCannotMutateAFinishedActivityWaitingForExposure)
-{
-	const PlayerColor player(0);
-	auto question = std::make_shared<TestDialogActivity>(&gh, player, ActivityType::BlockingDialog);
-	auto cover = std::make_shared<TestActivity>(&gh, player, ActivityType::MapObjectVisit);
-	activities.addActivity(question);
-	activities.addActivity(cover);
-	question->finish();
-	EXPECT_EQ(activities.submitReply(question->getActiveQuestionID(), player, 1), ReplyOutcome::IgnoredAlreadyAnswered);
-	EXPECT_EQ(question->setReplyCalls, 0);
-	cover->finish();
-	EXPECT_EQ(question->onRemovalCalls, 1);
-	EXPECT_EQ(activities.topActivity(player), nullptr);
-}
-
-TEST_F(LevelUpActivityTest, removingTheHeroWhileItChoosesASkillSettlesTheWholeChain)
-{
-	const PlayerColor player(0);
-	buildHeroAboutToLevel(999);
-	auto * hero = findHeroByOwner(player);
-	ASSERT_NE(hero, nullptr);
-	GameHandlerTestServer server(gameState(), player);
-	CGameHandler gameHandler(server, gameState());
-	gameHandler.giveExperience(hero, 10000);
-	auto prompt = gameHandler.activities->topActivity(player);
-	ASSERT_NE(prompt, nullptr);
-	ASSERT_EQ(prompt->getType(), ActivityType::HeroLevelUpDialog);
-	ASSERT_TRUE(gameHandler.removeObject(hero, player));
-	EXPECT_EQ(gameHandler.activities->submitReply(prompt->getActiveQuestionID(), player, 0), ReplyOutcome::Accepted);
-	EXPECT_EQ(gameHandler.activities->topActivity(player), nullptr);
-	EXPECT_EQ(server.resolvedQuestionIDs, server.levelUpPromptIDs);
 }

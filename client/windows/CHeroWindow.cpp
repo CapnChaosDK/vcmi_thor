@@ -8,6 +8,8 @@
  *
  */
 #include "StdInc.h"
+#include "../thor/ThorRequestTracker.h"
+#include "../thor/ThorArmyController.h"
 #include "CHeroWindow.h"
 #include "wiki/WikiWindow.h"
 
@@ -229,7 +231,7 @@ bool CHeroWindow::executeThorAction(const ThorActionRequest & request)
 		const auto pair = decodeThorHeroArmyPair(request.targetId);
 		if(!context.heroManagement || !pair || management != *context.heroManagement)
 			return false;
-		CExchangeController controller(curHero->id, curHero->id);
+		ThorArmyController controller(curHero->id, curHero->id);
 		if(!controller.canTransferStack(true, SlotID(pair->first), true, SlotID(pair->second)))
 		{
 			updateThorActionState(true);
@@ -280,8 +282,8 @@ bool CHeroWindow::executeThorAction(const ThorActionRequest & request)
 			updateThorActionState();
 			return false;
 		}
-		const int requestId = GAME->interface()->cb->swapArtifactsRequest(ArtifactLocation(curHero->id, sourcePosition),
-			ArtifactLocation(curHero->id, destinationPosition));
+		const int requestId = captureThorRequest([&] { GAME->interface()->cb->swapArtifacts(ArtifactLocation(curHero->id, sourcePosition),
+			ArtifactLocation(curHero->id, destinationPosition)); });
 		if(requestId <= 0)
 		{
 			updateThorActionState(true);
@@ -587,12 +589,7 @@ void CHeroWindow::updateArtifacts()
 	manastr << curHero->mana << '/' << curHero->manaLimit();
 	manaValue->setText(manastr.str());
 
-	MetaString expText;
-	expText.appendTextID("core.genrltxt.2");
-	expText.replaceNumber(curHero->level);
-	expText.replaceNumber(LIBRARY->heroh->reqExp(curHero->level + 1));
-	expText.replaceNumber(curHero->exp);
-	expArea->text = expText.toString(&GAME->translator());
+	expArea->text = curHero->getExperienceDescription().toString(&GAME->translator());
 
 	MetaString spellPointsText;
 	spellPointsText.appendTextID("core.genrltxt.205");

@@ -315,5 +315,7 @@ void registerTypes(Serializer &s)
 	s.template registerType<SetScriptVariable>(267);
 	s.template registerType<SetQuestHint>(268);
 	s.template registerType<BattleAnimationPlayed>(269);
-	s.template registerType<RedistributeArmyStack>(270);
+	s.template registerType<SimturnsContactStatus>(270);
+	s.template registerType<BattleTacticsEnded>(271);
+	s.template registerType<DisableMapEvent>(272);
 }

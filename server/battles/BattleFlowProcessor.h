@@ -51,6 +51,8 @@ class BattleFlowProcessor : boost::noncopyable
 
 	void removeObstacle(const CBattleInfoCallback & battle, const CObstacleInstance & obstacle);
 	void stackTurnTrigger(const CBattleInfoCallback & battle, const CStack * stack);
+	void tryUnbindStack(const CBattleInfoCallback & battle, const CStack * stack);
+	void removeBrokenBindings(const CBattleInfoCallback & battle);
 	void setActiveStack(const CBattleInfoCallback & battle, const battle::Unit * stack, BattleUnitTurnReason reason);
 	double calculateTowerAttackValue(const CBattleInfoCallback& battle, const CStack* attacker, const CStack* target) const;
 
@@ -62,5 +64,6 @@ public:
 
 	void onBattleStarted(const CBattleInfoCallback & battle);
 	void onTacticsEnded(const CBattleInfoCallback & battle);
-	void onActionMade(const CBattleInfoCallback & battle, const BattleAction & ba);
+	/// Activates the next unit. Valid is false for an action that the server refused and replaced with a turn skip
+	void onActionMade(const CBattleInfoCallback & battle, const BattleAction & ba, bool valid);
 };

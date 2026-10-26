@@ -35,6 +35,8 @@
 #include "gui/CursorHandler.h"
 #include "gui/WindowHandler.h"
 
+#include "lobby/SelectionTab.h"
+
 #include "mainmenu/CMainMenu.h"
 #include "mainmenu/CHighScoreScreen.h"
 #include "mainmenu/CStatisticScreen.h"
@@ -171,6 +173,8 @@ void CPlayerInterface::initGameInterface(std::shared_ptr<Environment> ENV, std::
 
 	pathfinderCache = std::make_unique<PathfinderCache>(cb.get(), PathfinderOptions(*cb));
 	ENGINE->music().loadTerrainMusicThemes();
+	// in hotseat, adventure map of previous player still exists and must not receive selection of this player
+	adventureInt.reset();
 	initializeHeroTownList();
 
 	adventureInt.reset(new AdventureMapInterface());
@@ -296,9 +300,9 @@ void CPlayerInterface::performAutosave()
 	{
 		const auto calendar = cb->getCalendar();
 		const auto autosaveCountLimit = static_cast<int>(settings["general"]["autosaveCountLimit"].Integer());
-		cb->saveAutosave(
-			SavegamePath::getAutosavePath(*cb->getStartInfo(), *cb->getMapHeader(), calendar),
-			autosaveCountLimit);
+		const auto autosavePath = SavegamePath::getAutosavePath(*cb->getStartInfo(), *cb->getMapHeader(), calendar);
+		SelectionTab::rememberSave(autosavePath);
+		cb->saveAutosave(autosavePath, autosaveCountLimit);
 	}
 }
 
@@ -368,7 +372,7 @@ void CPlayerInterface::acceptTurn(QuestionID questionID, bool hotseatWait)
 	// warn player if he has no town
 	if (cb->howManyTowns() == 0)
 	{
-		auto playerColor = *cb->getPlayerID();
+		auto playerColor = cb->getPlayerID().value();
 
 		std::vector<Component> components;
 		components.emplace_back(ComponentType::FLAG, playerColor);
@@ -518,7 +522,6 @@ void CPlayerInterface::heroMovePointsChanged(const CGHeroInstance * hero)
 	EVENT_HANDLER_CALLED_BY_CLIENT;
 	if (makingTurn && hero->tempOwner == playerID)
 		adventureInt->onHeroChanged(hero);
-	invalidatePaths();
 	localState->verifyPath(hero);
 }
 void CPlayerInterface::receivedResource()
@@ -530,49 +533,34 @@ void CPlayerInterface::receivedResource()
 	ENGINE->windows().totalRedraw();
 }
 
-void CPlayerInterface::heroGotLevel(const CGHeroInstance * hero, PrimarySkill pskill, const std::vector<SecondarySkill> & skills, QuestionID questionID)
+void CPlayerInterface::heroGotLevel(const CGHeroInstance * hero, PrimarySkill pskill, const std::vector<SecondarySkill> & skills, bool moreLevelsFollow, QuestionID questionID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	const auto heroID = hero->id;
-	queueDialog(PendingDialog::Type::LevelUp, questionID, [this, heroID, pskill, skills, questionID]()
+	queueLevelUpDialog(questionID, moreLevelsFollow, [this, hero, pskill, skills, moreLevelsFollow, questionID]()
 	{
-		const auto * hero = cb->getHero(heroID);
-		if(!hero || hero->getOwner() != playerID)
-		{
-			cb->selectionMade(0, questionID);
-			return;
-		}
 		ENGINE->sound().playSound(soundBase::heroNewLevel);
 
 		// Reuse the open window of the previous level, so that a chain of them does not flicker
 		if(auto levelWindow = ENGINE->windows().topWindow<CLevelWindow>())
 		{
-			levelWindow->updateLevelUpData(hero, pskill, skills, questionID);
+			levelWindow->updateLevelUpData(this, hero, pskill, skills, moreLevelsFollow, questionID);
 			return;
 		}
 
 		closeActiveLevelUpDialog();
-		ENGINE->windows().createAndPushWindow<CLevelWindow>(hero, pskill, skills, questionID);
+		ENGINE->windows().createAndPushWindow<CLevelWindow>(this, hero, pskill, skills, moreLevelsFollow, questionID);
 	});
 }
 
-void CPlayerInterface::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, QuestionID questionID)
+void CPlayerInterface::commanderGotLevel(const CCommanderInstance * commander, std::vector<ui32> skills, bool moreLevelsFollow, QuestionID questionID)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
-	const auto heroID = commander->getArmy()->id;
-	queueDialog(PendingDialog::Type::LevelUp, questionID, [this, heroID, skills = std::move(skills), questionID]()
+	queueLevelUpDialog(questionID, moreLevelsFollow, [this, commander, skills = std::move(skills), moreLevelsFollow, questionID]()
 	{
-		const auto * hero = cb->getHero(heroID);
-		if(!hero || hero->getOwner() != playerID || !hero->getCommander())
-		{
-			cb->selectionMade(0, questionID);
-			return;
-		}
-		const auto * commander = hero->getCommander();
 		ENGINE->sound().playSound(soundBase::heroNewLevel);
 
 		closeActiveLevelUpDialog();
-		ENGINE->windows().createAndPushWindow<CStackWindow>(commander, skills, questionID);
+		ENGINE->windows().createAndPushWindow<CStackWindow>(this, commander, skills, moreLevelsFollow, questionID);
 	});
 }
 
@@ -785,6 +773,14 @@ void CPlayerInterface::battleCatapultAttacked(const BattleID & battleID, const C
 	battleInt->stackIsCatapulting(ca);
 }
 
+void CPlayerInterface::battleTacticsEnded(const BattleID & battleID)
+{
+	EVENT_HANDLER_CALLED_BY_CLIENT;
+	BATTLE_EVENT_POSSIBLE_RETURN;
+
+	battleInt->windowObject->tacticPhaseEnded();
+}
+
 void CPlayerInterface::battleNewRound(const BattleID & battleID) //called at the beginning of each turn, round=-1 is the tactic phase, round=0 is the first "normal" turn
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
@@ -956,7 +952,6 @@ void CPlayerInterface::battleStacksAttacked(const BattleID & battleID, const std
 		info.spellEffect    = SpellID::NONE;
 		info.indirectAttack = ranged;
 		info.killed         = elem.killed();
-		info.rebirth        = elem.willRebirth();
 		info.cloneKilled    = elem.cloneKilled();
 
 		if (elem.isSpell())
@@ -1123,12 +1118,12 @@ void CPlayerInterface::showInfoDialogAndWait(std::vector<Component> & components
 	waitWhileDialog();
 }
 
-void CPlayerInterface::showYesNoDialog(const std::string &text, CFunctionList<void()> onYes, CFunctionList<void()> onNo, const std::vector<std::shared_ptr<CComponent>> & components)
+void CPlayerInterface::showYesNoDialog(const std::string &text, CFunctionList<void()> onYes, CFunctionList<void()> onNo, const std::vector<std::shared_ptr<CComponent>> & components, uint32_t timeoutMs, QuestionID questionID)
 {
 	waitWhileDialog();
 	movementController->requestMovementAbort();
 	GAME->interface()->showingDialog->setBusy();
-	CInfoWindow::showYesNoDialog(text, components, onYes, onNo, playerID);
+	CInfoWindow::showYesNoDialog(text, components, onYes, onNo, playerID, timeoutMs, questionID);
 }
 
 void CPlayerInterface::showBlockingDialog(const std::string &text, const std::vector<Component> &components, QuestionID questionID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept)
@@ -1164,7 +1159,7 @@ void CPlayerInterface::showBlockingDialog(const std::string &text, const std::ve
 			intComps.push_back(uiComponent); //will be deleted by close in window
 		}
 
-		showYesNoDialog(text, [this, questionID](){ cb->selectionMade(1, questionID); }, [this, questionID](){ cb->selectionMade(0, questionID); }, intComps);
+		showYesNoDialog(text, [this, questionID](){ cb->selectionMade(1, questionID); }, [this, questionID](){ cb->selectionMade(0, questionID); }, intComps, 0, questionID);
 	}
 	else if (selection)
 	{
@@ -1253,19 +1248,8 @@ void CPlayerInterface::showMapObjectSelectDialog(QuestionID questionID, const Co
 
 	auto wnd = std::make_shared<CObjectListWindow>(tempList, localIcon, localTitle, localDescription, selectCallback, 0, images);
 	wnd->onExit = cancelCallback;
-	wnd->onPopup = [this, objectGuiOrdered](int index)
-	{
-		if(const auto * object = cb->tryGetObj(objectGuiOrdered[index]))
-			CRClickPopup::createAndPush(object, ENGINE->getCursorPosition());
-	};
-	wnd->onClicked = [this, objectGuiOrdered](int index)
-	{
-		if(const auto * object = cb->tryGetObj(objectGuiOrdered[index]))
-		{
-			adventureInt->centerOnObject(object);
-			ENGINE->windows().totalRedraw();
-		}
-	};
+	wnd->onPopup = [this, objectGuiOrdered](int index) { CRClickPopup::createAndPush(cb->getObj(objectGuiOrdered[index]), ENGINE->getCursorPosition()); };
+	wnd->onClicked = [this, objectGuiOrdered](int index) { adventureInt->centerOnObject(cb->getObj(objectGuiOrdered[index])); ENGINE->windows().totalRedraw(); };
 	ENGINE->windows().pushWindow(wnd);
 }
 
@@ -1354,7 +1338,7 @@ void CPlayerInterface::moveHero( const CGHeroInstance *h, const CGPath& path )
 	movementController->requestMovementStart(h, path);
 }
 
-void CPlayerInterface::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, bool removableUnits, QuestionID questionID, const MetaString & customTitle)
+void CPlayerInterface::showGarrisonDialog(const CArmedInstance * up, const CGHeroInstance * down, QuestionID questionID, const MetaString & customTitle)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
 	auto onEnd = [this, questionID](){ cb->selectionMade(0, questionID); };
@@ -1367,7 +1351,7 @@ void CPlayerInterface::showGarrisonDialog(const CArmedInstance * up, const CGHer
 
 	waitForAllDialogs();
 
-	auto cgw = std::make_shared<CGarrisonWindow>(up, down, removableUnits, customTitle);
+	auto cgw = std::make_shared<CGarrisonWindow>(up, down, customTitle);
 	cgw->quit->addCallback(onEnd);
 	ENGINE->windows().pushWindow(cgw);
 }
@@ -1378,16 +1362,12 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 		movementController->onMoveHeroApplied();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	const auto notifyExchangeWindow = [](int requestId, bool success, bool redistribution)
+	const auto notifyExchangeWindow = [](int requestId, bool success)
 	{
-		if(!redistribution)
-			CExchangeWindow::completeThorArtifactRequest(requestId);
+		CExchangeWindow::completeThorArtifactRequest(requestId);
 		for(const auto & exchangeWindow : ENGINE->windows().findWindows<CExchangeWindow>())
 		{
-			if(redistribution)
-				exchangeWindow->onThorRedistributionResult(requestId, success);
-			else
-				exchangeWindow->onThorArtifactRequestResult(requestId, success);
+			exchangeWindow->onThorArtifactRequestResult(requestId, success);
 		}
 	};
 	const auto notifyHeroWindow = [](int requestId)
@@ -1395,31 +1375,29 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 		for(const auto & heroWindow : ENGINE->windows().findWindows<CHeroWindow>())
 			heroWindow->onThorActionRequestResult(requestId);
 	};
-	const auto notifyTownWindow = [](int requestId, bool success)
+	const auto notifyTownWindow = [](int requestId)
 	{
 		for(const auto & townWindow : ENGINE->windows().findWindows<CCastleInterface>())
-			townWindow->onThorActionRequestResult(requestId, success);
+			townWindow->onThorActionRequestResult(requestId);
 	};
 	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
 		notifyHeroWindow(static_cast<int>(pa->requestID));
 	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
-		notifyTownWindow(static_cast<int>(pa->requestID), pa->result);
-	if(pa->packType == CTypeList::getInstance().getTypeID<RedistributeArmyStack>(nullptr))
-		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, true);
+		notifyTownWindow(static_cast<int>(pa->requestID));
 	if(pa->packType == CTypeList::getInstance().getTypeID<BulkExchangeArtifacts>(nullptr))
-		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
+		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result);
 	if(pa->packType == CTypeList::getInstance().getTypeID<ExchangeArtifacts>(nullptr))
 	{
-		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
+		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result);
 		notifyHeroWindow(static_cast<int>(pa->requestID));
 	}
 	if(pa->packType == CTypeList::getInstance().getTypeID<AssembleArtifacts>(nullptr))
-		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result, false);
+		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result);
 #endif
 
 	if(pa->packType == CTypeList::getInstance().getTypeID<QuestionAnswer>(nullptr))
 	{
-		movementController->onQuestionAnswerApplied(static_cast<int>(pa->requestID), pa->result);
+		movementController->onQuestionAnswerApplied();
 	}
 }
 
@@ -1433,7 +1411,6 @@ void CPlayerInterface::closeActiveLevelUpDialog()
 
 void CPlayerInterface::questionResolved(QuestionID questionID)
 {
-	movementController->onQuestionResolved(questionID);
 	for(const auto & exchange : ENGINE->windows().findWindows<CExchangeWindow>())
 	{
 		if(exchange->getQuestionID() != questionID)
@@ -1452,14 +1429,18 @@ void CPlayerInterface::questionResolved(QuestionID questionID)
 
 	const bool wasFront = dialog == dialogs.begin();
 	const bool wasLevelUpDialog = dialog->isLevelUpDialog();
+	const bool moreLevelsFollow = dialog->moreLevelsFollow;
 	dialogs.erase(dialog);
 
 	if(wasFront)
 	{
 		showingDialog->setFree();
-		if(wasLevelUpDialog)
+		// Settling is checked in update(), which only the current interface receives. A hotseat player
+		// asked during another player's turn would never continue, so its window is closed right away
+		if(wasLevelUpDialog && GAME->interface() == this)
 		{
-			levelUpChainPendingContinuation = true;
+			// The window of the last level has already closed itself
+			levelUpChainPendingContinuation = moreLevelsFollow;
 			// Drain accept/click events queued by the confirmed dialog before showing the
 			// next one, otherwise the same Enter accepts the next level-up step or closes
 			// a queued info dialog.
@@ -2032,20 +2013,26 @@ void CPlayerInterface::waitForAllDialogs()
 
 void CPlayerInterface::queueDialog(PendingDialog::Type blockingPolicy, std::function<void()> showCallback)
 {
-	queueDialog(blockingPolicy, QuestionID::NONE, std::move(showCallback));
+	PendingDialog dialog;
+	dialog.blockingPolicy = blockingPolicy;
+	dialog.showCallback = std::move(showCallback);
+	dialogs.push_back(std::move(dialog));
+
+	tryShowNextPendingDialog();
 }
 
-void CPlayerInterface::queueDialog(PendingDialog::Type blockingPolicy, QuestionID questionID, std::function<void()> showCallback)
+void CPlayerInterface::queueLevelUpDialog(QuestionID questionID, bool moreLevelsFollow, std::function<void()> showCallback)
 {
 	PendingDialog dialog;
-	dialog.questionID = questionID >= 0 ? questionID : QuestionID::NONE;
-	dialog.blockingPolicy = blockingPolicy;
+	dialog.questionID = questionID;
+	dialog.blockingPolicy = PendingDialog::Type::LevelUp;
+	dialog.moreLevelsFollow = moreLevelsFollow;
 	dialog.showCallback = std::move(showCallback);
 
 	// A level-up that continues a chain goes ahead of ordinary queued dialogs, so that the
 	// chain is not interrupted. The first one of a chain does not: the reward message that
 	// granted the experience is shown before it, as in the original game.
-	if(dialog.isLevelUpDialog() && (levelUpChainPendingContinuation || (!dialogs.empty() && dialogs.front().isLevelUpDialog())))
+	if(levelUpChainPendingContinuation || (!dialogs.empty() && dialogs.front().isLevelUpDialog()))
 		dialogs.insert(firstNonLevelUpDialog(), std::move(dialog));
 	else
 		dialogs.push_back(std::move(dialog));
@@ -2103,10 +2090,11 @@ void CPlayerInterface::tryShowNextPendingDialog()
 			return;
 		}
 
-		const auto policy = dialog.blockingPolicy;
+		// dialog is destroyed together with its list node
+		const auto blockingPolicy = dialog.blockingPolicy;
 		dialogs.pop_front();
 
-		if(policy != PendingDialog::Type::NonBlocking || showingDialog->isBusy())
+		if(blockingPolicy != PendingDialog::Type::NonBlocking || showingDialog->isBusy())
 			return;
 	}
 }
@@ -2141,6 +2129,7 @@ void CPlayerInterface::quickSaveGame()
 	txt.appendTextID("vcmi.adventureMap.savingQuickSave");
 	txt.replaceRawString(quickSavePath);
 	GAME->server().getGameChat().sendMessageGameplay(txt.toString(&GAME->translator()));
+	SelectionTab::rememberSave(quickSavePath);
 	GAME->interface()->cb->save(quickSavePath, false);
 	hasQuickSave = true;
 	if(adventureInt)

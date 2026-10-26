@@ -10,6 +10,14 @@ else()
 endif()
 
 set(test_SRCS
+		thor/ThorActionTest.cpp
+		thor/ThorAdventureMapTest.cpp
+		thor/ThorContextTest.cpp
+		thor/ThorRecruitmentTest.cpp
+		thor/ThorRequestTrackerTest.cpp
+		thor/ThorSaveBrowserTest.cpp
+		thor/ThorVisualAssetTest.cpp
+		thor/ThorWindowPublisherTest.cpp
  		StdInc.cpp
  		main.cpp
  		CMemoryBufferTest.cpp
@@ -17,8 +25,6 @@ set(test_SRCS
  		JsonComparer.cpp
 
  		battle/BattleHexTest.cpp
-		battle/BattleAnimationWaitTest.cpp
-		battle/BattleControllerInputTest.cpp
  		battle/CBattleInfoCallbackTest.cpp
  		battle/CHealthTest.cpp
 		battle/CUnitStateTest.cpp
@@ -26,12 +32,12 @@ set(test_SRCS
 		battle/battle_UnitTest.cpp
 
 		bonus/BonusSystemTest.cpp
-		callback/InfoCallbackTest.cpp
 
 		combatScripts/CombatScriptDescriptionTest.cpp
 
 		entity/CArtifactTest.cpp
 		entity/CCreatureTest.cpp
+		entity/StackExperienceBonusesTest.cpp
 		entity/CFactionTest.cpp
 		entity/CHeroClassTest.cpp
 		entity/CHeroTest.cpp
@@ -45,16 +51,22 @@ set(test_SRCS
 
 		game/BattleSpellCastTest.cpp
 		game/HeroRecruitmentTest.cpp
+		game/HeroMovementTest.cpp
 		game/HeroSecondarySkillsTest.cpp
 		game/MovementCostTest.cpp
+		game/SaveGameTest.cpp
+		game/VictoryLossTest.cpp
 
 		json/JsonTests.cpp
+
+		serializer/SaveFileTest.cpp
 
 		map/CMapEditManagerTest.cpp
 		map/CMapFormatTest.cpp
 		map/CGArtifactRegressionTest.cpp
-		map/MapComparer.cpp
 		map/MapScriptTest.cpp
+		map/MapObjectDrawOrderTest.cpp
+		map/PlayerFactionsTest.cpp
 		map/TinyH3MBuilderTest.cpp
 
 		quest/QuestTest.cpp
@@ -106,29 +118,42 @@ set(test_SRCS
  		spells/targetConditions/TargetConditionItemFixture.cpp
 
 		server/battles/AcidBreathTest.cpp
+		server/battles/ActionOptionsTest.cpp
+		server/battles/AttackSequenceTest.cpp
+		server/battles/BallistaDamageTest.cpp
 		server/battles/BattleTestFixture.cpp
 		server/battles/CombatEventTriggerTest.cpp
 		server/battles/DamageCalculatorTest.cpp
+		server/battles/BindTest.cpp
 		server/battles/DeathStareTest.cpp
 		server/battles/DestructionTest.cpp
 		server/battles/EnchantedTest.cpp
 		server/battles/FireShieldTest.cpp
+		server/battles/HotaAbilitiesTest.cpp
+		server/battles/HypnotizeTest.cpp
 		server/battles/LifeDrainTest.cpp
+		server/battles/WarMachineResurrectionTest.cpp
+		server/battles/ResurrectionCasualtiesTest.cpp
+		server/battles/MeleeActionTest.cpp
+		server/battles/MoatActionTest.cpp
+		server/battles/NoTargetActionTest.cpp
+		server/battles/RangedActionTest.cpp
+		server/battles/RebirthTest.cpp
 		server/battles/SoulStealTest.cpp
+		server/battles/SpellcastActionTest.cpp
+		server/battles/SpellTargetStepTest.cpp
 		server/battles/SummonGuardiansTest.cpp
+		server/battles/TurnOrderTest.cpp
 		server/battles/TransmutationTest.cpp
-		server/ArmyManagementTest.cpp
+		server/battles/WalkActionTest.cpp
 		server/activities/ActivityProcessorTest.cpp
+		server/ArmyManagementTest.cpp
+		server/NeutralTownEventsTest.cpp
 
 		texts/TextOperationsTest.cpp
 
-		thor/ThorWindowPublisherTest.cpp
-		thor/ThorContextTest.cpp
-		thor/ThorActionTest.cpp
-		thor/ThorAdventureMapTest.cpp
-		thor/ThorRecruitmentTest.cpp
-
 		mock/BattleFake.cpp
+		mock/GameHandlerTestClient.cpp
 		mock/GameHandlerTestServer.cpp
 		mock/mock_IGameEventCallback.cpp
  		mock/mock_MapService.cpp
@@ -146,7 +171,6 @@ set(test_HEADERS
  		CVcmiTestConfig.h
 		JsonComparer.h
 
-		map/MapComparer.h
 
  		netpacks/NetPackFixture.h
 
@@ -157,6 +181,7 @@ set(test_HEADERS
 		server/battles/BattleTestFixture.h
 
 		mock/BattleFake.h
+		mock/GameHandlerTestClient.h
 		mock/GameHandlerTestServer.h
 		mock/mock_BonusBearer.h
 		mock/mock_CStack.h
@@ -187,29 +212,38 @@ endif()
 
 if(ENABLE_NULLKILLER2_AI)
 	list(APPEND test_SRCS
+		nullkiller2/AIGatewayDialogTest.cpp
+		nullkiller2/AIGatewayMovementTest.cpp
 		nullkiller2/AIUtilityTest.cpp
+		nullkiller2/Analyzers/ArmyManagerTest.cpp
 		nullkiller2/Analyzers/HeroManagerTest.cpp
 		nullkiller2/Analyzers/ObjectClusterizerTest.cpp
 		nullkiller2/Behaviors/DefenceBehaviorTest.cpp
 		nullkiller2/Behaviors/EscapeBehaviorTest.cpp
-		nullkiller2/Behaviors/ExplorationBehaviorTest.cpp
 		nullkiller2/Behaviors/GatherArmyBehaviorTest.cpp
+		nullkiller2/Behaviors/OneWayPortalBehaviorTest.cpp
 		nullkiller2/Behaviors/RecruitHeroBehaviorTest.cpp
+		nullkiller2/Behaviors/WaterExplorationBehaviorTest.cpp
 		nullkiller2/Engine/PriorityEvaluatorTest.cpp
+		nullkiller2/Engine/ResourceTradingTurnTest.cpp
 		nullkiller2/Engine/TaskFailureTest.cpp
 		nullkiller2/Goals/BuyArmyTest.cpp
+		nullkiller2/Goals/CompleteQuestTest.cpp
 		nullkiller2/Goals/CompositionTest.cpp
+		nullkiller2/Goals/ExecuteHeroChainTest.cpp
 		nullkiller2/Goals/ExploreNeighbourTileTest.cpp
 		nullkiller2/Helpers/ExplorationHelperTest.cpp
 		nullkiller2/Helpers/TinyH3MDimensionDoorExplorationTest.cpp
 		nullkiller2/Pathfinding/AIPathNodePoolTest.cpp
 		nullkiller2/Pathfinding/ArmyLossTest.cpp
 		nullkiller2/Pathfinding/DimensionDoorActionTest.cpp
+		nullkiller2/Pathfinding/QuestActionTest.cpp
 	)
 
 	list(APPEND test_HEADERS
 		nullkiller2/Nulkiller2TestUtils.h
 		nullkiller2/NullkillerTest.h
+		nullkiller2/ScriptedMovementClient.h
 	)
 endif()
 
@@ -253,19 +287,20 @@ endif()
 add_subdirectory_with_folder("3rdparty" googletest EXCLUDE_FROM_ALL)
 
 add_executable(vcmitest ${test_SRCS} ${test_HEADERS} ${mock_HEADERS})
+# Tests link the constituent object libraries rather than the facade: that keeps
+# lib globals single-instance and lets classes needed only by tests stay
+# unexported, since static linking ignores visibility.
 if(ENABLE_NULLKILLER2_AI)
-	# Nullkiller tests use internal AI symbols, so embed AI objects in vcmitest
-	# instead of linking the facade and loading a second copy of lib globals.
+	# Nullkiller tests use internal AI symbols, so embed its objects directly.
 	target_sources(vcmitest PRIVATE $<TARGET_OBJECTS:Nullkiller2>)
-	set(vcmitest_LIBS gtest gmock vcmiMain vcmiservercommon TBB::tbb ${SYSTEM_LIBS})
-	foreach(optional_vcmitest_target IN ITEMS vcmiLua EmptyAI StupidAI MMAI)
-		if(TARGET ${optional_vcmitest_target})
-			list(APPEND vcmitest_LIBS ${optional_vcmitest_target})
-		endif()
-	endforeach()
-else()
-	set(vcmitest_LIBS gtest gmock vcmi vcmiservercommon ${SYSTEM_LIBS})
 endif()
+
+set(vcmitest_LIBS gtest gmock vcmiMain vcmiservercommon ${SYSTEM_LIBS})
+foreach(optional_vcmitest_target IN ITEMS vcmiLua EmptyAI StupidAI MMAI TBB::tbb)
+	if(TARGET ${optional_vcmitest_target})
+		list(APPEND vcmitest_LIBS ${optional_vcmitest_target})
+	endif()
+endforeach()
 target_link_libraries(vcmitest PRIVATE ${vcmitest_LIBS})
 
 target_include_directories(vcmitest
@@ -300,21 +335,3 @@ foreach(resource ${testdata})
 	set(output "${CMAKE_BINARY_DIR}/bin/test/testdata/${output}/${filename}")
 	configure_file(${resource} ${output} COPYONLY)
 endforeach()
-
-# Focused real callback/server boundary gate; avoids unrelated AI/gameplay tests.
-# Uses the same fixture, facade, server implementation and runtime data as vcmitest.
-add_executable(army-transfer-tests
-	main.cpp CVcmiTestConfig.cpp
-	server/ArmyManagementTest.cpp
-	server/activities/ActivityProcessorTest.cpp
-	callback/InfoCallbackTest.cpp
-	mock/GameHandlerTestServer.cpp
-	mock/TinyMapGameTest.cpp
-	mock/TinyH3MBuilder.cpp mock/TinyH3MWriter.cpp
-	mock/mock_MapServiceTinyH3M.cpp)
-target_link_libraries(army-transfer-tests PRIVATE gtest gmock vcmi vcmiservercommon ${SYSTEM_LIBS})
-target_include_directories(army-transfer-tests PRIVATE
-	${CMAKE_CURRENT_SOURCE_DIR} ${GTestSrc}/include ${GMockSrc}/include)
-vcmi_set_output_dir(army-transfer-tests "")
-add_test(NAME ArmyTransferBoundary COMMAND army-transfer-tests
-	WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

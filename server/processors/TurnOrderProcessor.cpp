@@ -47,6 +47,13 @@ int TurnOrderProcessor::simturnsTurnsMinLimit() const
 	return gameHandler->gameInfo().getStartInfo()->simturnsInfo.requiredTurns;
 }
 
+bool TurnOrderProcessor::isSimturnsActive() const
+{
+	// same day limits that computeCanActSimultaneously() applies
+	int currentDay = gameHandler->gameInfo().getCalendar().getCurrentDay();
+	return currentDay < simturnsTurnsMinLimit() || currentDay <= simturnsTurnsMaxLimit();
+}
+
 std::vector<TurnOrderProcessor::PlayerPair> TurnOrderProcessor::computeContactStatus() const
 {
 	std::vector<PlayerPair> result;
@@ -96,6 +103,23 @@ void TurnOrderProcessor::updateAndNotifyContactStatus()
 	}
 
 	blockedContacts = newBlockedContacts;
+
+	sendContactStatus();
+}
+
+void TurnOrderProcessor::sendContactStatus()
+{
+	SimturnsContactStatus pack;
+
+	for (const auto & contact : blockedContacts)
+	{
+		if (contact.a < contact.b)
+			pack.blockedContacts.insert({contact.a, contact.b});
+		else
+			pack.blockedContacts.insert({contact.b, contact.a});
+	}
+
+	gameHandler->sendAndApply(pack);
 }
 
 bool TurnOrderProcessor::playersInContact(PlayerColor left, PlayerColor right) const
@@ -326,6 +350,9 @@ void TurnOrderProcessor::doStartPlayerTurn(PlayerColor which)
 		// AI starts acting immediately from PlayerStartsTurn/yourTurn, so keep the
 		// original ordering and run the turn-start visits first.
 		startTurn();
+		// turn-start events may have ended the game for this player
+		if(gameHandler->gameInfo().getPlayerStatus(which) != EPlayerStatus::INGAME)
+			return;
 		gameHandler->sendAndApply(pst);
 	}
 
@@ -420,6 +447,8 @@ void TurnOrderProcessor::onGameStarted()
 	if (actingPlayers.empty())
 		blockedContacts = computeContactStatus();
 
+	sendContactStatus();
+
 	// this may be game load - send notification to players that they can act
 	auto actingPlayersCopy = actingPlayers;
 	for (auto player : actingPlayersCopy)
@@ -433,7 +462,8 @@ void TurnOrderProcessor::tryStartTurnsForPlayers()
 	auto awaitingPlayersCopy = awaitingPlayers;
 	for (auto player : awaitingPlayersCopy)
 	{
-		if (canStartTurn(player))
+		// starting a turn may end the game for that player and start turns of others
+		if (isPlayerAwaitsTurn(player) && canStartTurn(player))
 			doStartPlayerTurn(player);
 	}
 }

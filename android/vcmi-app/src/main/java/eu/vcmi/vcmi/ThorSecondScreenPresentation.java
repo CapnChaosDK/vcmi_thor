@@ -291,8 +291,6 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorHeroMeetingGesture heroMeetingGesture = new ThorHeroMeetingGesture();
         private final ThorHeroMeetingArtifactGesture artifactGesture = new ThorHeroMeetingArtifactGesture();
         private final ThorHeroMeetingSplitState heroMeetingSplit = new ThorHeroMeetingSplitState();
-        private final ThorHeroMeetingRedistributionState heroMeetingRedistribution =
-                new ThorHeroMeetingRedistributionState();
         private final int touchSlop;
         private boolean heroMeetingTouchSequence;
         private boolean heroMeetingTouchCancelled;
@@ -309,8 +307,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorTownServices townServices = new ThorTownServices();
         private final Runnable heroMeetingLongPress = () ->
         {
-            if (!heroMeetingRedistribution.isActive()
-                    && heroMeetingMode.mode() == ThorHeroMeetingModeState.ARMY
+            if (heroMeetingMode.mode() == ThorHeroMeetingModeState.ARMY
                     && heroMeetingGesture.activateLongPress(revision, ThorContextIds.HERO_MEETING.equals(contextId)))
             {
                 final int source = heroMeetingGesture.sourceKey();
@@ -371,7 +368,6 @@ final class ThorSecondScreenPresentation extends Presentation
             selectedMeetingSlot = -1;
             pendingMeetingAction = false;
             heroMeetingSplit.cancel();
-            heroMeetingRedistribution.cancel();
             cancelHeroMeetingGesture();
             cancelLobbyScenarioTouch();
             buildConfirmationGesture.cancel();
@@ -451,7 +447,6 @@ final class ThorSecondScreenPresentation extends Presentation
                 selectedMeetingSlot = -1;
                 pendingMeetingAction = false;
                 heroMeetingSplit.cancel();
-                heroMeetingRedistribution.cancel();
                 cancelHeroMeetingGesture();
             }
             if ((ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)
@@ -492,7 +487,6 @@ final class ThorSecondScreenPresentation extends Presentation
                 selectedMeetingSlot = -1;
                 pendingMeetingAction = false;
                 heroMeetingSplit.cancel();
-                heroMeetingRedistribution.cancel();
                 cancelHeroMeetingGesture();
             }
             this.enabledActionMask = enabledActionMask;
@@ -796,20 +790,10 @@ final class ThorSecondScreenPresentation extends Presentation
 
         void updateHeroMeetingArmies(final ThorHeroMeetingArmies armies)
         {
-            removeCallbacks(heroMeetingLongPress);
-            heroMeetingGesture.cancel();
-            heroMeetingSplit.cancel();
-            selectedMeetingSlot = -1;
-            final ThorHeroMeetingArmies updatedArmies = ThorContextIds.HERO_MEETING.equals(contextId) && armies.complete()
+            cancelHeroMeetingGesture();
+            heroMeetingArmies = ThorContextIds.HERO_MEETING.equals(contextId) && armies.complete()
                     ? armies : ThorHeroMeetingArmies.EMPTY;
-            if (heroMeetingRedistribution.isActive()
-                    && !heroMeetingRedistribution.isForCurrentArmies(updatedArmies))
-                heroMeetingRedistribution.cancel();
-            heroMeetingArmies = updatedArmies;
-            if (!heroMeetingArmies.complete())
-            {
-                heroMeetingRedistribution.cancel();
-            }
+            selectedMeetingSlot = -1;
             pendingMeetingAction = false;
             setContentDescription(commandDeckDescription());
             invalidate();
@@ -1340,32 +1324,20 @@ final class ThorSecondScreenPresentation extends Presentation
                     final int index = side * 7 + slot;
                     final RectF row = heroMeetingSlotBounds(index, frame, bevel);
                     final boolean occupied = (heroMeetingArmies.flags[index] & 1) != 0;
-                    final boolean redistributionActive = heroMeetingRedistribution.isActive();
-                    final boolean compatibleDestination = redistributionActive
-                            && heroMeetingRedistribution.isCompatibleDestination(index, heroMeetingArmies);
-                    final boolean selected = selectedMeetingSlot == index
-                            || (redistributionActive && heroMeetingRedistribution.selectedDestination() == index);
+                    final boolean selected = selectedMeetingSlot == index;
                     paint.setStyle(Paint.Style.FILL);
                     paint.setColor(selected ? PARCHMENT_DARK : STONE_DARK);
                     canvas.drawRoundRect(row, bevel, bevel, paint);
                     paint.setStyle(Paint.Style.STROKE);
                     paint.setStrokeWidth(selected ? bevel * 0.8f : bevel * 0.3f);
-                    paint.setColor(selected ? GOLD : (compatibleDestination ? Color.rgb(104, 174, 111) : STONE_LIGHT));
+                    paint.setColor(selected ? GOLD : STONE_LIGHT);
                     canvas.drawRoundRect(row, bevel, bevel, paint);
                     paint.setStyle(Paint.Style.FILL);
                     paint.setColor(selected ? TEXT : (occupied ? TEXT : PARCHMENT_DARK));
-                    final int planned = redistributionActive ? heroMeetingRedistribution.allocationFor(index) : 0;
-                    final String value;
-                    if (occupied && planned > 0)
-                        value = getContext().getString(R.string.thor_redistribution_planned,
-                                heroMeetingArmies.creatureNames[index], heroMeetingArmies.counts[index], planned);
-                    else if (occupied)
-                        value = getContext().getString(R.string.thor_army_stack_value,
-                                heroMeetingArmies.creatureNames[index], heroMeetingArmies.counts[index]);
-                    else
-                        value = planned > 0
-                                ? getContext().getString(R.string.thor_redistribution_empty_planned, planned)
-                                : getContext().getString(R.string.thor_army_empty);
+                    final String value = occupied
+                            ? getContext().getString(R.string.thor_army_stack_value,
+                                    heroMeetingArmies.creatureNames[index], heroMeetingArmies.counts[index])
+                            : getContext().getString(R.string.thor_army_empty);
                     if (occupied)
                     {
                         final float iconSize = Math.min(row.height() * 0.78f, row.width() * 0.1f);
@@ -1391,19 +1363,9 @@ final class ThorSecondScreenPresentation extends Presentation
                         frame.top + frame.height() * 0.775f, frame.width() * 0.8f,
                         Math.min(22f * density, frame.height() * 0.03f));
             }
-            if (heroMeetingRedistribution.isActive())
-            {
-                drawHeroMeetingRedistributionEditor(canvas, frame, bevel, density);
-                return;
-            }
             if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)
             {
                 drawHeroMeetingSplitEditor(canvas, frame, bevel, density);
-                return;
-            }
-            if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION)
-            {
-                drawHeroMeetingSplitDestinationActions(canvas, frame, bevel, density);
                 return;
             }
             final int[] actions = {ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT,
@@ -1667,81 +1629,6 @@ final class ThorSecondScreenPresentation extends Presentation
             return new RectF(left, top, left + width, frame.bottom - bevel * 3f);
         }
 
-        private RectF heroMeetingPromptButtonBounds(final int index, final RectF frame, final float bevel)
-        {
-            final float gap = Math.max(bevel, 8f);
-            final float width = (frame.width() - bevel * 6f - gap) * 0.5f;
-            final float left = frame.left + bevel * 3f + index * (width + gap);
-            final float top = frame.top + frame.height() * 0.83f;
-            return new RectF(left, top, left + width, frame.bottom - bevel * 3f);
-        }
-
-        private void drawHeroMeetingSplitDestinationActions(final Canvas canvas, final RectF frame,
-                                                             final float bevel, final float density)
-        {
-            final int[] labels = {R.string.thor_redistribution_enter, R.string.thor_split_cancel};
-            for (int index = 0; index < labels.length; ++index)
-            {
-                final RectF button = heroMeetingPromptButtonBounds(index, frame, bevel);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setColor(STONE_DARK);
-                canvas.drawRoundRect(button, bevel, bevel, paint);
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(Math.max(2f, bevel * 0.35f));
-                paint.setColor(index == 0 && !isActionEnabled(ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK)
-                        ? PARCHMENT_DARK : GOLD);
-                canvas.drawRoundRect(button, bevel, bevel, paint);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setColor(TEXT);
-                drawFittedText(canvas, getContext().getString(labels[index]), button.centerX(), button.centerY(),
-                        button.width() * 0.86f, Math.min(24f * density, button.height() * 0.45f));
-            }
-        }
-
-        private void drawHeroMeetingRedistributionEditor(final Canvas canvas, final RectF frame,
-                                                          final float bevel, final float density)
-        {
-            final int source = heroMeetingRedistribution.sourceKey();
-            final String sourceName = heroMeetingArmies.creatureNames[source];
-            final String instruction = getContext().getString(R.string.thor_redistribution_instructions,
-                    sourceName, heroMeetingRedistribution.sourceCount());
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(PARCHMENT_DARK);
-            drawFittedText(canvas, instruction, frame.centerX(), frame.top + frame.height() * 0.777f,
-                    frame.width() * 0.92f, Math.min(20f * density, frame.height() * 0.027f));
-            final String totals = getContext().getString(R.string.thor_redistribution_totals,
-                    heroMeetingRedistribution.totalAllocated(), heroMeetingRedistribution.maximumAllocated(),
-                    heroMeetingRedistribution.remaining());
-            drawFittedText(canvas, totals, frame.centerX(), frame.top + frame.height() * 0.808f,
-                    frame.width() * 0.88f, Math.min(19f * density, frame.height() * 0.025f));
-
-            final int[] labels = {R.string.thor_split_minus_ten, R.string.thor_split_minus_one,
-                    R.string.thor_split_plus_one, R.string.thor_split_plus_ten,
-                    R.string.thor_split_cancel, R.string.thor_redistribution_confirm};
-            final boolean canAdjust = heroMeetingRedistribution.selectedDestination() >= 0;
-            final boolean canConfirm = heroMeetingRedistribution.canConfirm(revision, heroMeetingArmies)
-                    && isActionEnabled(ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK);
-            for (int index = 0; index < labels.length; ++index)
-            {
-                final RectF button = heroMeetingSplitButtonBounds(index, frame, bevel);
-                final boolean enabled = index == 4 || (index == 5 ? canConfirm : canAdjust);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
-                canvas.drawRoundRect(button, bevel, bevel, paint);
-                paint.setStyle(Paint.Style.STROKE);
-                paint.setStrokeWidth(Math.max(2f, bevel * 0.35f));
-                paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
-                canvas.drawRoundRect(button, bevel, bevel, paint);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
-                final String label = index == 5
-                        ? getContext().getString(labels[index]) + " " + heroMeetingRedistribution.totalAllocated()
-                        : getContext().getString(labels[index]);
-                drawFittedText(canvas, label, button.centerX(), button.centerY(), button.width() * 0.86f,
-                        Math.min(19f * density, button.height() * 0.44f));
-            }
-        }
-
         private void drawHeroMeetingSplitEditor(final Canvas canvas, final RectF frame, final float bevel,
                                                  final float density)
         {
@@ -1853,7 +1740,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void beginHeroMeetingGesture(final float x, final float y)
         {
-            if (heroMeetingMode.mode() != ThorHeroMeetingModeState.ARMY || heroMeetingRedistribution.isActive())
+            if (heroMeetingMode.mode() != ThorHeroMeetingModeState.ARMY)
                 return;
             if (heroMeetingSplit.stage() != ThorHeroMeetingSplitState.Stage.NONE)
                 return;
@@ -1940,7 +1827,6 @@ final class ThorSecondScreenPresentation extends Presentation
             removeCallbacks(heroMeetingLongPress);
             heroMeetingGesture.cancel();
             heroMeetingSplit.cancel();
-            heroMeetingRedistribution.cancel();
             selectedMeetingSlot = -1;
             if (heroMeetingTouchSequence)
                 heroMeetingTouchCancelled = true;
@@ -1952,8 +1838,6 @@ final class ThorSecondScreenPresentation extends Presentation
             artifactGesture.cancel();
             removeCallbacks(heroMeetingLongPress);
             heroMeetingGesture.cancel();
-            heroMeetingSplit.cancel();
-            heroMeetingRedistribution.cancel();
             selectedMeetingSlot = -1;
             invalidate();
         }
@@ -2017,7 +1901,6 @@ final class ThorSecondScreenPresentation extends Presentation
             artifactGesture.cancel();
             selectedArtifact = -1;
             heroMeetingSplit.cancel();
-            heroMeetingRedistribution.cancel();
             selectedMeetingSlot = -1;
             heroMeetingTouchSequence = false;
             heroMeetingTouchCancelled = false;
@@ -2132,11 +2015,6 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             if (!heroMeetingArmies.complete() || pendingMeetingAction)
                 return;
-            if (heroMeetingRedistribution.isActive())
-            {
-                handleHeroMeetingRedistributionTap(x, y, frame, bevel);
-                return;
-            }
             if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)
             {
                 handleHeroMeetingSplitEditorTap(x, y, frame, bevel);
@@ -2166,32 +2044,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 return;
             }
             if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION)
-            {
-                for (int index = 0; index < 2; ++index)
-                {
-                    if (!heroMeetingPromptButtonBounds(index, frame, bevel).contains(x, y))
-                        continue;
-                    if (index == 0 && isActionEnabled(ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK))
-                    {
-                        final int source = heroMeetingSplit.sourceKey();
-                        if (heroMeetingRedistribution.begin(revision, source, heroMeetingArmies))
-                        {
-                            heroMeetingSplit.cancel();
-                            selectedMeetingSlot = source;
-                        }
-                    }
-                    else if (index == 1)
-                    {
-                        heroMeetingSplit.cancel();
-                        selectedMeetingSlot = -1;
-                    }
-                    performClick();
-                    setContentDescription(commandDeckDescription());
-                    invalidate();
-                    return;
-                }
                 return;
-            }
             final int[] actions = {ThorActionIds.HERO_MEETING_ARMY_LEFT_TO_RIGHT,
                     ThorActionIds.HERO_MEETING_SWAP_ARMIES, ThorActionIds.HERO_MEETING_ARMY_RIGHT_TO_LEFT};
             for (int index = 0; index < actions.length; ++index)
@@ -2233,75 +2086,6 @@ final class ThorSecondScreenPresentation extends Presentation
                     pendingMeetingAction = true;
                     heroMeetingSplit.cancel();
                     selectedMeetingSlot = -1;
-                }
-                performClick();
-                setContentDescription(commandDeckDescription());
-                invalidate();
-                return;
-            }
-        }
-
-        private void handleHeroMeetingRedistributionTap(final float x, final float y, final RectF frame,
-                                                         final float bevel)
-        {
-            if (!heroMeetingRedistribution.isCurrent(revision)
-                    || !ThorContextIds.HERO_MEETING.equals(contextId)
-                    || !heroMeetingArmies.complete())
-            {
-                heroMeetingRedistribution.cancel();
-                selectedMeetingSlot = -1;
-                setContentDescription(commandDeckDescription());
-                invalidate();
-                return;
-            }
-            for (int index = 0; index < ThorHeroMeetingArmies.SLOT_COUNT; ++index)
-            {
-                if (!heroMeetingSlotBounds(index, frame, bevel).contains(x, y))
-                    continue;
-                if (heroMeetingRedistribution.selectDestination(revision, index, heroMeetingArmies))
-                    selectedMeetingSlot = heroMeetingRedistribution.sourceKey();
-                performClick();
-                setContentDescription(commandDeckDescription());
-                invalidate();
-                return;
-            }
-            for (int index = 0; index < 6; ++index)
-            {
-                if (!heroMeetingSplitButtonBounds(index, frame, bevel).contains(x, y))
-                    continue;
-                if (index < 4)
-                {
-                    heroMeetingRedistribution.adjust(revision, new int[]{-10, -1, 1, 10}[index], heroMeetingArmies);
-                }
-                else if (index == 4)
-                {
-                    heroMeetingRedistribution.cancel();
-                    selectedMeetingSlot = -1;
-                }
-                else if (heroMeetingRedistribution.canConfirm(revision, heroMeetingArmies)
-                        && isActionEnabled(ThorActionIds.HERO_MEETING_REDISTRIBUTE_STACK))
-                {
-                    final int[] destinationArmyIds = heroMeetingRedistribution.destinationArmyIds(revision,
-                            heroMeetingArmies);
-                    final int[] destinationSlots = heroMeetingRedistribution.destinationSlots(revision,
-                            heroMeetingArmies);
-                    final int[] amounts = heroMeetingRedistribution.amounts(revision, heroMeetingArmies);
-                    if (destinationArmyIds.length > 0 && destinationArmyIds.length == destinationSlots.length
-                            && destinationArmyIds.length == amounts.length
-                            && destinationArmyIds.length <= ThorHeroMeetingRedistributionState.MAX_DESTINATIONS)
-                    {
-                        final int source = heroMeetingRedistribution.sourceKey();
-                        if (NativeMethods.submitThorHeroMeetingRedistribution(revision,
-                                heroMeetingArmies.leftHeroId, heroMeetingArmies.rightHeroId,
-                                heroMeetingArmies.armyIds[source / 7], source % 7,
-                                heroMeetingArmies.creatureIds[source], heroMeetingArmies.counts[source],
-                                destinationArmyIds, destinationSlots, amounts))
-                        {
-                            pendingMeetingAction = true;
-                            heroMeetingRedistribution.cancel();
-                            selectedMeetingSlot = -1;
-                        }
-                    }
                 }
                 performClick();
                 setContentDescription(commandDeckDescription());
@@ -4911,18 +4695,8 @@ final class ThorSecondScreenPresentation extends Presentation
                         }
                     return description.toString();
                 }
-                if (heroMeetingRedistribution.isActive())
-                    return title + ". " + getContext().getString(R.string.thor_redistribution_instructions,
-                            heroMeetingArmies.creatureNames[heroMeetingRedistribution.sourceKey()],
-                            heroMeetingRedistribution.sourceCount()) + ". "
-                            + getContext().getString(R.string.thor_redistribution_totals,
-                                    heroMeetingRedistribution.totalAllocated(),
-                                    heroMeetingRedistribution.maximumAllocated(),
-                                    heroMeetingRedistribution.remaining());
                 if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.DESTINATION)
-                    return title + ". " + getContext().getString(R.string.thor_split_select_destination) + ". "
-                            + getContext().getString(R.string.thor_redistribution_enter) + ", "
-                            + getContext().getString(R.string.thor_split_cancel);
+                    return title + ". " + getContext().getString(R.string.thor_split_select_destination);
                 if (heroMeetingSplit.stage() == ThorHeroMeetingSplitState.Stage.AMOUNT)
                     return title + ". " + getContext().getString(R.string.thor_split_amount) + " "
                             + heroMeetingSplit.amount() + ". "

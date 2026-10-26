@@ -117,14 +117,25 @@ void IBattleInfoCallbackProxy::registerMethods(MethodRegistrar & R)
 			{"onlyAlive", "Pass true to skip dead-but-resurrectable stacks."}
 		}, {},
 		"Returns the unit covering the given hex, or nil.");
+	R.function<&IBattleInfoCallbackProxy::getUnitController>("getUnitController",
+		{{"unit", "Unit whose controller is queried."}}, {},
+		"Returns the player currently controlling the unit. Unlike Unit:getOwner, this accounts for "
+		"Hypnotize, which hands a unit over to the opposing player.");
+	R.function<&IBattleInfoCallbackProxy::isHostile>("isHostile",
+		{
+			{"actor",  "Unit that acts, e.g. attacks or casts a spell."},
+			{"target", "Unit the action is aimed at."}
+		}, {},
+		"True if the actor treats the target as an enemy. Accounts for Hypnotize: a hypnotized unit "
+		"fights its own army, which still counts it as one of their own.");
 	R.function<&IBattleInfoCallbackProxy::getAllObstacles>("getAllObstacles", {},
-		"Returns all obstacles on the battlefield.");
+		"Returns all obstacles on the battlefield, including ones hidden from the caller.");
 	R.function<&IBattleInfoCallbackProxy::getObstaclesOnPos>("getObstaclesOnPos",
 		{
 			{"hex",          "Hex whose obstacles are queried."},
 			{"onlyBlocking", "Pass true to limit results to obstacles that block movement."}
 		}, {},
-		"Returns the obstacles on the given hex.");
+		"Returns the obstacles on the given hex, including ones hidden from the caller.");
 	R.function<&IBattleInfoCallbackProxy::hasFortifications>("hasFortifications", {},
 		"True if the battle is a siege with fortifications present.");
 	R.function<&IBattleInfoCallbackProxy::hasMoat>("hasMoat", {},
@@ -136,7 +147,8 @@ void IBattleInfoCallbackProxy::registerMethods(MethodRegistrar & R)
 		"Returns every valid battlefield hex.");
 	R.function<&IBattleInfoCallbackProxy::getWallState>("getWallState",
 		{{"part", "Wall section to query."}}, {},
-		"Returns the current state of the given wall section, or nil if absent.");
+		"Returns the number of hitpoints that the given wall section has left, or nil if the town "
+		"has no such section. Section with no hitpoints left has been destroyed.");
 	R.function<&IBattleInfoCallbackProxy::isWallPartAttackable>("isWallPartAttackable",
 		{{"part", "Wall section to test."}}, {},
 		"True if the given wall section can be targeted by an attack.");
@@ -160,7 +172,7 @@ bool IBattleInfoCallbackProxy::isAccessibleForUnit(const IBattleInfoCallback & o
 bool IBattleInfoCallbackProxy::isAccessibleForNewUnit(const IBattleInfoCallback & object, BattleHex hex, const Creature & creature, BattleSide side)
 {
 	const auto & cb = dynamic_cast<const CBattleInfoCallback &>(object);
-	return cb.getAccessibility().accessible(hex, creature.isDoubleWide(), side);
+	return cb.getAccessibility().accessible(hex, creature.isDoubleWide(), side, side == BattleSide::DEFENDER);
 }
 
 int IBattleInfoCallbackProxy::getFieldWidth(const IBattleInfoCallback &)
@@ -233,14 +245,27 @@ const battle::Unit * IBattleInfoCallbackProxy::getUnitByPos(const IBattleInfoCal
 	return object.battleGetUnitByPos(hex, onlyAlive);
 }
 
+PlayerColor IBattleInfoCallbackProxy::getUnitController(const IBattleInfoCallback & object, const battle::Unit & unit)
+{
+	const auto & cb = dynamic_cast<const CBattleInfoCallback &>(object);
+	return cb.battleGetOwner(&unit);
+}
+
+bool IBattleInfoCallbackProxy::isHostile(const IBattleInfoCallback & object, const battle::Unit & actor, const battle::Unit & target)
+{
+	const auto & cb = dynamic_cast<const CBattleInfoCallback &>(object);
+	return cb.battleMatchOwner(&actor, &target, false);
+}
+
 std::vector<std::shared_ptr<const CObstacleInstance>> IBattleInfoCallbackProxy::getAllObstacles(const IBattleInfoCallback & object)
 {
+	// spells may affect obstacles hidden from caster, such as enemy quicksand
 	return object.battleGetAllObstacles(BattleSide::ALL_KNOWING);
 }
 
 std::vector<std::shared_ptr<const CObstacleInstance>> IBattleInfoCallbackProxy::getObstaclesOnPos(const IBattleInfoCallback & object, BattleHex hex, bool onlyBlocking)
 {
-	return object.battleGetAllObstaclesOnPos(hex, onlyBlocking);
+	return object.battleGetAllObstaclesOnPos(hex, onlyBlocking, BattleSide::ALL_KNOWING);
 }
 
 bool IBattleInfoCallbackProxy::hasFortifications(const IBattleInfoCallback & object)
@@ -266,12 +291,12 @@ BattleHexArray IBattleInfoCallbackProxy::getAllPossibleHexes(const IBattleInfoCa
 	return result;
 }
 
-std::optional<EWallState> IBattleInfoCallbackProxy::getWallState(const IBattleInfoCallback & object, EWallPart part)
+std::optional<int> IBattleInfoCallbackProxy::getWallState(const IBattleInfoCallback & object, EWallPart part)
 {
 	EWallState state = object.battleGetWallState(part);
 	if(state == EWallState::NONE)
 		return std::nullopt;
-	return state;
+	return static_cast<int>(state);
 }
 
 bool IBattleInfoCallbackProxy::isWallPartAttackable(const IBattleInfoCallback & object, EWallPart part)
