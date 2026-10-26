@@ -2369,3 +2369,39 @@ Promotion and cleanup receipt (2026-10-22):
 - This promotion receipt is Markdown only. Diff hygiene and a separate complete
   receipt review passed; no new package/build/device result is claimed. Existing
   submodule working state is preserved. No branch cleanup was requested or performed.
+
+## Slice 57 — Hero Meeting presentation extraction
+
+- Status: `in progress`; first of the user's requested sequence: extraction, then complete Tavern.
+- Contract: move the complete Meeting renderer and transient army/artifact, paging,
+  tap/drag, long-press and split-editor state into `ThorHeroMeetingDeck`. Presentation
+  forwards context/snapshot/lifecycle updates and retains the shared drawing/cache
+  and Android window owner. Existing MainGUI/JNI/action IDs and server rules remain.
+- Preserve native ownership, pending/revision suppression, installed-asset fallback,
+  mode state, accessibility and parent restoration. Resize now cancels active Meeting
+  gestures through the established cancellation path.
+- Acceptance: Android compilation and existing full Thor JVM contracts; critical
+  before/after body and lifecycle review; scope/checklist policy and whitespace checks.
+  Physical behavior is covered by [the current structured checklist](CI/thor-validation-plan.json).
+  Slice 56's accepted checklist is retained in
+  [its historical record](docs/AYN_THOR_SLICE_56_VALIDATION_PLAN.json).
+- Upstream-update cost: Android-only ownership extraction; no new upstream native seam,
+  engine modification, action ID or transport field.
+
+### Slice 57 local completeness and independent review
+
+- Feature-completeness checkpoint: army/artifact tabs, all retained transfers and
+  whole-inventory controls, exact split editing/cancel/confirm, installed visuals,
+  paging, pending state, accessibility and context/display lifecycle forwarding are
+  integrated in one component. No production path or native authority moved to Java.
+- Android compilation and all 150 JVM contracts pass. All four policy/checklist
+  tests pass (temporary Git initialization required running outside the sandbox).
+  `python CI/thor_upstream_base.py`, checklist validation and `git diff --check` pass.
+- Separate critical review compared all 30 moved method bodies with the starting
+  tree: identical except accessibility refresh forwarding. Touch sequencing,
+  context payload clearing, action-mask updates, delayed callback removal, mode
+  retention and detach/visibility handling were reviewed separately. Resize now
+  explicitly cancels Meeting input; no known source gap remains.
+- Presentation reduces from 4,846 to 3,875 lines; the dedicated component contains
+  the complete moved journey. This is an ownership improvement, not a net-code-size
+  reduction. Native runtime, full ARM64 and physical behavior remain CI/device gates.

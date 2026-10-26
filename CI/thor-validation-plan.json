@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-resource-trading",
-  "title": "Complete lower-screen resource trading",
-  "summary": "Use the current native Marketplace to select resources, review rates and totals, edit quantity, trade, reset and close from the lower display. Server rules, upper controls and other market modes remain upstream-owned.",
-  "preparation": "Verify the exact candidate receipt, package is.xyz.vcmi.thor and APK checksum, then install in place preserving data. Use a disposable game with an owned Marketplace and several resource types; retain a route to an Adventure resource market if available.",
-  "limitations": "Only resource-to-resource trading is added. Other market modes use their existing upper-screen controls. The lower deck publishes up to nine currently visible native resource rows with four rows per local page; unsupported or malformed states fail closed. Old Saves remain preserved and separate from Saves-upstream.",
+  "feature_id": "thor-hero-meeting-deck",
+  "title": "Hero Meeting presentation extraction",
+  "summary": "Move the complete lower Hero Meeting army/artifact renderer, gesture state, split editor and accessibility into one component. Preserve native/JNI/actions and shared visual cache; cancel gestures on resize.",
+  "preparation": "Verify the exact candidate receipt, is.xyz.vcmi.thor package and APK checksum. Install preserving data. Use a disposable game with two owned heroes, several creature stacks and movable/locked artifacts.",
+  "limitations": "Presentation refactor only. Gameplay rules, upstream base and the retained no-custom-redistribution policy remain unchanged.",
   "checks": [
     {
-      "id": "trade-journey",
-      "title": "Complete selection, quantity and trade journey",
-      "steps": "Open Town Services / Marketplace. Page the lower resource lists, choose Give and Get, compare names, balances and rate with the upper widget, use minus/plus one and ten, Max, zero and boundary quantities. Reset and select again. Submit one trade; repeat in the opposite direction, then Close back to Town. If available, repeat from an Adventure resource market.",
-      "expected": "Selections and slider match the upper widget. Different resources and a positive affordable quantity are required; exact preview totals and resulting balances agree. No wrap, duplicate trade or stuck pending state; success appears after the server result and Close restores the normal parent."
+      "id": "meeting-army",
+      "title": "Army transfer and exact split",
+      "steps": "Meet two owned heroes. Use stack tap, drag/drop, long-press split, amount adjustments, Cancel and Confirm, plus all available whole-army controls. Compare counts and required-last-stack behavior with the upper window.",
+      "expected": "All existing actions retain their behavior, count accuracy and native restrictions. One accepted action per gesture; no speculative game-state update."
     },
     {
-      "id": "trade-availability",
-      "title": "Unavailable, changing and competing state",
-      "steps": "Choose the same resource, a zero-balance resource and an unaffordable quantity. Change selections/quantity on the upper screen while using the lower deck; try rapid repeated Trade and cross-control/held/dragged/extra-pointer input. If practical, change resources during a quote or exercise a server rejection. Switch the upper market into another supported mode and back.",
-      "expected": "Unavailable controls remain inert. Stale quotes and gestures cannot issue a different or duplicate trade. Pending disables edits; a server result releases pending, refreshes balances and reports completion/rejection. Other modes withdraw the resource deck and restore it only on return."
+      "id": "meeting-artifacts",
+      "title": "Artifacts and installed visuals",
+      "steps": "Switch modes, page all four artifact pages, tap/drag transfers and swaps, exercise whole-inventory controls and locked/full slots. Compare portraits, creature/artifact images and generic fallback with the upper window.",
+      "expected": "Current permitted slots only; page/selection highlights and visuals remain accurate. Invalid destinations stay inert; no unintended army action."
     },
     {
-      "id": "market-lifecycle",
-      "title": "Display and modal restoration",
-      "steps": "With a selected quote and while a trade is pending where practical, background/resume, toggle/reconnect the lower display and recreate the presentation. Open and dismiss an upper child/help window. Close from the lower deck, including while pending if reproducible.",
-      "expected": "Only current-revision data and controls return. No delayed trade, leaked window, lost parent, stale hit region or duplicate presentation. Closing preserves the native callback/lifecycle, and an already submitted trade completes under server authority."
+      "id": "meeting-invalidation",
+      "title": "Stale input and lifecycle",
+      "steps": "Hold a stack before long-press, switch context or change state on the upper display, then release. Repeat with artifact drag/split editor, extra pointers, background/resume, panel toggle/reconnect and display resize where available.",
+      "expected": "Old gestures and delayed callbacks cannot submit actions. Current snapshots restore once with no stale highlights, hit regions, duplicate presentation or focus loss."
     },
     {
-      "id": "related-regressions",
-      "title": "Upper input and neighboring deck regressions",
-      "steps": "Use upper touch/controller throughout trading, visit Town recruitment/construction and Hero management, return to Adventure and exercise existing lower Battle controls if available. Repeat resource trading with the lower display unavailable. Check accepted-action haptics with the Android system preference on and off.",
-      "expected": "Upper controls and single-display play follow upstream. Neighboring decks, extended Battle/player commands and parent restoration still work. No speculative success haptic for pending or rejected trades; accepted actions respect the system preference."
+      "id": "meeting-regressions",
+      "title": "Parents and independent input",
+      "steps": "Close Meeting normally and return through Hero, Town, Adventure, resource trading and Battle decks. Use upper touch/controller throughout, repeat with the lower display unavailable and check system-respecting accepted-action haptics.",
+      "expected": "Native parent activation and all neighboring decks retain behavior; upper input and single-display play remain independent."
     }
   ]
 }

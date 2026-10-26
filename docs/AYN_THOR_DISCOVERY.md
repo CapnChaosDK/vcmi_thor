@@ -292,3 +292,13 @@ validation status and exact-candidate checklist are maintained in the
   only the current revision and restores its immutable quote after recreation.
 - Future upstream updates must verify the market window, resource panel/slider and
   request observer APIs. No market widget, callback signature or server rule is forked.
+
+## Hero Meeting presentation ownership (Slice 57)
+
+- `ThorHeroMeetingDeck` owns the Meeting snapshots, local mode/page/selection,
+  pending suppression, army/artifact gestures, exact split editor, drawing and
+  accessibility. It uses the Presentation host for scheduling, invalidation and
+  shared text/visual drawing. The shared installed-asset cache remains unchanged.
+- Presentation forwards revision/context, payload, detach, visibility and resize
+  invalidation. Context transitions preserve the existing payload/action ordering
+  and mode-retention policy. No JNI, command, native owner or gameplay rule changes.
