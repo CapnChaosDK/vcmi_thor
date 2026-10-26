@@ -59,11 +59,17 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 56 — lower-screen resource trading: `awaiting CI` on
-  `codex/thor-resource-trading`, based on promoted product `7396f616f`.
-  The resource Marketplace owner supplies bounded current rows, native rates and
-  slider quantities; lower controls reuse native selection, slider and trade routes.
-  See the Slice 56 contract below. CI/device acceptance is not yet established.
+- Slice 56 — lower-screen resource trading: `hardware validated` by the user's
+  2026-10-26 “all passed” report. Exact candidate
+  `e0cf84495a0abe9661cab048044241237f13c593` passed both jobs in
+  [Thor CI 40392716043](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40392716043).
+  CI-reported APK SHA-256:
+  `8ecae63f22a024a9c9eedf2cea31cb97b960dad87faf19bdd41bbb7683e257ba`.
+  The user confirmed the four-part packaged checklist and authorized updating the
+  Markdown receipts, committing and merging [PR #56](https://github.com/CapnChaosDK/vcmi_thor/pull/56).
+  Artifact/log metadata is verified; no companion export or independently computed
+  installed-byte receipt was supplied here. The exact acceptance evidence and
+  promotion receipt belong to the Slice 56 record below.
 
 - Upstream-base reconciliation: `hardware validated` by the user's 2026-10-26
   “All passed” report; [PR #55](https://github.com/CapnChaosDK/vcmi_thor/pull/55)
@@ -268,9 +274,10 @@ Focused Thor hardware checklist after build/install/explicit launch:
 ## Roadmap
 
 Current handoff (2026-10-26): the upstream-base reconciliation is promoted and
-user-reported hardware validated; see Current state and its receipts. Slice 56 now
-implements the resource-trading lower deck; finish its CI/device gates before
-selecting another slice.
+user-reported hardware validated; see Current state and its receipts. Slice 56's
+resource-trading lower deck has also passed CI and user-reported hardware acceptance.
+Select the next complete second-screen gap against current code; no further engine
+migration or feature is selected by this receipt.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2317,3 +2324,31 @@ Promotion and cleanup receipt (2026-10-22):
   availability, test filters or CI gates. The four-part device checklist is unchanged.
 - Focused native syntax and diff checks plus a separate review cover this correction;
   native runtime and ARM64 remain the corrected exact candidate's CI gates.
+
+
+### Slice 56 CI and hardware acceptance (2026-10-26)
+
+- Exact candidate `e0cf84495a0abe9661cab048044241237f13c593` passed both jobs in
+  [Thor CI 40392716043](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40392716043).
+  Preflight passed all 161 focused native Thor tests and all 1271 registered native
+  regressions. ARM64 compilation, configured Android tests, package verification,
+  checksum/receipt/checklist generation and artifact upload succeeded.
+- Package: `is.xyz.vcmi.thor`, ARM64. Artifact
+  `thor-candidate-arm64-40392716043`, ID `12685542297`, 40,659,019 bytes,
+  expires 2026-11-02. GitHub archive digest:
+  `76d931823c35b690723386a37223d6702f8e57a7fe9b41344727e2b9dfd50817`.
+  CI-reported APK SHA-256:
+  `8ecae63f22a024a9c9eedf2cea31cb97b960dad87faf19bdd41bbb7683e257ba`.
+  These hashes are verified from GitHub metadata/job logs; no archive or installed
+  APK was independently hashed in this acceptance turn.
+- The user reported “all passed” for this latest candidate and explicitly authorized
+  Markdown updates, commit and merge. This records user-reported acceptance of all
+  four packaged checks: complete trading journey; unavailable/changing/competing
+  state; display/modal restoration; and upper input/neighboring deck regressions.
+  No failure or exclusion was reported. No companion export or installed-byte
+  receipt was supplied for independent inspection.
+- Status: `hardware validated`; the earlier pending-CI/device statements describe
+  their original handoffs. The permanent candidate ref remains pinned to this exact
+  tested SHA. This acceptance update is Markdown only and does not require another
+  candidate build or physical test cycle. PR #56 promotion is explicitly authorized;
+  its completed merge receipt will be recorded separately.
