@@ -65,8 +65,10 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   [Thor CI 40392716043](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40392716043).
   CI-reported APK SHA-256:
   `8ecae63f22a024a9c9eedf2cea31cb97b960dad87faf19bdd41bbb7683e257ba`.
-  The user confirmed the four-part packaged checklist and authorized updating the
-  Markdown receipts, committing and merging [PR #56](https://github.com/CapnChaosDK/vcmi_thor/pull/56).
+  The user confirmed the four-part packaged checklist and authorized promotion.
+  [PR #56](https://github.com/CapnChaosDK/vcmi_thor/pull/56) is merged as
+  `356e795b5c57e1e164ea6135950b0ea2ea733137`; only Markdown receipts differ from
+  the tested candidate.
   Artifact/log metadata is verified; no companion export or independently computed
   installed-byte receipt was supplied here. The exact acceptance evidence and
   promotion receipt belong to the Slice 56 record below.
@@ -2352,3 +2354,18 @@ Promotion and cleanup receipt (2026-10-22):
   tested SHA. This acceptance update is Markdown only and does not require another
   candidate build or physical test cycle. PR #56 promotion is explicitly authorized;
   its completed merge receipt will be recorded separately.
+
+
+### Slice 56 promotion receipt (2026-10-26)
+
+- At the user's explicit request, acceptance commit
+  `159f028db43d9a2e835c502904aed37ade8e8af1` recorded CI/artifact evidence and
+  user-reported hardware acceptance. PR #56 merged normally with that head pinned,
+  producing product merge `356e795b5c57e1e164ea6135950b0ea2ea733137`.
+- The local product checkout fast-forwarded to the merge. Comparison against tested
+  candidate `e0cf84495a0abe9661cab048044241237f13c593` contains Markdown receipts
+  only; code, build configuration and packaged checklist are identical. The
+  permanent candidate ref retains the exact successful CI/device-accepted SHA.
+- This promotion receipt is Markdown only. Diff hygiene and a separate complete
+  receipt review passed; no new package/build/device result is claimed. Existing
+  submodule working state is preserved. No branch cleanup was requested or performed.
