@@ -1771,7 +1771,7 @@ TEST(ThorActionLobbyPlayers, V1SlotTargetsAndMalformedEnvelopes)
 		EXPECT_FALSE(ThorExtended::decode(std::array{1, command, 8}));
 		EXPECT_FALSE(ThorExtended::decode(std::array{2, command, 0}));
 	}
-	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::MARKET_RESET) + 1, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_CLOSE) + 1, -1}));
 	// Market commands decode in v1, but are never lobby player commands.
 	ThorContextRecord lobby;
 	lobby.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
@@ -1981,4 +1981,108 @@ TEST(ThorActionMarket, MalformedBoundsAndNamespacesFailClosed)
 	EXPECT_FALSE(ThorExtended::decode(std::array{1, 16, 0}));
 	EXPECT_TRUE(ThorExtended::decode(std::array{1, 13, 6}));
 	EXPECT_EQ(thorActionFromId(22), std::nullopt);
+}
+
+namespace
+{
+ThorTavern tavernOffers()
+{
+	ThorTavern value;
+	value.selected = 12; value.cost = 2500; value.gold = 5000;
+	value.controllable = value.canRecruit = value.canGuild = true;
+	value.rows = {{12, 1, "First hero", "First details"}, {34, 1, "Second hero", "Second details"}, {87, 2, "Invited", ""}};
+	return value;
+}
+}
+
+TEST(ThorActionTavern, CompleteOfferInvitationRecruitmentAndParentJourney)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::TAVERN;
+	context.nativeOwnerToken = &store;
+	context.tavern = tavernOffers();
+	context = store.publishNext(context);
+	ASSERT_TRUE(context.tavern);
+	EXPECT_EQ(store.publishNext(context).revision, context.revision);
+	ThorActionRequest request;
+	request.commandVersion = 1; request.revision = context.revision;
+	request.commandId = ThorExtended::TAVERN_SELECT; request.targetId = 34;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	context.tavern->selected = 34;
+	context = store.publishNext(context);
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision = context.revision; request.commandId = ThorExtended::TAVERN_INVITE; request.targetId = 87;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	context.tavern->invited = 87; context = store.publishNext(context);
+	request.revision = context.revision; request.commandId = ThorExtended::TAVERN_RECRUIT; request.targetId = -1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	context.contextId = ThorContextIds::TOWN_WINDOW;
+	context = store.publishNext(context);
+	EXPECT_FALSE(context.tavern);
+	request.revision = context.revision;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+}
+
+TEST(ThorActionTavern, CurrentMembershipAvailabilityAndOwnerAreRequired)
+{
+	ThorContextRecord context;
+	context.revision = 7; context.contextId = ThorContextIds::TAVERN;
+	context.nativeOwnerToken = &context; context.tavern = tavernOffers();
+	ThorActionRequest request;
+	request.revision = 7; request.commandVersion = 1;
+	request.commandId = ThorExtended::TAVERN_INVITE; request.targetId = 12;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	request.commandId = ThorExtended::TAVERN_SELECT; request.targetId = 87;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	request.commandId = ThorExtended::TAVERN_RECRUIT; request.targetId = -1;
+	context.tavern->controllable = context.tavern->canRecruit = false; context.tavern->reason = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	request.commandId = ThorExtended::TAVERN_CLOSE;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.amount = 2;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.amount = -1; context.nativeOwnerToken = nullptr;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+}
+
+TEST(ThorActionTavern, MalformedPayloadsAndNamespaceIsolationFailClosed)
+{
+	auto value = tavernOffers(); ASSERT_TRUE(value.valid());
+	value.rows.push_back(value.rows[0]); EXPECT_FALSE(value.valid());
+	value = tavernOffers(); value.selected = 87; EXPECT_FALSE(value.valid());
+	value = tavernOffers(); value.invited = 12; EXPECT_FALSE(value.valid());
+	value = tavernOffers(); value.gold = 0; EXPECT_FALSE(value.valid());
+	value = tavernOffers(); value.rows[0].flags = 4; EXPECT_FALSE(value.valid());
+	value = tavernOffers(); value.rumor.assign(1025, 'x'); EXPECT_FALSE(value.valid());
+	value = tavernOffers(); value.rows[0].name.assign(257, 'x'); EXPECT_FALSE(value.valid());
+	value = tavernOffers(); value.rows[0].description.assign(1025, 'x'); EXPECT_FALSE(value.valid());
+	value = tavernOffers(); EXPECT_FALSE(value.allows(ThorExtended::MARKET_CLOSE, -1));
+	for(int command = ThorExtended::TAVERN_SELECT; command <= ThorExtended::TAVERN_CLOSE; ++command)
+	{
+		EXPECT_TRUE(ThorExtended::known(command));
+		EXPECT_TRUE(ThorExtended::tavernCommand(command));
+		EXPECT_FALSE(ThorExtended::marketCommand(command));
+		ThorExtended::State battle; battle.enabled = {command}; EXPECT_FALSE(battle.valid());
+	}
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_CLOSE) + 1, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_RECRUIT), 12}));
+	EXPECT_TRUE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_SELECT), 34}));
+	EXPECT_EQ(static_cast<int>(ThorExtended::TAVERN_SELECT), 19);
+	EXPECT_EQ(static_cast<int>(ThorExtended::TAVERN_CLOSE), 23);
+}
+
+TEST(ThorActionTavern, BoundedInvitationRosterAndWithdrawal)
+{
+	ThorTavern value;
+	value.controllable = true;
+	for(int id = 0; id < 256; ++id) value.rows.push_back({id, 2, "Invited", ""});
+	ASSERT_TRUE(value.valid());
+	EXPECT_TRUE(value.allows(ThorExtended::TAVERN_INVITE, 255));
+	EXPECT_FALSE(value.allows(ThorExtended::TAVERN_INVITE, 256));
+	value.rows.push_back({256, 2, "Overflow", ""});
+	EXPECT_FALSE(value.valid());
+	ThorContextStore store;
+	ThorContextRecord context; context.contextId = ThorContextIds::TAVERN; context.tavern = value;
+	EXPECT_FALSE(store.publishNext(context).tavern);
 }

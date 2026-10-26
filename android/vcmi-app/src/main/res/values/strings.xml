@@ -303,4 +303,20 @@
     <string name="thor_market_pending">Waiting for the server</string>
     <string name="thor_market_rejected">Trade rejected. Review the current resources.</string>
     <string name="thor_market_completed">Trade completed</string>
+    <string name="thor_tavern_offers">Heroes</string>
+    <string name="thor_tavern_details">Details</string>
+    <string name="thor_tavern_invite">Invitations</string>
+    <string name="thor_tavern_rumor">Rumor</string>
+    <string name="thor_tavern_recruit">Recruit</string>
+    <string name="thor_tavern_guild">Thieves’ Guild</string>
+    <string name="thor_tavern_cost">Cost: %1$d gold · Available: %2$d</string>
+    <string name="thor_tavern_ready">Choose a hero to recruit</string>
+    <string name="thor_tavern_not_turn">Recruitment is unavailable outside your turn</string>
+    <string name="thor_tavern_gold">Not enough gold</string>
+    <string name="thor_tavern_cap">Hero limit reached</string>
+    <string name="thor_tavern_occupied">This town already has a visiting hero</string>
+    <string name="thor_tavern_no_heroes">No heroes available</string>
+    <string name="thor_tavern_unavailable">Recruitment is unavailable in the current native window</string>
+    <string name="thor_tavern_invite_hint">The selected invitation is passed with your next recruitment. The native game chooses the initial random invitation.</string>
+    <string name="thor_tavern_detail_hint">Select a hero, then open Details to inspect the native offer.</string>
 </resources>

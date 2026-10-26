@@ -32,6 +32,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private long activeActionMask;
     private ThorLobbyPlayers lobbyPlayers = ThorLobbyPlayers.EMPTY;
     private ThorMarketState market = ThorMarketState.EMPTY;
+    private ThorTavernState tavern = ThorTavernState.EMPTY;
     private ThorExtendedCommands commands = ThorExtendedCommands.EMPTY;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
@@ -182,6 +183,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextDetails[3] = ThorContextDetails.orEmpty(detailLine4);
         lobbyPlayers = ThorLobbyPlayers.EMPTY;
         market = ThorMarketState.EMPTY;
+        tavern = ThorTavernState.EMPTY;
         commands = ThorExtendedCommands.EMPTY;
         enabledActionMask = 0;
         activeActionMask = 0;
@@ -203,6 +205,13 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         if (revision != contextRevision || !ThorContextIds.RESOURCE_MARKET.equals(contextId)) return;
         market = state;
         if (presentation != null) presentation.updateMarket(state);
+    }
+
+    void publishTavern(final long revision, final ThorTavernState state)
+    {
+        if (revision != contextRevision || !ThorContextIds.TAVERN.equals(contextId)) return;
+        tavern = state;
+        if (presentation != null) presentation.updateTavern(state);
     }
 
     void publishCommands(final long revision, final ThorExtendedCommands state)
@@ -451,6 +460,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     enabledActionMask, activeActionMask);
             newPresentation.updateCommands(commands);
             newPresentation.updateMarket(market);
+            newPresentation.updateTavern(tavern);
             newPresentation.updateLobbyPlayers(lobbyPlayers);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);

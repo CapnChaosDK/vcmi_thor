@@ -176,6 +176,8 @@ void GameEngine::updateFrame()
 		quickRecruitment->refreshThorNativeState();
 	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
 		dwellingRecruitment->refreshThorNativeState();
+	if(auto tavern = windows().topWindow<CTavernWindow>())
+		tavern->refreshThorTavern();
 	if(auto market = windows().topWindow<CMarketWindow>())
 		market->refreshThorMarket();
 	if(auto battleWindow = windows().topWindow<BattleWindow>())
@@ -219,6 +221,12 @@ void GameEngine::updateFrame()
 			auto lobby = windows().topWindow<CLobbyScreen>();
 			if(lobby && context.nativeOwnerToken == lobby.get())
 				executed = lobby->executeThorPlayerCommand(*request);
+		}
+		else if(request->commandVersion != 0 && ThorExtended::tavernCommand(request->commandId))
+		{
+			auto tavern = windows().topWindow<CTavernWindow>();
+			if(tavern && context.nativeOwnerToken == tavern.get())
+				executed = tavern->executeThorTavern(*request);
 		}
 		else if(request->commandVersion != 0 && ThorExtended::marketCommand(request->commandId))
 		{
@@ -492,7 +500,7 @@ void GameEngine::updateFrame()
 		}
 		if(request->commandVersion != 0)
 		{
-			if(request->commandId != ThorExtended::MARKET_TRADE)
+			if(request->commandId != ThorExtended::MARKET_TRADE && !ThorExtended::tavernCommand(request->commandId))
 				CAndroidVMHelper().acknowledgeThorCommand(request->revision, request->commandId);
 		}
 		else if(!isThorActionHapticDeferredUntilServerResult(request->action))

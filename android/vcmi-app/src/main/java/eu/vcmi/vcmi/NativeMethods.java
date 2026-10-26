@@ -93,6 +93,16 @@ public class NativeMethods
 
     private static native boolean submitThorCommandNative(long revision, int[] payload);
 
+    public static void publishThorTavern(final long revision, final int[] data, final String[] names)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final ThorTavernState state = ThorTavernState.copyOf(revision, data, names);
+        final Context ctx = context();
+        if (ctx instanceof VcmiSDLActivity)
+            ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                    ((VcmiSDLActivity) ctx).publishThorTavern(revision, state));
+    }
+
     public static void publishThorLobbyPlayers(final long revision, final int[] data, final String[] labels)
     {
         if (!BuildConfig.AYN_THOR_BUILD) return;

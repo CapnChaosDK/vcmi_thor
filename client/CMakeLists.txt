@@ -48,6 +48,7 @@ set(vcmiclientcommon_SRCS
 	thor/ThorArmyController.cpp
 	thor/ThorWindowPublisher.cpp
 	thor/ThorVisualAssetPublisher.cpp
+	windows/ThorTavernSupport.cpp
 	windows/ThorRecruitmentSupport.cpp
 
 	lobby/BattleOnlyModeTab.cpp

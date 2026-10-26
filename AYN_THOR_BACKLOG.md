@@ -59,6 +59,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 57 extraction: implemented in PR #57, both Thor CI jobs passed for
+  `8d60cc63012d8c769ab3e2937b1655fa2ad585ca`; awaiting hardware validation.
+  Slice 58 Tavern is being implemented on top as the user's next requested step.
+  Their current/historical structured checklists and exact receipts are below.
+
 - Slice 56 — lower-screen resource trading: `hardware validated` by the user's
   2026-10-26 “all passed” report. Exact candidate
   `e0cf84495a0abe9661cab048044241237f13c593` passed both jobs in
@@ -134,11 +139,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 - Historical validation: The user confirmed the combined Slice 33/34 physical AYN Thor checklist passed for that exact candidate. Thor CI push run [`36723432343`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36723432343) passed preflight, ARM64 packaging, focused Android tests, package verification, and artifact upload; PR run [`36723438501`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36723438501) also passed. Artifact `thor-candidate-arm64-36723432343` (ID `11102417637`) has uploaded ZIP SHA-256 `e79fd65a78e5c1e150aac107aee91971b704c445ee91206dd11d1afa88b1a911`. Its downloaded receipt records package `is.xyz.vcmi.thor`, ABI `arm64-v8a`, and APK SHA-256 `dabba8aed82fdf26065b8ee1eb2e5297232f47c10b6a32f83e6c4a9d24e15e96`; the downloaded APK and checksum file independently match. Device installation details were not in the available evidence and are not asserted here.
 - Slice 29 promotion evidence: PR #16 merged as product commit `9a4b2a0b3f8f3b3c6de8096e0f5e757dfdd79989`. `git diff --name-only 7b04e6df3aa0a903e616baa1575ebb52615215b1 9a4b2a0b3f8f3b3c6de8096e0f5e757dfdd79989` contains only `AYN_THOR_BACKLOG.md`; the product code tree matches the hardware-tested candidate.
 - Slice 30 promotion evidence: candidate `fcf31433944424e6ec003c865dea681a77514876` passed Thor CI run [`36335531648`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36335531648) and the user's complete hardware checklist on the checksum-verified AYN Thor APK. PR #17 merged as product commit `6f09d6e62433c0689c2c76f929da4fb75e7f2eea`.
-- Latest fully hardware-validated numbered slice: Slice 55, candidate `d275285d37789af0ae3751518e2e82b95b7cedf2`, successful CI `40193831750`, user-reported acceptance on 2026-10-25 and product merge `009a209ce45a3ab2fe4419de3502fb728bb4a8e1` through PR #54. Installed-byte verification was not independently supplied; see its receipt below.
+- Latest fully hardware-validated numbered slice: Slice 56, candidate `e0cf84495a0abe9661cab048044241237f13c593`, successful CI `40392716043`, user-reported acceptance on 2026-10-26 and product merge `356e795b5c57e1e164ea6135950b0ea2ea733137` through PR #56. Installed-byte verification was not independently supplied; see its receipt below.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
-- Baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`.
+- Historical original baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`; the current accepted base is the reconciliation SHA recorded above.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
-- Product branch: `ayn-thor-dual-screen`; current implementation is `009a209ce45a3ab2fe4419de3502fb728bb4a8e1`, including the complete Slice 55 migration merged through PR #54. Begin future work from the freshly fetched product ref and verify its tree; older upstream/product checkpoints and backup-branch statements are historical.
+- Product branch: `ayn-thor-dual-screen`; current promoted handoff is `a367e6d3985daa62bbbd0418d53e6e95430da0b9`, including Slice 56 and its promotion receipt. Begin future work from the freshly fetched product ref and verify its tree; older upstream/product checkpoints and backup-branch statements are historical.
 - Remote safety: `origin` points to the CapnChaosDK fork; the local `upstream` push URL is disabled.
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
@@ -2405,3 +2410,78 @@ Promotion and cleanup receipt (2026-10-22):
 - Presentation reduces from 4,846 to 3,875 lines; the dedicated component contains
   the complete moved journey. This is an ownership improvement, not a net-code-size
   reduction. Native runtime, full ARM64 and physical behavior remain CI/device gates.
+
+### Slice 57 publication and CI receipt
+
+- Reviewed exact implementation `8d60cc63012d8c769ab3e2937b1655fa2ad585ca`
+  published to `codex/hero-meeting-deck` in [PR #57](https://github.com/CapnChaosDK/vcmi_thor/pull/57).
+  The permanent candidate branch fast-forwarded from the Slice 56 candidate to
+  this exact SHA after fetch/ancestry verification.
+- [Thor CI 40397604924](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40397604924)
+  passed both preflight and ARM64 candidate jobs. Artifact/installed-byte checks and
+  physical acceptance were not performed here. Status: `awaiting hardware validation`.
+  Its structured checklist is retained in [the historical plan](docs/AYN_THOR_SLICE_57_VALIDATION_PLAN.json);
+  the following combined candidate includes the Meeting regression to allow one
+  consolidated device cycle. No merge or promotion is authorized or claimed.
+
+## Slice 58 — Complete lower-screen Tavern
+
+- Status: `in progress`. Second of the user's requested sequence, based on reviewed
+  Slice 57; its implementation branch/PR is stacked until the cleanup is promoted.
+- Journey: enter the existing Town/Adventure Tavern, browse/select either current
+  hero, inspect the native offer description and rumor with local text paging,
+  browse/choose available invitations, recruit, open native Thieves’ Guild and Close.
+  Guild/native popup contents retain upper controls with exact Tavern restoration.
+- Boundary: `CTavernWindow` remains the owner. A Thor-only adapter captures its
+  source identity/interface, re-resolves the current source and offers, checks
+  native/current turn, ownership, cap, gold, visitor and button availability, and
+  observes current invitation-pool membership before every request. Recruitment
+  uses `recruitb()` unchanged, preserving immediate close, parent callback and native
+  server rejection handling; no separate Java purchase rule or pending transaction.
+- Transport: typed immutable `ThorTavern`/`ThorTavernState`, at most two offered and
+  256 inviteable heroes, unique stable HeroTypeIDs, bounded names/descriptions/rumor,
+  exact-revision publication and MainGUI dispatch. V1 extended IDs 19–23 cover
+  Select, Recruit, Invite, Guild and Close; legacy IDs/masks and version are unchanged.
+- Android: dedicated state/control/deck classes; local Heroes/Details/Invitations/
+  Rumor tabs, four-row pages, Unicode-safe text pages and one-shot session/revision/
+  pointer-bound taps. Footer IDs 1–9 and row controls 100–103 are disjoint. Activity
+  caches only the current snapshot; context, pause, visibility, resize and display
+  recreation cancel old gestures. UI-only actions and recruitment emit no speculative
+  success haptic. Initial native random invitations are not exposed as chosen names.
+- Acceptance and risks: native command/owner/context/membership/bounds tests and JVM
+  full-journey, malformed/defensive-copy, 256-invitation, text paging, footer boundary,
+  geometry and stale-gesture tests; real server/upper-owner and device recovery remain
+  CI/hardware gates. The single [current structured plan](CI/thor-validation-plan.json)
+  includes Tavern plus the complete Meeting regression; no older device pass applies.
+- Upstream-update cost: one client window adapter, seven guarded lines in the native
+  constructor/picker callback, MainGUI dispatch and bounded JNI/context seams. Refresh
+  must be checked against future Tavern offer/pool/button APIs. Engine/server/rules,
+  packet/save formats, native recruitment and primary-screen routes remain upstream.
+
+### Slice 58 completeness checkpoint and independent review
+
+- Status: `awaiting CI`. Source-complete journey includes native offer selection,
+  descriptions/rumor paging, eligible invitations, native recruitment and restriction
+  reasons, Guild child entry/restoration, Close, exact-revision publication and
+  activity/display cancellation. Native recruitment closes immediately as upstream;
+  no custom transaction or artificial pending UI remains to recover.
+- Separate critical full-diff review checked live source/interface and offered-pointer
+  re-resolution before dereference, invitation membership including the hidden random
+  choice, native restrictions, namespace isolation, footer versus row IDs, UTF-16
+  JNI strings, defensive snapshots, text-page Unicode boundaries and native lifecycle.
+  Corrected the draw-chain integration and required live invitation membership before
+  recruitment. Real Java boundary compilation checks the modified NativeMethods and
+  VcmiSDLActivity against Android/SDL with unrelated-service/resource stubs.
+- Validation: all 156 Thor JVM tests pass, including six new Tavern cases. Four new
+  native Tavern scenarios and the updated unknown-command boundary pass syntax checks;
+  native runtime is delegated to Thor CI. Seven Android-target native syntax checks
+  pass (owner, original Tavern file, MainGUI, JNI, context, action and native test
+  translation unit); three owner/MainGUI/original-window checks also pass without
+  TARGET_AYN_THOR. All four policy/checklist tests, current plan/schema validation,
+  upstream source policy and whitespace checks pass.
+- Full Gradle/ARM64 packaging is reserved for the documented Linux/JDK 17 workflow.
+  Optional local YAML parsing was unavailable because this Python has no PyYAML;
+  the only workflow change registers the new JVM class beside existing test filters.
+  Workflow dispatch and full native runtime/package/device results are not inferred
+  from source checks. No source gap remains; CI and exact-candidate hardware gates
+  remain pending. The current checklist consolidates both requested changes.

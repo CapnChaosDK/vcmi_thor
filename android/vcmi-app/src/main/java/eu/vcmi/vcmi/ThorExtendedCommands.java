@@ -9,6 +9,8 @@ final class ThorExtendedCommands
             HERO_PREVIOUS = 9, HERO_NEXT = 10, BONUS_PREVIOUS = 11, BONUS_NEXT = 12;
     static final int MARKET_SELL = 13, MARKET_BUY = 14, MARKET_AMOUNT = 15,
             MARKET_TRADE = 16, MARKET_CLOSE = 17, MARKET_RESET = 18;
+    static final int TAVERN_SELECT = 19, TAVERN_RECRUIT = 20, TAVERN_INVITE = 21,
+            TAVERN_GUILD = 22, TAVERN_CLOSE = 23;
     static final ThorExtendedCommands EMPTY = new ThorExtendedCommands(new int[0], new int[0]);
     private final int[] enabled, active;
 
@@ -18,7 +20,7 @@ final class ThorExtendedCommands
         this.active = active;
     }
 
-    static boolean known(final int command) { return command >= AUTO_START && command <= MARKET_RESET; }
+    static boolean known(final int command) { return command >= AUTO_START && command <= TAVERN_CLOSE; }
 
     static int[] encode(final int version, final int command, final int target)
     {
@@ -28,6 +30,7 @@ final class ThorExtendedCommands
 
     static boolean validTarget(final int command, final int target)
     {
+        if (command == TAVERN_SELECT || command == TAVERN_INVITE) return target >= 0;
         if (command >= MARKET_SELL && command <= MARKET_AMOUNT) return target >= 0;
         return command >= PLAYER_SELECT && command <= BONUS_NEXT ? target >= 0 && target < 8 : target == -1;
     }
