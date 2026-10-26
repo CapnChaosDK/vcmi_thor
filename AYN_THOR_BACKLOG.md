@@ -2302,3 +2302,18 @@ Promotion and cleanup receipt (2026-10-22):
   complete. The four-part packaged checklist consolidates the whole feature and
   related lifecycle/input regressions into one candidate/device cycle. No CI/device
   pass, merge or promotion is claimed.
+
+
+### Slice 56 initial preflight correction (2026-10-26)
+
+- Candidate `b5038a4cf83ba3cad713ec5c21b24d54d1efbb6f` failed the focused
+  native gate in [Thor CI 40392074544](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40392074544).
+  The existing lobby-envelope test still classified extended command 13 as unknown;
+  Slice 56 now assigns it to MARKET_SELL. All three new market tests passed. ARM64
+  was skipped behind the failed preflight, so no APK or device result exists.
+- Correct the unknown-command boundary to the first value beyond MARKET_RESET and
+  explicitly assert that MARKET_SELL is rejected in the lobby context. This retains
+  unknown-command and cross-context protection without changing production code,
+  availability, test filters or CI gates. The four-part device checklist is unchanged.
+- Focused native syntax and diff checks plus a separate review cover this correction;
+  native runtime and ARM64 remain the corrected exact candidate's CI gates.

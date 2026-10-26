@@ -1771,7 +1771,18 @@ TEST(ThorActionLobbyPlayers, V1SlotTargetsAndMalformedEnvelopes)
 		EXPECT_FALSE(ThorExtended::decode(std::array{1, command, 8}));
 		EXPECT_FALSE(ThorExtended::decode(std::array{2, command, 0}));
 	}
-	EXPECT_FALSE(ThorExtended::decode(std::array{1, 13, 0}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::MARKET_RESET) + 1, -1}));
+	// Market commands decode in v1, but are never lobby player commands.
+	ThorContextRecord lobby;
+	lobby.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
+	lobby.revision = 7;
+	lobby.nativeOwnerToken = &lobby;
+	ThorActionRequest marketRequest;
+	marketRequest.revision = lobby.revision;
+	marketRequest.commandVersion = ThorExtended::VERSION;
+	marketRequest.commandId = ThorExtended::MARKET_SELL;
+	marketRequest.targetId = 0;
+	EXPECT_EQ(validateThorActionRequest(marketRequest, lobby), ThorActionValidation::WRONG_CONTEXT);
 	for(int command = 1; command <= 5; ++command)
 	{
 		EXPECT_EQ(ThorExtended::decode(std::array{1, command, -1}), command);
