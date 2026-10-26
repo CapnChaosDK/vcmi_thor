@@ -1879,3 +1879,95 @@ TEST(ThorActionLobbyPlayers, ScenarioPlayerDifficultyStartContractJourney)
 	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, true, true), ThorActionValidation::VALID);
 	EXPECT_EQ(validateThorLobbyActionRequest(request, context, true, true, true, true, false, true), ThorActionValidation::UNAVAILABLE);
 }
+
+namespace
+{
+ThorMarket marketQuote()
+{
+	ThorMarket market;
+	market.controllable = true;
+	market.selling = 0; market.buying = 6;
+	market.bid = 10; market.offer = 1; market.amount = 2; market.maximum = 10;
+	market.rows = {{0, 100, "Wood", true, true}, {6, 50, "Gold", true, true}};
+	return market;
+}
+}
+
+TEST(ThorActionMarket, QuoteSelectionQuantityPendingAndClose)
+{
+	auto market = marketQuote();
+	ASSERT_TRUE(market.valid());
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_SELL, 0));
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_BUY, 6));
+	EXPECT_FALSE(market.allows(ThorExtended::MARKET_BUY, 7));
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_AMOUNT, 10));
+	EXPECT_FALSE(market.allows(ThorExtended::MARKET_AMOUNT, 11));
+	EXPECT_FALSE(market.allows(ThorExtended::MARKET_AMOUNT, -1));
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_TRADE, -1));
+	EXPECT_FALSE(market.allows(ThorExtended::MARKET_TRADE, 0));
+	market.status = 1;
+	for(int command : {13, 14, 15, 16, 18})
+		EXPECT_FALSE(market.allows(command, command < 16 ? 0 : -1));
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_CLOSE, -1));
+	market.status = 2; market.amount = 0;
+	EXPECT_FALSE(market.allows(ThorExtended::MARKET_TRADE, -1));
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_RESET, -1));
+	market.controllable = false;
+	EXPECT_FALSE(market.allows(ThorExtended::MARKET_SELL, 0));
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_CLOSE, -1));
+}
+
+TEST(ThorActionMarket, ExactOwnerRevisionAndContextIsolation)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::RESOURCE_MARKET;
+	context.nativeOwnerToken = &store;
+	context.market = marketQuote();
+	context = store.publishNext(context);
+	ASSERT_EQ(context.nativeOwnerToken, &store);
+	ASSERT_TRUE(context.market);
+	ThorActionRequest request;
+	request.revision = context.revision; request.commandVersion = 1;
+	request.commandId = ThorExtended::MARKET_TRADE;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	EXPECT_EQ(store.publishNext(context).revision, context.revision);
+	context.market->rows[0].balance = 101;
+	context = store.publishNext(context);
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision = context.revision;
+	request.amount = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.amount = -1;
+	context.nativeOwnerToken = nullptr;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+	context.nativeOwnerToken = &store;
+	context.contextId = ThorContextIds::BATTLE;
+	context = store.publishNext(context);
+	EXPECT_FALSE(context.market);
+	request.revision = context.revision;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+}
+
+TEST(ThorActionMarket, MalformedBoundsAndNamespacesFailClosed)
+{
+	auto market = marketQuote();
+	market.bid = std::numeric_limits<int>::max();
+	EXPECT_FALSE(market.valid());
+	market = marketQuote(); market.buying = market.selling;
+	EXPECT_FALSE(market.valid());
+	market = marketQuote(); market.rows.push_back(market.rows[0]);
+	EXPECT_FALSE(market.valid());
+	market = marketQuote(); market.rows[0].balance = -1;
+	EXPECT_FALSE(market.valid());
+	market = marketQuote(); market.rows[0].name.assign(257, 'a');
+	EXPECT_FALSE(market.valid());
+	market = marketQuote(); market.rows.resize(10);
+	EXPECT_FALSE(market.valid());
+	ThorExtended::State commands; commands.enabled = {ThorExtended::MARKET_SELL};
+	EXPECT_FALSE(commands.valid());
+	EXPECT_FALSE(ThorExtended::decode(std::array{2, 13, 0}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, 16, 0}));
+	EXPECT_TRUE(ThorExtended::decode(std::array{1, 13, 6}));
+	EXPECT_EQ(thorActionFromId(22), std::nullopt);
+}

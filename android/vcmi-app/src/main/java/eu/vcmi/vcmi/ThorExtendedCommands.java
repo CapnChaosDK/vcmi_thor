@@ -7,6 +7,8 @@ final class ThorExtendedCommands
     static final int AUTO_START = 1, AUTO_STOP = 2, CAST_SPELL = 3, RETREAT = 4, SURRENDER = 5;
     static final int PLAYER_SELECT = 6, FACTION_PREVIOUS = 7, FACTION_NEXT = 8,
             HERO_PREVIOUS = 9, HERO_NEXT = 10, BONUS_PREVIOUS = 11, BONUS_NEXT = 12;
+    static final int MARKET_SELL = 13, MARKET_BUY = 14, MARKET_AMOUNT = 15,
+            MARKET_TRADE = 16, MARKET_CLOSE = 17, MARKET_RESET = 18;
     static final ThorExtendedCommands EMPTY = new ThorExtendedCommands(new int[0], new int[0]);
     private final int[] enabled, active;
 
@@ -16,12 +18,18 @@ final class ThorExtendedCommands
         this.active = active;
     }
 
-    static boolean known(final int command) { return command >= AUTO_START && command <= BONUS_NEXT; }
+    static boolean known(final int command) { return command >= AUTO_START && command <= MARKET_RESET; }
 
     static int[] encode(final int version, final int command, final int target)
     {
-        return version == VERSION && known(command) && (command >= PLAYER_SELECT ? target >= 0 && target < 8 : target == -1)
+        return version == VERSION && known(command) && validTarget(command, target)
                 ? new int[]{version, command, target} : null;
+    }
+
+    static boolean validTarget(final int command, final int target)
+    {
+        if (command >= MARKET_SELL && command <= MARKET_AMOUNT) return target >= 0;
+        return command >= PLAYER_SELECT && command <= BONUS_NEXT ? target >= 0 && target < 8 : target == -1;
     }
 
     private static boolean valid(final int[] values)

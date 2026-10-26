@@ -93,6 +93,12 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishLobbyPlayers(revision, players);
     }
 
+    void publishThorMarket(final long revision, final ThorMarketState market)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.publishMarket(revision, market);
+    }
+
     void publishThorCommands(final long revision, final ThorExtendedCommands commands)
     {
         if (mThorSecondScreenController != null)

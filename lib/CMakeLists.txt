@@ -840,6 +840,7 @@ set(lib_MAIN_HEADERS
 	BattleFieldHandler.h
 	CAndroidVMHelper.h
 	thor/ThorLobbyPlayer.h
+	thor/ThorMarket.h
 	thor/ThorExtendedCommand.h
 	thor/ThorBattleControls.h
 	thor/ThorAction.h

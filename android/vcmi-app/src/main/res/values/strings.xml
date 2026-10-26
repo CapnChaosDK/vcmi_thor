@@ -290,4 +290,17 @@
     <string name="thor_setup_unavailable">Choose a standard scenario on the Scenario tab.</string>
     <string name="thor_setup_readonly">Read-only: this mode or player does not permit edits.</string>
     <string name="thor_army_stack_value">%1$s × %2$d</string>
+    <string name="thor_market_give">Give</string>
+    <string name="thor_market_get">Get</string>
+    <string name="thor_market_max">Max</string>
+    <string name="thor_market_trade">Trade</string>
+    <string name="thor_market_reset">Reset</string>
+    <string name="thor_market_close">Close</string>
+    <string name="thor_market_select">Select different resources to give and get</string>
+    <string name="thor_market_rate">Rate %1$d : %2$d</string>
+    <string name="thor_market_totals">Total %1$d : %2$d</string>
+    <string name="thor_market_quantity">Quantity %1$d / %2$d</string>
+    <string name="thor_market_pending">Waiting for the server</string>
+    <string name="thor_market_rejected">Trade rejected. Review the current resources.</string>
+    <string name="thor_market_completed">Trade completed</string>
 </resources>

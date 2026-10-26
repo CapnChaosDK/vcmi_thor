@@ -1362,6 +1362,9 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 		movementController->onMoveHeroApplied();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(pa->packType == CTypeList::getInstance().getTypeID<TradeOnMarketplace>(nullptr))
+		for(const auto & market : ENGINE->windows().findWindows<CMarketWindow>())
+			market->completeThorMarket(static_cast<int>(pa->requestID), pa->result);
 	const auto notifyExchangeWindow = [](int requestId, bool success)
 	{
 		CExchangeWindow::completeThorArtifactRequest(requestId);

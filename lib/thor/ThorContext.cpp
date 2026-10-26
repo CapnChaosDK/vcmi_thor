@@ -18,6 +18,7 @@ namespace
 			&& lhs.enabledActionMask == rhs.enabledActionMask
 			&& lhs.activeActionMask == rhs.activeActionMask
 			&& lhs.extendedCommands == rhs.extendedCommands
+			&& lhs.market == rhs.market
 			&& lhs.lobbyPlayers == rhs.lobbyPlayers
 			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.campaignSelectionRevision == rhs.campaignSelectionRevision
@@ -57,6 +58,8 @@ namespace
 
 	void boundTextFields(ThorContextRecord & context)
 	{
+		if(context.contextId != ThorContextIds::RESOURCE_MARKET || !context.market || !context.market->valid())
+			context.market.reset();
 		if(context.contextId != ThorContextIds::BATTLE || !context.extendedCommands.valid())
 			context.extendedCommands = {};
 		if(context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO
@@ -80,7 +83,8 @@ namespace
 		{
 			context.menuModalSourceContext.clear();
 			if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS
-				&& context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO)
+				&& context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO
+				&& context.contextId != ThorContextIds::RESOURCE_MARKET)
 			{
 				context.nativeOwnerToken = nullptr;
 				context.nativeParentToken = nullptr;

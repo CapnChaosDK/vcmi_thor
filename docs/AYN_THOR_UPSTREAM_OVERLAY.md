@@ -81,8 +81,10 @@ Use upstream's 2026-10-13 dependency archive with the
 existing bounded archive/Gradle/compiler caches and clean generated build trees.
 ARM64 still uses the permanent candidate ref, Linux/JDK 17, signing and package gates.
 
-The current complete device checklist is
-[`CI/thor-validation-plan.json`](../CI/thor-validation-plan.json). New saves and
+The accepted overlay checklist is retained in
+[historical JSON](AYN_THOR_UPSTREAM_OVERLAY_VALIDATION_PLAN.json);
+[`CI/thor-validation-plan.json`](../CI/thor-validation-plan.json) now tracks the
+current feature candidate. For a future upstream-base update, new saves and
 ordinary gameplay, every lower deck, stale input, display/modal restoration and
 upstream primary input must pass on the exact candidate. Host syntax checks and JVM
 tests are implementation evidence; native runtime, packaging and device behavior

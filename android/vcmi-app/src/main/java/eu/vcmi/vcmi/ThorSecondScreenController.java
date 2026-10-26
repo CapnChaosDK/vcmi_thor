@@ -31,6 +31,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private long enabledActionMask;
     private long activeActionMask;
     private ThorLobbyPlayers lobbyPlayers = ThorLobbyPlayers.EMPTY;
+    private ThorMarketState market = ThorMarketState.EMPTY;
     private ThorExtendedCommands commands = ThorExtendedCommands.EMPTY;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
@@ -180,6 +181,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         contextDetails[2] = ThorContextDetails.orEmpty(detailLine3);
         contextDetails[3] = ThorContextDetails.orEmpty(detailLine4);
         lobbyPlayers = ThorLobbyPlayers.EMPTY;
+        market = ThorMarketState.EMPTY;
         commands = ThorExtendedCommands.EMPTY;
         enabledActionMask = 0;
         activeActionMask = 0;
@@ -194,6 +196,13 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         if (revision != contextRevision || !ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId)) return;
         lobbyPlayers = state;
         if (presentation != null) presentation.updateLobbyPlayers(state);
+    }
+
+    void publishMarket(final long revision, final ThorMarketState state)
+    {
+        if (revision != contextRevision || !ThorContextIds.RESOURCE_MARKET.equals(contextId)) return;
+        market = state;
+        if (presentation != null) presentation.updateMarket(state);
     }
 
     void publishCommands(final long revision, final ThorExtendedCommands state)
@@ -441,6 +450,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
                     contextDetails,
                     enabledActionMask, activeActionMask);
             newPresentation.updateCommands(commands);
+            newPresentation.updateMarket(market);
             newPresentation.updateLobbyPlayers(lobbyPlayers);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);

@@ -130,7 +130,8 @@ final class ThorHapticState
     static boolean isEligible(final String contextId, final int actionId)
     {
         if (actionId < 0)
-            return ThorContextIds.BATTLE.equals(contextId) && actionId >= -ThorExtendedCommands.SURRENDER;
+            return (ThorContextIds.BATTLE.equals(contextId) && actionId >= -ThorExtendedCommands.SURRENDER)
+                    || (ThorContextIds.RESOURCE_MARKET.equals(contextId) && actionId == -ThorExtendedCommands.MARKET_TRADE);
         if (actionId >= ThorActionIds.MOVE_HERO && actionId <= ThorActionIds.END_TURN)
             return ThorContextIds.ADVENTURE_MAP.equals(contextId);
         if (actionId >= ThorActionIds.BATTLE_WAIT && actionId <= ThorActionIds.BATTLE_DEFEND)

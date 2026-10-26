@@ -13,6 +13,9 @@
 #include "CWindowWithArtifacts.h"
 
 class CPlayerInterface;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+struct ThorActionRequest;
+#endif
 
 class CMarketWindow final : public CStatusbarWindow, public CWindowWithArtifacts, public IGarrisonHolder, public IMarketHolder
 {
@@ -26,8 +29,20 @@ public:
 	void update();
 	void close() override;
 	bool holdsGarrison(const CArmedInstance * army) override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorMarket(bool invalidate = false);
+	bool executeThorMarket(const ThorActionRequest & request);
+	void completeThorMarket(int requestId, bool success);
+#endif
 
 private:
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	int thorPendingTrade = -1;
+	int thorTradeStatus = 0;
+	std::uint64_t thorTradeRevision = 0;
+#endif
 	void createChangeModeButtons(EMarketMode currentMode, const IMarket * market, const CGHeroInstance * hero);
 	void initWidgetInternals(const EMarketMode mode, const std::pair<std::string, std::string> & quitButtonHelpContainer);
 	std::string getMarketTitle(const ObjectInstanceID marketId, const EMarketMode mode) const;
