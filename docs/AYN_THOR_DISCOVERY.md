@@ -1,7 +1,7 @@
 # AYN Thor VCMI repository discovery
 
-Current reconciliation work uses pinned fresh upstream with a minimal second-screen
-layer. See [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md) for its contract, intentional
+The accepted 2026-10-26 reconciliation uses pinned fresh upstream with a minimal
+second-screen layer. See [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md) for its contract, intentional
 compatibility changes and validation gates. Earlier assessments below are historical
 for their pinned trees; they do not authorize engine feature adaptations.
 

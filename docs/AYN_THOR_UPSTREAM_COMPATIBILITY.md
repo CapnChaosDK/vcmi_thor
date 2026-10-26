@@ -1,7 +1,7 @@
 # Controlled upstream compatibility checkpoint
 
-Current reconciliation work uses pinned fresh upstream with a minimal second-screen
-layer. See [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md) for its contract, intentional
+The accepted 2026-10-26 reconciliation uses pinned fresh upstream with a minimal
+second-screen layer. See [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md) for its contract, intentional
 compatibility changes and validation gates. Earlier assessments below are historical
 for their pinned trees; they do not authorize engine feature adaptations.
 
@@ -12,10 +12,11 @@ The former selective synchronization priorities below are historical and superse
 they are not a queue of Thor features. In particular, chunked saves are not Slice 56.
 General engine changes must arrive through an explicit upstream-base update, with a
 minimal Thor overlay, rather than further independent adaptations. The
-[current scope audit and reconciliation plan](AYN_THOR_FORK_SCOPE_AUDIT.md) pins the
-present product/upstream revisions, classifies existing divergence and records the
-packet/save compatibility blockers. Existing CI/device receipts remain valid for
-their tested trees; this scope decision does not remove code or prove compatibility.
+[historical scope audit](AYN_THOR_FORK_SCOPE_AUDIT.md) records the pre-reconciliation
+divergence and compatibility blockers. The accepted overlay removes the custom army
+packet and isolates upstream saves while preserving old files. Existing CI/device
+receipts remain valid for their tested trees; use backlog Current state for the
+accepted candidate and its evidence.
 
 ## Verified comparison — Slice 51, 2026-10-18
 

@@ -7,6 +7,10 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
+- Current hardware-accepted candidate: `582c2817e5ac2f2c8b13050e066d5af8fbde9c78`,
+  [Thor CI 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
+  The user confirmed all seven packaged device checks on 2026-10-26 and authorized
+  promotion. Exact artifact/APK evidence and promotion state live in backlog Current state.
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
 - Slice 11 final product commit: `873faeaedc153f400d39c2677cfe495bf3d07bd9` — Adventure Map semantic utility actions.

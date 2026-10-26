@@ -12,9 +12,20 @@ from the exact upstream tree and ports the lower-screen overlay from the validat
 pre-engine-migration product `b4b7138c382956239c5b0633cb431e72df2b6a5a`, then adapts
 its client-side hooks to upstream's current APIs. The initial port had eight conflicted
 owners; automatically merged owners also require source review and compilation.
-The review branch will record both the old product and pinned upstream as parents,
+The integration records both the old product and pinned upstream as parents,
 preserving validated history and making this upstream commit a real merge ancestor.
 It does not reset product history; the permanent candidate ref advances only after the reviewed implementation is published.
+
+## Accepted handover — 2026-10-26
+
+Candidate `582c2817e5ac2f2c8b13050e066d5af8fbde9c78` passed both Thor CI jobs in
+[run 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
+The user reported all seven packaged device checks passed and authorized merging
+PR #55. The exact hashes, evidence limits and promotion receipt are maintained in
+the [backlog Current state](../AYN_THOR_BACKLOG.md#current-state).
+Future feature coding is confined to second-screen capabilities and their minimal
+integration seams. Engine, server, serializers, AI and primary input follow the
+pinned upstream base; base updates remain separate, explicitly requested maintenance.
 
 ## Retained integration
 

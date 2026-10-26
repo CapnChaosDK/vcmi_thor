@@ -32,13 +32,18 @@ identified lower-screen capability, minimal, and documented with its upstream-up
 cost; prefer an adapter or an existing upstream operation. Do not introduce custom
 gameplay rules or wire/save formats to complete a lower-screen feature. If upstream
 cannot support a capability without those changes, report the concrete limitation
-instead of broadening the engine. Existing shared extensions require reconciliation,
-not automatic retention or blind removal; see
-[`docs/AYN_THOR_FORK_SCOPE_AUDIT.md`](docs/AYN_THOR_FORK_SCOPE_AUDIT.md).
+instead of broadening the engine. The accepted base and retained seams are defined
+in [`docs/AYN_THOR_UPSTREAM_OVERLAY.md`](docs/AYN_THOR_UPSTREAM_OVERLAY.md) and
+`CI/thor_upstream_base.json`. Run `python CI/thor_upstream_base.py` before delivering
+code changes. Do not expand that policy to accommodate an unrelated engine change.
+The [scope audit](docs/AYN_THOR_FORK_SCOPE_AUDIT.md) describes the superseded tree.
 
 An upstream-base update is a distinct maintenance task, not an autonomous next
 feature. Preserve product history and user data, review the Thor-only overlay and
 save/network compatibility, and run the existing CI/device gates before promotion.
+For “implement the next feature”, select only an incomplete second-screen journey
+in the current code. Historical engine, save, AI or primary-input roadmap entries
+are not eligible. Keep the integration small enough for normal future upstream merges.
 
 ## Sources of truth
 

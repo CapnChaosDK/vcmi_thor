@@ -59,22 +59,29 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Upstream-base reconciliation: `awaiting CI` on `codex/upstream-thor-overlay`, from
-  exact upstream `46f2e15ec69e0507e6d0195d6357df5a2813dde1`. The user approved dropping
+- Upstream-base reconciliation: `hardware validated` by the user's 2026-10-26
+  “All passed” report, with merge and branch cleanup authorized for
+  [PR #55](https://github.com/CapnChaosDK/vcmi_thor/pull/55). Exact candidate
+  `582c2817e5ac2f2c8b13050e066d5af8fbde9c78` passed both jobs in
+  [Thor CI 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
+  APK SHA-256: `6191b4ad44db171566c6ac1ced9a915cc1d30e25f7ce2ebc945fc6d16f7149d8`.
+  The upstream base is `46f2e15ec69e0507e6d0195d6357df5a2813dde1`. The user approved dropping
   custom multi-slot redistribution and isolating new saves while preserving the old
   files on 2026-10-25. [Integration contract](docs/AYN_THOR_UPSTREAM_OVERLAY.md),
   [source boundary policy](CI/thor_upstream_base.json), and the single current
-  [candidate checklist](CI/thor-validation-plan.json) define acceptance. The previous
-  validated product/candidate remain unchanged until explicit promotion. Earlier
-  slice statements describe those tested older trees, not this candidate.
+  [candidate checklist](CI/thor-validation-plan.json) define acceptance. All seven
+  packaged device checks are user-reported passed; the companion export and
+  installed-byte receipt were not supplied for independent inspection. The permanent
+  candidate ref retains the exact tested SHA. Earlier slice statements describe
+  older trees; their engine adaptations are superseded by this complete upstream base.
 
 
 - Scope decision (2026-10-25): second-screen additions only; engine/server/save/AI,
   ordinary gameplay and primary-screen/controller behavior follow the chosen upstream
   base. Further selective engine migrations are excluded. Chunked saves are not the
   next feature. The [fork scope audit](docs/AYN_THOR_FORK_SCOPE_AUDIT.md) records
-  existing divergence and the proposed upstream-base/Thor-overlay reconciliation.
-  This decision changes planning, not the validated production tree.
+  historical divergence; the [accepted upstream overlay](docs/AYN_THOR_UPSTREAM_OVERLAY.md)
+  defines the resulting implementation. New feature work must concern the second screen.
 
 - Complete Slice 55 integration is `hardware validated` by the user on 2026-10-25, with promotion authorized in [PR #54](https://github.com/CapnChaosDK/vcmi_thor/pull/54). Exact candidate `d275285d37789af0ae3751518e2e82b95b7cedf2` passed both jobs in [Thor CI 40193831750](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40193831750), including the complete native regression gate and ARM64 packaging. APK SHA-256 is `f44b2adae35d1314595272b1c848313e2371607945a340da803332b8076edcf3`. The user reported all five packaged checks passed and authorized merging. The installed-byte receipt was not supplied for independent verification; the full CI and acceptance receipts are below.
 
@@ -254,16 +261,18 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff (2026-10-25): Slice 55 is merged and user-reported hardware validated;
-see Current state and its exact-candidate receipts. The user has superseded the
+Current handoff (2026-10-26): the upstream-base reconciliation is user-reported
+hardware validated and promotion is authorized; see Current state and its receipts.
+The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
 
-The active maintenance task is the [upstream-base and Thor-overlay reconciliation](docs/AYN_THOR_UPSTREAM_OVERLAY.md).
-It uses fresh upstream, removes custom redistribution and isolates new saves under
-user-approved scope. Complete its source review, CI and device gates before choosing
-another lower-screen feature. Product history and old saves remain preserved;
-review-branch implementation is not a validated promotion. Earlier proposed/next-slice
+The [accepted upstream overlay](docs/AYN_THOR_UPSTREAM_OVERLAY.md) uses fresh upstream,
+removes custom redistribution and isolates new saves under user-approved scope.
+Its implementation, review, CI and reported device gates are complete. Select the
+next complete lower-screen gap only after checking the current owners, tests and
+existing journeys. Do not restart completed milestones or select general engine
+maintenance as a feature. Product history and old saves remain preserved. Earlier proposed/next-slice
 headings and selective compatibility priorities below are historical records.
 Completed haptics and other old milestones must not be selected again without
 checking implementation/history.
@@ -2191,3 +2200,26 @@ Promotion and cleanup receipt (2026-10-22):
   Python tests passed on the candidate's fetched sources. Diff hygiene and a
   separate complete-diff self-review passed; no behavioral change was found.
   Full Android compilation is delegated to the existing candidate workflow.
+
+
+- Successful candidate and hardware acceptance (2026-10-26): exact candidate
+  `582c2817e5ac2f2c8b13050e066d5af8fbde9c78` passed both jobs in
+  [Thor CI 40288183153](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40288183153).
+  Preflight passed the source-boundary/checklist checks, all 158 focused native Thor
+  tests and all 1268 upstream/Thor native regression tests. ARM64 compilation,
+  configured Android tests, package identity and artifact/receipt/checklist gates
+  passed. Package: `is.xyz.vcmi.thor`; artifact `thor-candidate-arm64-40288183153`,
+  ID `12636621523`, 40,644,844 bytes, expires 2026-11-02. GitHub artifact ZIP digest:
+  `03c9db8a019cfb494952c12c11dba3dc9c0f5a397ccd1fd07842a2ed50282e26`.
+  Job-reported APK SHA-256:
+  `6191b4ad44db171566c6ac1ced9a915cc1d30e25f7ce2ebc945fc6d16f7149d8`.
+  Hashes are from GitHub metadata/logs; no archive or installed-byte hash was
+  independently computed in this handover. The user reported “All passed” for the
+  exact latest candidate and explicitly authorized commit, merge and unused-branch
+  cleanup. This records all seven packaged checks: save isolation/preservation,
+  menus/setup, Adventure, Hero/Town services, standard Meeting, Battle/upstream
+  primary input and lifecycle/display/input regressions. No skipped or failed case
+  was reported; the companion export was not supplied. Agent guidance now binds
+  future feature selection to incomplete second-screen journeys and the executable
+  upstream source-boundary policy. These handover changes are Markdown only;
+  the hardware-tested product/build/checklist tree remains unchanged.
