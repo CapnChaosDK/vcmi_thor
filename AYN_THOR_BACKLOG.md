@@ -61,7 +61,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 - Slice 57 extraction: implemented in PR #57, both Thor CI jobs passed for
   `8d60cc63012d8c769ab3e2937b1655fa2ad585ca`; awaiting hardware validation.
-  Slice 58 Tavern is being implemented on top as the user's next requested step.
+  Slice 58 Tavern is implemented on top in PR #58; its integrated candidate is
+  awaiting CI.
   Their current/historical structured checklists and exact receipts are below.
 
 - Slice 56 — lower-screen resource trading: `hardware validated` by the user's
@@ -2485,3 +2486,21 @@ Promotion and cleanup receipt (2026-10-22):
   Workflow dispatch and full native runtime/package/device results are not inferred
   from source checks. No source gap remains; CI and exact-candidate hardware gates
   remain pending. The current checklist consolidates both requested changes.
+
+### Slice 58 publication and permanent candidate handoff
+
+- Exact reviewed implementation `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`
+  published to `origin/codex/tavern-deck` in [PR #58](https://github.com/CapnChaosDK/vcmi_thor/pull/58),
+  stacked on the cleanup branch for independent review. It includes the complete
+  Slice 57 extraction; PR #57 remains open and neither PR has been merged.
+- After fetching and verifying candidate ancestry, normally fast-forwarded
+  `ci/thor-candidate-validation` from `8d60cc63012d8c769ab3e2937b1655fa2ad585ca`
+  to that exact implementation SHA. No reset or force push was needed.
+- Triggered [Thor CI 40399531364](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40399531364),
+  observed `queued` at handoff. Status: `awaiting CI`. Full native runtime and ARM64
+  success, artifact/APK verification and physical acceptance are not claimed.
+- Next gate: if both jobs pass, verify the exact receipt, package and checksum,
+  then run the five-part packaged checklist covering Tavern and Meeting on a real
+  Thor. Remain awaiting hardware validation until the exact candidate is accepted.
+  Preserve the normal PR review/explicit merge authorization gate. This receipt-only
+  Markdown commit does not replace the exact candidate/build tree.
