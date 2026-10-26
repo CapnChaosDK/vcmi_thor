@@ -59,6 +59,18 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 56 — lower-screen resource trading: `hardware validated` by the user's
+  2026-10-26 “all passed” report. Exact candidate
+  `e0cf84495a0abe9661cab048044241237f13c593` passed both jobs in
+  [Thor CI 40392716043](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40392716043).
+  CI-reported APK SHA-256:
+  `8ecae63f22a024a9c9eedf2cea31cb97b960dad87faf19bdd41bbb7683e257ba`.
+  The user confirmed the four-part packaged checklist and authorized updating the
+  Markdown receipts, committing and merging [PR #56](https://github.com/CapnChaosDK/vcmi_thor/pull/56).
+  Artifact/log metadata is verified; no companion export or independently computed
+  installed-byte receipt was supplied here. The exact acceptance evidence and
+  promotion receipt belong to the Slice 56 record below.
+
 - Upstream-base reconciliation: `hardware validated` by the user's 2026-10-26
   “All passed” report; [PR #55](https://github.com/CapnChaosDK/vcmi_thor/pull/55)
   is promoted as `6e321c1e5986a915aac0667c156194a413221141`. Exact candidate
@@ -69,7 +81,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   custom multi-slot redistribution and isolating new saves while preserving the old
   files on 2026-10-25. [Integration contract](docs/AYN_THOR_UPSTREAM_OVERLAY.md),
   [source boundary policy](CI/thor_upstream_base.json), and the single current
-  [candidate checklist](CI/thor-validation-plan.json) define acceptance. All seven
+  [accepted checklist](docs/AYN_THOR_UPSTREAM_OVERLAY_VALIDATION_PLAN.json) define acceptance. All seven
   packaged device checks are user-reported passed; the companion export and
   installed-byte receipt were not supplied for independent inspection. The permanent
   candidate ref retains the exact tested SHA. Earlier slice statements describe
@@ -262,7 +274,10 @@ Focused Thor hardware checklist after build/install/explicit launch:
 ## Roadmap
 
 Current handoff (2026-10-26): the upstream-base reconciliation is promoted and
-user-reported hardware validated; see Current state and its receipts.
+user-reported hardware validated; see Current state and its receipts. Slice 56's
+resource-trading lower deck has also passed CI and user-reported hardware acceptance.
+Select the next complete second-screen gap against current code; no further engine
+migration or feature is selected by this receipt.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2238,3 +2253,102 @@ Promotion and cleanup receipt (2026-10-22):
   under ignored `out/thor-premerge-audit-notes-20261026` before replacing them with
   their incorporated, current handover. This receipt changes Markdown only; no new
   package, device cycle or candidate-branch movement is required.
+
+## Slice 56 — Complete lower-screen resource trading
+
+- Scope: the resource-to-resource Marketplace journey, entered through existing Town
+  Services or an existing Adventure market. Give/Get selection, four-row local pages,
+  live balances and native rate/total preview, quantity -10/-1/+1/+10/Max, Trade,
+  Reset and Close are one slice. Other market modes remain upper-screen workflows.
+- Boundary: extended protocol v1 adds commands 13–18 (Sell, Buy, Amount, Trade,
+  Close, Reset), separate from immutable legacy action IDs and the 64-bit mask.
+  Targets are published resource IDs, nonnegative slider batches or -1; no gameplay
+  packet/save format, rules or primary input changes are introduced. A bounded
+  typed quote carries up to nine currently visible native resource rows. Unsupported
+  native resource layouts/selection fail closed rather than inventing a market.
+- Native: the active CMarketWindow publishes on MainGUI; requests recheck the exact
+  owner, context, revision, current market/hero, local turn/ownership, rows, quote,
+  affordability and bounded totals before using the widget's callbacks. A scoped
+  request observer tracks the upstream TradeOnMarketplace response; pending blocks
+  lower edits, success alone acknowledges the trade, and rejection republishes a
+  usable current deck. Close keeps the existing window lifecycle and callback.
+- Android: immutable defensive snapshot copies; activity-owned current-revision
+  caching/restoration; disjoint row/footer controls and shared drawing/one-shot
+  gesture utilities. Held, dragged, cross-control, multi-pointer, stale revision
+  and obsolete-session releases fail closed. Pages are local UI state.
+- Upstream-update cost: one market window owner adapter plus dispatch/result hooks
+  and bounded JNI publication. The adapter depends on existing resource panel,
+  slider and native callback APIs; these must be checked on future base updates.
+  Engine/server/market widgets and primary input remain upstream-owned.
+- Validation plan: [CI/thor-validation-plan.json](CI/thor-validation-plan.json)
+  is the single current candidate checklist. The accepted overlay's seven-part
+  plan is retained in [historical JSON](docs/AYN_THOR_UPSTREAM_OVERLAY_VALIDATION_PLAN.json).
+- Acceptance: focused native tests cover quote/command bounds, owner/context/revision
+  isolation, pending/error availability, normalization and namespace separation;
+  Android tests cover immutable payloads, quantity/row/footer boundaries, paged
+  touch geometry and stale/held/dragged/multi-pointer gestures. The existing Thor
+  workflow supplies native runtime and ARM64 gates; physical layout/focus/server
+  timing remain exact-candidate device checks.
+- Phase D completeness checkpoint: the complete planned resource-trade journey is
+  implemented, including paging, disabled/zero/Max quantities, Reset/Close, pending,
+  success/rejection, stale quote/owner/context checks and lifecycle withdrawal and
+  restoration. Existing native callbacks, other modes and upper inputs are retained.
+- Independent full-diff self-review completed. Fixed page-button release routing,
+  trade-only deferred haptics, selected-resource labels across pages, UTF-16 JNI names,
+  negative-balance arithmetic and stale native quote withdrawal. No outstanding
+  source-review blocker remains; physical behavior is still an exact-candidate gate.
+- Local validation: 150 Android JVM tests pass (six market cases plus the existing
+  144), using the installed Java runtime and Android API/dependency stubs. Eight
+  affected native translation units pass Android-target syntax checks, and the
+  market owner, dispatcher and player result hook also parse without TARGET_AYN_THOR.
+  The final market/JNI edits were rechecked. All four scope/checklist Python tests,
+  source-boundary/checklist validation and git diff --check pass. The temporary Git
+  fixture required unsandboxed execution; the rerun passed. Native runtime and full
+  APK compilation are delegated to the existing Thor workflow.
+- Status: `awaiting CI`; implementation, focused checks and separate review are
+  complete. The four-part packaged checklist consolidates the whole feature and
+  related lifecycle/input regressions into one candidate/device cycle. No CI/device
+  pass, merge or promotion is claimed.
+
+
+### Slice 56 initial preflight correction (2026-10-26)
+
+- Candidate `b5038a4cf83ba3cad713ec5c21b24d54d1efbb6f` failed the focused
+  native gate in [Thor CI 40392074544](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40392074544).
+  The existing lobby-envelope test still classified extended command 13 as unknown;
+  Slice 56 now assigns it to MARKET_SELL. All three new market tests passed. ARM64
+  was skipped behind the failed preflight, so no APK or device result exists.
+- Correct the unknown-command boundary to the first value beyond MARKET_RESET and
+  explicitly assert that MARKET_SELL is rejected in the lobby context. This retains
+  unknown-command and cross-context protection without changing production code,
+  availability, test filters or CI gates. The four-part device checklist is unchanged.
+- Focused native syntax and diff checks plus a separate review cover this correction;
+  native runtime and ARM64 remain the corrected exact candidate's CI gates.
+
+
+### Slice 56 CI and hardware acceptance (2026-10-26)
+
+- Exact candidate `e0cf84495a0abe9661cab048044241237f13c593` passed both jobs in
+  [Thor CI 40392716043](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40392716043).
+  Preflight passed all 161 focused native Thor tests and all 1271 registered native
+  regressions. ARM64 compilation, configured Android tests, package verification,
+  checksum/receipt/checklist generation and artifact upload succeeded.
+- Package: `is.xyz.vcmi.thor`, ARM64. Artifact
+  `thor-candidate-arm64-40392716043`, ID `12685542297`, 40,659,019 bytes,
+  expires 2026-11-02. GitHub archive digest:
+  `76d931823c35b690723386a37223d6702f8e57a7fe9b41344727e2b9dfd50817`.
+  CI-reported APK SHA-256:
+  `8ecae63f22a024a9c9eedf2cea31cb97b960dad87faf19bdd41bbb7683e257ba`.
+  These hashes are verified from GitHub metadata/job logs; no archive or installed
+  APK was independently hashed in this acceptance turn.
+- The user reported “all passed” for this latest candidate and explicitly authorized
+  Markdown updates, commit and merge. This records user-reported acceptance of all
+  four packaged checks: complete trading journey; unavailable/changing/competing
+  state; display/modal restoration; and upper input/neighboring deck regressions.
+  No failure or exclusion was reported. No companion export or installed-byte
+  receipt was supplied for independent inspection.
+- Status: `hardware validated`; the earlier pending-CI/device statements describe
+  their original handoffs. The permanent candidate ref remains pinned to this exact
+  tested SHA. This acceptance update is Markdown only and does not require another
+  candidate build or physical test cycle. PR #56 promotion is explicitly authorized;
+  its completed merge receipt will be recorded separately.

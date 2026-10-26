@@ -43,6 +43,7 @@
 #include "windows/CCastleInterface.h"
 #include "windows/GUIClasses.h"
 #include "windows/QuickRecruitmentWindow.h"
+#include "windows/CMarketWindow.h"
 #include "lobby/CLobbyScreen.h"
 #include "lobby/CBonusSelection.h"
 #include "mainmenu/CMainMenu.h"
@@ -175,6 +176,8 @@ void GameEngine::updateFrame()
 		quickRecruitment->refreshThorNativeState();
 	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
 		dwellingRecruitment->refreshThorNativeState();
+	if(auto market = windows().topWindow<CMarketWindow>())
+		market->refreshThorMarket();
 	if(auto battleWindow = windows().topWindow<BattleWindow>())
 		battleWindow->updateThorActionState();
 	while(const auto request = thorActionQueue().pop())
@@ -216,6 +219,12 @@ void GameEngine::updateFrame()
 			auto lobby = windows().topWindow<CLobbyScreen>();
 			if(lobby && context.nativeOwnerToken == lobby.get())
 				executed = lobby->executeThorPlayerCommand(*request);
+		}
+		else if(request->commandVersion != 0 && ThorExtended::marketCommand(request->commandId))
+		{
+			auto market = windows().topWindow<CMarketWindow>();
+			if(market && context.nativeOwnerToken == market.get())
+				executed = market->executeThorMarket(*request);
 		}
 		else if(request->commandVersion != 0)
 		{
@@ -482,7 +491,10 @@ void GameEngine::updateFrame()
 			continue;
 		}
 		if(request->commandVersion != 0)
-			CAndroidVMHelper().acknowledgeThorCommand(request->revision, request->commandId);
+		{
+			if(request->commandId != ThorExtended::MARKET_TRADE)
+				CAndroidVMHelper().acknowledgeThorCommand(request->revision, request->commandId);
+		}
 		else if(!isThorActionHapticDeferredUntilServerResult(request->action))
 		{
 			if(const auto acceptance = thorActionAcceptance(*request, ThorActionValidation::VALID, executed))

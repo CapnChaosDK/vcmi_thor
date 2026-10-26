@@ -694,6 +694,13 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			return ThorActionValidation::INVALID_TARGET;
 		if(request.revision != context.revision)
 			return ThorActionValidation::STALE_REVISION;
+		if(ThorExtended::marketCommand(request.commandId))
+		{
+			if(context.contextId != ThorContextIds::RESOURCE_MARKET || !context.nativeOwnerToken)
+				return ThorActionValidation::WRONG_CONTEXT;
+			return context.market && context.market->allows(request.commandId, request.targetId)
+				? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
+		}
 		if(ThorExtended::playerCommand(request.commandId))
 		{
 			if(context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO || !context.nativeOwnerToken)

@@ -185,6 +185,53 @@ void CAndroidVMHelper::publishThorLobbyPlayers(std::uint64_t revision, const std
 		}, true);
 }
 
+void CAndroidVMHelper::publishThorMarket(std::uint64_t revision, const ThorMarket & market)
+{
+	if(!market.valid()) return;
+	std::vector<jint> data{1, market.status, market.controllable ? 1 : 0, market.selling, market.buying,
+		market.bid, market.offer, market.amount, market.maximum, static_cast<int>(market.rows.size())};
+	for(const auto & row : market.rows)
+		data.insert(data.end(), {row.id, row.balance, row.sell ? 1 : 0, row.buy ? 1 : 0});
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorMarket", "(J[I[Ljava/lang/String;)V",
+		[&](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jintArray values = env->NewIntArray(static_cast<jsize>(data.size()));
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray names = stringClass ? env->NewObjectArray(static_cast<jsize>(market.rows.size()), stringClass, nullptr) : nullptr;
+			if(values && names)
+			{
+				env->SetIntArrayRegion(values, 0, static_cast<jsize>(data.size()), data.data());
+				for(std::size_t i = 0; i < market.rows.size(); ++i)
+				{
+					const auto & text = market.rows[i].name;
+					std::vector<jchar> utf16;
+					for(std::size_t offset = 0; offset < text.size();)
+					{
+						const auto point = TextOperations::getUnicodeCodepoint(text.data() + offset, text.size() - offset);
+						if(point <= 0xffff)
+							utf16.push_back(static_cast<jchar>(point));
+						else
+						{
+							utf16.push_back(static_cast<jchar>(0xd800 + ((point - 0x10000) >> 10)));
+							utf16.push_back(static_cast<jchar>(0xdc00 + ((point - 0x10000) & 0x3ff)));
+						}
+						offset += TextOperations::getUnicodeCharacterSize(text[offset]);
+					}
+					jstring name = env->NewString(utf16.data(), static_cast<jsize>(utf16.size()));
+					if(name)
+					{
+						env->SetObjectArrayElement(names, static_cast<jsize>(i), name);
+						env->DeleteLocalRef(name);
+					}
+				}
+				env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), values, names);
+			}
+			if(values) env->DeleteLocalRef(values);
+			if(names) env->DeleteLocalRef(names);
+			if(stringClass) env->DeleteLocalRef(stringClass);
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorCommands(std::uint64_t revision, const ThorExtended::State & state)
 {
 	if(!state.valid())

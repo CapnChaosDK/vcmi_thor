@@ -63,6 +63,16 @@ public class NativeMethods
 
     private static native void submitThorActionNative(long revision, int actionId, int targetId);
 
+    public static void publishThorMarket(final long revision, final int[] data, final String[] names)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final ThorMarketState state = ThorMarketState.copyOf(revision, data, names);
+        final Context ctx = context();
+        if (ctx instanceof VcmiSDLActivity)
+            ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                    ((VcmiSDLActivity) ctx).publishThorMarket(revision, state));
+    }
+
     static boolean submitThorCommand(final long revision, final int command)
     {
         return submitThorCommand(revision, command, -1);

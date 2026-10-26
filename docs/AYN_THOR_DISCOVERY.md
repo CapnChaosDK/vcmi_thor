@@ -276,3 +276,19 @@ retained, including a no-op interface-ready record for old replays. The creature
 save-version guard reads the legacy refused-joining byte. The complete contract,
 validation status and exact-candidate checklist are maintained in the
 [Slice 55 backlog](../AYN_THOR_BACKLOG.md#slice-55--activity-and-question-lifecycle-migration).
+
+## Resource trading companion (Slice 56)
+
+- CMarketWindow is the native owner; its existing CMarketResources widget retains
+  selection, rates, slider and trade behavior. The Thor-only adapter publishes a
+  typed bounded quote and uses existing slot callbacks, slider scrollTo, makeDeal
+  and Close. Other modes withdraw the resource deck.
+- ThorMarket validates bounded data and enabled operations; extended commands 13–18
+  have their own context/owner validation and never consume legacy mask bits.
+  MainGUI refreshes before request execution. TradeOnMarketplace results release
+  the exact pending request; only success receives the deferred acknowledgement.
+- ThorMarketState/Controls/Gesture/Deck keep parsing, geometry, one-shot identity
+  and rendering separate from the Presentation lifecycle owner. The activity caches
+  only the current revision and restores its immutable quote after recreation.
+- Future upstream updates must verify the market window, resource panel/slider and
+  request observer APIs. No market widget, callback signature or server rule is forked.

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "feature_id": "upstream-base-thor-overlay",
+  "title": "Fresh upstream base with a second-screen-only Thor overlay",
+  "summary": "Replace selective engine adaptations with pinned upstream 46f2e15ec69e0507e6d0195d6357df5a2813dde1. Retain lower decks and lifecycle transport; remove custom army redistribution, preserve old save files and use upstream saves in a separate directory.",
+  "preparation": "Use the companion to verify the exact candidate, artifact, receipt and APK checksum before an in-place installation on AYN Thor. Keep the old APK and existing Saves files. Use disposable new games/maps exposing the listed features; record any unavailable case rather than inferring a pass.",
+  "limitations": "Old Thor saves/replays are not converted or supported by this upstream-base build; they remain for the old APK. Custom multi-slot redistribution and the previous fork-specific upper battlefield/controller behavior are removed by user-approved scope. Full native runtime, ARM64 and physical behavior require their own recorded gates.",
+  "checks": [
+    {
+      "id": "save-isolation",
+      "title": "New upstream saves; old files preserved",
+      "steps": "Before installation, record the existing vcmi-data/Saves files and keep the old APK. Install this exact candidate in place without uninstalling. Open Load; create a fresh scenario, save manually and let autosave run, reload both, then save/reload a campaign. Inspect the app files again. Open Battle Only setup once, return to Load, and check that old saves remain absent after its filesystem refresh.",
+      "expected": "Old Saves files are untouched and not offered by the new browser. New files appear only in Saves-upstream. Manual saves, autosaves, campaign state and lower Load/Back work through upstream rules."
+    },
+    {
+      "id": "menus-setup",
+      "title": "Menus, lobby, load and confirmations",
+      "steps": "Use lower Main Menu/New Game/Load/Multiplayer/Campaign/High Scores/Credits navigation and Back. Select a scenario, difficulty and permitted player/faction/hero/bonus options. Cancel and confirm applicable native prompts.",
+      "expected": "The exact upper owner, selection and enabled/pending state stay synchronized. Start, Load, Cancel and Back use normal upstream routes; no stale footer actions execute."
+    },
+    {
+      "id": "adventure",
+      "title": "Adventure map, information and movement",
+      "steps": "Select heroes/towns from both screens, page rosters, use map levels/zoom/markers and visible-object inspection. Plan/confirm/cancel/clear routes; Stop and Continue, including next-turn travel, guarded objects and teleports. Use Adventure actions and dismiss child dialogs.",
+      "expected": "Lower data stays local-player/fog safe. Selection, path and progress match the upper owner; ordinary gameplay and continuation use upstream behavior. Parent/map restoration is correct."
+    },
+    {
+      "id": "hero-town",
+      "title": "Hero, Town and complete services",
+      "steps": "Navigate Hero and Town Previous/Next/Close, including Hero opened from Town. Move/merge/swap hero and garrison/visitor stacks; try locked or last-stack cases. Transfer artifacts and use native assembly prompts. Use construction/Buy/Cancel, recruitment quantity/variant edits, Tavern, Mage Guild and Marketplace.",
+      "expected": "Existing lower controls complete their journeys through upstream operations; invalid/pending actions disable or reject cleanly and refresh. No wrong-owner action, overflow, lost artifact or stale confirmation."
+    },
+    {
+      "id": "meeting",
+      "title": "Standard Meeting operations; no custom redistribution",
+      "steps": "Meet owned heroes. Tap/drag move, merge and swap stacks, long-press for single-destination exact splitting, cancel and confirm. Use upstream whole-army/artifact buttons and artifact pages/drag/assembly. Try rapid or stale input. If available, test an allied multiplayer exchange with donor actions and server-driven closure.",
+      "expected": "The custom multi-slot allocation editor is absent. Ordinary split Cancel is available, and standard operations remain synchronized. No duplicate requests or stuck pending state. An allied partner never acquires initiator Close authority after an artifact acknowledgement."
+    },
+    {
+      "id": "battle-input",
+      "title": "Lower Battle deck and upstream primary controls",
+      "steps": "Fight a battle using normal upstream upper touch/controller bindings. Use lower Wait/Defend, Auto/Stop, spellbook/cancel, Retreat/Surrender cancel/confirm, and tactics Next/End. Finish a battle and level-up; dismiss results and check Adventure restoration.",
+      "expected": "The lower deck reflects current upstream eligibility, actor/round and targeting. Primary bindings follow upstream rather than the previous custom controller mode. No residual battle frame, stale action or duplicate outcome."
+    },
+    {
+      "id": "lifecycle",
+      "title": "Display, gestures, haptics and single-display regressions",
+      "steps": "Across the preceding decks, try held/cross-control/extra-pointer touches and rapid taps; open and close native children. Toggle/reconnect the lower display, background/resume and recreate the presentation. Toggle haptics and repeat with one display.",
+      "expected": "No stale hit region, ghost action, duplicate presentation, lost focus or stuck request. Accepted eligible lower actions give at most one system-respecting haptic tick. Upper input remains usable and single-display play follows upstream."
+    }
+  ]
+}
