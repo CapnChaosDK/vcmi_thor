@@ -65,8 +65,10 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174)
   passed preflight and ARM64. CI-reported APK SHA-256:
   `8c369fb14cc8cfca0b03bde211035c6ba190749088a38d1058eb8ba44bb64bde`.
-  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59) is ready for promotion under the user's explicit 2026-10-27 merge authorization. Artifact/log metadata is verified; no companion
-  export or independently computed installed-byte receipt was supplied.
+  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59) is promoted as
+  `523db1bbde724368a9fe5f93a692a24c7b24228c`, preserving the tested code/build tree.
+  Artifact/log metadata is verified; no companion export or independently computed
+  installed-byte receipt was supplied.
 
 - Slices 57/58 — Hero Meeting presentation extraction and complete lower-screen
   Tavern: `hardware validated` by the user's 2026-10-27 “Both has all passed” report.
@@ -299,9 +301,9 @@ Focused Thor hardware checklist after build/install/explicit launch:
 ## Roadmap
 
 Current handoff (2026-10-27): Slice 59 Hero management extraction is hardware
-validated and the user has explicitly authorized its documentation, commit and
-merge. Slices 57/58 are already promoted. Complete the Slice 59 promotion receipt;
-no next feature is selected. Do not restart these completed journeys.
+validated and promoted through PR #59, preserving its exact tested code/build tree.
+Slices 57/58 are also promoted. No next feature is selected; choose the next
+complete second-screen gap against current code. Do not restart these journeys.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2571,8 +2573,9 @@ Promotion and cleanup receipt (2026-10-22):
 
 - Status: `hardware validated` on exact candidate
   `2ccb3f0d942e3a8e0be735df6819433f3feaf612` by the user on 2026-10-27;
-  The user authorized promotion through PR #59 on 2026-10-27. Based on promoted product
-  `23655b066`, preserving the complete Hero overview/Army/Artifacts journey.
+  promoted through PR #59 as `523db1bbde724368a9fe5f93a692a24c7b24228c`.
+  Based on product `23655b066`, preserving the complete Hero overview/Army/Artifacts
+  journey.
 - Boundary: `ThorHeroManagementDeck` owns rendering, hit geometry, accessibility
   composition and MotionEvent translation. `ThorHeroManagementState` owns the
   snapshot, same-Hero tab/page retention, source selection, pointer/revision-bound
@@ -2674,3 +2677,18 @@ Promotion and cleanup receipt (2026-10-22):
 - Earlier statements withholding merge authorization describe their historical
   state. The current explicit request authorizes normal PR promotion; its actual
   merge SHA and resulting-tree verification will be recorded after success.
+
+### Slice 59 promotion receipt — 2026-10-27
+
+- At the user's explicit request, committed final Markdown handover updates as
+  `607781c6b73526dd9cffc2ccb0f4f8fb9490f99d`, published them to PR #59, verified
+  its exact head and mergeable state, and merged normally as
+  `523db1bbde724368a9fe5f93a692a24c7b24228c` into `ayn-thor-dual-screen`.
+- Compared the product merge with hardware-accepted candidate
+  `2ccb3f0d942e3a8e0be735df6819433f3feaf612`: only `AYN_THOR_BACKLOG.md` and
+  `docs/AYN_THOR_BUILD_PLAYBOOK.md` differ. Code, resources, tests, workflow and
+  structured checklist are preserved exactly. No new APK/device cycle is needed.
+- Synchronized local product by fast-forward, preserving existing `dependencies`
+  submodule changes. The permanent candidate remains at the exact tested SHA.
+  This final receipt changes Markdown only. Slice 59 is complete and promoted;
+  no next feature is selected.
