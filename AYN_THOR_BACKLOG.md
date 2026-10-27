@@ -59,11 +59,16 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 57 extraction: implemented in PR #57, both Thor CI jobs passed for
-  `8d60cc63012d8c769ab3e2937b1655fa2ad585ca`; awaiting hardware validation.
-  Slice 58 Tavern is implemented on top in PR #58; its integrated candidate is
-  awaiting CI.
-  Their current/historical structured checklists and exact receipts are below.
+- Slices 57/58 — Hero Meeting presentation extraction and complete lower-screen
+  Tavern: `hardware validated` by the user's 2026-10-27 “Both has all passed” report.
+  Exact combined candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a` passed both jobs
+  in [Thor CI 40399531364](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40399531364).
+  CI-reported APK SHA-256:
+  `c1bb653812a9aff6c0d8fa3c0f70071e8c12f29b9e5926919d98c0c6526f8113`.
+  The user confirmed both changes and authorized documentation, commits, merges
+  and merged-branch cleanup. Artifact/log metadata is verified; no companion export
+  or independently computed installed-byte receipt was supplied. Exact acceptance
+  and promotion evidence is recorded below; earlier pending statements are historical.
 
 - Slice 56 — lower-screen resource trading: `hardware validated` by the user's
   2026-10-26 “all passed” report. Exact candidate
@@ -140,11 +145,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 - Historical validation: The user confirmed the combined Slice 33/34 physical AYN Thor checklist passed for that exact candidate. Thor CI push run [`36723432343`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36723432343) passed preflight, ARM64 packaging, focused Android tests, package verification, and artifact upload; PR run [`36723438501`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36723438501) also passed. Artifact `thor-candidate-arm64-36723432343` (ID `11102417637`) has uploaded ZIP SHA-256 `e79fd65a78e5c1e150aac107aee91971b704c445ee91206dd11d1afa88b1a911`. Its downloaded receipt records package `is.xyz.vcmi.thor`, ABI `arm64-v8a`, and APK SHA-256 `dabba8aed82fdf26065b8ee1eb2e5297232f47c10b6a32f83e6c4a9d24e15e96`; the downloaded APK and checksum file independently match. Device installation details were not in the available evidence and are not asserted here.
 - Slice 29 promotion evidence: PR #16 merged as product commit `9a4b2a0b3f8f3b3c6de8096e0f5e757dfdd79989`. `git diff --name-only 7b04e6df3aa0a903e616baa1575ebb52615215b1 9a4b2a0b3f8f3b3c6de8096e0f5e757dfdd79989` contains only `AYN_THOR_BACKLOG.md`; the product code tree matches the hardware-tested candidate.
 - Slice 30 promotion evidence: candidate `fcf31433944424e6ec003c865dea681a77514876` passed Thor CI run [`36335531648`](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/36335531648) and the user's complete hardware checklist on the checksum-verified AYN Thor APK. PR #17 merged as product commit `6f09d6e62433c0689c2c76f929da4fb75e7f2eea`.
-- Latest fully hardware-validated numbered slice: Slice 56, candidate `e0cf84495a0abe9661cab048044241237f13c593`, successful CI `40392716043`, user-reported acceptance on 2026-10-26 and product merge `356e795b5c57e1e164ea6135950b0ea2ea733137` through PR #56. Installed-byte verification was not independently supplied; see its receipt below.
+- Latest fully hardware-validated numbered slices: Slices 57/58, combined candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`, successful CI `40399531364`, user-reported acceptance on 2026-10-27. See the acceptance and promotion receipts below; installed-byte verification was not independently supplied.
 - Upstream reference: `https://github.com/vcmi/vcmi.git`, default branch `develop`.
 - Historical original baseline: upstream commit `819259d97f1de9262b97811ccb081346c20ffef2`; the current accepted base is the reconciliation SHA recorded above.
 - Fork: `https://github.com/CapnChaosDK/vcmi_thor`, public.
-- Product branch: `ayn-thor-dual-screen`; current promoted handoff is `a367e6d3985daa62bbbd0418d53e6e95430da0b9`, including Slice 56 and its promotion receipt. Begin future work from the freshly fetched product ref and verify its tree; older upstream/product checkpoints and backup-branch statements are historical.
+- Product branch: `ayn-thor-dual-screen`; use freshly fetched `origin/ayn-thor-dual-screen` and the latest promotion receipt below for the current handoff. Begin future work from the freshly fetched product ref and verify its tree; older upstream/product checkpoints and backup-branch statements are historical.
 - Remote safety: `origin` points to the CapnChaosDK fork; the local `upstream` push URL is disabled.
 - Repository discovery: complete; see `docs/AYN_THOR_DISCOVERY.md`.
 - Reproducible build/device procedure: `docs/AYN_THOR_BUILD_PLAYBOOK.md`.
@@ -281,11 +286,11 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff (2026-10-26): the upstream-base reconciliation is promoted and
-user-reported hardware validated; see Current state and its receipts. Slice 56's
-resource-trading lower deck has also passed CI and user-reported hardware acceptance.
-Select the next complete second-screen gap against current code; no further engine
-migration or feature is selected by this receipt.
+Current handoff (2026-10-27): the user confirmed both the Hero Meeting extraction
+and Tavern passed, and authorized promotion. Both are hardware validated on combined
+candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`; see Current state and the
+promotion receipt. No next feature is selected. Select the next complete second-screen
+gap against the resulting code; do not restart these completed journeys.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2504,3 +2509,28 @@ Promotion and cleanup receipt (2026-10-22):
   Thor. Remain awaiting hardware validation until the exact candidate is accepted.
   Preserve the normal PR review/explicit merge authorization gate. This receipt-only
   Markdown commit does not replace the exact candidate/build tree.
+
+### Slices 57/58 CI and hardware acceptance — 2026-10-27
+
+- The user reported “Both has all passed” for the combined candidate and explicitly
+  requested handover updates, commit, merge and branch cleanup. Record both slices
+  as `hardware validated` on exact candidate
+  `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`, using the five-part packaged
+  [current checklist](CI/thor-validation-plan.json). No failure or skipped check was
+  reported. Slice 57's separate initial run remains build evidence; its device
+  acceptance here is on the integrated Slice 58 candidate.
+- [Thor CI 40399531364](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40399531364)
+  reports `success` for that SHA. Thor preflight job `121841365162` and ARM64 job
+  `121843032685` both passed. The ARM64 log confirms package `is.xyz.vcmi.thor`,
+  version `1.8.0`/1800, and APK SHA-256
+  `c1bb653812a9aff6c0d8fa3c0f70071e8c12f29b9e5926919d98c0c6526f8113`.
+- Artifact `thor-candidate-arm64-40399531364`, ID `12689496690`, has GitHub-reported
+  ZIP digest `371d37b21f108f3ea1104fce831ce45346a31fb4703e5e2cb301f85224155626`.
+  Metadata and job logs were inspected; archive/APK bytes were not independently
+  downloaded/rehashed in this acceptance handoff. No companion export or installed
+  checksum receipt was supplied. Physical behavior is user-reported acceptance.
+- Compared the published PR #58 head with the tested candidate: only backlog
+  Markdown differed before this receipt. This handoff changes backlog/playbook
+  Markdown only and preserves the tested product/build tree. Earlier pending-CI,
+  pending-device and no-merge-authorized statements describe their historical state;
+  the user's current request authorizes normal promotion of both PRs.
