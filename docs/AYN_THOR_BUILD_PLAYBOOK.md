@@ -7,14 +7,14 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Current hardware-accepted candidate: `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`,
-  [Thor CI 40399531364](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40399531364),
-  combining Slice 57 Hero Meeting presentation extraction and Slice 58 Tavern.
-  The user confirmed both changes passed on 2026-10-27; PRs #57/#58 are promoted
-  as product merge `822fe242ea9a4079cf9e5dfaa1af39f5bebaae77`.
-  The five-part packaged checklist covers Tavern and Meeting in one device cycle.
-  Exact artifact/APK evidence, independent verification limits and promotion state
-  live in backlog Current state and the acceptance/promotion receipts.
+- Current hardware-accepted candidate: `2ccb3f0d942e3a8e0be735df6819433f3feaf612`,
+  [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174),
+  Slice 59 complete Hero management presentation extraction. Both CI jobs passed;
+  the user confirmed all five packaged checks passed on 2026-10-27. CI-reported
+  APK SHA-256: `8c369fb14cc8cfca0b03bde211035c6ba190749088a38d1058eb8ba44bb64bde`.
+  PR #59 remains open pending explicit merge authorization; see the backlog receipt
+  for artifact evidence and its limits. Slices 57/58 remain the promoted product.
+
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
 - Slice 11 final product commit: `873faeaedc153f400d39c2677cfe495bf3d07bd9` — Adventure Map semantic utility actions.

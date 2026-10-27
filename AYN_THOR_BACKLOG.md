@@ -59,12 +59,15 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 59 — complete Hero management presentation extraction: `awaiting CI`.
-  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59) publishes reviewed
-  implementation `2ccb3f0d942e3a8e0be735df6819433f3feaf612`; the permanent candidate
-  branch has that exact SHA. [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174)
-  was observed in progress. Hardware acceptance remains pending; see the Slice 59
-  contract and structured checklist below.
+- Slice 59 — complete Hero management presentation extraction: `hardware validated`
+  by the user's 2026-10-27 “All passed” confirmation for exact candidate
+  `2ccb3f0d942e3a8e0be735df6819433f3feaf612` and its five-part structured checklist.
+  [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174)
+  passed preflight and ARM64. CI-reported APK SHA-256:
+  `8c369fb14cc8cfca0b03bde211035c6ba190749088a38d1058eb8ba44bb64bde`.
+  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59) remains open pending
+  explicit merge authorization. Artifact/log metadata is verified; no companion
+  export or independently computed installed-byte receipt was supplied.
 
 - Slices 57/58 — Hero Meeting presentation extraction and complete lower-screen
   Tavern: `hardware validated` by the user's 2026-10-27 “Both has all passed” report.
@@ -2567,8 +2570,10 @@ Promotion and cleanup receipt (2026-10-22):
 
 ## Slice 59 — Complete Hero management presentation extraction
 
-- Status: `awaiting CI`. Source-complete user-selected cleanup based on promoted
-  product `23655b066`; preserve the complete Hero overview/Army/Artifacts journey.
+- Status: `hardware validated` on exact candidate
+  `2ccb3f0d942e3a8e0be735df6819433f3feaf612` by the user on 2026-10-27;
+  PR #59 awaits explicit merge authorization. Based on promoted product
+  `23655b066`, preserving the complete Hero overview/Army/Artifacts journey.
 - Boundary: `ThorHeroManagementDeck` owns rendering, hit geometry, accessibility
   composition and MotionEvent translation. `ThorHeroManagementState` owns the
   snapshot, same-Hero tab/page retention, source selection, pointer/revision-bound
@@ -2633,3 +2638,26 @@ Promotion and cleanup receipt (2026-10-22):
   status until user acceptance of that exact candidate. PR review and explicit
   merge authorization remain required. This receipt changes backlog Markdown only
   and does not advance the exact candidate/build tree.
+
+### Slice 59 CI and hardware acceptance — 2026-10-27
+
+- The user reported “All passed” for the current candidate and its five-part
+  [structured checklist](CI/thor-validation-plan.json). Record user-reported
+  physical acceptance for exact SHA `2ccb3f0d942e3a8e0be735df6819433f3feaf612`.
+  No failure or skipped device check was reported.
+- [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174)
+  reports `success` for that exact SHA: preflight job `122416037618` and ARM64 job
+  `122422070455` both passed. ARM64 logs confirm package `is.xyz.vcmi.thor`,
+  version `1.8.0`/1800 and APK SHA-256
+  `8c369fb14cc8cfca0b03bde211035c6ba190749088a38d1058eb8ba44bb64bde`.
+- Artifact `thor-candidate-arm64-40568494174`, ID `12765745763`, has GitHub-reported
+  ZIP digest `9d57db9c9539b63ccc107d7fa68ec79e8481ea7eea168f004a8a5f90bc464f46`.
+  Job results, artifact metadata and ARM64 logs were inspected. Archive/APK bytes
+  were not independently downloaded/rehashed in this handoff; no companion export
+  or installed-byte checksum receipt was supplied. Physical acceptance is the
+  user's report, not inferred from CI or logs.
+- Only backlog Markdown differed between the current PR branch and accepted
+  implementation before this receipt. This update changes backlog/playbook
+  Markdown only, preserving the accepted product/build tree and permanent
+  candidate ref. Earlier pending-CI/device statements describe historical status.
+  No merge, promotion or branch cleanup is authorized or claimed by “All passed”.
