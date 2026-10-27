@@ -59,6 +59,15 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 59 — complete Hero management presentation extraction: `hardware validated`
+  by the user's 2026-10-27 “All passed” confirmation for exact candidate
+  `2ccb3f0d942e3a8e0be735df6819433f3feaf612` and its five-part structured checklist.
+  [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174)
+  passed preflight and ARM64. CI-reported APK SHA-256:
+  `8c369fb14cc8cfca0b03bde211035c6ba190749088a38d1058eb8ba44bb64bde`.
+  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59) is ready for promotion under the user's explicit 2026-10-27 merge authorization. Artifact/log metadata is verified; no companion
+  export or independently computed installed-byte receipt was supplied.
+
 - Slices 57/58 — Hero Meeting presentation extraction and complete lower-screen
   Tavern: `hardware validated` by the user's 2026-10-27 “Both has all passed” report.
   Exact combined candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a` passed both jobs
@@ -289,11 +298,10 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff (2026-10-27): the user confirmed both the Hero Meeting extraction
-and Tavern passed; both PRs are promoted. Both are hardware validated on combined
-candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`; see Current state and the
-promotion receipt. No next feature is selected. Select the next complete second-screen
-gap against the resulting code; do not restart these completed journeys.
+Current handoff (2026-10-27): Slice 59 Hero management extraction is hardware
+validated and the user has explicitly authorized its documentation, commit and
+merge. Slices 57/58 are already promoted. Complete the Slice 59 promotion receipt;
+no next feature is selected. Do not restart these completed journeys.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2558,3 +2566,111 @@ Promotion and cleanup receipt (2026-10-22):
   No new APK/device cycle is required for these receipt-only Markdown changes.
 - Both requested slices are complete and promoted. No further feature is selected;
   future work begins from freshly fetched product and the second-screen-only scope.
+
+## Slice 59 — Complete Hero management presentation extraction
+
+- Status: `hardware validated` on exact candidate
+  `2ccb3f0d942e3a8e0be735df6819433f3feaf612` by the user on 2026-10-27;
+  The user authorized promotion through PR #59 on 2026-10-27. Based on promoted product
+  `23655b066`, preserving the complete Hero overview/Army/Artifacts journey.
+- Boundary: `ThorHeroManagementDeck` owns rendering, hit geometry, accessibility
+  composition and MotionEvent translation. `ThorHeroManagementState` owns the
+  snapshot, same-Hero tab/page retention, source selection, pointer/revision-bound
+  gesture completion, mask checks and bounded pair selection. Presentation forwards
+  context/payload and lifecycle events; shared window navigation and installed-asset
+  drawing/cache stay in the shell. No new protocol/action IDs or native changes.
+- Behavior: preserve overview details, portrait/text fallback, seven army slots,
+  equipped/backpack paging, cross-page source selection, existing pair actions and
+  native pending/result handling. Snapshot/revision changes cancel old input and
+  clear selections; changing Hero/context resets local navigation. Resize now also
+  cancels Hero gestures/selections, matching the extracted deck lifecycle boundary.
+- Acceptance: exercise army/artifact selection and pairs, locked/unpublished slots,
+  same-Hero refresh/page clamp, Hero/context changes, pending masks, malformed data,
+  cancellation, pointer identity/count, stale session and duplicate release. Compile
+  the actual renderer/shell and activity/JNI-facing Java boundary. Use the single
+  [structured candidate checklist](CI/thor-validation-plan.json) for complete device
+  regression; the accepted Tavern/Meeting plan is retained in
+  [the Slice 58 archive](docs/AYN_THOR_SLICE_58_VALIDATION_PLAN.json).
+- Upstream-update cost: Android-only ownership extraction; no engine, server, save,
+  JNI or window API adaptation. The component must follow future Hero snapshot and
+  shared navigation contracts. CI/package and exact-candidate hardware acceptance
+  remain required; no new device pass is inferred from earlier candidates.
+
+### Slice 59 completeness checkpoint and independent review
+
+- The complete overview/Army/Artifacts journey is extracted, including source
+  selection/deselection, cross-page artifact targets, bounded paging, enabled and
+  pending masks, snapshot/context cancellation, shared navigation precedence and
+  current-session validation. The normal native request/completion and parent-window
+  routes are unchanged. The five-part structured hardware checklist is ready.
+- Separate critical full-diff review checked the moved renderer, state transitions,
+  action pairs, footer routing, lifecycle and activity replay. All 13 rendering and
+  hit-geometry methods match the previous implementation after state-owner
+  substitution. The original accessibility wording is preserved. Closed the resize
+  cancellation gap and removed an unused component helper; no known source gap
+  remains. This is an ownership improvement, not a net source-size reduction.
+- Validation: 165 Thor JVM tests pass, including nine new full state-journey cases;
+  all Thor renderer/shell sources compile against Android 35. The real activity,
+  NativeMethods and SDL Java boundary compile with unrelated service/resource stubs.
+  Upstream source policy, current checklist schema and all four policy/checklist
+  tests pass; the policy fixture required permission for temporary Git creation
+  after the sandbox denied it. Whitespace checks pass.
+- Full Gradle/ARM64 packaging and native runtime remain the permanent Thor CI gate;
+  local source checks do not establish package or physical behavior. Exact-candidate
+  checksum verification and the complete real-Thor checklist remain pending.
+
+### Slice 59 publication and permanent candidate handoff
+
+- Published exact reviewed implementation `2ccb3f0d942e3a8e0be735df6819433f3feaf612`
+  to `origin/codex/hero-management-deck` and opened
+  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59), targeting product.
+- After fetching origin, verifying the published SHA, clean intended tree and
+  ancestry, normally fast-forwarded `ci/thor-candidate-validation` from accepted
+  `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a` to that exact implementation SHA.
+  No reset or force push was needed. Existing submodules were left untouched.
+- Triggered [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174),
+  observed `in_progress` for the exact SHA on the permanent candidate push.
+  Status: `awaiting CI`; no ARM64/package/checksum or physical pass is claimed.
+- Next gate: successful preflight and ARM64 packaging, verify receipt/package/APK
+  checksum, then complete the five-part packaged Hero/navigation, army, artifact,
+  lifecycle and neighboring-deck checklist on a real Thor. Retain pending hardware
+  status until user acceptance of that exact candidate. PR review and explicit
+  merge authorization remain required. This receipt changes backlog Markdown only
+  and does not advance the exact candidate/build tree.
+
+### Slice 59 CI and hardware acceptance — 2026-10-27
+
+- The user reported “All passed” for the current candidate and its five-part
+  [structured checklist](CI/thor-validation-plan.json). Record user-reported
+  physical acceptance for exact SHA `2ccb3f0d942e3a8e0be735df6819433f3feaf612`.
+  No failure or skipped device check was reported.
+- [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174)
+  reports `success` for that exact SHA: preflight job `122416037618` and ARM64 job
+  `122422070455` both passed. ARM64 logs confirm package `is.xyz.vcmi.thor`,
+  version `1.8.0`/1800 and APK SHA-256
+  `8c369fb14cc8cfca0b03bde211035c6ba190749088a38d1058eb8ba44bb64bde`.
+- Artifact `thor-candidate-arm64-40568494174`, ID `12765745763`, has GitHub-reported
+  ZIP digest `9d57db9c9539b63ccc107d7fa68ec79e8481ea7eea168f004a8a5f90bc464f46`.
+  Job results, artifact metadata and ARM64 logs were inspected. Archive/APK bytes
+  were not independently downloaded/rehashed in this handoff; no companion export
+  or installed-byte checksum receipt was supplied. Physical acceptance is the
+  user's report, not inferred from CI or logs.
+- Only backlog Markdown differed between the current PR branch and accepted
+  implementation before this receipt. This update changes backlog/playbook
+  Markdown only, preserving the accepted product/build tree and permanent
+  candidate ref. Earlier pending-CI/device statements describe historical status.
+  No merge, promotion or branch cleanup is authorized or claimed by “All passed”.
+
+### Slice 59 promotion preparation — 2026-10-27
+
+- The user explicitly requested Markdown updates, commit and merge. Verified PR #59
+  is open and mergeable, targets `ayn-thor-dual-screen`, and has expected head
+  `4370fcac6e4f51eabef2a80fc61399a1fbc5e798` before this documentation update.
+- Compared the current branch with hardware-accepted candidate
+  `2ccb3f0d942e3a8e0be735df6819433f3feaf612`: only backlog/playbook Markdown differs.
+  The permanent candidate remains at the accepted SHA. Its preflight and ARM64
+  results are successful; the receipt-head PR preflight was still in progress,
+  not a newly established pass. No code/build change or additional APK is needed.
+- Earlier statements withholding merge authorization describe their historical
+  state. The current explicit request authorizes normal PR promotion; its actual
+  merge SHA and resulting-tree verification will be recorded after success.

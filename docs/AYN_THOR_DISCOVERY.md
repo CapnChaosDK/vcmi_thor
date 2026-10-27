@@ -316,3 +316,18 @@ validation status and exact-candidate checklist are maintained in the
   controls, local tabs/text pages and canceled stale input. The activity restores
   only current-revision state after presentation recreation. Native Guild/popups
   withdraw this deck and return through ordinary window activation.
+
+## Hero management presentation ownership (Slice 59)
+
+- `ThorHeroManagementDeck` owns Hero overview/Army/Artifacts rendering, geometry,
+  accessibility composition and touch translation. `ThorHeroManagementState` owns
+  the current snapshot, local tabs/pages/selections, bounded pair selection and
+  pointer/revision/session cancellation. Native actions and authority are unchanged.
+- Presentation forwards context/mask, payload, clear, resize, detach and visibility
+  events; the activity retains current-payload replay across recreation. Shared
+  Previous/Next/Close navigation, text/asset drawing and installed-asset cache stay
+  in the shell. Resize now cancels Hero gestures and source selections explicitly.
+- Same-Hero revisions retain tab/page until the current payload clamps them; Hero
+  changes reset both. Context/payload changes invalidate old releases. See the
+  [Slice 59 contract](../AYN_THOR_BACKLOG.md#slice-59--complete-hero-management-presentation-extraction)
+  for current validation status and the single candidate checklist.
