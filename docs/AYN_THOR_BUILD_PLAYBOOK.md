@@ -12,8 +12,8 @@ This is the concise hand-off for creating and validating future AYN Thor Android
   Slice 59 complete Hero management presentation extraction. Both CI jobs passed;
   the user confirmed all five packaged checks passed on 2026-10-27. CI-reported
   APK SHA-256: `8c369fb14cc8cfca0b03bde211035c6ba190749088a38d1058eb8ba44bb64bde`.
-  PR #59 remains open pending explicit merge authorization; see the backlog receipt
-  for artifact evidence and its limits. Slices 57/58 remain the promoted product.
+  The user authorized promotion through PR #59 on 2026-10-27; see the backlog
+  receipt for its actual merge state, artifact evidence and verification limits.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
