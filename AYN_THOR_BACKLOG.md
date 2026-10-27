@@ -59,6 +59,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 59 — complete Hero management presentation extraction: source-complete
+  and locally validated on `codex/hero-management-deck`; publication and exact
+  candidate CI handoff are the next gate. Hardware acceptance remains pending.
+  See the Slice 59 contract and structured checklist below.
+
 - Slices 57/58 — Hero Meeting presentation extraction and complete lower-screen
   Tavern: `hardware validated` by the user's 2026-10-27 “Both has all passed” report.
   Exact combined candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a` passed both jobs
@@ -289,11 +294,10 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff (2026-10-27): the user confirmed both the Hero Meeting extraction
-and Tavern passed; both PRs are promoted. Both are hardware validated on combined
-candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`; see Current state and the
-promotion receipt. No next feature is selected. Select the next complete second-screen
-gap against the resulting code; do not restart these completed journeys.
+Current handoff (2026-10-27): Slices 57/58 are promoted and hardware validated.
+The user selected the complete Hero management deck extraction (Slice 59).
+Its implementation and focused validation are complete; follow the
+Slice 59 contract below. Do not restart the completed Meeting or Tavern journeys.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2558,3 +2562,53 @@ Promotion and cleanup receipt (2026-10-22):
   No new APK/device cycle is required for these receipt-only Markdown changes.
 - Both requested slices are complete and promoted. No further feature is selected;
   future work begins from freshly fetched product and the second-screen-only scope.
+
+## Slice 59 — Complete Hero management presentation extraction
+
+- Status: `awaiting CI`. Source-complete user-selected cleanup based on promoted
+  product `23655b066`; preserve the complete Hero overview/Army/Artifacts journey.
+- Boundary: `ThorHeroManagementDeck` owns rendering, hit geometry, accessibility
+  composition and MotionEvent translation. `ThorHeroManagementState` owns the
+  snapshot, same-Hero tab/page retention, source selection, pointer/revision-bound
+  gesture completion, mask checks and bounded pair selection. Presentation forwards
+  context/payload and lifecycle events; shared window navigation and installed-asset
+  drawing/cache stay in the shell. No new protocol/action IDs or native changes.
+- Behavior: preserve overview details, portrait/text fallback, seven army slots,
+  equipped/backpack paging, cross-page source selection, existing pair actions and
+  native pending/result handling. Snapshot/revision changes cancel old input and
+  clear selections; changing Hero/context resets local navigation. Resize now also
+  cancels Hero gestures/selections, matching the extracted deck lifecycle boundary.
+- Acceptance: exercise army/artifact selection and pairs, locked/unpublished slots,
+  same-Hero refresh/page clamp, Hero/context changes, pending masks, malformed data,
+  cancellation, pointer identity/count, stale session and duplicate release. Compile
+  the actual renderer/shell and activity/JNI-facing Java boundary. Use the single
+  [structured candidate checklist](CI/thor-validation-plan.json) for complete device
+  regression; the accepted Tavern/Meeting plan is retained in
+  [the Slice 58 archive](docs/AYN_THOR_SLICE_58_VALIDATION_PLAN.json).
+- Upstream-update cost: Android-only ownership extraction; no engine, server, save,
+  JNI or window API adaptation. The component must follow future Hero snapshot and
+  shared navigation contracts. CI/package and exact-candidate hardware acceptance
+  remain required; no new device pass is inferred from earlier candidates.
+
+### Slice 59 completeness checkpoint and independent review
+
+- The complete overview/Army/Artifacts journey is extracted, including source
+  selection/deselection, cross-page artifact targets, bounded paging, enabled and
+  pending masks, snapshot/context cancellation, shared navigation precedence and
+  current-session validation. The normal native request/completion and parent-window
+  routes are unchanged. The five-part structured hardware checklist is ready.
+- Separate critical full-diff review checked the moved renderer, state transitions,
+  action pairs, footer routing, lifecycle and activity replay. All 13 rendering and
+  hit-geometry methods match the previous implementation after state-owner
+  substitution. The original accessibility wording is preserved. Closed the resize
+  cancellation gap and removed an unused component helper; no known source gap
+  remains. This is an ownership improvement, not a net source-size reduction.
+- Validation: 165 Thor JVM tests pass, including nine new full state-journey cases;
+  all Thor renderer/shell sources compile against Android 35. The real activity,
+  NativeMethods and SDL Java boundary compile with unrelated service/resource stubs.
+  Upstream source policy, current checklist schema and all four policy/checklist
+  tests pass; the policy fixture required permission for temporary Git creation
+  after the sandbox denied it. Whitespace checks pass.
+- Full Gradle/ARM64 packaging and native runtime remain the permanent Thor CI gate;
+  local source checks do not establish package or physical behavior. Exact-candidate
+  checksum verification and the complete real-Thor checklist remain pending.
