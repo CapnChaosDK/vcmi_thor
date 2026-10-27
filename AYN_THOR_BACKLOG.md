@@ -60,9 +60,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 ## Current state
 
 - Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `awaiting CI`
-  on `codex/blacksmith-mage-guild`. Both complete services share one reviewed
-  candidate and [structured checklist](CI/thor-validation-plan.json). Existing
-  native confirmations remain on the upper screen. No CI/device pass is claimed.
+  in [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60). Exact candidate
+  `852e817c9d617f101f91f800cd2519d54cce6992` is running in
+  [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327).
+  Both complete services share the [structured checklist](CI/thor-validation-plan.json).
+  Existing native confirmations remain on the upper screen. No CI/device pass is claimed.
 
 - Slice 59 — complete Hero management presentation extraction: `hardware validated`
   by the user's 2026-10-27 “All passed” confirmation for exact candidate
@@ -2769,3 +2771,24 @@ Promotion and cleanup receipt (2026-10-22):
   remain the permanent Thor CI and real-device gates. The six-part structured plan
   is ready for the exact checksum-verified candidate. No unobserved CI or device pass
   is implied by this checkpoint. No merge/promotion is authorized by implementation.
+
+### Slices 60/61 publication and permanent candidate handoff
+
+- Published reviewed implementation `852e817c9d617f101f91f800cd2519d54cce6992`
+  to `origin/codex/blacksmith-mage-guild` and opened
+  [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60), targeting product.
+- Fetched origin and verified clean intended tree, exact published head and candidate
+  ancestry. Normally fast-forwarded the permanent `ci/thor-candidate-validation`
+  from accepted `2ccb3f0d942e3a8e0be735df6819433f3feaf612` to that exact implementation
+  SHA. No reset/force push, product merge or submodule change was performed.
+- [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327)
+  is observed `in_progress` for the exact candidate on its trusted push. Status:
+  `awaiting CI`; no preflight/runtime, full ARM64, package/checksum or device pass
+  is claimed. This handoff receipt is Markdown only and leaves the candidate at
+  the reviewed implementation SHA.
+- Next gate: after successful preflight and ARM64, verify artifact digest, receipt,
+  package and APK SHA-256, then perform all six packaged checklist items on a real
+  AYN Thor. Record unavailable/failing cases and retain `awaiting hardware validation`
+  until user acceptance of that exact checksum-verified candidate. If CI fails,
+  diagnose the first real failure, remediate and rebuild an exact reviewed candidate.
+  Explicit merge/promotion authorization remains required.
