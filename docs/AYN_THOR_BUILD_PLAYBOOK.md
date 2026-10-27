@@ -10,7 +10,8 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Current hardware-accepted candidate: `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`,
   [Thor CI 40399531364](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40399531364),
   combining Slice 57 Hero Meeting presentation extraction and Slice 58 Tavern.
-  The user confirmed both changes passed on 2026-10-27 and authorized promotion.
+  The user confirmed both changes passed on 2026-10-27; PRs #57/#58 are promoted
+  as product merge `822fe242ea9a4079cf9e5dfaa1af39f5bebaae77`.
   The five-part packaged checklist covers Tavern and Meeting in one device cycle.
   Exact artifact/APK evidence, independent verification limits and promotion state
   live in backlog Current state and the acceptance/promotion receipts.

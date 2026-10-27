@@ -66,7 +66,10 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   CI-reported APK SHA-256:
   `c1bb653812a9aff6c0d8fa3c0f70071e8c12f29b9e5926919d98c0c6526f8113`.
   The user confirmed both changes and authorized documentation, commits, merges
-  and merged-branch cleanup. Artifact/log metadata is verified; no companion export
+  and merged-branch cleanup. [PR #57](https://github.com/CapnChaosDK/vcmi_thor/pull/57)
+  and [PR #58](https://github.com/CapnChaosDK/vcmi_thor/pull/58) are merged, with
+  product merge `822fe242ea9a4079cf9e5dfaa1af39f5bebaae77` preserving the tested
+  product/build tree. Artifact/log metadata is verified; no companion export
   or independently computed installed-byte receipt was supplied. Exact acceptance
   and promotion evidence is recorded below; earlier pending statements are historical.
 
@@ -287,7 +290,7 @@ Focused Thor hardware checklist after build/install/explicit launch:
 ## Roadmap
 
 Current handoff (2026-10-27): the user confirmed both the Hero Meeting extraction
-and Tavern passed, and authorized promotion. Both are hardware validated on combined
+and Tavern passed; both PRs are promoted. Both are hardware validated on combined
 candidate `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`; see Current state and the
 promotion receipt. No next feature is selected. Select the next complete second-screen
 gap against the resulting code; do not restart these completed journeys.
@@ -2534,3 +2537,24 @@ Promotion and cleanup receipt (2026-10-22):
   Markdown only and preserves the tested product/build tree. Earlier pending-CI,
   pending-device and no-merge-authorized statements describe their historical state;
   the user's current request authorizes normal promotion of both PRs.
+
+### Slices 57/58 promotion and branch cleanup — 2026-10-27
+
+- At the user's explicit merge request, merged PR #57 normally as
+  `4ab87374395d596fe842638b997c50c28d1b4b57`, retargeted the stacked PR #58 to
+  `ayn-thor-dual-screen`, verified its clean merge state and exact expected head,
+  then merged PR #58 normally as `822fe242ea9a4079cf9e5dfaa1af39f5bebaae77`.
+  Acceptance/handover commit `6e4654bccbbf2025a92cde5f3d63e51e7f796842` is included.
+- Compared the product merge with hardware-accepted candidate
+  `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a`: only `AYN_THOR_BACKLOG.md` and
+  `docs/AYN_THOR_BUILD_PLAYBOOK.md` differ. The tested code, build, workflow,
+  resources, tests and current structured checklist are preserved exactly.
+- Deleted the fully merged `codex/hero-meeting-deck`, `codex/tavern-deck` and
+  leftover `codex/thor-resource-trading` branches locally and from origin after
+  verifying their tips were ancestors of product. No unmerged branch was deleted.
+- Local product is synchronized with origin. The permanent candidate branch is
+  retained locally/remotely at the exact accepted SHA; its local ref was advanced
+  by fast-forward only. Existing `dependencies` submodule changes were preserved.
+  No new APK/device cycle is required for these receipt-only Markdown changes.
+- Both requested slices are complete and promoted. No further feature is selected;
+  future work begins from freshly fetched product and the second-screen-only scope.
