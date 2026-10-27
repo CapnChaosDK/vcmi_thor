@@ -59,10 +59,12 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 59 — complete Hero management presentation extraction: source-complete
-  and locally validated on `codex/hero-management-deck`; publication and exact
-  candidate CI handoff are the next gate. Hardware acceptance remains pending.
-  See the Slice 59 contract and structured checklist below.
+- Slice 59 — complete Hero management presentation extraction: `awaiting CI`.
+  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59) publishes reviewed
+  implementation `2ccb3f0d942e3a8e0be735df6819433f3feaf612`; the permanent candidate
+  branch has that exact SHA. [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174)
+  was observed in progress. Hardware acceptance remains pending; see the Slice 59
+  contract and structured checklist below.
 
 - Slices 57/58 — Hero Meeting presentation extraction and complete lower-screen
   Tavern: `hardware validated` by the user's 2026-10-27 “Both has all passed” report.
@@ -2612,3 +2614,22 @@ Promotion and cleanup receipt (2026-10-22):
 - Full Gradle/ARM64 packaging and native runtime remain the permanent Thor CI gate;
   local source checks do not establish package or physical behavior. Exact-candidate
   checksum verification and the complete real-Thor checklist remain pending.
+
+### Slice 59 publication and permanent candidate handoff
+
+- Published exact reviewed implementation `2ccb3f0d942e3a8e0be735df6819433f3feaf612`
+  to `origin/codex/hero-management-deck` and opened
+  [PR #59](https://github.com/CapnChaosDK/vcmi_thor/pull/59), targeting product.
+- After fetching origin, verifying the published SHA, clean intended tree and
+  ancestry, normally fast-forwarded `ci/thor-candidate-validation` from accepted
+  `1fa2e9bcb459f6cd4635e19ae370b9c34896d57a` to that exact implementation SHA.
+  No reset or force push was needed. Existing submodules were left untouched.
+- Triggered [Thor CI 40568494174](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40568494174),
+  observed `in_progress` for the exact SHA on the permanent candidate push.
+  Status: `awaiting CI`; no ARM64/package/checksum or physical pass is claimed.
+- Next gate: successful preflight and ARM64 packaging, verify receipt/package/APK
+  checksum, then complete the five-part packaged Hero/navigation, army, artifact,
+  lifecycle and neighboring-deck checklist on a real Thor. Retain pending hardware
+  status until user acceptance of that exact candidate. PR review and explicit
+  merge authorization remain required. This receipt changes backlog Markdown only
+  and does not advance the exact candidate/build tree.
