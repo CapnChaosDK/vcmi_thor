@@ -302,3 +302,17 @@ validation status and exact-candidate checklist are maintained in the
 - Presentation forwards revision/context, payload, detach, visibility and resize
   invalidation. Context transitions preserve the existing payload/action ordering
   and mode-retention policy. No JNI, command, native owner or gameplay rule changes.
+
+## Tavern companion (Slice 58)
+
+- `CTavernWindow` owns the live offers, selected hero, invitation and native buy/close
+  callbacks. `ThorTavernSupport.cpp` adds guarded publication and MainGUI execution,
+  re-resolving source/offered identities and eligible invitation membership. It keeps
+  upstream recruitment's immediate close and normal server rejection path.
+- `ThorTavern` transports at most two offered and 256 inviteable stable HeroTypeIDs
+  with native availability and bounded text. Extended V1 commands 19–23 are isolated
+  from Battle, player setup, resource trading and legacy action masks.
+- `ThorTavernState/Controls/Deck` own immutable parsing, disjoint four-row/footer
+  controls, local tabs/text pages and canceled stale input. The activity restores
+  only current-revision state after presentation recreation. Native Guild/popups
+  withdraw this deck and return through ordinary window activation.

@@ -19,15 +19,19 @@ enum Command : int
 	PLAYER_SELECT = 6, FACTION_PREVIOUS = 7, FACTION_NEXT = 8,
 	HERO_PREVIOUS = 9, HERO_NEXT = 10, BONUS_PREVIOUS = 11, BONUS_NEXT = 12,
 	MARKET_SELL = 13, MARKET_BUY = 14, MARKET_AMOUNT = 15,
-	MARKET_TRADE = 16, MARKET_CLOSE = 17, MARKET_RESET = 18
+	MARKET_TRADE = 16, MARKET_CLOSE = 17, MARKET_RESET = 18,
+	TAVERN_SELECT = 19, TAVERN_RECRUIT = 20, TAVERN_INVITE = 21,
+	TAVERN_GUILD = 22, TAVERN_CLOSE = 23
 };
 
-inline bool known(int command) { return command >= AUTO_START && command <= MARKET_RESET; }
+inline bool known(int command) { return command >= AUTO_START && command <= TAVERN_CLOSE; }
 inline bool marketCommand(int command) { return command >= MARKET_SELL && command <= MARKET_RESET; }
+inline bool tavernCommand(int command) { return command >= TAVERN_SELECT && command <= TAVERN_CLOSE; }
 
 inline bool playerCommand(int command) { return command >= PLAYER_SELECT && command <= BONUS_NEXT; }
 inline bool validTarget(int command, int target)
 {
+	if(command == TAVERN_SELECT || command == TAVERN_INVITE) return target >= 0;
 	if(command == MARKET_SELL || command == MARKET_BUY || command == MARKET_AMOUNT)
 		return target >= 0;
 	return known(command) && (playerCommand(command) ? target >= 0 && target < 8 : target == -1);
@@ -54,7 +58,7 @@ struct DLL_LINKAGE State
 			if(list.size() > MAX_AVAILABLE)
 				return false;
 			for(std::size_t i = 0; i < list.size(); ++i)
-				if(!known(list[i]) || playerCommand(list[i]) || marketCommand(list[i]) || std::find(list.begin(), list.begin() + i, list[i]) != list.begin() + i)
+				if(!known(list[i]) || playerCommand(list[i]) || marketCommand(list[i]) || tavernCommand(list[i]) || std::find(list.begin(), list.begin() + i, list[i]) != list.begin() + i)
 					return false;
 			return true;
 		};

@@ -967,6 +967,10 @@ CTavernWindow::CTavernWindow(const CGObjectInstance * TavernObj, const std::func
 		videoPlayer = std::make_shared<VideoWidget>(Point(70, 56), VideoPath::builtin("TAVERN.BIK"), false);
 
 	addInvite();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorTavernId = TavernObj->id;
+	thorTavernInterface = GAME->interface();
+#endif
 }
 
 std::function<std::shared_ptr<IImage>(size_t)> CObjectListWindow::makeLazyHeroPortraitLoader(std::vector<int32_t> iconIndices)
@@ -1060,6 +1064,9 @@ void CTavernWindow::addInvite()
 		inviteHeroImage = std::make_shared<CAnimImage>(AnimationPath::builtin("PortraitsSmall"), imageIndex, 0, 245, 428);
 		inviteHeroImageArea = std::make_shared<LRClickableArea>(Rect(245, 428, 48, 32), [this, isRandomHero](){
 			chooseHeroToInvite(isRandomHero ? nullptr : heroToInvite, inviteableHeroes, [this](CGHeroInstance* h){
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+				thorInvitationChosen = true;
+#endif
 				heroToInvite = h; addInvite();
 			});
 		}, [this, isRandomHero](){

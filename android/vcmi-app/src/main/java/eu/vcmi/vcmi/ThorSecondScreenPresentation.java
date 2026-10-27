@@ -103,6 +103,17 @@ final class ThorSecondScreenPresentation extends Presentation
         }
     }
 
+    void updateTavern(final ThorTavernState tavern)
+    {
+        if (foundationView != null && ThorContextIds.TAVERN.equals(foundationView.contextId)
+                && (tavern == ThorTavernState.EMPTY || tavern.revision == foundationView.revision))
+        {
+            foundationView.tavernDeck.update(tavern);
+            foundationView.invalidate();
+            foundationView.setContentDescription(foundationView.commandDeckDescription());
+        }
+    }
+
     void updateCommands(final ThorExtendedCommands commands)
     {
         if (foundationView != null)
@@ -250,6 +261,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private final String[] detailLines = new String[ThorContextDetails.COUNT];
         private final ThorLobbyPlayerSetup playerSetup = new ThorLobbyPlayerSetup();
         private final ThorMarketDeck marketDeck = new ThorMarketDeck();
+        private final ThorTavernDeck tavernDeck = new ThorTavernDeck();
         private final ThorHeroMeetingDeck heroMeeting;
         private final ThorBattleDeck battleDeck = new ThorBattleDeck();
         private long enabledActionMask;
@@ -334,6 +346,7 @@ final class ThorSecondScreenPresentation extends Presentation
             super.onSizeChanged(width, height, oldWidth, oldHeight);
             battleDeck.cancel();
             marketDeck.cancel();
+            tavernDeck.cancel();
             heroMeeting.cancel();
             playerSetup.cancel();
             mapGesture.cancel();
@@ -344,6 +357,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             battleDeck.reset();
             marketDeck.reset();
+            tavernDeck.reset();
             playerSetup.withdraw(false);
             cancelHeroManagementTouch();
             heroManagement = ThorHeroManagement.EMPTY;
@@ -377,6 +391,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 battleDeck.reset();
+                if (contextId.equals(this.contextId)) tavernDeck.withdraw();
+                else tavernDeck.reset();
                 if (contextId.equals(this.contextId)) marketDeck.withdraw();
                 else marketDeck.reset();
                 playerSetup.withdraw(!ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId));
@@ -855,6 +871,10 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 marketDeck.draw(canvas, paint, getContext(), title, layout, density);
             }
+            else if (ThorContextIds.TAVERN.equals(contextId))
+            {
+                tavernDeck.draw(canvas, paint, getContext(), title, layout, density);
+            }
             else if (recruitmentContext)
             {
                 drawRecruitmentDashboard(canvas, frame, bevel, density);
@@ -975,6 +995,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     && hapticsToggleGesture.begin(hapticsToggleBounds().contains(event.getX(), event.getY())))
             {
                 marketDeck.cancel();
+                tavernDeck.cancel();
                 mapGesture.cancel();
                 inspectedCluster = -1;
                 return true;
@@ -997,6 +1018,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     hapticsToggleGesture.cancel();
                 else if (action == MotionEvent.ACTION_POINTER_DOWN)
                     hapticsToggleGesture.pointerAdded();
+                return true;
+            }
+            if (ThorContextIds.TAVERN.equals(contextId))
+            {
+                if (tavernDeck.touch(event, revision, presentationSessionId, presentationLayout(),
+                        sessionValidity != null && sessionValidity.isCurrent(presentationSessionId))) performClick();
+                invalidate();
+                setContentDescription(commandDeckDescription());
                 return true;
             }
             if (ThorContextIds.RESOURCE_MARKET.equals(contextId))
@@ -1174,6 +1203,7 @@ final class ThorSecondScreenPresentation extends Presentation
         protected void onDetachedFromWindow()
         {
             marketDeck.cancel();
+            tavernDeck.cancel();
             cancelHeroManagementTouch();
             cancelLobbyScenarioTouch();
             buildConfirmationGesture.cancel();
@@ -1193,6 +1223,7 @@ final class ThorSecondScreenPresentation extends Presentation
             if (visibility != View.VISIBLE)
             {
                 marketDeck.cancel();
+                tavernDeck.cancel();
                 heroMeeting.cancel();
                 cancelHeroManagementTouch();
                 cancelLobbyScenarioTouch();
@@ -3698,6 +3729,9 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private String commandDeckDescription()
         {
+            if (ThorContextIds.TAVERN.equals(contextId))
+                return title + ". " + tavernDeck.description(getContext());
+
             if (ThorContextIds.RESOURCE_MARKET.equals(contextId))
                 return title + ". " + marketDeck.description(getContext());
             if (ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId) && playerSetup.showingPlayers())

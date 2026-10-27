@@ -1,34 +1,40 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-hero-meeting-deck",
-  "title": "Hero Meeting presentation extraction",
-  "summary": "Move the complete lower Hero Meeting army/artifact renderer, gesture state, split editor and accessibility into one component. Preserve native/JNI/actions and shared visual cache; cancel gestures on resize.",
-  "preparation": "Verify the exact candidate receipt, is.xyz.vcmi.thor package and APK checksum. Install preserving data. Use a disposable game with two owned heroes, several creature stacks and movable/locked artifacts.",
-  "limitations": "Presentation refactor only. Gameplay rules, upstream base and the retained no-custom-redistribution policy remain unchanged.",
+  "feature_id": "thor-tavern-deck",
+  "title": "Complete lower-screen Tavern with Hero Meeting extraction",
+  "summary": "Browse/select native Tavern offers, inspect bounded native descriptions and rumor, choose invitations, recruit through the existing server callback, open native Thieves Guild and close normally. Includes the reviewed Hero Meeting ownership extraction.",
+  "preparation": "Verify the exact candidate receipt, package is.xyz.vcmi.thor and APK checksum, then install preserving data. Use disposable saves with an owned Town Tavern and room for another hero; prepare gold/hero-cap/visitor cases, invitations enabled and two owned heroes with armies/artifacts. An Adventure Tavern is useful if available.",
+  "limitations": "Native recruitment rules, server requests and immediate-close/rejection handling are unchanged. Thieves Guild and native child/popup contents retain their upper controls; this slice adds their Tavern entry and correct lower-deck withdrawal/restoration. Transport supports at most two offered and 256 inviteable heroes, four rows per local page; malformed/oversized states fail closed. No gameplay, save, AI or primary-input changes.",
   "checks": [
     {
-      "id": "meeting-army",
-      "title": "Army transfer and exact split",
-      "steps": "Meet two owned heroes. Use stack tap, drag/drop, long-press split, amount adjustments, Cancel and Confirm, plus all available whole-army controls. Compare counts and required-last-stack behavior with the upper window.",
-      "expected": "All existing actions retain their behavior, count accuracy and native restrictions. One accepted action per gesture; no speculative game-state update."
+      "id": "tavern-heroes",
+      "title": "Complete hero recruitment",
+      "steps": "Open an owned Town Tavern from lower Services; select each offered hero from the lower deck, compare upper selection, cost, gold and native offer Details. Page Details and Rumor where long. Recruit one hero and reopen. If an Adventure Tavern is available, repeat its ordinary visit.",
+      "expected": "Selection and descriptions match the native window. One recruitment uses the ordinary server callback and immediate close; gold/hero roster and exact parent update normally. No duplicate request or speculative success haptic."
     },
     {
-      "id": "meeting-artifacts",
-      "title": "Artifacts and installed visuals",
-      "steps": "Switch modes, page all four artifact pages, tap/drag transfers and swaps, exercise whole-inventory controls and locked/full slots. Compare portraits, creature/artifact images and generic fallback with the upper window.",
-      "expected": "Current permitted slots only; page/selection highlights and visuals remain accurate. Invalid destinations stay inert; no unintended army action."
+      "id": "tavern-invitations",
+      "title": "Invitations and native child round trips",
+      "steps": "With the upstream invitation setting enabled, browse the lower invitation pages, choose a named invitation, compare the upper portrait, then recruit an offered hero. Reopen to verify the native replacement behavior. Also choose an invitation on the upper screen. Open Thieves\u2019 Guild from the lower deck, inspect/dismiss it using its normal upper controls, then return to Tavern. Repeat with invitations disabled or absent.",
+      "expected": "Only native-eligible names are shown; invitation choice is passed with recruitment and upper/lower choices stay synchronized. The initial random choice remains hidden as in the native UI. Guild and other native children withdraw the Tavern deck; closing restores current Tavern state. Absent invitations remain empty and inert."
     },
     {
-      "id": "meeting-invalidation",
-      "title": "Stale input and lifecycle",
-      "steps": "Hold a stack before long-press, switch context or change state on the upper display, then release. Repeat with artifact drag/split editor, extra pointers, background/resume, panel toggle/reconnect and display resize where available.",
-      "expected": "Old gestures and delayed callbacks cannot submit actions. Current snapshots restore once with no stale highlights, hit regions, duplicate presentation or focus loss."
+      "id": "tavern-restrictions",
+      "title": "Availability and stale/rapid input",
+      "steps": "Exercise insufficient gold, hero limits, an occupied Town visitor slot and no offers where practical. Change upper selection while pressing lower Recruit; rapidly repeat Recruit or invitation taps, drag/hold/cross controls and add a pointer. If feasible exercise a native server rejection.",
+      "expected": "Native eligibility and explicit unavailable reasons govern Recruit. Row indexes cannot invoke footer actions. Stale or duplicate input never recruits the wrong hero or submits twice. Recruitment keeps upstream close/rejection behavior and never leaves a pending lower window."
     },
     {
-      "id": "meeting-regressions",
-      "title": "Parents and independent input",
-      "steps": "Close Meeting normally and return through Hero, Town, Adventure, resource trading and Battle decks. Use upper touch/controller throughout, repeat with the lower display unavailable and check system-respecting accepted-action haptics.",
-      "expected": "Native parent activation and all neighboring decks retain behavior; upper input and single-display play remain independent."
+      "id": "tavern-lifecycle",
+      "title": "Display, context and input recovery",
+      "steps": "While selecting, paging or holding a control, toggle/reconnect the lower display, background/resume and open/dismiss native hero or invitation popups. Close Tavern from below. Recheck Town, Adventure, resource trading, Battle and upper touch/controller; repeat normal play without the lower display.",
+      "expected": "One current deck restores with canceled old gestures and no stale hit regions. Navigation/close callbacks and native parent activation remain intact. Upper input and single-display behavior are unchanged."
+    },
+    {
+      "id": "meeting-extraction",
+      "title": "Hero Meeting extraction regression",
+      "steps": "Meet two owned heroes. Check army tap/drag/whole-army controls, long-press exact split and cancel/confirm; artifact tap/drag/whole-inventory, paging and installed visuals/fallback. Hold a gesture across state/context change, resize if available, panel reconnect and background/resume.",
+      "expected": "The complete prior Meeting behavior is preserved; old gestures/delayed callbacks cannot act after invalidation. No stale selection, duplicate action, focus loss or neighboring deck regression."
     }
   ]
 }

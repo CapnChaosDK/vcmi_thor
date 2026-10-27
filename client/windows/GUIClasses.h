@@ -266,6 +266,17 @@ public:
 
 class CTavernWindow : public CStatusbarWindow
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	ObjectInstanceID thorTavernId;
+	CPlayerInterface * thorTavernInterface = nullptr;
+	bool thorInvitationChosen = false;
+public:
+	void activate() override;
+	void deactivate() override;
+	void refreshThorTavern(bool invalidate = false);
+	bool executeThorTavern(const ThorActionRequest & request);
+private:
+#endif
 	std::function<void()> onWindowClosed;
 
 public:
