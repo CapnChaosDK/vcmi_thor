@@ -44,18 +44,18 @@ public class ThorTownServicesTest
     }
 
     @Test
-    public void townBrowserPayloadIsBoundedToExactFiveServiceTargets()
+    public void townBrowserPayloadIsBoundedToExactSixServiceTargets()
     {
         final ThorBrowserState state = ThorBrowserState.copyOf(ThorContextIds.TOWN_WINDOW, 0, 1,
-                new int[]{0, 1, 2, 3, 4}, new String[]{"", "", "", "", ""},
-                new int[]{1, 0, 1, 1, 0});
-        assertEquals(5, state.rowCount());
+                new int[]{0, 1, 2, 3, 4, 5}, new String[]{"", "", "", "", "", ""},
+                new int[]{1, 0, 1, 1, 0, 1});
+        assertEquals(6, state.rowCount());
         assertTrue(state.enabled(0));
         assertFalse(state.enabled(1));
         assertEquals(0, ThorBrowserState.copyOf(ThorContextIds.TOWN_WINDOW, 0, 1,
                 new int[]{0, 1}, new String[]{"", ""}, new int[]{1, 1}).rowCount());
         assertEquals(0, ThorBrowserState.copyOf(ThorContextIds.TOWN_WINDOW, 0, 1,
-                new int[]{0, 1, 2, 4, 3}, new String[]{"", "", "", "", ""},
-                new int[]{1, 1, 1, 1, 1}).rowCount());
+                new int[]{0, 1, 2, 4, 3, 5}, new String[]{"", "", "", "", "", ""},
+                new int[]{1, 1, 1, 1, 1, 1}).rowCount());
     }
 }

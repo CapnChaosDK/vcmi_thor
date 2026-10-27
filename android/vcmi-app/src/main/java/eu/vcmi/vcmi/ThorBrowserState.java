@@ -40,7 +40,7 @@ final class ThorBrowserState
         final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
         final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
-        final int maxRows = campaign ? CAMPAIGN_MAX_ROWS : (load || town ? SAVE_ROWS : MAX_ROWS);
+        final int maxRows = campaign ? CAMPAIGN_MAX_ROWS : town ? ThorTownServices.SERVICE_COUNT : (load ? SAVE_ROWS : MAX_ROWS);
         final int maxPages = hall ? (MAX_ROWS + TOWN_HALL_PAGE_SIZE - 1) / TOWN_HALL_PAGE_SIZE : 2000;
         if ((!campaign && !load && !town && !hall) || page < 0 || pageCount < 0
                 || pageCount > maxPages

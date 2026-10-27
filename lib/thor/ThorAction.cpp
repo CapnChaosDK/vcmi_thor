@@ -694,6 +694,13 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			return ThorActionValidation::INVALID_TARGET;
 		if(request.revision != context.revision)
 			return ThorActionValidation::STALE_REVISION;
+		if(ThorExtended::serviceCommand(request.commandId))
+		{
+			if((context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD) || !context.nativeOwnerToken)
+				return ThorActionValidation::WRONG_CONTEXT;
+			return context.servicePanel && context.servicePanel->allows(request.commandId, request.targetId)
+				? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
+		}
 		if(ThorExtended::tavernCommand(request.commandId))
 		{
 			if(context.contextId != ThorContextIds::TAVERN || !context.nativeOwnerToken)

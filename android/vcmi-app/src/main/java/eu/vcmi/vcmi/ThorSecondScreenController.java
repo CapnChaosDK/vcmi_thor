@@ -33,6 +33,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorLobbyPlayers lobbyPlayers = ThorLobbyPlayers.EMPTY;
     private ThorMarketState market = ThorMarketState.EMPTY;
     private ThorTavernState tavern = ThorTavernState.EMPTY;
+    private ThorTownServiceState servicePanel = ThorTownServiceState.EMPTY;
     private ThorExtendedCommands commands = ThorExtendedCommands.EMPTY;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
     private ThorTownRoster towns = ThorTownRoster.EMPTY;
@@ -184,6 +185,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         lobbyPlayers = ThorLobbyPlayers.EMPTY;
         market = ThorMarketState.EMPTY;
         tavern = ThorTavernState.EMPTY;
+        servicePanel = ThorTownServiceState.EMPTY;
         commands = ThorExtendedCommands.EMPTY;
         enabledActionMask = 0;
         activeActionMask = 0;
@@ -205,6 +207,14 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         if (revision != contextRevision || !ThorContextIds.RESOURCE_MARKET.equals(contextId)) return;
         market = state;
         if (presentation != null) presentation.updateMarket(state);
+    }
+
+    void publishServicePanel(final long revision, final ThorTownServiceState state)
+    {
+        if (revision != contextRevision || !(ThorContextIds.BLACKSMITH.equals(contextId)
+                || ThorContextIds.MAGE_GUILD.equals(contextId)) || state != ThorTownServiceState.EMPTY && !state.context().equals(contextId)) return;
+        servicePanel = state;
+        if (presentation != null) presentation.updateServicePanel(state);
     }
 
     void publishTavern(final long revision, final ThorTavernState state)
@@ -461,6 +471,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.updateCommands(commands);
             newPresentation.updateMarket(market);
             newPresentation.updateTavern(tavern);
+            newPresentation.updateServicePanel(servicePanel);
             newPresentation.updateLobbyPlayers(lobbyPlayers);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);

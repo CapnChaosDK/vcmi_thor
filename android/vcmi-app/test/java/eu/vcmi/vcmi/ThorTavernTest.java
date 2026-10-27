@@ -71,7 +71,7 @@ public class ThorTavernTest
             assertFalse(current.allows(ThorExtendedCommands.TAVERN_RECRUIT, -1));
             assertTrue(current.allows(ThorExtendedCommands.TAVERN_CLOSE, -1));
         }
-        assertNull(ThorExtendedCommands.encode(1, ThorExtendedCommands.TAVERN_CLOSE + 1, -1));
+        assertNull(ThorExtendedCommands.encode(1, ThorExtendedCommands.SERVICE_CLOSE + 1, -1));
         assertSame(ThorExtendedCommands.EMPTY, ThorExtendedCommands.copyOf(1, new int[]{19}, new int[0]));
         assertArrayEquals(new int[]{1,19,12}, ThorExtendedCommands.encode(1,19,12));
     }

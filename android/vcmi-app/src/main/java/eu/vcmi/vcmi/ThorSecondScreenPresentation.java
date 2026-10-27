@@ -103,6 +103,19 @@ final class ThorSecondScreenPresentation extends Presentation
         }
     }
 
+    void updateServicePanel(final ThorTownServiceState state)
+    {
+        if (foundationView != null && (ThorContextIds.BLACKSMITH.equals(foundationView.contextId)
+                || ThorContextIds.MAGE_GUILD.equals(foundationView.contextId))
+                && (state == ThorTownServiceState.EMPTY || state.revision == foundationView.revision
+                && state.context().equals(foundationView.contextId)))
+        {
+            foundationView.serviceDeck.update(state);
+            foundationView.invalidate();
+            foundationView.setContentDescription(foundationView.commandDeckDescription());
+        }
+    }
+
     void updateTavern(final ThorTavernState tavern)
     {
         if (foundationView != null && ThorContextIds.TAVERN.equals(foundationView.contextId)
@@ -262,6 +275,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorLobbyPlayerSetup playerSetup = new ThorLobbyPlayerSetup();
         private final ThorMarketDeck marketDeck = new ThorMarketDeck();
         private final ThorTavernDeck tavernDeck = new ThorTavernDeck();
+        private final ThorTownServiceDeck serviceDeck = new ThorTownServiceDeck();
         private final ThorHeroMeetingDeck heroMeeting;
         private final ThorHeroManagementDeck heroManagement;
         private final ThorBattleDeck battleDeck = new ThorBattleDeck();
@@ -346,6 +360,7 @@ final class ThorSecondScreenPresentation extends Presentation
             battleDeck.cancel();
             marketDeck.cancel();
             tavernDeck.cancel();
+            serviceDeck.cancel();
             heroMeeting.cancel();
             heroManagement.cancel();
             playerSetup.cancel();
@@ -358,6 +373,7 @@ final class ThorSecondScreenPresentation extends Presentation
             battleDeck.reset();
             marketDeck.reset();
             tavernDeck.reset();
+            serviceDeck.reset();
             playerSetup.withdraw(false);
             heroManagement.clear();
             townManagement = ThorTownManagement.EMPTY;
@@ -390,6 +406,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 battleDeck.reset();
+                if (contextId.equals(this.contextId)) serviceDeck.withdraw();
+                else serviceDeck.reset();
                 if (contextId.equals(this.contextId)) tavernDeck.withdraw();
                 else tavernDeck.reset();
                 if (contextId.equals(this.contextId)) marketDeck.withdraw();
@@ -829,7 +847,11 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawLine(frame.left + bevel * 2f, dividerY, frame.right - bevel * 2f, dividerY, paint);
 
-            if (ThorContextIds.RESOURCE_MARKET.equals(contextId))
+            if (ThorContextIds.BLACKSMITH.equals(contextId) || ThorContextIds.MAGE_GUILD.equals(contextId))
+            {
+                serviceDeck.draw(canvas, paint, getContext(), layout, density);
+            }
+            else if (ThorContextIds.RESOURCE_MARKET.equals(contextId))
             {
                 marketDeck.draw(canvas, paint, getContext(), title, layout, density);
             }
@@ -959,6 +981,7 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 marketDeck.cancel();
                 tavernDeck.cancel();
+                serviceDeck.cancel();
                 mapGesture.cancel();
                 inspectedCluster = -1;
                 return true;
@@ -981,6 +1004,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     hapticsToggleGesture.cancel();
                 else if (action == MotionEvent.ACTION_POINTER_DOWN)
                     hapticsToggleGesture.pointerAdded();
+                return true;
+            }
+            if (ThorContextIds.BLACKSMITH.equals(contextId) || ThorContextIds.MAGE_GUILD.equals(contextId))
+            {
+                if (serviceDeck.touch(event, revision, presentationSessionId, presentationLayout(),
+                        sessionValidity != null && sessionValidity.isCurrent(presentationSessionId))) performClick();
+                invalidate();
+                setContentDescription(commandDeckDescription());
                 return true;
             }
             if (ThorContextIds.TAVERN.equals(contextId))
@@ -1172,6 +1203,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             marketDeck.cancel();
             tavernDeck.cancel();
+            serviceDeck.cancel();
             heroManagement.cancel();
             cancelLobbyScenarioTouch();
             buildConfirmationGesture.cancel();
@@ -1192,6 +1224,7 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 marketDeck.cancel();
                 tavernDeck.cancel();
+                serviceDeck.cancel();
                 heroMeeting.cancel();
                 heroManagement.cancel();
                 cancelLobbyScenarioTouch();
@@ -2063,7 +2096,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final int[] labels = {R.string.thor_town_service_hall, R.string.thor_town_service_recruit,
                     R.string.thor_town_service_tavern, R.string.thor_town_service_mage_guild,
-                    R.string.thor_town_service_marketplace};
+                    R.string.thor_town_service_marketplace, R.string.thor_service_blacksmith};
             for (int service = 0; service < ThorTownServices.SERVICE_COUNT; ++service)
             {
                 final float[] box = ThorTownServices.bounds(service, frame.width(), frame.height());
@@ -3283,6 +3316,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private String commandDeckDescription()
         {
+            if (ThorContextIds.BLACKSMITH.equals(contextId) || ThorContextIds.MAGE_GUILD.equals(contextId))
+                return serviceDeck.description(getContext());
             if (ThorContextIds.TAVERN.equals(contextId))
                 return title + ". " + tavernDeck.description(getContext());
 

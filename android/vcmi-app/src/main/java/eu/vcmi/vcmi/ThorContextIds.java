@@ -2,6 +2,8 @@ package eu.vcmi.vcmi;
 
 final class ThorContextIds
 {
+    static final String BLACKSMITH = "BLACKSMITH";
+    static final String MAGE_GUILD = "MAGE_GUILD";
     static final String TAVERN = "TAVERN";
     static final String RESOURCE_MARKET = "RESOURCE_MARKET";
     static final String UNKNOWN = "UNKNOWN";

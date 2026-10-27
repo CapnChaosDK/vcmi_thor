@@ -20,6 +20,7 @@ namespace
 			&& lhs.extendedCommands == rhs.extendedCommands
 			&& lhs.market == rhs.market
 			&& lhs.tavern == rhs.tavern
+			&& lhs.servicePanel == rhs.servicePanel
 			&& lhs.lobbyPlayers == rhs.lobbyPlayers
 			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.campaignSelectionRevision == rhs.campaignSelectionRevision
@@ -59,6 +60,9 @@ namespace
 
 	void boundTextFields(ThorContextRecord & context)
 	{
+		if(!context.servicePanel || !context.servicePanel->valid()
+			|| context.contextId != (context.servicePanel->kind == 1 ? ThorContextIds::BLACKSMITH : ThorContextIds::MAGE_GUILD))
+			context.servicePanel.reset();
 		if(context.contextId != ThorContextIds::TAVERN || !context.tavern || !context.tavern->valid())
 			context.tavern.reset();
 		if(context.contextId != ThorContextIds::RESOURCE_MARKET || !context.market || !context.market->valid())
@@ -88,7 +92,8 @@ namespace
 			if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS
 				&& context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO
 				&& context.contextId != ThorContextIds::RESOURCE_MARKET
-				&& context.contextId != ThorContextIds::TAVERN)
+				&& context.contextId != ThorContextIds::TAVERN
+				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD)
 			{
 				context.nativeOwnerToken = nullptr;
 				context.nativeParentToken = nullptr;
