@@ -59,12 +59,16 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `awaiting CI`
-  in [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60). Exact candidate
-  `852e817c9d617f101f91f800cd2519d54cce6992` is running in
-  [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327).
-  Both complete services share the [structured checklist](CI/thor-validation-plan.json).
-  Existing native confirmations remain on the upper screen. No CI/device pass is claimed.
+- Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `hardware validated`
+  by the user's 2026-10-30 confirmation for exact candidate
+  `852e817c9d617f101f91f800cd2519d54cce6992` and its six-part
+  [structured checklist](CI/thor-validation-plan.json).
+  [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327)
+  passed preflight and ARM64. CI-reported APK SHA-256:
+  `cee1082ff37b8c6f1d98183a8700c0aa7f76c1b28957a384ac73f21cf2f91934`.
+  [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60) is authorized for
+  promotion. Existing native confirmations remain on the upper screen.
+  Artifact/log metadata is verified; physical acceptance is user-reported.
 
 - Slice 59 — complete Hero management presentation extraction: `hardware validated`
   by the user's 2026-10-27 “All passed” confirmation for exact candidate
@@ -2703,7 +2707,9 @@ Promotion and cleanup receipt (2026-10-22):
 
 ## Slices 60/61 — Complete lower-screen Blacksmith and Mage Guild
 
-- Status: `awaiting CI`, based on promoted product `a3e4591d48cdea6489550bc2c01cdbcb905e09e5`.
+- Status: `hardware validated` by the user on 2026-10-30 for exact candidate
+  `852e817c9d617f101f91f800cd2519d54cce6992`, based on promoted product
+  `a3e4591d48cdea6489550bc2c01cdbcb905e09e5`.
   The user requested both services together. Share one integrated candidate/device
   cycle while retaining each complete service boundary.
 - Blacksmith journey: sixth Town Services entry uses the native Blacksmith shortcut.
@@ -2792,3 +2798,27 @@ Promotion and cleanup receipt (2026-10-22):
   until user acceptance of that exact checksum-verified candidate. If CI fails,
   diagnose the first real failure, remediate and rebuild an exact reviewed candidate.
   Explicit merge/promotion authorization remains required.
+
+### Slices 60/61 CI and hardware acceptance — 2026-10-30
+
+- The user confirmed the newest work is hardware validated and explicitly requested
+  Markdown updates, commit, merge and branch cleanup. This accepts both services
+  on integrated candidate `852e817c9d617f101f91f800cd2519d54cce6992` and the six-part
+  packaged checklist. No failed or skipped device check was reported.
+- [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327)
+  passed preflight job `122446680391` and ARM64 job `122448862099` for that SHA.
+  ARM64 logs confirm package `is.xyz.vcmi.thor`, version `1.8.0`/1800 and APK SHA-256
+  `cee1082ff37b8c6f1d98183a8700c0aa7f76c1b28957a384ac73f21cf2f91934`.
+- Artifact `thor-candidate-arm64-40577197327`, ID `12769685200`, has GitHub-reported
+  ZIP SHA-256 `1a4fcb979e1b4432caba34b5c5ae1edffd835f4c22bb4374ca91e646af38984b`.
+  Job results, artifact metadata and ARM64 logs were inspected. Archive/APK bytes
+  were not independently downloaded/rehashed in this handoff; no companion export
+  or installed-byte checksum receipt was supplied. Physical acceptance is the
+  user's report.
+- PR #60 head `dff39e277088807e287ca84086796c4f7abd03bd` differs from the tested
+  implementation only in backlog Markdown. This receipt updates backlog/playbook
+  Markdown only; code, resources, tests, workflow and structured checklist retain
+  the hardware-tested tree. The permanent candidate stays at the accepted SHA.
+- Earlier pending CI/device and withheld-authorization statements record historical
+  state. The current request authorizes normal promotion and fully merged branch
+  cleanup. No new APK or hardware cycle is required for receipt-only Markdown.
