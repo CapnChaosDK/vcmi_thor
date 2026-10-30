@@ -50,6 +50,7 @@ set(vcmiclientcommon_SRCS
 	thor/ThorVisualAssetPublisher.cpp
 	windows/ThorTavernSupport.cpp
 	windows/ThorTownServiceSupport.cpp
+	windows/ThorSpellbookSupport.cpp
 	windows/ThorRecruitmentSupport.cpp
 
 	lobby/BattleOnlyModeTab.cpp

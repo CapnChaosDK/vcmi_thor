@@ -1772,7 +1772,7 @@ TEST(ThorActionLobbyPlayers, V1SlotTargetsAndMalformedEnvelopes)
 		EXPECT_FALSE(ThorExtended::decode(std::array{1, command, 8}));
 		EXPECT_FALSE(ThorExtended::decode(std::array{2, command, 0}));
 	}
-	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::SERVICE_CLOSE) + 1, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::ADVENTURE_SPELLBOOK) + 1, -1}));
 	// Market commands decode in v1, but are never lobby player commands.
 	ThorContextRecord lobby;
 	lobby.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
@@ -2066,7 +2066,7 @@ TEST(ThorActionTavern, MalformedPayloadsAndNamespaceIsolationFailClosed)
 		EXPECT_FALSE(ThorExtended::marketCommand(command));
 		ThorExtended::State battle; battle.enabled = {command}; EXPECT_FALSE(battle.valid());
 	}
-	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::SERVICE_CLOSE) + 1, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::ADVENTURE_SPELLBOOK) + 1, -1}));
 	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_RECRUIT), 12}));
 	EXPECT_TRUE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_SELECT), 34}));
 	EXPECT_EQ(static_cast<int>(ThorExtended::TAVERN_SELECT), 19);
@@ -2162,4 +2162,113 @@ TEST(ThorActionTest, ServicePanelBoundsIdentityAndNamespaceFailClosed)
 	EXPECT_FALSE(ThorExtended::decode(std::array{1,25,-1}));
 	EXPECT_FALSE(ThorExtended::decode(std::array{1,26,0}));
 	EXPECT_FALSE(ThorExtended::decode(std::array{1,27,-1}));
+}
+
+namespace
+{
+ThorSpellbook spellbookFixture()
+{
+	ThorSpellbook book;
+	book.hero = 11; book.heroName = "Solmyr"; book.mana = 20;
+	book.schools = {0, 7}; book.schoolNames = {"Air", "Custom"};
+	book.rows = {{9, 2, 8, false, true, {0}, "View Air", "Description"},
+		{18, 3, 12, true, false, {0, 7}, "Lightning", "Battle description"}};
+	return book;
+}
+}
+
+TEST(ThorActionSpellbook, NativeBoundariesAndNamespaceIsolation)
+{
+	auto book = spellbookFixture(); ASSERT_TRUE(book.valid());
+	EXPECT_TRUE(book.allows(ThorExtended::SPELLBOOK_CAST, 9));
+	EXPECT_FALSE(book.allows(ThorExtended::SPELLBOOK_CAST, 18));
+	EXPECT_FALSE(book.allows(ThorExtended::SPELLBOOK_CAST, 900));
+	EXPECT_TRUE(book.allows(ThorExtended::SPELLBOOK_CLOSE, -1));
+	EXPECT_FALSE(book.allows(ThorExtended::SPELLBOOK_CLOSE, 9));
+	EXPECT_FALSE(book.allows(ThorExtended::GUILD_RESEARCH, 9));
+	EXPECT_TRUE(ThorExtended::decode(std::array{1, 27, 9}));
+	EXPECT_TRUE(ThorExtended::decode(std::array{1, 28, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{2, 27, 9}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, 27, -1}));
+	for(int command : {27, 28})
+	{
+		ThorExtended::State battle; battle.enabled = {command}; EXPECT_FALSE(battle.valid());
+		EXPECT_FALSE(ThorExtended::serviceCommand(command));
+		EXPECT_TRUE(ThorExtended::spellbookCommand(command));
+	}
+}
+
+TEST(ThorActionSpellbook, MalformedAndOversizedBooksFailClosed)
+{
+	auto book = spellbookFixture(); book.rows.push_back(book.rows[0]); EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.schools.push_back(0); book.schoolNames.push_back("Air"); EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.rows[0].schools = {99}; EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.rows[0].schools = {0, 0}; EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.rows[0].level = 6; EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.mana = 1; EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.battle = true; EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.rows[0].description.assign(4097, 'x'); EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.rows.resize(257); EXPECT_FALSE(book.valid());
+	book = spellbookFixture(); book.hero = -1; EXPECT_FALSE(book.valid());
+}
+
+TEST(ThorActionSpellbook, OwnerRevisionAndPublishedTargetAreMandatory)
+{
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::SPELLBOOK; context.nativeOwnerToken = &context;
+	context.revision = 91; context.spellbook = spellbookFixture();
+	ThorActionRequest request; request.revision = 91; request.commandVersion = 1;
+	request.commandId = ThorExtended::SPELLBOOK_CAST; request.targetId = 9;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::VALID);
+	request.revision = 90;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::STALE_REVISION);
+	request.revision = 91; request.targetId = 18;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::UNAVAILABLE);
+	request.targetId = 9; request.amount = 1;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::INVALID_TARGET);
+	request.amount = -1; context.contextId = ThorContextIds::MAGE_GUILD;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+	context.contextId = ThorContextIds::SPELLBOOK; context.nativeOwnerToken = nullptr;
+	EXPECT_EQ(validateThorActionRequest(request, context), ThorActionValidation::WRONG_CONTEXT);
+}
+
+TEST(ThorActionSpellbook, PublicationTracksManaEligibilityAndOwner)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::SPELLBOOK; context.nativeOwnerToken = &context;
+	context.spellbook = spellbookFixture();
+	const auto first = store.publishNext(context);
+	ASSERT_TRUE(first.spellbook); EXPECT_EQ(first.nativeOwnerToken, &context);
+	EXPECT_EQ(store.publishNext(context).revision, first.revision);
+	context.spellbook->mana = 19;
+	const auto second = store.publishNext(context); EXPECT_GT(second.revision, first.revision);
+	context.spellbook->rows[0].castable = false;
+	EXPECT_GT(store.publishNext(context).revision, second.revision);
+	context.contextId = ThorContextIds::UNKNOWN;
+	EXPECT_FALSE(store.publishNext(context).spellbook);
+}
+
+TEST(ThorActionSpellbook, AdventureEntryIsContextQualifiedAndRevisionBound)
+{
+	ThorContextStore store;
+	ThorContextRecord context; context.contextId = ThorContextIds::ADVENTURE_MAP;
+	context.extendedCommands.enabled = {ThorExtended::ADVENTURE_SPELLBOOK, ThorExtended::RETREAT};
+	context.extendedCommands.active = {ThorExtended::RETREAT};
+	const auto published = store.publishNext(context);
+	EXPECT_TRUE(published.extendedCommands.allows(ThorExtended::ADVENTURE_SPELLBOOK));
+	EXPECT_FALSE(published.extendedCommands.allows(ThorExtended::RETREAT));
+	EXPECT_TRUE(published.extendedCommands.active.empty());
+	ThorActionRequest request; request.revision = published.revision;
+	request.commandVersion = 1; request.commandId = ThorExtended::ADVENTURE_SPELLBOOK;
+	EXPECT_EQ(validateThorActionRequest(request, published), ThorActionValidation::VALID);
+	request.targetId = 1;
+	EXPECT_EQ(validateThorActionRequest(request, published), ThorActionValidation::UNKNOWN_ACTION);
+	request.targetId = -1; --request.revision;
+	EXPECT_EQ(validateThorActionRequest(request, published), ThorActionValidation::STALE_REVISION);
+	context.contextId = ThorContextIds::BATTLE;
+	const auto battle = store.publishNext(context);
+	EXPECT_FALSE(battle.extendedCommands.allows(ThorExtended::ADVENTURE_SPELLBOOK));
+	request.revision = battle.revision;
+	EXPECT_EQ(validateThorActionRequest(request, battle), ThorActionValidation::WRONG_CONTEXT);
 }

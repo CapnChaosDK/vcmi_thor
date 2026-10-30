@@ -1,46 +1,46 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-blacksmith-mage-guild",
-  "title": "Complete lower-screen Blacksmith and Mage Guild",
-  "summary": "Add the sixth Town service, Blacksmith, with a live native offer, price/gold, Buy and Close. Add visible Mage Guild spell lists, level filters, complete paged descriptions, optional native spell research and Close. Preserve native confirmations, server rules, window ownership and upper-screen input.",
-  "preparation": "Verify the exact candidate receipt, package is.xyz.vcmi.thor and APK SHA-256; install preserving data. Prepare disposable saves with a built Blacksmith, a visiting owned hero, sufficient/insufficient gold and compatible/existing war machines. Include Guilds of several levels, a hero without a spellbook, an optional spell-research-enabled game and a Tower with Aurora Borealis if available. Record unavailable scenarios explicitly.",
-  "limitations": "Replacement, spellbook-purchase and research confirmation/error dialogs keep their existing upper-screen controls. Lower Research opens the original scroll interaction; native research settings, cost and limits remain authoritative. No new gameplay, server, packet/save or primary-input behavior. Unsupported/oversized visible lists fail closed. Special Aurora Borealis scrolls show their native summary rather than an inferred list.",
+  "feature_id": "thor-spellbook",
+  "title": "Complete lower-screen Adventure and Battle spellbook",
+  "summary": "Open the native book from lower Adventure Actions or existing Battle Cast Spell. Browse known spells by category, native/custom school and level; inspect bounded complete details and mana costs; Cast through the original native selection and targeting route, or Close.",
+  "preparation": "Verify the exact candidate receipt, package is.xyz.vcmi.thor and APK SHA-256; install preserving data. Prepare disposable Adventure and Battle saves with known spells of different levels/schools, targeted and untargeted spells, enough and insufficient mana, plus special/custom-school and long/localized text cases if available. Record unavailable cases explicitly.",
+  "limitations": "Targets, multi-target selection, native confirmations and errors remain upper-screen native controls. Casting may close the book; cancel targeting and reopen using normal native behavior. Callback-based external spell selectors retain their native UI. Books over 256 rows/32 schools fail closed. Only player-known native book/search results are published; details are bounded to 4096 UTF-8 bytes. No spell, save, server or primary-input rules change.",
   "checks": [
     {
-      "id": "blacksmith-entry-offer",
-      "title": "Town service entry and live Blacksmith offer",
-      "steps": "Open Town Services with and without an available Blacksmith. With a visiting owned hero, open Blacksmith and compare machine, hero, price and gold with the upper dialog. Try missing visitor, insufficient gold and unavailable/incompatible machine cases. Close and reopen; switch Towns.",
-      "expected": "Six disjoint service controls retain the existing five services. Blacksmith entry follows native building availability. Missing visitor uses the existing native notice. The exact live offer is shown; unavailable purchases cannot be submitted. Close restores the correct Town."
+      "id": "entry-browse",
+      "title": "Adventure entry and complete browsing",
+      "steps": "Select a hero with and without a spellbook; use lower Adventure Actions Spellbook. Check disabled entry while moving, blocked or off turn. Browse Adventure/Battle, All/native/custom schools and levels 0–5, including empty results. Use every list page, inspect spells, page through long/localized details and return to the list. Change the upper native search.",
+      "expected": "Entry follows the original native shortcut and selected hero. Only known/native search results appear with the correct hero, mana, levels, costs and proficiency descriptions/damage. Every bounded result and description is reachable; filters/pages are disjoint, readable and local. Unsupported selectors retain native UI."
     },
     {
-      "id": "blacksmith-purchase",
-      "title": "Purchase, replacement and rejection",
-      "steps": "Buy once with sufficient gold, then inspect the hero and resources. Where supported, buy a replacement and cancel, then confirm, using the original upper confirmation. Rapidly repeat Buy and change gold/visitor/ownership or close the upper dialog during a held lower tap.",
-      "expected": "At most one current offer executes through the original native callback. Replacement/cancel and server rejection retain ordinary behavior; rejected or canceled actions do not spend gold or show false success. Old releases cannot purchase another offer or target another hero; no stuck pending state."
+      "id": "adventure-cast",
+      "title": "Adventure casting, errors and targeting",
+      "steps": "Cast one legal untargeted and one targeted Adventure spell from lower details. Choose a legal target on the upper map; cancel targeting in another trial and reopen the book. Test insufficient mana, inappropriate location, Town-open inspection and turn/hero changes. Close the book from below.",
+      "expected": "Cast enables only for the current native eligible spell and executes at most once through the normal native route. Mana/game state and native errors/confirmations are unchanged. Targeting uses upper controls; cancellation, reopening and Close preserve normal owner restoration. Battle spells remain inspectable but cannot cast from Adventure."
     },
     {
-      "id": "guild-browse",
-      "title": "Every visible Guild level and complete details",
-      "steps": "Enter the Mage Guild from Town Services, including the native spellbook-purchase prompt for a hero without a book. Browse All levels and levels 1 through 5, use multiple list pages, select spells and page through long/localized descriptions, then return to the list. Compare every displayed spell/description with the upper Guild. Test empty levels and Aurora Borealis if available.",
-      "expected": "Only currently visible native scrolls are listed. Level filtering and list/detail paging reach the entire bounded publication; names/text fit and remain readable. Empty levels and special summary scrolls are explicit. Spellbook purchase keeps its native prompt and result. No hidden or unbuilt-level spell is exposed."
+      "id": "battle-cast",
+      "title": "Battle spellbook and casting round trips",
+      "steps": "Open the book through existing lower Battle Cast Spell. Browse and cast targeted, untargeted and multi-target spells where available, use upper targets/confirmations, and cancel targeting. Check mana, spell-per-turn restrictions, opponent turns, spectator state and changes of active hero. Browse Adventure spells from this book.",
+      "expected": "The exact current Battle hero and turn own casting. Native eligibility and spell-per-turn restrictions apply, and lower Cast cannot target another hero or an opposite-category spell. Existing Battle targeting/cancellation, Wait/Defend and result dismissal restore the normal current deck without stale spell controls."
     },
     {
-      "id": "guild-research",
-      "title": "Native spell research and modal restoration",
-      "steps": "With research enabled, select an eligible spell and tap Research. Inspect the upper native cost/replacement dialog; cancel and accept in separate trials. Exercise insufficient resources, daily limits and exhausted alternatives if practical. Repeat with research disabled. Close Guild and reopen.",
-      "expected": "Research is disabled when native settings/ownership/turn disallow it. Enabled Research invokes the original scroll interaction and original dialogs/rules. While a child is open, lower service actions withdraw; closing it restores the live Guild. Resulting spells/resources refresh and no old spell target or duplicate request executes."
+      "id": "stale-spell-input",
+      "title": "Stale releases and pending recovery",
+      "steps": "Hold Cast/Open/Close or a filter/row while changing upper context, hero, book/search, mana or turn. Rapidly repeat releases, drag off controls, add/remove a second pointer, and cancel gestures. Cover the book with native dialogs then dismiss them.",
+      "expected": "Only one current pointer/revision/session request executes; old rows and releases cannot cast, reopen or close another window. Disabled/pending states recover after refreshed native state. Modal transitions withdraw the lower book and restore current data without residual content."
     },
     {
-      "id": "service-lifecycle",
-      "title": "Stale input and display/activity lifecycle",
-      "steps": "Hold and drag a service control, add a second pointer, change the upper context, change Town/spells/resources, resize/recreate the presentation, toggle/reconnect the lower display and background/resume. Repeat while a lower action is pending or an upper confirmation is open.",
-      "expected": "Pointer/session/revision changes cancel old releases; local pending state recovers. Only one current deck returns with current data. No stale hit region, duplicate action, residual dialog, wrong-Town request or focus loss occurs."
+      "id": "spellbook-lifecycle",
+      "title": "Display and activity lifecycle",
+      "steps": "While browsing details and while targeting or a native dialog is open, resize/recreate the lower presentation, toggle/reconnect the lower display and background/resume. Reopen with the same and a different hero.",
+      "expected": "Held inputs cancel; one current presentation returns with matching-revision immutable data. Navigation retention/clamping is correct for live same-Hero refreshes and resets for Hero/context changes. No duplicate action, stuck pending state, focus loss, stale hit region or update loop occurs."
     },
     {
-      "id": "service-regressions",
-      "title": "Existing decks and upper-input compatibility",
-      "steps": "Recheck Town overview/Army, Hall/build confirmation, recruitment, Tavern and Marketplace, Previous/Next/Close, Hero management, Hero Meeting, Adventure and Battle. Use upper touch/controller and repeat with the lower display disabled.",
-      "expected": "Existing actions, navigation, native window lifecycle and game rules are preserved. Upper input/focus and single-display fallback work normally; no crash, duplicate Presentation, old service content or update loop."
+      "id": "spellbook-regressions",
+      "title": "Neighboring decks and upper/single-display input",
+      "steps": "Recheck the nine Adventure Actions and Heroes/Towns/Map tabs, Hero management/Meeting, Town Army/services, Mage Guild, Blacksmith, Tavern, market and recruitment, Battle/tactics/results. Use upper touch/controller with lower display enabled and disabled.",
+      "expected": "Original commands, owner lifecycle, gameplay and upper input/focus remain normal. The new Adventure layout is readable and touchable, existing commands remain reachable, and single-display/native spellbook behavior is preserved without crashes."
     }
   ]
 }

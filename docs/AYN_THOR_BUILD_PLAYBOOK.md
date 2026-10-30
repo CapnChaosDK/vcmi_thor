@@ -7,15 +7,14 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Current hardware-accepted candidate: `852e817c9d617f101f91f800cd2519d54cce6992`,
-  [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327),
-  Slices 60/61 complete lower-screen Blacksmith and Mage Guild. Both CI jobs passed;
-  the user confirmed hardware validation on 2026-10-30 for the six-part packaged
-  checklist. CI-reported APK SHA-256:
-  `cee1082ff37b8c6f1d98183a8700c0aa7f76c1b28957a384ac73f21cf2f91934`.
-  Promoted through PR #60 as `2b1808ca6cd150bd201a72b6789682fe4d1fe924`; only
-  receipt Markdown differs from the tested candidate. See the backlog receipt for
-  artifact evidence, promotion/cleanup history and verification limits.
+- Current hardware-accepted candidate: `30aab13f9e442d8c65f0215e8068edd7da4f2f6c`,
+  [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885),
+  Slice 62 complete lower-screen Adventure and Battle spellbook. Both CI jobs passed;
+  the user confirmed all six packaged checks passed on 2026-10-30.
+  CI-reported APK SHA-256:
+  `3981710b82c093c9bcbe4c59b5f85fd4ac3b6f46888aef9b85aed9b2a7874fa8`.
+  PR #61 is authorized for promotion; only receipt Markdown differs from the tested
+  candidate. See the backlog receipt for artifact evidence and verification limits.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`

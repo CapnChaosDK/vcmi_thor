@@ -694,6 +694,17 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			return ThorActionValidation::INVALID_TARGET;
 		if(request.revision != context.revision)
 			return ThorActionValidation::STALE_REVISION;
+		if(request.commandId == ThorExtended::ADVENTURE_SPELLBOOK)
+		{
+			if(context.contextId != ThorContextIds::ADVENTURE_MAP) return ThorActionValidation::WRONG_CONTEXT;
+			return context.extendedCommands.allows(request.commandId) ? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
+		}
+		if(ThorExtended::spellbookCommand(request.commandId))
+		{
+			if(context.contextId != ThorContextIds::SPELLBOOK || !context.nativeOwnerToken) return ThorActionValidation::WRONG_CONTEXT;
+			return context.spellbook && context.spellbook->allows(request.commandId, request.targetId)
+				? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
+		}
 		if(ThorExtended::serviceCommand(request.commandId))
 		{
 			if((context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD) || !context.nativeOwnerToken)

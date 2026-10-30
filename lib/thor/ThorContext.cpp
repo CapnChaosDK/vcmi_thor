@@ -21,6 +21,7 @@ namespace
 			&& lhs.market == rhs.market
 			&& lhs.tavern == rhs.tavern
 			&& lhs.servicePanel == rhs.servicePanel
+			&& lhs.spellbook == rhs.spellbook
 			&& lhs.lobbyPlayers == rhs.lobbyPlayers
 			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.campaignSelectionRevision == rhs.campaignSelectionRevision
@@ -60,6 +61,8 @@ namespace
 
 	void boundTextFields(ThorContextRecord & context)
 	{
+		if(context.contextId != ThorContextIds::SPELLBOOK || !context.spellbook || !context.spellbook->valid())
+			context.spellbook.reset();
 		if(!context.servicePanel || !context.servicePanel->valid()
 			|| context.contextId != (context.servicePanel->kind == 1 ? ThorContextIds::BLACKSMITH : ThorContextIds::MAGE_GUILD))
 			context.servicePanel.reset();
@@ -67,8 +70,18 @@ namespace
 			context.tavern.reset();
 		if(context.contextId != ThorContextIds::RESOURCE_MARKET || !context.market || !context.market->valid())
 			context.market.reset();
-		if(context.contextId != ThorContextIds::BATTLE || !context.extendedCommands.valid())
+		if((context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::ADVENTURE_MAP) || !context.extendedCommands.valid())
 			context.extendedCommands = {};
+		if(context.contextId == ThorContextIds::ADVENTURE_MAP)
+		{
+			std::erase_if(context.extendedCommands.enabled, [](int command) { return command != ThorExtended::ADVENTURE_SPELLBOOK; });
+			context.extendedCommands.active.clear();
+		}
+		else
+		{
+			std::erase(context.extendedCommands.enabled, ThorExtended::ADVENTURE_SPELLBOOK);
+			std::erase(context.extendedCommands.active, ThorExtended::ADVENTURE_SPELLBOOK);
+		}
 		if(context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO
 			|| context.lobbyPlayers.size() > PlayerColor::PLAYER_LIMIT_I)
 			context.lobbyPlayers.clear();
@@ -93,7 +106,8 @@ namespace
 				&& context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO
 				&& context.contextId != ThorContextIds::RESOURCE_MARKET
 				&& context.contextId != ThorContextIds::TAVERN
-				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD)
+				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD
+				&& context.contextId != ThorContextIds::SPELLBOOK)
 			{
 				context.nativeOwnerToken = nullptr;
 				context.nativeParentToken = nullptr;
