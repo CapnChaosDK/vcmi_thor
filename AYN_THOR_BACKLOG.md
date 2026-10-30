@@ -59,8 +59,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 62 — complete lower-screen spellbook companion: `in progress` on
-  `codex/spellbook-companion`. Adventure entry, bounded native book publication,
+- Slice 62 — complete lower-screen spellbook companion: `awaiting CI` in
+  [PR #61](https://github.com/CapnChaosDK/vcmi_thor/pull/61). Exact candidate
+  `30aab13f9e442d8c65f0215e8068edd7da4f2f6c` is running in
+  [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885).
+  Adventure entry, bounded native book publication,
   Adventure/Battle, school and level browsing, details, native Cast and Close are
   integrated. Existing upper targeting/confirmation owners remain authoritative.
   See the Slice 62 contract and [current checklist](CI/thor-validation-plan.json).
@@ -2851,7 +2854,7 @@ Promotion and cleanup receipt (2026-10-22):
 
 ## Slice 62 — Complete lower-screen spellbook companion
 
-- Status: `in progress`, based on promoted product
+- Status: `awaiting CI`, based on promoted product
   `ddd7a9421c7d4559212006dea94382fc5fbc84e8`. The user selected the recommended
   spellbook feature and authorized implementation and candidate delivery.
 - Journey: add Spellbook to Adventure Actions through the existing native Adventure
@@ -2929,3 +2932,23 @@ Promotion and cleanup receipt (2026-10-22):
   gate. Hardware behavior and installed-byte checksum remain unobserved until the
   exact candidate is accepted on a real Thor. No feature promotion is authorized
   by implementation, tests or PR publication alone.
+
+### Slice 62 publication and permanent candidate handoff
+
+- Published reviewed implementation `30aab13f9e442d8c65f0215e8068edd7da4f2f6c`
+  to `origin/codex/spellbook-companion` and opened
+  [PR #61](https://github.com/CapnChaosDK/vcmi_thor/pull/61), targeting product.
+- Fetched origin and verified the exact published head, clean intended tree and
+  ancestry. Normally fast-forwarded permanent `ci/thor-candidate-validation` from
+  accepted `852e817c9d617f101f91f800cd2519d54cce6992` to the exact implementation
+  SHA. No reset, force push, product merge or submodule change was performed.
+- [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885)
+  is observed `in_progress` on the trusted permanent-candidate push. Status:
+  `awaiting CI`; full runtime/Gradle/ARM64, package/checksum and physical success
+  are not yet established. This receipt changes backlog Markdown only and leaves
+  the exact candidate/build tree unchanged.
+- Next gate: successful preflight and ARM64 packaging, verify artifact digest,
+  package and APK checksum, then perform all six packaged checklist items on the
+  real Thor. Keep hardware acceptance pending until the user confirms that exact
+  candidate. Any failed CI gate requires diagnosis, correction and a new reviewed
+  exact candidate. PR review and explicit merge authorization remain required.
