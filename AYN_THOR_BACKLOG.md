@@ -59,15 +59,16 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 62 — complete lower-screen spellbook companion: `awaiting CI` in
-  [PR #61](https://github.com/CapnChaosDK/vcmi_thor/pull/61). Exact candidate
-  `30aab13f9e442d8c65f0215e8068edd7da4f2f6c` is running in
-  [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885).
-  Adventure entry, bounded native book publication,
-  Adventure/Battle, school and level browsing, details, native Cast and Close are
-  integrated. Existing upper targeting/confirmation owners remain authoritative.
-  See the Slice 62 contract and [current checklist](CI/thor-validation-plan.json).
-  CI/package and exact-candidate physical acceptance are not yet established.
+- Slice 62 — complete lower-screen spellbook companion: `hardware validated`
+  by the user's 2026-10-30 “All passed” confirmation for exact candidate
+  `30aab13f9e442d8c65f0215e8068edd7da4f2f6c` and its six-part
+  [structured checklist](CI/thor-validation-plan.json).
+  [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885)
+  passed preflight and ARM64. CI-reported APK SHA-256:
+  `3981710b82c093c9bcbe4c59b5f85fd4ac3b6f46888aef9b85aed9b2a7874fa8`.
+  [PR #61](https://github.com/CapnChaosDK/vcmi_thor/pull/61) is authorized for
+  promotion. Native targeting and confirmations remain upper-screen workflows.
+  Artifact/log metadata is verified; physical acceptance is user-reported.
 
 - Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `hardware validated`
   by the user's 2026-10-30 confirmation for exact candidate
@@ -322,9 +323,9 @@ Focused Thor hardware checklist after build/install/explicit launch:
 ## Roadmap
 
 Current handoff (2026-10-30): Slices 60/61 Blacksmith and Mage Guild are hardware
-validated and promoted through PR #60. Slice 62 is the user-selected complete
-lower-screen spellbook companion for Adventure and Battle, including its Adventure
-entry and native casting/targeting handoff. Do not restart completed journeys.
+validated and promoted through PR #60. Slice 62 complete lower-screen spellbook
+companion for Adventure and Battle is also hardware validated; its promotion
+receipt below records the merge state. Do not restart completed journeys.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2854,7 +2855,8 @@ Promotion and cleanup receipt (2026-10-22):
 
 ## Slice 62 — Complete lower-screen spellbook companion
 
-- Status: `awaiting CI`, based on promoted product
+- Status: `hardware validated` by the user on 2026-10-30 for exact candidate
+  `30aab13f9e442d8c65f0215e8068edd7da4f2f6c`, based on promoted product
   `ddd7a9421c7d4559212006dea94382fc5fbc84e8`. The user selected the recommended
   spellbook feature and authorized implementation and candidate delivery.
 - Journey: add Spellbook to Adventure Actions through the existing native Adventure
@@ -2952,3 +2954,29 @@ Promotion and cleanup receipt (2026-10-22):
   real Thor. Keep hardware acceptance pending until the user confirms that exact
   candidate. Any failed CI gate requires diagnosis, correction and a new reviewed
   exact candidate. PR review and explicit merge authorization remain required.
+
+### Slice 62 CI and hardware acceptance — 2026-10-30
+
+- The user reported “All passed” for the current candidate and explicitly requested
+  Markdown updates, commit and merge. Record physical acceptance on exact candidate
+  `30aab13f9e442d8c65f0215e8068edd7da4f2f6c` and its six-part packaged checklist.
+  No failed or skipped hardware check was reported.
+- [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885)
+  passed preflight job `124138430099` and ARM64 job `124140085426` for that SHA,
+  including native regressions, full Android compilation and focused JVM tests.
+  ARM64 logs confirm package `is.xyz.vcmi.thor`, version `1.8.0`/1800 and APK SHA-256
+  `3981710b82c093c9bcbe4c59b5f85fd4ac3b6f46888aef9b85aed9b2a7874fa8`.
+- Artifact `thor-candidate-arm64-41077769885`, ID `12988702193`, has GitHub-reported
+  ZIP SHA-256 `b42ba6611382d6f5b3892d291c8946af4777cc45095bbb4af5082bb7a7c22014`.
+  Job results, artifact metadata and ARM64 logs were inspected. Archive/APK bytes
+  were not independently downloaded/rehashed in this handoff; no companion export
+  or installed-byte checksum receipt was supplied. Physical acceptance is the
+  user's report.
+- PR #61 head `25c62ab8008e09736f1acd7430ff13c86a4a2a52` differs from the tested
+  implementation only in backlog Markdown. This acceptance updates backlog/playbook
+  Markdown only; code, resources, tests, workflow and structured checklist retain
+  the exact accepted tree. The permanent candidate remains at the tested SHA.
+- Earlier pending-CI/device and withheld-authorization statements record historical
+  state. The current explicit request authorizes normal promotion. PR review has
+  no submitted blocking review or unresolved inline thread. No new APK or hardware
+  cycle is required for these receipt-only Markdown changes.
