@@ -106,7 +106,8 @@ namespace
 			{static_cast<int>(ThorTownService::RECRUIT), "", owned && hasCreaturesToRecruit(town), false, false},
 			{static_cast<int>(ThorTownService::TAVERN), "", owned && town->hasBuilt(BuildingID::TAVERN), false, false},
 			{static_cast<int>(ThorTownService::MAGE_GUILD), "", owned && town->hasBuilt(BuildingID::MAGES_GUILD_1), false, false},
-			{static_cast<int>(ThorTownService::MARKETPLACE), "", owned && town->hasBuilt(BuildingID::MARKETPLACE), false, false}
+			{static_cast<int>(ThorTownService::MARKETPLACE), "", owned && town->hasBuilt(BuildingID::MARKETPLACE), false, false},
+			{static_cast<int>(ThorTownService::BLACKSMITH), "", owned && town->getWarMachineInBuilding(BuildingID::BLACKSMITH).hasValue(), false, false}
 		};
 	}
 
@@ -1854,6 +1855,9 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 		case ThorTownService::MAGE_GUILD:
 			keyPressed(EShortcut::TOWN_OPEN_MAGE_GUILD);
 			break;
+		case ThorTownService::BLACKSMITH:
+			keyPressed(EShortcut::TOWN_OPEN_BLACKSMITH);
+			break;
 		case ThorTownService::MARKETPLACE:
 			keyPressed(EShortcut::TOWN_OPEN_MARKET);
 			break;
@@ -2836,6 +2840,9 @@ CMageGuildScreen::CMageGuildScreen(CCastleInterface * owner, const ImagePath & i
 	exit = std::make_shared<CButton>(Point(748, 556), AnimationPath::builtin("TPMAGE1.DEF"), CButton::tooltip(LIBRARY->generaltexth->allTexts[593]), [&](){ close(); }, EShortcut::GLOBAL_RETURN);
 
 	updateSpells(townId);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorGuildInterface = GAME->interface();
+#endif
 }
 
 void CMageGuildScreen::updateSpells(ObjectInstanceID tID)
@@ -2980,6 +2987,14 @@ CBlacksmithDialog::CBlacksmithDialog(bool possible, ArtifactID aid, ArtifactID e
 	CWindowObject(PLAYER_COLORED, ImagePath::builtin("TPSMITH"))
 {
 	OBJECT_CONSTRUCTION;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorBlacksmithHero = hid;
+	thorBlacksmithArtifact = aid;
+	thorBlacksmithExisting = existingArtifact;
+	thorBlacksmithInterface = GAME->interface();
+	if(const auto hero = GAME->interface()->cb->getHero(hid); hero && hero->getVisitedTown())
+		thorBlacksmithTown = hero->getVisitedTown()->id;
+#endif
 
 	Rect barRect(8, pos.h - 26, pos.w - 16, 19);
 

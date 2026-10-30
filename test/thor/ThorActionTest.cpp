@@ -682,7 +682,8 @@ TEST(ThorActionTest, TownServiceUsesOneContextQualifiedActionAndPublishedTargets
 	EXPECT_EQ(thorTownServiceFromTarget(0), ThorTownService::HALL);
 	EXPECT_EQ(thorTownServiceFromTarget(4), ThorTownService::MARKETPLACE);
 	EXPECT_FALSE(thorTownServiceFromTarget(-1));
-	EXPECT_FALSE(thorTownServiceFromTarget(5));
+	EXPECT_EQ(thorTownServiceFromTarget(5), ThorTownService::BLACKSMITH);
+	EXPECT_FALSE(thorTownServiceFromTarget(6));
 	EXPECT_FALSE(isThorActionHapticEligible(ThorAction::TOWN_OPEN_SERVICE));
 }
 
@@ -1771,7 +1772,7 @@ TEST(ThorActionLobbyPlayers, V1SlotTargetsAndMalformedEnvelopes)
 		EXPECT_FALSE(ThorExtended::decode(std::array{1, command, 8}));
 		EXPECT_FALSE(ThorExtended::decode(std::array{2, command, 0}));
 	}
-	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_CLOSE) + 1, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::SERVICE_CLOSE) + 1, -1}));
 	// Market commands decode in v1, but are never lobby player commands.
 	ThorContextRecord lobby;
 	lobby.contextId = ThorContextIds::LOBBY_NEW_GAME_SCENARIO;
@@ -2065,7 +2066,7 @@ TEST(ThorActionTavern, MalformedPayloadsAndNamespaceIsolationFailClosed)
 		EXPECT_FALSE(ThorExtended::marketCommand(command));
 		ThorExtended::State battle; battle.enabled = {command}; EXPECT_FALSE(battle.valid());
 	}
-	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_CLOSE) + 1, -1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::SERVICE_CLOSE) + 1, -1}));
 	EXPECT_FALSE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_RECRUIT), 12}));
 	EXPECT_TRUE(ThorExtended::decode(std::array{1, static_cast<int>(ThorExtended::TAVERN_SELECT), 34}));
 	EXPECT_EQ(static_cast<int>(ThorExtended::TAVERN_SELECT), 19);
@@ -2085,4 +2086,80 @@ TEST(ThorActionTavern, BoundedInvitationRosterAndWithdrawal)
 	ThorContextStore store;
 	ThorContextRecord context; context.contextId = ThorContextIds::TAVERN; context.tavern = value;
 	EXPECT_FALSE(store.publishNext(context).tavern);
+}
+
+TEST(ThorActionTest, ServicePanelsValidatePurchaseResearchAndStaleContext)
+{
+	ThorContextStore store;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BLACKSMITH;
+	context.nativeOwnerToken = &store;
+	ThorTownServicePanel panel;
+	panel.kind = 1; panel.owner = 42; panel.cost = 100; panel.gold = 200;
+	panel.rows = {{4, 0, true, "Ballista", "Current offer"}};
+	context.servicePanel = panel;
+	const auto current = store.publishNext(context);
+	ASSERT_TRUE(current.servicePanel);
+	EXPECT_EQ(current.nativeOwnerToken, &store);
+	EXPECT_EQ(store.publishNext(context).revision, current.revision);
+	ThorActionRequest request;
+	request.revision = current.revision;
+	request.commandVersion = 1; request.commandId = ThorExtended::BLACKSMITH_BUY; request.targetId = 4;
+	EXPECT_EQ(validateThorActionRequest(request,current),ThorActionValidation::VALID);
+	request.targetId = 5;
+	EXPECT_EQ(validateThorActionRequest(request,current),ThorActionValidation::UNAVAILABLE);
+	request.targetId = 4; request.commandId = ThorExtended::GUILD_RESEARCH;
+	EXPECT_EQ(validateThorActionRequest(request,current),ThorActionValidation::UNAVAILABLE);
+	request.commandId = ThorExtended::BLACKSMITH_BUY;
+	context.servicePanel->rows[0].actionable = false;
+	const auto disabled = store.publishNext(context);
+	EXPECT_GT(disabled.revision,current.revision);
+	EXPECT_EQ(validateThorActionRequest(request,disabled),ThorActionValidation::STALE_REVISION);
+	request.revision = disabled.revision;
+	EXPECT_EQ(validateThorActionRequest(request,disabled),ThorActionValidation::UNAVAILABLE);
+	request.commandId = ThorExtended::SERVICE_CLOSE; request.targetId = -1;
+	EXPECT_EQ(validateThorActionRequest(request,disabled),ThorActionValidation::VALID);
+	context.contextId = ThorContextIds::MAGE_GUILD;
+	context.servicePanel->kind = 2; context.servicePanel->rows = {{10,1,true,"Spell","Description"}};
+	const auto guild = store.publishNext(context);
+	request.revision = guild.revision; request.commandId = ThorExtended::GUILD_RESEARCH; request.targetId = 10;
+	EXPECT_EQ(validateThorActionRequest(request,guild),ThorActionValidation::VALID);
+	request.sourceSlot = 0;
+	EXPECT_EQ(validateThorActionRequest(request,guild),ThorActionValidation::INVALID_TARGET);
+	request.sourceSlot = -1;
+	context.contextId = ThorContextIds::TOWN_WINDOW;
+	const auto parent = store.publishNext(context);
+	EXPECT_FALSE(parent.servicePanel);
+	request.revision = parent.revision;
+	EXPECT_EQ(validateThorActionRequest(request,parent),ThorActionValidation::WRONG_CONTEXT);
+}
+
+TEST(ThorActionTest, ServicePanelBoundsIdentityAndNamespaceFailClosed)
+{
+	ThorTownServicePanel panel;
+	panel.kind = 2; panel.owner = 42;
+	EXPECT_TRUE(panel.valid()); // Empty/summary Guild still has Close.
+	EXPECT_TRUE(panel.allows(ThorExtended::SERVICE_CLOSE,-1));
+	panel.rows = {{10,1,true,"Spell","Details"},{10,2,false,"Duplicate",""}};
+	EXPECT_FALSE(panel.valid());
+	panel.rows.resize(1); panel.rows[0].description.resize(4097,'x');
+	EXPECT_FALSE(panel.valid());
+	panel.rows[0].description.clear(); panel.rows[0].level = 0;
+	EXPECT_FALSE(panel.valid());
+	panel.rows.resize(ThorTownServicePanel::MAX_ROWS+1);
+	EXPECT_FALSE(panel.valid());
+	panel.kind = 1; panel.rows = {{4,0,true,"Machine",""}}; panel.cost = 100; panel.gold = 99;
+	EXPECT_FALSE(panel.valid());
+	panel.rows[0].actionable = false;
+	EXPECT_TRUE(panel.valid()); EXPECT_TRUE(panel.allows(ThorExtended::SERVICE_CLOSE,-1));
+	for(int command = ThorExtended::BLACKSMITH_BUY; command <= ThorExtended::SERVICE_CLOSE; ++command)
+	{
+		EXPECT_TRUE(ThorExtended::known(command));
+		EXPECT_FALSE(ThorExtended::tavernCommand(command));
+		ThorExtended::State battle; battle.enabled = {command}; EXPECT_FALSE(battle.valid());
+	}
+	EXPECT_FALSE(ThorExtended::decode(std::array{1,24,-1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1,25,-1}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1,26,0}));
+	EXPECT_FALSE(ThorExtended::decode(std::array{1,27,-1}));
 }

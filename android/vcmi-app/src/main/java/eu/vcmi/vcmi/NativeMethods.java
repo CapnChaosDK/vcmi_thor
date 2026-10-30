@@ -103,6 +103,16 @@ public class NativeMethods
                     ((VcmiSDLActivity) ctx).publishThorTavern(revision, state));
     }
 
+    public static void publishThorServicePanel(final long revision, final int[] data, final String[] names)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final ThorTownServiceState state = ThorTownServiceState.copyOf(revision, data, names);
+        final Context ctx = context();
+        if (ctx instanceof VcmiSDLActivity)
+            ((VcmiSDLActivity) ctx).runOnUiThread(() ->
+                    ((VcmiSDLActivity) ctx).publishThorServicePanel(revision, state));
+    }
+
     public static void publishThorLobbyPlayers(final long revision, final int[] data, final String[] labels)
     {
         if (!BuildConfig.AYN_THOR_BUILD) return;

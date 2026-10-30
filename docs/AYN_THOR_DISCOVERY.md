@@ -331,3 +331,19 @@ validation status and exact-candidate checklist are maintained in the
   changes reset both. Context/payload changes invalidate old releases. See the
   [Slice 59 contract](../AYN_THOR_BACKLOG.md#slice-59--complete-hero-management-presentation-extraction)
   for current validation status and the single candidate checklist.
+
+## Blacksmith and Mage Guild companions (Slices 60/61)
+
+- `ThorTownServiceSupport.cpp` adapts the exact active `CBlacksmithDialog` and
+  `CMageGuildScreen` on MainGUI. Native publication re-resolves Town/hero identities,
+  checks offer/current-scroll membership and owner/turn, and uses the original Buy
+  button or research scroll callback. The normal upper replacement, spellbook and
+  research dialogs retain their original behavior and lifecycle.
+- `ThorTownServicePanel` is a bounded plain-data value, with unique artifact/spell
+  row IDs and availability. Extended commands 24–26 remain outside legacy masks.
+  The existing Town service launcher gains Blacksmith target 5 and six-row bounds.
+- `ThorTownServiceState/Journey/Deck` own immutable parsing, local level/list/detail
+  paging, disjoint controls and pointer/revision/session cancellation. The activity
+  restores only the current snapshot. Context/child transitions withdraw controls;
+  native activation restores the current service. No gameplay or server rule moves
+  to Android. See the backlog contract and current structured validation plan.

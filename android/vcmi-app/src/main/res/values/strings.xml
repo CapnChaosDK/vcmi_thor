@@ -319,4 +319,16 @@
     <string name="thor_tavern_unavailable">Recruitment is unavailable in the current native window</string>
     <string name="thor_tavern_invite_hint">The selected invitation is passed with your next recruitment. The native game chooses the initial random invitation.</string>
     <string name="thor_tavern_detail_hint">Select a hero, then open Details to inspect the native offer.</string>
+    <string name="thor_service_blacksmith">Blacksmith</string>
+    <string name="thor_service_buy">Buy</string>
+    <string name="thor_service_research">Research</string>
+    <string name="thor_service_spells">Spells</string>
+    <string name="thor_service_loading">Waiting for current service</string>
+    <string name="thor_service_all_levels">All levels</string>
+    <string name="thor_service_level">Level %1$d</string>
+    <string name="thor_service_spell_row">%1$d: %2$s</string>
+    <string name="thor_service_no_spells">No spells at this level</string>
+    <string name="thor_service_pending">Opening service action…</string>
+    <string name="thor_service_blacksmith_hint">Replacement confirmation appears on the upper screen.</string>
+    <string name="thor_service_guild_hint">Select a spell to read it. Research dialogs open on the upper screen.</string>
 </resources>

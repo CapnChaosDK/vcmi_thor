@@ -176,6 +176,10 @@ void GameEngine::updateFrame()
 		quickRecruitment->refreshThorNativeState();
 	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
 		dwellingRecruitment->refreshThorNativeState();
+	if(auto blacksmith = windows().topWindow<CBlacksmithDialog>())
+		blacksmith->refreshThorService();
+	if(auto guild = windows().topWindow<CMageGuildScreen>())
+		guild->refreshThorService();
 	if(auto tavern = windows().topWindow<CTavernWindow>())
 		tavern->refreshThorTavern();
 	if(auto market = windows().topWindow<CMarketWindow>())
@@ -221,6 +225,13 @@ void GameEngine::updateFrame()
 			auto lobby = windows().topWindow<CLobbyScreen>();
 			if(lobby && context.nativeOwnerToken == lobby.get())
 				executed = lobby->executeThorPlayerCommand(*request);
+		}
+		else if(request->commandVersion != 0 && ThorExtended::serviceCommand(request->commandId))
+		{
+			if(auto blacksmith = windows().topWindow<CBlacksmithDialog>(); blacksmith && context.nativeOwnerToken == blacksmith.get())
+				executed = blacksmith->executeThorService(*request);
+			else if(auto guild = windows().topWindow<CMageGuildScreen>(); guild && context.nativeOwnerToken == guild.get())
+				executed = guild->executeThorService(*request);
 		}
 		else if(request->commandVersion != 0 && ThorExtended::tavernCommand(request->commandId))
 		{
@@ -500,7 +511,7 @@ void GameEngine::updateFrame()
 		}
 		if(request->commandVersion != 0)
 		{
-			if(request->commandId != ThorExtended::MARKET_TRADE && !ThorExtended::tavernCommand(request->commandId))
+			if(request->commandId != ThorExtended::MARKET_TRADE && !ThorExtended::tavernCommand(request->commandId) && !ThorExtended::serviceCommand(request->commandId))
 				CAndroidVMHelper().acknowledgeThorCommand(request->revision, request->commandId);
 		}
 		else if(!isThorActionHapticDeferredUntilServerResult(request->action))

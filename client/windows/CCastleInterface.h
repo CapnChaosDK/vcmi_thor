@@ -16,6 +16,7 @@
 #include "../../lib/thor/ThorAction.h"
 #endif
 
+class CPlayerInterface;
 class CBuilding;
 class CGTownInstance;
 class CSpell;
@@ -433,8 +434,21 @@ public:
 /// The mage guild screen where you can see which spells you have
 class CMageGuildScreen : public CStatusbarWindow
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	CPlayerInterface * thorGuildInterface = nullptr;
+public:
+	void activate() override;
+	void deactivate() override;
+	void refreshThorService(bool invalidate = false);
+	bool executeThorService(const ThorActionRequest & request);
+private:
+#endif
+
 	class Scroll : public CIntObject
 	{
+	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		friend class CMageGuildScreen;
+	#endif
 		const CSpell * spell;
 		std::shared_ptr<CAnimImage> image;
 		ObjectInstanceID townId;
@@ -473,6 +487,18 @@ public:
 /// The blacksmith window where you can buy available in town war machine
 class CBlacksmithDialog : public CStatusbarWindow
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	ObjectInstanceID thorBlacksmithHero, thorBlacksmithTown;
+	ArtifactID thorBlacksmithArtifact, thorBlacksmithExisting;
+	CPlayerInterface * thorBlacksmithInterface = nullptr;
+public:
+	void activate() override;
+	void deactivate() override;
+	void refreshThorService(bool invalidate = false);
+	bool executeThorService(const ThorActionRequest & request);
+private:
+#endif
+
 	std::shared_ptr<CButton> buy;
 	std::shared_ptr<CButton> cancel;
 	std::shared_ptr<CPicture> animBG;

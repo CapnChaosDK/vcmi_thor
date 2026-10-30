@@ -101,7 +101,8 @@ enum class ThorTownService : std::uint8_t
 	RECRUIT = 1,
 	TAVERN = 2,
 	MAGE_GUILD = 3,
-	MARKETPLACE = 4
+	MARKETPLACE = 4,
+	BLACKSMITH = 5
 };
 
 enum class ThorRecruitmentOperation : std::uint8_t
@@ -121,7 +122,7 @@ DLL_LINKAGE std::optional<ThorRecruitmentOperation> thorRecruitmentOperationFrom
 DLL_LINKAGE std::optional<int> thorRecruitmentAmountAfter(ThorRecruitmentOperation operation,
 	int currentAmount, int maximumAmount);
 
-inline constexpr std::size_t THOR_TOWN_SERVICE_COUNT = 5;
+inline constexpr std::size_t THOR_TOWN_SERVICE_COUNT = 6;
 
 DLL_LINKAGE std::optional<ThorAction> thorActionFromId(int actionId);
 DLL_LINKAGE std::optional<ThorTownService> thorTownServiceFromTarget(int targetId);

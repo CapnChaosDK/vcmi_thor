@@ -59,6 +59,17 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `hardware validated`
+  by the user's 2026-10-30 confirmation for exact candidate
+  `852e817c9d617f101f91f800cd2519d54cce6992` and its six-part
+  [structured checklist](CI/thor-validation-plan.json).
+  [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327)
+  passed preflight and ARM64. CI-reported APK SHA-256:
+  `cee1082ff37b8c6f1d98183a8700c0aa7f76c1b28957a384ac73f21cf2f91934`.
+  [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60) is authorized for
+  promotion. Existing native confirmations remain on the upper screen.
+  Artifact/log metadata is verified; physical acceptance is user-reported.
+
 - Slice 59 — complete Hero management presentation extraction: `hardware validated`
   by the user's 2026-10-27 “All passed” confirmation for exact candidate
   `2ccb3f0d942e3a8e0be735df6819433f3feaf612` and its five-part structured checklist.
@@ -302,8 +313,9 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 Current handoff (2026-10-27): Slice 59 Hero management extraction is hardware
 validated and promoted through PR #59, preserving its exact tested code/build tree.
-Slices 57/58 are also promoted. No next feature is selected; choose the next
-complete second-screen gap against current code. Do not restart these journeys.
+Slices 57/58 are also promoted. The user selected complete lower-screen Blacksmith
+and Mage Guild services as Slices 60/61. Implement and validate both together; do
+not restart completed journeys.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2692,3 +2704,121 @@ Promotion and cleanup receipt (2026-10-22):
   submodule changes. The permanent candidate remains at the exact tested SHA.
   This final receipt changes Markdown only. Slice 59 is complete and promoted;
   no next feature is selected.
+
+## Slices 60/61 — Complete lower-screen Blacksmith and Mage Guild
+
+- Status: `hardware validated` by the user on 2026-10-30 for exact candidate
+  `852e817c9d617f101f91f800cd2519d54cce6992`, based on promoted product
+  `a3e4591d48cdea6489550bc2c01cdbcb905e09e5`.
+  The user requested both services together. Share one integrated candidate/device
+  cycle while retaining each complete service boundary.
+- Blacksmith journey: sixth Town Services entry uses the native Blacksmith shortcut.
+  Publish the exact active dialog's visiting hero, available machine, price/gold and
+  current eligibility. Buy invokes the existing native button callback, preserving
+  its immediate close, replacement confirmation, cancellation and server rejection.
+  Missing visitors use the existing native notice. Close restores the normal Town.
+- Guild journey: the existing Town entry retains native spellbook-purchase handling.
+  Publish only scrolls already visible in the exact active Guild. Lower-local All/
+  levels 1–5 filters, four-row pages and complete text pages support inspection.
+  Research uses the original scroll interaction and upper confirmation/error dialogs;
+  native settings, costs, daily limits and alternative selection remain authoritative.
+  Empty levels and Aurora Borealis native summary scrolls do not infer extra spells.
+- Boundary: `ThorTownServicePanel` carries at most 128 unique visible rows with stable
+  artifact/spell IDs, native availability and bounded UTF-8 text. Extended V1 commands
+  24/25/26 are Blacksmith Buy, Guild Research and context-qualified service Close;
+  no legacy action/mask IDs change. Town service target 5 is Blacksmith. MainGUI
+  refreshes and revalidates exact active owner/interface, revision, current Town,
+  hero/offer/spell membership, ownership/turn and native eligibility before callbacks.
+  Invalid/oversized data withdraws the deck. No engine/server/save/wire rules change.
+- Android: immutable defensive snapshots, current-revision activity replay, disjoint
+  row/footer controls, local list/level/detail state and one-shot pointer/session/
+  revision input. Context, payload, pause, resize, detach and display recreation
+  cancel held input and pending presentation state. Native children withdraw the deck
+  and restore it through ordinary activation. Shared asset and primary input paths
+  remain intact; native text supplies a complete generic fallback.
+- Acceptance: source-policy checks; native context/namespace/target/bounds/stale tests;
+  Android complete browse/research and buy/disabled/close journeys, malformed data,
+  Unicode/summary pagination, row/footer separation and lifecycle cancellation.
+  Actual native service integration, ARM64 packaging and checksum-verified real-Thor
+  behavior remain CI/device gates. The single [structured plan](CI/thor-validation-plan.json)
+  covers both services and regressions; [Slice 59's accepted plan](docs/AYN_THOR_SLICE_59_VALIDATION_PLAN.json)
+  remains historical.
+- Upstream-update cost: guarded adapter methods/identity capture on the existing
+  Castle service owners plus MainGUI dispatch, bounded JNI and Android components.
+  Future upstream updates must check the Blacksmith button/visitor/offer API and
+  Guild scroll/research/activation API. No shared gameplay API is changed.
+
+### Slices 60/61 completeness checkpoint and independent review
+
+- Complete journeys: Blacksmith entry/offer/disabled Buy/Close and original
+  replacement confirmation/cancel; Guild entry/spellbook prompt, all-level/level
+  lists, bounded pages, full bounded descriptions, optional native research/error
+  dialogs, special summary and Close. The original server and window lifecycle
+  remain authoritative. Native children withdraw controls and parent activation
+  restores them; revision/session/pointer changes cancel stale releases.
+- A separate critical full-diff review covered all new and changed source, tests,
+  resources, registration and docs: native identity/membership/availability,
+  bounded UTF-8/JNI and immutable Java values, legacy/extended namespace isolation,
+  disjoint rows/footer controls, current-session replay, pending/cancel recovery,
+  owner changes, special Guild summaries and standard Android isolation. Closed
+  the Town browser's old five-row limit, same-owner browse retention, pending
+  lifecycle cancellation, long-text whitespace/paging and header/haptics overlap;
+  registered the new native source/header and JVM suite. No known source gap remains.
+- Local validation: all 174 Thor JVM tests pass (nine new complete service-state,
+  bounds, cancellation and geometry cases); renderer/shell/controller compile on
+  Android 35, and real NativeMethods/VcmiSDLActivity/SDL Java sources compile with
+  unrelated service/resource stubs. Seven affected native translation units,
+  including new adapter and native tests, pass Thor Android syntax compilation;
+  four owner/dispatch/JNI translation units also pass standard Android compilation
+  without TARGET_AYN_THOR. Upstream policy, current checklist schema and all four
+  policy/checklist tests pass. The policy fixture required permission for temporary
+  Git creation after sandbox denial. Resource XML parses and whitespace checks pass.
+- Native runtime tests, full Gradle/ARM64 packaging and physical dual-screen behavior
+  remain the permanent Thor CI and real-device gates. The six-part structured plan
+  is ready for the exact checksum-verified candidate. No unobserved CI or device pass
+  is implied by this checkpoint. No merge/promotion is authorized by implementation.
+
+### Slices 60/61 publication and permanent candidate handoff
+
+- Published reviewed implementation `852e817c9d617f101f91f800cd2519d54cce6992`
+  to `origin/codex/blacksmith-mage-guild` and opened
+  [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60), targeting product.
+- Fetched origin and verified clean intended tree, exact published head and candidate
+  ancestry. Normally fast-forwarded the permanent `ci/thor-candidate-validation`
+  from accepted `2ccb3f0d942e3a8e0be735df6819433f3feaf612` to that exact implementation
+  SHA. No reset/force push, product merge or submodule change was performed.
+- [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327)
+  is observed `in_progress` for the exact candidate on its trusted push. Status:
+  `awaiting CI`; no preflight/runtime, full ARM64, package/checksum or device pass
+  is claimed. This handoff receipt is Markdown only and leaves the candidate at
+  the reviewed implementation SHA.
+- Next gate: after successful preflight and ARM64, verify artifact digest, receipt,
+  package and APK SHA-256, then perform all six packaged checklist items on a real
+  AYN Thor. Record unavailable/failing cases and retain `awaiting hardware validation`
+  until user acceptance of that exact checksum-verified candidate. If CI fails,
+  diagnose the first real failure, remediate and rebuild an exact reviewed candidate.
+  Explicit merge/promotion authorization remains required.
+
+### Slices 60/61 CI and hardware acceptance — 2026-10-30
+
+- The user confirmed the newest work is hardware validated and explicitly requested
+  Markdown updates, commit, merge and branch cleanup. This accepts both services
+  on integrated candidate `852e817c9d617f101f91f800cd2519d54cce6992` and the six-part
+  packaged checklist. No failed or skipped device check was reported.
+- [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327)
+  passed preflight job `122446680391` and ARM64 job `122448862099` for that SHA.
+  ARM64 logs confirm package `is.xyz.vcmi.thor`, version `1.8.0`/1800 and APK SHA-256
+  `cee1082ff37b8c6f1d98183a8700c0aa7f76c1b28957a384ac73f21cf2f91934`.
+- Artifact `thor-candidate-arm64-40577197327`, ID `12769685200`, has GitHub-reported
+  ZIP SHA-256 `1a4fcb979e1b4432caba34b5c5ae1edffd835f4c22bb4374ca91e646af38984b`.
+  Job results, artifact metadata and ARM64 logs were inspected. Archive/APK bytes
+  were not independently downloaded/rehashed in this handoff; no companion export
+  or installed-byte checksum receipt was supplied. Physical acceptance is the
+  user's report.
+- PR #60 head `dff39e277088807e287ca84086796c4f7abd03bd` differs from the tested
+  implementation only in backlog Markdown. This receipt updates backlog/playbook
+  Markdown only; code, resources, tests, workflow and structured checklist retain
+  the hardware-tested tree. The permanent candidate stays at the accepted SHA.
+- Earlier pending CI/device and withheld-authorization statements record historical
+  state. The current request authorizes normal promotion and fully merged branch
+  cleanup. No new APK or hardware cycle is required for receipt-only Markdown.

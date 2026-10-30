@@ -841,6 +841,7 @@ set(lib_MAIN_HEADERS
 	CAndroidVMHelper.h
 	thor/ThorLobbyPlayer.h
 	thor/ThorTavern.h
+	thor/ThorTownServicePanel.h
 	thor/ThorMarket.h
 	thor/ThorExtendedCommand.h
 	thor/ThorBattleControls.h
