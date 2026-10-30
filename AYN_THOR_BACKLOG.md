@@ -66,8 +66,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885)
   passed preflight and ARM64. CI-reported APK SHA-256:
   `3981710b82c093c9bcbe4c59b5f85fd4ac3b6f46888aef9b85aed9b2a7874fa8`.
-  [PR #61](https://github.com/CapnChaosDK/vcmi_thor/pull/61) is authorized for
-  promotion. Native targeting and confirmations remain upper-screen workflows.
+  [PR #61](https://github.com/CapnChaosDK/vcmi_thor/pull/61) is promoted as
+  `3be55ef63248516254e0edc6983157f03e705a78`. Native targeting and confirmations
+  remain upper-screen workflows.
   Artifact/log metadata is verified; physical acceptance is user-reported.
 
 - Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `hardware validated`
@@ -2980,3 +2981,17 @@ Promotion and cleanup receipt (2026-10-22):
   state. The current explicit request authorizes normal promotion. PR review has
   no submitted blocking review or unresolved inline thread. No new APK or hardware
   cycle is required for these receipt-only Markdown changes.
+
+### Slice 62 promotion receipt — 2026-10-30
+
+- Published acceptance commit `27c30c6c608d85934c1c16ff9a9a5a3b5365cb7a`, verified
+  PR #61's exact expected head and mergeable state, then merged normally into
+  `ayn-thor-dual-screen` as `3be55ef63248516254e0edc6983157f03e705a78` at the user's
+  explicit request.
+- Compared the resulting product merge with hardware-accepted candidate
+  `30aab13f9e442d8c65f0215e8068edd7da4f2f6c`: only `AYN_THOR_BACKLOG.md` and
+  `docs/AYN_THOR_BUILD_PLAYBOOK.md` differ. Code, resources, tests, workflow and
+  structured checklist retain the exact tested tree.
+- Synchronized local product by fast-forward. The permanent candidate remains at
+  the accepted SHA. This final receipt changes Markdown only; no new APK or device
+  cycle is required. Slice 62 is complete and promoted; no next feature is selected.

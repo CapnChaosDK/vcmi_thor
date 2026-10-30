@@ -13,8 +13,9 @@ This is the concise hand-off for creating and validating future AYN Thor Android
   the user confirmed all six packaged checks passed on 2026-10-30.
   CI-reported APK SHA-256:
   `3981710b82c093c9bcbe4c59b5f85fd4ac3b6f46888aef9b85aed9b2a7874fa8`.
-  PR #61 is authorized for promotion; only receipt Markdown differs from the tested
-  candidate. See the backlog receipt for artifact evidence and verification limits.
+  Promoted through PR #61 as `3be55ef63248516254e0edc6983157f03e705a78`; only
+  receipt Markdown differs from the tested candidate. See the backlog receipt for
+  artifact evidence, promotion history and verification limits.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
