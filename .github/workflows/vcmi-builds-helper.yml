@@ -54,7 +54,7 @@ jobs:
           "$build_tools/apksigner" verify --verbose vcmi-builds.apk
           "$build_tools/apksigner" verify --print-certs vcmi-builds.apk > vcmi-builds-signing-certificate.txt
           sha256sum vcmi-builds.apk > vcmi-builds.apk.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vcmi-builds-installer
           path: |
@@ -63,7 +63,7 @@ jobs:
             tools/vcmi-builds/vcmi-builds-signing-certificate.txt
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vcmi-builds-device-tests
           path: |
