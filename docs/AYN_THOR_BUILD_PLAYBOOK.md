@@ -13,8 +13,9 @@ This is the concise hand-off for creating and validating future AYN Thor Android
   the user confirmed hardware validation on 2026-10-30 for the six-part packaged
   checklist. CI-reported APK SHA-256:
   `cee1082ff37b8c6f1d98183a8700c0aa7f76c1b28957a384ac73f21cf2f91934`.
-  PR #60 is authorized for promotion; only receipt Markdown differs from the tested
-  candidate. See the backlog receipt for artifact evidence and verification limits.
+  Promoted through PR #60 as `2b1808ca6cd150bd201a72b6789682fe4d1fe924`; only
+  receipt Markdown differs from the tested candidate. See the backlog receipt for
+  artifact evidence, promotion/cleanup history and verification limits.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`

@@ -66,8 +66,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   [Thor CI 40577197327](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/40577197327)
   passed preflight and ARM64. CI-reported APK SHA-256:
   `cee1082ff37b8c6f1d98183a8700c0aa7f76c1b28957a384ac73f21cf2f91934`.
-  [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60) is authorized for
-  promotion. Existing native confirmations remain on the upper screen.
+  [PR #60](https://github.com/CapnChaosDK/vcmi_thor/pull/60) is promoted as
+  `2b1808ca6cd150bd201a72b6789682fe4d1fe924`. Native confirmations remain upper-screen.
   Artifact/log metadata is verified; physical acceptance is user-reported.
 
 - Slice 59 — complete Hero management presentation extraction: `hardware validated`
@@ -2822,3 +2822,23 @@ Promotion and cleanup receipt (2026-10-22):
 - Earlier pending CI/device and withheld-authorization statements record historical
   state. The current request authorizes normal promotion and fully merged branch
   cleanup. No new APK or hardware cycle is required for receipt-only Markdown.
+
+### Slices 60/61 promotion and branch cleanup — 2026-10-30
+
+- Published acceptance/handover commit `19961040ca4280d5c8c92dff20c3dddb346c2782`,
+  verified PR #60's exact head and mergeable state with no review threads or
+  blocking reviews, and merged normally into `ayn-thor-dual-screen` as
+  `2b1808ca6cd150bd201a72b6789682fe4d1fe924` at the user's explicit request.
+- Compared the resulting product merge with hardware-accepted candidate
+  `852e817c9d617f101f91f800cd2519d54cce6992`: only `AYN_THOR_BACKLOG.md` and
+  `docs/AYN_THOR_BUILD_PLAYBOOK.md` differ. Code, resources, tests, workflow and
+  structured checklist preserve the tested tree exactly.
+- Deleted remote `codex/blacksmith-mage-guild` and leftover
+  `codex/hero-management-deck` after verifying both tips are ancestors of product.
+  Removed local merged `codex/blacksmith-mage-guild` and stale
+  `codex/fix-slice-52-compile`; no unmerged branch was removed. Dependabot PRs remain
+  separate maintenance work, outside this hardware-validated feature promotion.
+- Local product is synchronized with the merge. The permanent candidate remains
+  at the exact accepted SHA. This final receipt changes Markdown only; no new
+  candidate build or hardware cycle is needed. Both services are complete and
+  promoted; no next feature is selected.
