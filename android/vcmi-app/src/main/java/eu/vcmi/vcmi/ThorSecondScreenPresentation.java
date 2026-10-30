@@ -103,6 +103,17 @@ final class ThorSecondScreenPresentation extends Presentation
         }
     }
 
+    void updateSpellbook(final ThorSpellbookState state)
+    {
+        if (foundationView != null && ThorContextIds.SPELLBOOK.equals(foundationView.contextId)
+                && (state == ThorSpellbookState.EMPTY || state.revision == foundationView.revision))
+        {
+            foundationView.spellbookDeck.update(state);
+            foundationView.invalidate();
+            foundationView.setContentDescription(foundationView.commandDeckDescription());
+        }
+    }
+
     void updateServicePanel(final ThorTownServiceState state)
     {
         if (foundationView != null && (ThorContextIds.BLACKSMITH.equals(foundationView.contextId)
@@ -132,6 +143,7 @@ final class ThorSecondScreenPresentation extends Presentation
         if (foundationView != null)
         {
             foundationView.battleDeck.update(commands);
+            foundationView.adventureCommands = commands;
             foundationView.invalidate();
             foundationView.setContentDescription(foundationView.commandDeckDescription());
         }
@@ -275,6 +287,10 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorLobbyPlayerSetup playerSetup = new ThorLobbyPlayerSetup();
         private final ThorMarketDeck marketDeck = new ThorMarketDeck();
         private final ThorTavernDeck tavernDeck = new ThorTavernDeck();
+        private ThorExtendedCommands adventureCommands = ThorExtendedCommands.EMPTY;
+        private boolean spellbookEntryTouch;
+        private final ThorControlGesture spellbookEntryGesture = new ThorControlGesture(0);
+        private final ThorSpellbookDeck spellbookDeck = new ThorSpellbookDeck();
         private final ThorTownServiceDeck serviceDeck = new ThorTownServiceDeck();
         private final ThorHeroMeetingDeck heroMeeting;
         private final ThorHeroManagementDeck heroManagement;
@@ -361,6 +377,8 @@ final class ThorSecondScreenPresentation extends Presentation
             marketDeck.cancel();
             tavernDeck.cancel();
             serviceDeck.cancel();
+            spellbookDeck.cancel();
+            spellbookEntryGesture.cancel();
             heroMeeting.cancel();
             heroManagement.cancel();
             playerSetup.cancel();
@@ -374,6 +392,9 @@ final class ThorSecondScreenPresentation extends Presentation
             marketDeck.reset();
             tavernDeck.reset();
             serviceDeck.reset();
+            spellbookDeck.reset();
+            spellbookEntryGesture.cancel();
+            adventureCommands = ThorExtendedCommands.EMPTY;
             playerSetup.withdraw(false);
             heroManagement.clear();
             townManagement = ThorTownManagement.EMPTY;
@@ -406,6 +427,10 @@ final class ThorSecondScreenPresentation extends Presentation
             if (revision != this.revision || !contextId.equals(this.contextId))
             {
                 battleDeck.reset();
+                adventureCommands = ThorExtendedCommands.EMPTY;
+                spellbookEntryGesture.cancel();
+                if (contextId.equals(this.contextId)) spellbookDeck.withdraw();
+                else spellbookDeck.reset();
                 if (contextId.equals(this.contextId)) serviceDeck.withdraw();
                 else serviceDeck.reset();
                 if (contextId.equals(this.contextId)) tavernDeck.withdraw();
@@ -847,7 +872,11 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawLine(frame.left + bevel * 2f, dividerY, frame.right - bevel * 2f, dividerY, paint);
 
-            if (ThorContextIds.BLACKSMITH.equals(contextId) || ThorContextIds.MAGE_GUILD.equals(contextId))
+            if (ThorContextIds.SPELLBOOK.equals(contextId))
+            {
+                spellbookDeck.draw(canvas, paint, getContext(), layout, density);
+            }
+            else if (ThorContextIds.BLACKSMITH.equals(contextId) || ThorContextIds.MAGE_GUILD.equals(contextId))
             {
                 serviceDeck.draw(canvas, paint, getContext(), layout, density);
             }
@@ -976,12 +1005,21 @@ final class ThorSecondScreenPresentation extends Presentation
         public boolean onTouchEvent(final android.view.MotionEvent event)
         {
             final int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) spellbookEntryTouch = false;
+            else if (spellbookEntryTouch && !(ThorContextIds.ADVENTURE_MAP.equals(contextId) && adventureTab == 0))
+            {
+                spellbookEntryGesture.cancel();
+                if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) spellbookEntryTouch = false;
+                return true;
+            }
             if (action == MotionEvent.ACTION_DOWN
                     && hapticsToggleGesture.begin(hapticsToggleBounds().contains(event.getX(), event.getY())))
             {
                 marketDeck.cancel();
                 tavernDeck.cancel();
                 serviceDeck.cancel();
+                spellbookDeck.cancel();
+                spellbookEntryGesture.cancel();
                 mapGesture.cancel();
                 inspectedCluster = -1;
                 return true;
@@ -1004,6 +1042,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     hapticsToggleGesture.cancel();
                 else if (action == MotionEvent.ACTION_POINTER_DOWN)
                     hapticsToggleGesture.pointerAdded();
+                return true;
+            }
+            if (ThorContextIds.SPELLBOOK.equals(contextId))
+            {
+                if (spellbookDeck.touch(event, revision, presentationSessionId, presentationLayout(),
+                        sessionValidity != null && sessionValidity.isCurrent(presentationSessionId))) performClick();
+                invalidate();
+                setContentDescription(commandDeckDescription());
                 return true;
             }
             if (ThorContextIds.BLACKSMITH.equals(contextId) || ThorContextIds.MAGE_GUILD.equals(contextId))
@@ -1080,6 +1126,28 @@ final class ThorSecondScreenPresentation extends Presentation
             if (heroMeeting.touch(event))
                 return true;
 
+            if (spellbookEntryTouch || ThorContextIds.ADVENTURE_MAP.equals(contextId) && adventureTab == 0
+                    && actionAt(event.getX(), event.getY()) == -ThorExtendedCommands.ADVENTURE_SPELLBOOK)
+            {
+                int control = actionAt(event.getX(), event.getY());
+                boolean enabled = adventureCommands.allows(ThorExtendedCommands.ADVENTURE_SPELLBOOK);
+                if (action == MotionEvent.ACTION_DOWN)
+                {
+                    spellbookEntryTouch = true;
+                    spellbookEntryGesture.begin(contextId, control, revision, presentationSessionId, event.getPointerId(0), enabled && event.getPointerCount() == 1);
+                }
+                else if (action == MotionEvent.ACTION_UP)
+                {
+                    spellbookEntryTouch = false;
+                    if (spellbookEntryGesture.finish(contextId, control, event.getPointerCount(), event.getPointerId(0), revision,
+                            presentationSessionId, enabled, sessionValidity != null && sessionValidity.isCurrent(presentationSessionId)))
+                        NativeMethods.submitThorCommand(revision, ThorExtendedCommands.ADVENTURE_SPELLBOOK);
+                }
+                else if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP
+                        || event.getPointerCount() != 1 || control != -ThorExtendedCommands.ADVENTURE_SPELLBOOK) spellbookEntryGesture.cancel();
+                if (action == MotionEvent.ACTION_CANCEL) spellbookEntryTouch = false;
+                return true;
+            }
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId)
                     && !ThorContextIds.BATTLE.equals(contextId)
                     && !ThorContextIds.BATTLE_TACTICS.equals(contextId))
@@ -1204,6 +1272,8 @@ final class ThorSecondScreenPresentation extends Presentation
             marketDeck.cancel();
             tavernDeck.cancel();
             serviceDeck.cancel();
+            spellbookDeck.cancel();
+            spellbookEntryGesture.cancel();
             heroManagement.cancel();
             cancelLobbyScenarioTouch();
             buildConfirmationGesture.cancel();
@@ -1225,6 +1295,8 @@ final class ThorSecondScreenPresentation extends Presentation
                 marketDeck.cancel();
                 tavernDeck.cancel();
                 serviceDeck.cancel();
+                spellbookDeck.cancel();
+                spellbookEntryGesture.cancel();
                 heroMeeting.cancel();
                 heroManagement.cancel();
                 cancelLobbyScenarioTouch();
@@ -2986,7 +3058,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     ThorActionIds.OPEN_KINGDOM_OVERVIEW,
                     ThorActionIds.OPEN_QUEST_LOG,
                     ThorActionIds.OPEN_PUZZLE_MAP,
-                    ThorActionIds.OPEN_SAVE_GAME
+                    ThorActionIds.OPEN_SAVE_GAME,
+                    -ThorExtendedCommands.ADVENTURE_SPELLBOOK
             };
             final String[] labels = {
                     getContext().getString(R.string.thor_action_next_hero),
@@ -2998,7 +3071,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     getContext().getString(R.string.thor_action_kingdom),
                     getContext().getString(R.string.thor_action_quest_log),
                     getContext().getString(R.string.thor_action_puzzle_map),
-                    getContext().getString(R.string.thor_action_save_game)
+                    getContext().getString(R.string.thor_action_save_game),
+                    getContext().getString(R.string.thor_spellbook_title)
             };
 
             final float actionTop = actionTop(frame, dividerY, bevel);
@@ -3018,7 +3092,7 @@ final class ThorSecondScreenPresentation extends Presentation
             for (int index = 0; index < actions.length; ++index)
             {
                 final RectF button = actionBounds(index, frame, dividerY, bevel);
-                final boolean enabled = isActionEnabled(actions[index]);
+                final boolean enabled = actions[index] < 0 ? adventureCommands.allows(-actions[index]) : isActionEnabled(actions[index]);
                 paint.setStyle(Paint.Style.FILL);
                 paint.setColor(enabled ? STONE_DARK : Color.rgb(76, 74, 67));
                 canvas.drawRoundRect(button, bevel, bevel, paint);
@@ -3044,7 +3118,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final float bottom = frame.bottom - bevel * 3f;
             final float columnWidth = (right - left - gap) / 2f;
             final float sectionGap = sectionGap(frame, dividerY, bevel);
-            final float rowHeight = (bottom - top - gap * 3f - sectionGap) / 4f;
+            final float rowHeight = (bottom - top - gap * 4f - sectionGap) / 5f;
             final int column = index % 2;
             final int row = index / 2;
             final float rowTop = top + row * (rowHeight + gap) + (row >= 2 ? sectionGap - gap : 0f);
@@ -3283,7 +3357,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     ThorActionIds.OPEN_KINGDOM_OVERVIEW,
                     ThorActionIds.OPEN_QUEST_LOG,
                     ThorActionIds.OPEN_PUZZLE_MAP,
-                    ThorActionIds.OPEN_SAVE_GAME
+                    ThorActionIds.OPEN_SAVE_GAME,
+                    -ThorExtendedCommands.ADVENTURE_SPELLBOOK
             };
             for (int index = 0; index < actions.length; ++index)
                 if (actionBounds(index, frame, dividerY, bevel).contains(x, y))
@@ -3316,6 +3391,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private String commandDeckDescription()
         {
+            if (ThorContextIds.SPELLBOOK.equals(contextId))
+                return spellbookDeck.description(getContext());
             if (ThorContextIds.BLACKSMITH.equals(contextId) || ThorContextIds.MAGE_GUILD.equals(contextId))
                 return serviceDeck.description(getContext());
             if (ThorContextIds.TAVERN.equals(contextId))
@@ -3448,7 +3525,9 @@ final class ThorSecondScreenPresentation extends Presentation
                     + getContext().getString(R.string.thor_action_kingdom) + ", "
                     + getContext().getString(R.string.thor_action_quest_log) + ", "
                     + getContext().getString(R.string.thor_action_puzzle_map) + ", "
-                    + getContext().getString(R.string.thor_action_save_game);
+                    + getContext().getString(R.string.thor_action_save_game) + ", "
+                    + getContext().getString(R.string.thor_spellbook_title) + ": "
+                    + adventureCommands.allows(ThorExtendedCommands.ADVENTURE_SPELLBOOK);
         }
 
         private boolean drawVisualAsset(final Canvas canvas, final long key, final RectF area)

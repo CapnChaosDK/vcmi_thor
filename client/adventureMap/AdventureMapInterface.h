@@ -184,6 +184,7 @@ public:
 	AdventureMapShortcuts & getAdventureShortcuts() const { return *shortcuts; }
 	void updateThorActionState(bool invalidateActions = false);
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool executeThorSpellbookEntry(const ThorActionRequest & request);
 	bool executeThorMapAction(const ThorActionRequest & request);
 	bool executeThorMovementAction(const ThorActionRequest & request);
 	void invalidateThorMap() { thorMapDirty = true; }

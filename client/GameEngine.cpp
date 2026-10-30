@@ -41,6 +41,7 @@
 #include "windows/CExchangeWindow.h"
 #include "windows/CHeroWindow.h"
 #include "windows/CCastleInterface.h"
+#include "windows/CSpellWindow.h"
 #include "windows/GUIClasses.h"
 #include "windows/QuickRecruitmentWindow.h"
 #include "windows/CMarketWindow.h"
@@ -176,6 +177,8 @@ void GameEngine::updateFrame()
 		quickRecruitment->refreshThorNativeState();
 	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
 		dwellingRecruitment->refreshThorNativeState();
+	if(auto book = windows().topWindow<CSpellWindow>())
+		book->refreshThorSpellbook();
 	if(auto blacksmith = windows().topWindow<CBlacksmithDialog>())
 		blacksmith->refreshThorService();
 	if(auto guild = windows().topWindow<CMageGuildScreen>())
@@ -225,6 +228,15 @@ void GameEngine::updateFrame()
 			auto lobby = windows().topWindow<CLobbyScreen>();
 			if(lobby && context.nativeOwnerToken == lobby.get())
 				executed = lobby->executeThorPlayerCommand(*request);
+		}
+		else if(request->commandVersion != 0 && request->commandId == ThorExtended::ADVENTURE_SPELLBOOK)
+		{
+			if(adventureInt) executed = adventureInt->executeThorSpellbookEntry(*request);
+		}
+		else if(request->commandVersion != 0 && ThorExtended::spellbookCommand(request->commandId))
+		{
+			auto book = windows().topWindow<CSpellWindow>();
+			if(book && context.nativeOwnerToken == book.get()) executed = book->executeThorSpellbook(*request);
 		}
 		else if(request->commandVersion != 0 && ThorExtended::serviceCommand(request->commandId))
 		{
@@ -511,7 +523,7 @@ void GameEngine::updateFrame()
 		}
 		if(request->commandVersion != 0)
 		{
-			if(request->commandId != ThorExtended::MARKET_TRADE && !ThorExtended::tavernCommand(request->commandId) && !ThorExtended::serviceCommand(request->commandId))
+			if(request->commandId != ThorExtended::MARKET_TRADE && !ThorExtended::tavernCommand(request->commandId) && !ThorExtended::serviceCommand(request->commandId) && !ThorExtended::spellbookCommand(request->commandId))
 				CAndroidVMHelper().acknowledgeThorCommand(request->revision, request->commandId);
 		}
 		else if(!isThorActionHapticDeferredUntilServerResult(request->action))

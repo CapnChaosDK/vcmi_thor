@@ -158,6 +158,9 @@ CSpellWindow::CSpellWindow(const CGHeroInstance * _myHero, CPlayerInterface * _m
 {
 	OBJECT_CONSTRUCTION;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorHeroId = myHero->id;
+#endif
 	int maxCustomSchools = (isBigSpellbook ? MAX_CUSTOM_SPELL_SCHOOLS_BIG : MAX_CUSTOM_SPELL_SCHOOLS) * 2;
 	int customSchoolsAvailable = 0;
 	std::vector<SpellSchool> sortedSchools = LIBRARY->spellSchoolHandler->getAllObjects();
@@ -717,52 +720,57 @@ CSpellWindow::SpellArea::~SpellArea() = default;
 
 void CSpellWindow::SpellArea::clickPressed(const Point & cursorPosition)
 {
-	if(mySpell)
+	owner->selectSpell(mySpell, schoolLevel);
+}
+
+void CSpellWindow::selectSpell(const CSpell * spell, int schoolLevel)
+{
+	if(spell)
 	{
 		ENGINE->input().hapticFeedback();
 
-		if(owner->onSpellSelect)
+		if(onSpellSelect)
 		{
-			owner->onSpellSelect(mySpell->id);
-			owner->close();
+			onSpellSelect(spell->id);
+			close();
 			return;
 		}
 
-		auto spellCost = owner->myInt->cb->getSpellCost(mySpell, owner->myHero);
-		if(spellCost > owner->myHero->mana) //insufficient mana
+		auto spellCost = myInt->cb->getSpellCost(spell, myHero);
+		if(spellCost > myHero->mana) //insufficient mana
 		{
 			MetaString message = MetaString::createFromTextID("core.genrltxt.206"); // That spell costs %d spell points. Your hero only has %d spell points...
 			message.replaceNumber(spellCost);
-			message.replaceNumber(owner->myHero->mana);
+			message.replaceNumber(myHero->mana);
 			GAME->interface()->showInfoDialog(message.toString(&GAME->translator()));
 			return;
 		}
 
 		//anything that is not combat spell is adventure spell
 		//this not an error in general to cast even creature ability with hero
-		const bool combatSpell = mySpell->isCombat();
-		if(combatSpell == mySpell->isAdventure())
+		const bool combatSpell = spell->isCombat();
+		if(combatSpell == spell->isAdventure())
 		{
 			logGlobal->error("Spell have invalid flags");
 			return;
 		}
 
-		const bool inCombat = owner->myInt->battleInt != nullptr;
-		const bool inCastle = owner->myInt->castleInt != nullptr;
+		const bool inCombat = myInt->battleInt != nullptr;
+		const bool inCastle = myInt->castleInt != nullptr;
 
 		//battle spell on adv map or adventure map spell during combat => display infowindow, not cast
 		if((combatSpell != inCombat) || inCastle || (!combatSpell && !GAME->interface()->makingTurn))
 		{
-			std::vector<std::shared_ptr<CComponent>> hlp(1, std::make_shared<CComponent>(ComponentType::SPELL, mySpell->id));
-			GAME->interface()->showInfoDialog(mySpell->getDescriptionTranslated(schoolLevel), hlp);
+			std::vector<std::shared_ptr<CComponent>> hlp(1, std::make_shared<CComponent>(ComponentType::SPELL, spell->id));
+			GAME->interface()->showInfoDialog(spell->getDescriptionTranslated(schoolLevel), hlp);
 		}
 		else if(combatSpell)
 		{
 			spells::detail::ProblemImpl problem;
-			if(mySpell->canBeCast(problem, owner->myInt->battleInt->getBattle().get(), spells::Mode::HERO, owner->myHero))
+			if(spell->canBeCast(problem, myInt->battleInt->getBattle().get(), spells::Mode::HERO, myHero))
 			{
-				owner->myInt->battleInt->castThisSpell(mySpell->id);
-				owner->fexitb();
+				myInt->battleInt->castThisSpell(spell->id);
+				fexitb();
 			}
 			else
 			{
@@ -776,26 +784,26 @@ void CSpellWindow::SpellArea::clickPressed(const Point & cursorPosition)
 		}
 		else //adventure spell
 		{
-			const CGHeroInstance * h = owner->myHero;
+			const CGHeroInstance * h = myHero;
 			ENGINE->windows().popWindows(1);
 
 			auto guard = vstd::makeScopeGuard([this]()
 			{
-				auto spellBookState = owner->myInt->localState->getSpellbookSettings();
-				spellBookState.spellbookLastTabAdvmap = owner->selectedTab;
-				spellBookState.spellbookLastPageAdvmap = owner->currentPage;
-				owner->myInt->localState->setSpellbookSettings(spellBookState);
+				auto spellBookState = myInt->localState->getSpellbookSettings();
+				spellBookState.spellbookLastTabAdvmap = selectedTab;
+				spellBookState.spellbookLastPageAdvmap = currentPage;
+				myInt->localState->setSpellbookSettings(spellBookState);
 			});
 
 			spells::detail::ProblemImpl problem;
-			if (mySpell->getAdventureMechanics().canBeCast(problem, GAME->interface()->cb.get(), owner->myHero))
+			if (spell->getAdventureMechanics().canBeCast(problem, GAME->interface()->cb.get(), myHero))
 			{
-				const auto * rangeEffect = mySpell->getAdventureMechanics().getEffectAs<AdventureSpellRangedEffect>(owner->myHero);
+				const auto * rangeEffect = spell->getAdventureMechanics().getEffectAs<AdventureSpellRangedEffect>(myHero);
 
 				if(rangeEffect != nullptr)
-					adventureInt->enterCastingMode(mySpell);
+					adventureInt->enterCastingMode(spell);
 				else
-					owner->myInt->cb->castSpell(h, mySpell->id);
+					myInt->cb->castSpell(h, spell->id);
 			}
 			else
 			{

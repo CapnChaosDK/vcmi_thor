@@ -331,4 +331,12 @@
     <string name="thor_service_pending">Opening service action…</string>
     <string name="thor_service_blacksmith_hint">Replacement confirmation appears on the upper screen.</string>
     <string name="thor_service_guild_hint">Select a spell to read it. Research dialogs open on the upper screen.</string>
+    <string name="thor_spellbook_title">Spellbook</string>
+    <string name="thor_spellbook_adventure">Adventure spells</string>
+    <string name="thor_spellbook_battle">Battle spells</string>
+    <string name="thor_spellbook_all_schools">All schools</string>
+    <string name="thor_spellbook_cast">Cast</string>
+    <string name="thor_spellbook_cost">Level %1$d · Cost %2$d · Mana %3$d</string>
+    <string name="thor_spellbook_row">%1$d · %2$s · %3$d mana</string>
+    <string name="thor_spellbook_hint">Casting uses native rules; choose targets on the upper screen.</string>
 </resources>

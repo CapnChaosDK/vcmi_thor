@@ -347,3 +347,22 @@ validation status and exact-candidate checklist are maintained in the
   restores only the current snapshot. Context/child transitions withdraw controls;
   native activation restores the current service. No gameplay or server rule moves
   to Android. See the backlog contract and current structured validation plan.
+
+## Spellbook companion (Slice 62)
+
+- `ThorSpellbookSupport.cpp` observes the exact active ordinary `CSpellWindow` and
+  re-resolves its captured Hero ID, interface, turn/current Battle hero, known spell
+  membership, native costs and mechanics. It publishes bounded plain-data rows and
+  native school IDs/names. Callback-based external selectors retain their native UI.
+- `CSpellWindow::selectSpell` contains the original slot-click body and is shared by
+  upper slots and lower Cast. Native Adventure/Battle casting, confirmations, errors,
+  targeting and window exit/restoration remain authoritative. Cast does not promise
+  a spell has resolved; no false gameplay-success haptic is emitted for submission.
+- Extended V1 commands 27/28 cast a published eligible spell or close the book;
+  command 29 opens the existing Adventure shortcut from lower Actions, with the
+  same hero/turn/movement availability. Battle retains its existing Cast Spell entry.
+- `ThorSpellbookState/Journey/Deck` own defensive payload parsing, category/school/
+  level filtering, list/detail paging and revision/session/pointer cancellation.
+  Activity replay restores only current-revision data. Context/child transitions
+  withdraw controls, and normal native activation republishes the live book.
+  See the backlog contract and current structured candidate checklist.

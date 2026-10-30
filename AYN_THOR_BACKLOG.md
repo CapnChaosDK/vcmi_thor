@@ -59,6 +59,13 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 62 — complete lower-screen spellbook companion: `in progress` on
+  `codex/spellbook-companion`. Adventure entry, bounded native book publication,
+  Adventure/Battle, school and level browsing, details, native Cast and Close are
+  integrated. Existing upper targeting/confirmation owners remain authoritative.
+  See the Slice 62 contract and [current checklist](CI/thor-validation-plan.json).
+  CI/package and exact-candidate physical acceptance are not yet established.
+
 - Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `hardware validated`
   by the user's 2026-10-30 confirmation for exact candidate
   `852e817c9d617f101f91f800cd2519d54cce6992` and its six-part
@@ -311,11 +318,10 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff (2026-10-27): Slice 59 Hero management extraction is hardware
-validated and promoted through PR #59, preserving its exact tested code/build tree.
-Slices 57/58 are also promoted. The user selected complete lower-screen Blacksmith
-and Mage Guild services as Slices 60/61. Implement and validate both together; do
-not restart completed journeys.
+Current handoff (2026-10-30): Slices 60/61 Blacksmith and Mage Guild are hardware
+validated and promoted through PR #60. Slice 62 is the user-selected complete
+lower-screen spellbook companion for Adventure and Battle, including its Adventure
+entry and native casting/targeting handoff. Do not restart completed journeys.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -2842,3 +2848,84 @@ Promotion and cleanup receipt (2026-10-22):
   at the exact accepted SHA. This final receipt changes Markdown only; no new
   candidate build or hardware cycle is needed. Both services are complete and
   promoted; no next feature is selected.
+
+## Slice 62 — Complete lower-screen spellbook companion
+
+- Status: `in progress`, based on promoted product
+  `ddd7a9421c7d4559212006dea94382fc5fbc84e8`. The user selected the recommended
+  spellbook feature and authorized implementation and candidate delivery.
+- Journey: add Spellbook to Adventure Actions through the existing native Adventure
+  shortcut, with current hero/turn/movement availability. Existing Battle Cast Spell
+  opens its usual book. The exact active ordinary spellbook publishes known spells,
+  native costs, mana, proficiency-specific descriptions/damage estimates and native
+  castability. Android browses Adventure/Battle categories, All or native/custom
+  schools, All or levels 0–5, four-row pages and complete bounded text pages.
+  Selection opens details; Cast uses the original native slot selection method;
+  Close uses the original book exit. Empty/disabled states stay inspectable.
+- Casting/ownership: re-resolve the captured Hero ID and exact top book/interface,
+  ownership, turn/current Battle hero, mana, published spell membership and native
+  mechanics on MainGUI. Polling is bounded to 100 ms; execution and activation
+  recompute immediately. Commands are revision-bound and consumed once. The existing
+  Adventure cast, Battle action, error, confirmation and targeting paths own all
+  gameplay and return/restoration behavior. Casting may close the book as upstream
+  already does; canceling targeting follows upstream, with ordinary entry reopening
+  the book. No separate lower targeting or persistent cast queue is introduced.
+- Bounds/transport: at most 256 known spell rows and 32 distinct native school IDs;
+  name/hero/school labels are bounded to 256 UTF-8 bytes, descriptions to 4096.
+  Invalid/oversized books withdraw the deck. Extended V1 commands 27/28 are exact
+  spell Cast and book Close; 29 opens Adventure's native spellbook with target -1.
+  Existing legacy IDs/masks and all server/save/network/gameplay rules are unchanged.
+  External callback-based spell selectors retain their native UI.
+- Android: immutable defensive snapshots and current-revision activity replay;
+  local category/school/level/list/detail navigation, disjoint row/footer controls,
+  enabled/pending states and one-shot pointer/revision/session input. Same-Hero
+  updates retain valid navigation and clamp pages; Hero/context changes reset it.
+  Pause, resize, detach, second pointers, context/revision changes and display
+  recreation cancel held input. Upper touch/controller focus remains unchanged.
+- Validation plan: native namespace/payload/owner/revision/bounds/publication tests;
+  complete JVM browse/filter/cast/disabled/paging/Unicode/cancellation journeys;
+  source and actual adapter syntax checks, upstream policy and checklist checks;
+  permanent Thor CI preflight/native regressions and full ARM64/Gradle packaging.
+  The [single structured plan](CI/thor-validation-plan.json) covers the complete
+  real-Thor journey and neighboring decks; the accepted service plan is archived
+  in [Slices 60/61 history](docs/AYN_THOR_SLICE_60_61_VALIDATION_PLAN.json).
+- Upstream-update cost: guarded CSpellWindow lifecycle/identity adapter and a minimal
+  extraction of its unchanged native slot-selection body, Adventure shortcut entry,
+  MainGUI dispatch and existing JNI/Android seams. Future upstream updates must
+  review the spellbook list/search/description/selection APIs, native casting
+  legality, and Adventure/Battle activation/targeting routes. No shared engine,
+  server, spell mechanics, primary controller or packet/save API is forked.
+
+### Slice 62 completeness checkpoint and independent review
+
+- The integrated journey includes lower Adventure entry and existing Battle entry,
+  complete known-spell browsing, native/custom school and level filters, empty and
+  disabled states, bounded full descriptions/costs/mana, Cast/Close, and native
+  targeted/untargeted/error/confirmation handoffs. The original native book owns
+  targeting cancellation and reopening. The six-part structured checklist is ready.
+- A separate critical review covered the entire changed-file inventory, native
+  publication/dispatch/identity/turn/legality, CMake registration, JNI array layout,
+  defensive Java parsing, namespace isolation, list/detail geometry, input replay,
+  activity/controller forwarding and display/context restoration. Removed unintended
+  refresh edits, kept the existing service namespace disjoint, bounded expensive
+  legality polling to 100 ms with forced execution-time recomputation, and latched
+  canceled Adventure-entry sequences so their release cannot dispatch another action.
+- Verified the shared native spell-selection body is byte-for-byte identical after
+  replacing the former nested owner/member references with owner-method references.
+  Upper casting, window closure, Adventure target entry and Battle continuation
+  semantics therefore use the original body, with no spell/gameplay rule rewrite.
+- Local validation: 172 focused native contract tests pass, including five new
+  spellbook/Adventure-entry cases. Nine Java journey/geometry tests pass via their
+  standalone JDK runner; the actual new renderer also syntax-compiles with narrow
+  Android drawing/API stubs. Upstream source policy, checklist schema, all four
+  policy/checklist tests, resource XML and whitespace checks pass.
+- Native adapter/owner, MainGUI dispatch, Adventure interface and JNI translation
+  units pass Thor Android syntax checks; owner/dispatch/Adventure also pass standard
+  Android checks. Local syntax checks use distro Boost, host JNI with Android's
+  typed thread-attach wrapper, and an unused SDL mixer pointer declaration. These
+  checks are source evidence, not an Android SDK/NDK build or runtime test.
+- The full Gradle/JUnit suite, actual Android renderer/activity compilation, upstream
+  native runtime regressions and signed ARM64 package remain the permanent Thor CI
+  gate. Hardware behavior and installed-byte checksum remain unobserved until the
+  exact candidate is accepted on a real Thor. No feature promotion is authorized
+  by implementation, tests or PR publication alone.

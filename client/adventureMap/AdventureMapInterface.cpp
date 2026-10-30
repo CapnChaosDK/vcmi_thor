@@ -81,6 +81,7 @@ namespace
 		context = thorContextStore().publishNext(std::move(context));
 		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status, {},
 			context.heroPortraitAssetKey);
+		CAndroidVMHelper().publishThorCommands(context.revision, context.extendedCommands);
 		CAndroidVMHelper().publishThorHeroes(context.revision, context.heroes);
 		CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 		CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
@@ -212,6 +213,24 @@ void AdventureMapInterface::activate()
 #endif
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool AdventureMapInterface::executeThorSpellbookEntry(const ThorActionRequest & request)
+{
+	if(!isActive() || ENGINE->windows().topWindow<AdventureMapInterface>().get() != this) return false;
+	updateThorActionState();
+	if(request.commandId != ThorExtended::ADVENTURE_SPELLBOOK
+		|| validateThorActionRequest(request, thorContextStore().snapshot()) != ThorActionValidation::VALID) return false;
+	for(const auto & entry : shortcuts->getShortcuts())
+		if(entry.shortcut == EShortcut::ADVENTURE_CAST_SPELL && entry.isEnabled)
+		{
+			updateThorActionState(true);
+			entry.callback();
+			return true;
+		}
+	return false;
+}
+#endif
+
 void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 {
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -237,6 +256,7 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	ThorContextRecord context = previous;
 	context.enabledActionMask = shortcuts->getThorActionMask();
 	context.activeActionMask = shortcuts->getThorActiveActionMask();
+	context.extendedCommands = {};
 	context.selectedHeroId = shortcuts->getThorSelectedHeroId();
 	context.heroPortraitAssetKey = hero ? thorHeroPortraitVisualAssetKey(hero->getPortraitSource().getNum()) : 0;
 	context.heroes = shortcuts->getThorHeroes();
@@ -250,6 +270,9 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 	// commands out of that otherwise blocked input path while a move is in flight.
 	if(moving || blocked || GAME->map().hasOngoingAnimations() || !thorMovementAuthority())
 		context.enabledActionMask = 0;
+	if(!moving && !blocked && !GAME->map().hasOngoingAnimations() && thorMovementAuthority()
+		&& shortcuts->optionHeroCanCastSpells())
+		context.extendedCommands.enabled = {ThorExtended::ADVENTURE_SPELLBOOK};
 	if(context.adventureRoute)
 	{
 		const auto & route = *context.adventureRoute;
@@ -278,6 +301,7 @@ void AdventureMapInterface::updateThorActionState(bool invalidateActions)
 
 	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status, {},
 		context.heroPortraitAssetKey);
+	CAndroidVMHelper().publishThorCommands(context.revision, context.extendedCommands);
 	CAndroidVMHelper().publishThorHeroes(context.revision, context.heroes);
 	CAndroidVMHelper().publishThorTowns(context.revision, context.towns);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
