@@ -23,6 +23,10 @@
 
 namespace ThorContextIds
 {
+	inline constexpr char SETTINGS[] = "SETTINGS";
+	inline constexpr char SETTINGS_SELECTION[] = "SETTINGS_SELECTION";
+	inline constexpr char DIALOG_CONFIRMATION[] = "DIALOG_CONFIRMATION";
+	inline constexpr char DIALOG_INFORMATION[] = "DIALOG_INFORMATION";
 	inline constexpr char UNKNOWN[] = "UNKNOWN";
 	inline constexpr char MAIN_MENU[] = "MAIN_MENU";
 	inline constexpr char MAIN_MENU_NEW_GAME[] = "MAIN_MENU_NEW_GAME";
@@ -85,13 +89,15 @@ enum class ThorLobbyMode
 	CAMPAIGN_LIST
 };
 
-/// Native-only purpose tags for the three explicitly supported menu dialogs.
+/// Native-only purpose tags; generic dialogs are opt-in through standard factories.
 enum class ThorMenuModalType : std::uint8_t
 {
 	NONE,
 	QUIT_CONFIRMATION,
 	HIGH_SCORE_RESET_CONFIRMATION,
-	MISSING_TUTORIAL_INFORMATION
+	MISSING_TUTORIAL_INFORMATION,
+	CONFIRMATION,
+	INFORMATION
 };
 
 enum class ThorLobbyTab

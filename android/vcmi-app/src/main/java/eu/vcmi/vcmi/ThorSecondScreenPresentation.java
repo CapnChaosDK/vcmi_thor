@@ -10,6 +10,9 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.os.Bundle;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
 import android.view.Display;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -456,7 +459,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (isConfirmationContext(contextId)
                     && this.enabledActionMask != enabledActionMask)
                 buildConfirmationGesture.cancel();
-            if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+            if (((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
                     && this.enabledActionMask != enabledActionMask && !retainLoadBackGesture)
@@ -618,6 +622,14 @@ final class ThorSecondScreenPresentation extends Presentation
                         getContext().getString(R.string.thor_campaign_no_scenario));
                 status = ThorLobbyScenarioState.scenarioName(publishedStatus,
                         getContext().getString(R.string.thor_context_campaign));
+            }
+            else if (ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
+            {
+                title = ThorBrowserState.isSettings(contextId)
+                        ? (publishedTitle.isEmpty() ? getContext().getString(R.string.thor_settings_title) : publishedTitle)
+                        : getContext().getString(ThorContextIds.DIALOG_CONFIRMATION.equals(contextId)
+                                ? R.string.thor_dialog_confirmation : R.string.thor_dialog_information);
+                status = publishedStatus;
             }
             else if (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId))
             {
@@ -829,7 +841,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
             final boolean campaignBonus = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId);
             final boolean buildConfirmation = isConfirmationContext(contextId);
-            final boolean browserContext = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+            final boolean browserContext = (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId);
             final boolean recruitmentContext = isRecruitmentContext(contextId);
@@ -1031,7 +1044,8 @@ final class ThorSecondScreenPresentation extends Presentation
             }
             if (ThorContextIds.ADVENTURE_MAP.equals(contextId) && adventureTab == 3)
                 return handleAdventureMapTouch(event);
-            if (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+            if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
+                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
                 return handleBrowserTouch(event);
@@ -1538,12 +1552,18 @@ final class ThorSecondScreenPresentation extends Presentation
         private void drawBrowserDashboard(final Canvas canvas, final RectF frame, final float density)
         {
             final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
+            final boolean settings = ThorBrowserState.isSettings(contextId);
+            if (ThorBrowserState.isDialog(contextId))
+            {
+                drawDialogDashboard(canvas, frame, density);
+                return;
+            }
             final boolean townHallContext = ThorContextIds.TOWN_HALL.equals(contextId);
             paint.setStyle(Paint.Style.FILL);
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(TEXT);
-            drawFittedText(canvas, campaign ? title : townHallContext
+            drawFittedText(canvas, (campaign || settings) ? title : townHallContext
                             ? getContext().getString(R.string.thor_town_hall_title)
                             : getContext().getString(R.string.thor_context_load_game),
                     frame.centerX(), frame.top + frame.height() * 0.065f, frame.width() * 0.78f,
@@ -1554,7 +1574,7 @@ final class ThorSecondScreenPresentation extends Presentation
                             browser.pageCount),
                     frame.centerX(), frame.top + frame.height() * 0.115f, frame.width() * 0.72f,
                     Math.min(26f * density, frame.height() * 0.04f));
-            if (!campaign && !townHallContext)
+            if (!campaign && !townHallContext && !settings)
             {
                 drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.157f,
                         frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
@@ -1600,15 +1620,56 @@ final class ThorSecondScreenPresentation extends Presentation
             drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_NEXT, frame),
                     getContext().getString(R.string.thor_browser_next_page),
                     browserControlEnabled(ThorBrowserState.CONTROL_NEXT), false, density);
-            if (!campaign)
+            if (!campaign && (!settings || ThorContextIds.SETTINGS_SELECTION.equals(contextId)))
                 drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_PRIMARY, frame),
-                        getContext().getString(townHallContext ? R.string.thor_town_hall_build : R.string.thor_lobby_load),
+                        getContext().getString(settings ? R.string.thor_menu_ok : townHallContext ? R.string.thor_town_hall_build : R.string.thor_lobby_load),
                         browserControlEnabled(ThorBrowserState.CONTROL_PRIMARY), false, density);
             drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_BACK, frame),
                     getContext().getString(R.string.thor_lobby_back),
-                    isActionEnabled(campaign ? ThorActionIds.CAMPAIGN_BROWSER_BACK
-                            : townHallContext ? ThorActionIds.WINDOW_CLOSE : ThorActionIds.LOBBY_BACK),
+                    browserControlEnabled(ThorBrowserState.CONTROL_BACK),
                     false, density);
+        }
+
+        private void drawDialogDashboard(final Canvas canvas, final RectF frame, final float density)
+        {
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setColor(TEXT);
+            paint.setFakeBoldText(true);
+            drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.075f,
+                    frame.width() * 0.86f, Math.min(34f * density, frame.height() * 0.055f));
+            paint.setFakeBoldText(false);
+            drawFittedText(canvas, getContext().getString(R.string.thor_browser_page, browser.page + 1,
+                    browser.pageCount), frame.centerX(), frame.top + frame.height() * 0.13f,
+                    frame.width() * 0.8f, Math.min(24f * density, frame.height() * 0.04f));
+            final String message = String.join("", detailLines).replace("{", "").replace("}", "");
+            final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            textPaint.setColor(PARCHMENT_DARK);
+            final int width = Math.max(1, (int) (frame.width() * 0.86f));
+            final float height = frame.height() * 0.60f;
+            StaticLayout textLayout;
+            float size = Math.min(28f * density, frame.height() * 0.047f);
+            do
+            {
+                textPaint.setTextSize(size);
+                textLayout = StaticLayout.Builder.obtain(message, 0, message.length(), textPaint, width)
+                        .setAlignment(Layout.Alignment.ALIGN_NORMAL).setIncludePad(false).build();
+                size *= 0.9f;
+            } while (textLayout.getHeight() > height && size > 1f);
+            canvas.save();
+            canvas.translate(frame.left + frame.width() * 0.07f, frame.top + frame.height() * 0.18f);
+            textLayout.draw(canvas);
+            canvas.restore();
+            final boolean confirmation = ThorContextIds.DIALOG_CONFIRMATION.equals(contextId);
+            final int[] controls = {ThorBrowserState.CONTROL_PREVIOUS, ThorBrowserState.CONTROL_NEXT,
+                    ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
+            final int[] labels = {R.string.thor_browser_previous_page, R.string.thor_browser_next_page,
+                    confirmation ? R.string.thor_menu_yes : R.string.thor_menu_ok, R.string.thor_menu_no};
+            for (int index = 0; index < controls.length; ++index)
+            {
+                if (!confirmation && controls[index] == ThorBrowserState.CONTROL_BACK) continue;
+                drawLobbyScenarioButton(canvas, browserControlBounds(controls[index], frame),
+                        getContext().getString(labels[index]), browserControlEnabled(controls[index]), false, density);
+            }
         }
 
         private void drawTownHallRow(final Canvas canvas, final RectF bounds, final String publishedLabel,
@@ -3392,6 +3453,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.HERO_MEETING.equals(contextId))
                 return heroMeeting.description(title, status);
 
+            if (ThorBrowserState.isDialog(contextId))
+                return title + ". " + String.join("", detailLines);
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
 

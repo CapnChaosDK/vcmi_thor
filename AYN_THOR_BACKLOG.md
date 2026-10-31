@@ -59,6 +59,34 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Settings and shared confirmations (2026-10-31): local implementation; awaiting
+  native/Android CI and exact-candidate hardware validation. Settings mirrors live
+  native tab/action buttons, toggles, grouped choices and slider steps through
+  bounded five-row pages; native Settings selectors support paging, selection,
+  accept and cancel. Standard `CInfoWindow` Yes/No and OK factories publish complete
+  paged questions, item labels and named resource amounts, including spellbook
+  purchase and Settings restart/quit/return confirmations. Queued information
+  windows bind to their live stack parent on activation. Requests revalidate the
+  exact native owner, parent, current revision, target and enabled state before
+  invoking the original callback. No gameplay/server/save behavior changes.
+  Physical key rebinding and bespoke selection windows retain upper-screen input;
+  unsupported/oversized publications fail closed. The current six-part
+  [structured checklist](CI/thor-validation-plan.json) is the device authority;
+  the preceding service checklist is retained in
+  [its historical file](docs/validation/thor-blacksmith-mage-guild-validation-plan.json).
+  Local validation: all 170 native Thor tests pass with cached workspace Boost
+  headers; 56 host Java browser/control/gesture assertions pass, and 89 production
+  plus 33 test Java files parse without syntax errors. Four changed client C++
+  translation units pass syntax/type checks with and without Thor enabled, using
+  declaration-only JNI/SDL stubs (not Android linkage). Upstream-boundary and all
+  four CI policy/checklist tests pass. Source completeness/self-review covers
+  settings navigation, callbacks, modal parent restoration, bounded text/targets,
+  disabled states and stale input; this does not establish an APK/device pass.
+  Remote fetch/dependency retrieval failed through the configured proxy; GitHub
+  authentication reported an invalid token. Publish the reviewed local commit to
+  the permanent candidate ref under the playbook before starting Thor CI.
+
+
 - Slices 60/61 — complete lower-screen Blacksmith and Mage Guild: `hardware validated`
   by the user's 2026-10-30 confirmation for exact candidate
   `852e817c9d617f101f91f800cd2519d54cce6992` and its six-part

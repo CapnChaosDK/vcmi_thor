@@ -36,6 +36,9 @@ class CTextBox;
 
 class InterfaceObjectConfigurable: public CIntObject
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	friend class SettingsMainWindow;
+#endif
 public:
 	InterfaceObjectConfigurable(int used=0, Point offset=Point());
 	InterfaceObjectConfigurable(const JsonNode & config, int used=0, Point offset=Point());

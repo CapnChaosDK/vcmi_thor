@@ -329,6 +329,9 @@
     <string name="thor_service_spell_row">%1$d: %2$s</string>
     <string name="thor_service_no_spells">No spells at this level</string>
     <string name="thor_service_pending">Opening service action…</string>
-    <string name="thor_service_blacksmith_hint">Replacement confirmation appears on the upper screen.</string>
-    <string name="thor_service_guild_hint">Select a spell to read it. Research dialogs open on the upper screen.</string>
+    <string name="thor_service_blacksmith_hint">Confirm replacement in the dialog.</string>
+    <string name="thor_service_guild_hint">Select a spell to read it. Research opens a confirmation dialog.</string>
+    <string name="thor_settings_title">Settings</string>
+    <string name="thor_dialog_confirmation">Confirm</string>
+    <string name="thor_dialog_information">Information</string>
 </resources>

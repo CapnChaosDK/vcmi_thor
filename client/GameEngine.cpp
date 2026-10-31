@@ -50,6 +50,7 @@
 #include "mainmenu/CCampaignScreen.h"
 #include "mainmenu/CHighScoreScreen.h"
 #include "windows/InfoWindows.h"
+#include "windows/settings/SettingsMainWindow.h"
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -409,7 +410,21 @@ void GameEngine::updateFrame()
 				continue;
 			executed = joinWindow->executeThorAction(request->action);
 		}
-		else if(context.contextId == ThorContextIds::MENU_QUIT_CONFIRMATION
+		else if(context.contextId == ThorContextIds::SETTINGS)
+		{
+			auto owner = windows().topWindow<SettingsMainWindow>();
+			if(!owner || !owner->matchesThorContext(context)) continue;
+			executed = owner->executeThorAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::SETTINGS_SELECTION)
+		{
+			auto owner = windows().topWindow<CObjectListWindow>();
+			if(!owner || !owner->matchesThorSettingsContext(context)) continue;
+			executed = owner->executeThorSettingsAction(*request);
+		}
+		else if(context.contextId == ThorContextIds::DIALOG_CONFIRMATION
+			|| context.contextId == ThorContextIds::DIALOG_INFORMATION
+			|| context.contextId == ThorContextIds::MENU_QUIT_CONFIRMATION
 			|| context.contextId == ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION
 			|| context.contextId == ThorContextIds::TUTORIAL_MISSING_DIALOG)
 		{
