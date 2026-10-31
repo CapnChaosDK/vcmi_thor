@@ -39,7 +39,7 @@
     {
       "id": "display-input-regressions",
       "title": "Lifecycle and upper-input regressions",
-      "steps": "While Settings, a selector and a spellbook/other confirmation are open, toggle the lower panel, background/resume, and detach/reconnect/recreate the secondary display where practical. Recheck upper touch/controller, main-menu confirmations, Town/Guild/Blacksmith restoration and normal single-display operation.",
+      "steps": "While Settings, a selector and a spellbook/other confirmation are open, toggle the lower panel, background/resume, and detach/reconnect/recreate the secondary display where practical. Recheck upper touch/controller, main-menu confirmations, Town/Guild/Blacksmith restoration and normal single-display operation. Recheck Adventure/Battle spellbook browsing, native casting/targeting and return after closing a standard child notice.",
       "expected": "Exactly one current lower panel returns with correct text/actions and fresh gestures. No stale releases or focus theft. Upper input, existing build/menu confirmations and non-Thor behavior remain unchanged."
     }
   ]

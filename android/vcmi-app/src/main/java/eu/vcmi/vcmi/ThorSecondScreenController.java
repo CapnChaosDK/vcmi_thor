@@ -33,6 +33,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorLobbyPlayers lobbyPlayers = ThorLobbyPlayers.EMPTY;
     private ThorMarketState market = ThorMarketState.EMPTY;
     private ThorTavernState tavern = ThorTavernState.EMPTY;
+    private ThorSpellbookState spellbook = ThorSpellbookState.EMPTY;
     private ThorTownServiceState servicePanel = ThorTownServiceState.EMPTY;
     private ThorExtendedCommands commands = ThorExtendedCommands.EMPTY;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
@@ -185,6 +186,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         lobbyPlayers = ThorLobbyPlayers.EMPTY;
         market = ThorMarketState.EMPTY;
         tavern = ThorTavernState.EMPTY;
+        spellbook = ThorSpellbookState.EMPTY;
         servicePanel = ThorTownServiceState.EMPTY;
         commands = ThorExtendedCommands.EMPTY;
         enabledActionMask = 0;
@@ -209,6 +211,13 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         if (presentation != null) presentation.updateMarket(state);
     }
 
+    void publishSpellbook(final long revision, final ThorSpellbookState state)
+    {
+        if (revision != contextRevision || !ThorContextIds.SPELLBOOK.equals(contextId)) return;
+        spellbook = state;
+        if (presentation != null) presentation.updateSpellbook(state);
+    }
+
     void publishServicePanel(final long revision, final ThorTownServiceState state)
     {
         if (revision != contextRevision || !(ThorContextIds.BLACKSMITH.equals(contextId)
@@ -226,7 +235,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
 
     void publishCommands(final long revision, final ThorExtendedCommands state)
     {
-        if (revision != contextRevision || !ThorContextIds.BATTLE.equals(contextId)) return;
+        if (revision != contextRevision || !(ThorContextIds.BATTLE.equals(contextId) || ThorContextIds.ADVENTURE_MAP.equals(contextId))) return;
         commands = state;
         if (presentation != null) presentation.updateCommands(state);
     }
@@ -472,6 +481,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.updateMarket(market);
             newPresentation.updateTavern(tavern);
             newPresentation.updateServicePanel(servicePanel);
+            newPresentation.updateSpellbook(spellbook);
             newPresentation.updateLobbyPlayers(lobbyPlayers);
             newPresentation.updateHeroes(heroes);
             newPresentation.updateTowns(towns);

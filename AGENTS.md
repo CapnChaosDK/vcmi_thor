@@ -417,6 +417,25 @@ or PR creation alone does not authorize a merge. Never rewrite
 `ayn-thor-dual-screen`, releases, tags, or validated history. The candidate branch is
 the only narrowly resettable ref, under the playbook procedure.
 
+## Managed cloud networking
+
+In a managed cloud workspace, preserve the injected proxy and credential variables.
+A default-sandbox command may fail to reach `proxy:8080` even when the managed
+network policy allows GitHub. When a command fails to connect to that proxy, retry
+it using `exec_command` with `sandbox_permissions: "with_additional_permissions"`
+and `additional_permissions: {"network": {"enabled": true}}`. Use this mode for
+subsequent fetch/push, GitHub CLI and dependency requests that need networking.
+This grants command network access within the managed policy; it does not bypass
+host restrictions. Do not unset the proxy or change routes to work around a denial.
+
+Recheck HTTPS connectivity and `gh auth status` in that same network-enabled mode
+before diagnosing an expired token: the CLI can report an invalid token when it
+cannot reach GitHub. Never print tokens or replace injected credentials based only
+on the default-sandbox failure. If enabled requests still fail, inspect the managed
+environment status and network policy; report explicit policy denials or genuine
+GitHub authorization errors and request the corresponding environment/connection
+repair. Never assume a previous session's network result still applies.
+
 ## Stop and escalate only when
 
 - product behavior is materially ambiguous and repository evidence cannot decide it;

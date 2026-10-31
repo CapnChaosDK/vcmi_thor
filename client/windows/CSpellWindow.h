@@ -117,6 +117,11 @@ class CSpellWindow : public CWindowObject, public IVideoHolder
 	const CGHeroInstance * myHero; //hero whose spells are presented
 	CPlayerInterface * myInt;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	ObjectInstanceID thorHeroId;
+	std::chrono::steady_clock::time_point thorSpellbookPublication;
+#endif
+	void selectSpell(const CSpell * spell, int schoolLevel);
 	void processSpells();
 	void searchInput();
 	void computeSpellsPerArea(); //recalculates spellAreas::mySpell
@@ -133,6 +138,12 @@ class CSpellWindow : public CWindowObject, public IVideoHolder
 	std::function<void(SpellID)> onSpellSelect; //external processing of selected spell
 
 public:
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorSpellbook(bool invalidate = false, bool force = false);
+	bool executeThorSpellbook(const struct ThorActionRequest & request);
+#endif
 	CSpellWindow(const CGHeroInstance * _myHero, CPlayerInterface * _myInt, bool openOnBattleSpells = true, const std::function<void(SpellID)> & onSpellSelect = nullptr);
 	~CSpellWindow();
 

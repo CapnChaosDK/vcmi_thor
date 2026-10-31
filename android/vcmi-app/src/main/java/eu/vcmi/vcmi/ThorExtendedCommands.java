@@ -12,6 +12,7 @@ final class ThorExtendedCommands
     static final int TAVERN_SELECT = 19, TAVERN_RECRUIT = 20, TAVERN_INVITE = 21,
             TAVERN_GUILD = 22, TAVERN_CLOSE = 23;
     static final int BLACKSMITH_BUY = 24, GUILD_RESEARCH = 25, SERVICE_CLOSE = 26;
+    static final int SPELLBOOK_CAST = 27, SPELLBOOK_CLOSE = 28, ADVENTURE_SPELLBOOK = 29;
     static final ThorExtendedCommands EMPTY = new ThorExtendedCommands(new int[0], new int[0]);
     private final int[] enabled, active;
 
@@ -21,7 +22,7 @@ final class ThorExtendedCommands
         this.active = active;
     }
 
-    static boolean known(final int command) { return command >= AUTO_START && command <= SERVICE_CLOSE; }
+    static boolean known(final int command) { return command >= AUTO_START && command <= ADVENTURE_SPELLBOOK; }
 
     static int[] encode(final int version, final int command, final int target)
     {
@@ -31,6 +32,7 @@ final class ThorExtendedCommands
 
     static boolean validTarget(final int command, final int target)
     {
+        if (command == SPELLBOOK_CAST) return target >= 0;
         if (command == BLACKSMITH_BUY || command == GUILD_RESEARCH) return target >= 0;
         if (command == TAVERN_SELECT || command == TAVERN_INVITE) return target >= 0;
         if (command >= MARKET_SELL && command <= MARKET_AMOUNT) return target >= 0;
@@ -43,7 +45,7 @@ final class ThorExtendedCommands
             return false;
         for (int i = 0; i < values.length; ++i)
         {
-            if (!known(values[i]) || values[i] >= PLAYER_SELECT) return false;
+            if (!known(values[i]) || values[i] >= PLAYER_SELECT && values[i] != ADVENTURE_SPELLBOOK) return false;
             for (int j = 0; j < i; ++j)
                 if (values[i] == values[j]) return false;
         }

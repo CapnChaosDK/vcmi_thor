@@ -53,6 +53,7 @@ public:
 	void acknowledgeThorCommand(std::uint64_t revision, int command);
 	void publishThorLobbyPlayers(std::uint64_t revision, const std::vector<ThorLobbyPlayer> & players);
 	void publishThorCommands(std::uint64_t revision, const ThorExtended::State & state);
+	void publishThorSpellbook(std::uint64_t revision, const ThorSpellbook & book);
 	void publishThorServicePanel(std::uint64_t revision, const ThorTownServicePanel & panel);
 	void publishThorTavern(std::uint64_t revision, const ThorTavern & tavern);
 	void publishThorMarket(std::uint64_t revision, const ThorMarket & market);

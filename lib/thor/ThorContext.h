@@ -5,6 +5,7 @@
 #include "ThorMarket.h"
 #include "ThorTavern.h"
 #include "ThorTownServicePanel.h"
+#include "ThorSpellbook.h"
 
 #include "../../Global.h"
 
@@ -65,6 +66,7 @@ namespace ThorContextIds
 	inline constexpr char BLACKSMITH[] = "BLACKSMITH";
 	inline constexpr char MAGE_GUILD[] = "MAGE_GUILD";
 	inline constexpr char TAVERN[] = "TAVERN";
+	inline constexpr char SPELLBOOK[] = "SPELLBOOK";
 	inline constexpr char RESOURCE_MARKET[] = "RESOURCE_MARKET";
 	inline constexpr char TOWN_HALL[] = "TOWN_HALL";
 	inline constexpr char BUILD_CONFIRMATION[] = "BUILD_CONFIRMATION";
@@ -366,6 +368,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::optional<ThorMarket> market;
 	std::optional<ThorTavern> tavern;
 	std::optional<ThorTownServicePanel> servicePanel;
+	std::optional<ThorSpellbook> spellbook;
 	std::vector<ThorLobbyPlayer> lobbyPlayers;
 	int selectedHeroId = -1;
 	std::int64_t actionSubjectId = -1;
