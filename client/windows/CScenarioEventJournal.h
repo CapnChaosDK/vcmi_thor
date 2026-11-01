@@ -21,6 +21,7 @@ class ScenarioEventJournalMinimap : public CMinimap
 	int3 location = int3(-1, -1, -1);
 	std::shared_ptr<CPicture> marker;
 
+	friend class ScenarioEventJournal;
 	void markerClicked() const;
 
 	void clickPressed(const Point & cursorPosition) override {};
@@ -42,6 +43,10 @@ class ScenarioEventJournal : public JournalWindow
 	std::string getItemText(size_t itemIndex) const override;
 	void onItemSelected(size_t itemIndex) override;
 	void updateMinimap() override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool thorCanCenter() const override;
+	void thorCenter() override;
+#endif
 
 public:
 	explicit ScenarioEventJournal(const std::vector<ScenarioEventJournalEntry> & journalEntries);

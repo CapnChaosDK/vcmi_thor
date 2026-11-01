@@ -57,6 +57,7 @@ public:
 	void publishThorServicePanel(std::uint64_t revision, const ThorTownServicePanel & panel);
 	void publishThorTavern(std::uint64_t revision, const ThorTavern & tavern);
 	void publishThorMarket(std::uint64_t revision, const ThorMarket & market);
+	void publishThorReference(std::uint64_t revision, const ThorReference & panel);
 	void publishThorBrowser(std::uint64_t revision, int page, int pageCount,
 		const std::vector<ThorBrowserEntry> & entries);
 	void publishThorRecruitment(std::uint64_t revision, const ThorRecruitmentSnapshot & recruitment);

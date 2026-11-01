@@ -34,6 +34,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
     private ThorMarketState market = ThorMarketState.EMPTY;
     private ThorTavernState tavern = ThorTavernState.EMPTY;
     private ThorSpellbookState spellbook = ThorSpellbookState.EMPTY;
+    private ThorReferenceState reference = ThorReferenceState.EMPTY;
     private ThorTownServiceState servicePanel = ThorTownServiceState.EMPTY;
     private ThorExtendedCommands commands = ThorExtendedCommands.EMPTY;
     private ThorHeroRoster heroes = ThorHeroRoster.EMPTY;
@@ -188,6 +189,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         tavern = ThorTavernState.EMPTY;
         spellbook = ThorSpellbookState.EMPTY;
         servicePanel = ThorTownServiceState.EMPTY;
+        reference = ThorReferenceState.EMPTY;
         commands = ThorExtendedCommands.EMPTY;
         enabledActionMask = 0;
         activeActionMask = 0;
@@ -216,6 +218,14 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         if (revision != contextRevision || !ThorContextIds.SPELLBOOK.equals(contextId)) return;
         spellbook = state;
         if (presentation != null) presentation.updateSpellbook(state);
+    }
+
+    void publishReference(final long revision, final ThorReferenceState state)
+    {
+        if (revision != contextRevision || !ThorReferenceState.context(contextId)
+                || state != ThorReferenceState.EMPTY && !state.context().equals(contextId)) return;
+        reference = state;
+        if (presentation != null) presentation.updateReference(state);
     }
 
     void publishServicePanel(final long revision, final ThorTownServiceState state)
@@ -481,6 +491,7 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             newPresentation.updateMarket(market);
             newPresentation.updateTavern(tavern);
             newPresentation.updateServicePanel(servicePanel);
+            newPresentation.updateReference(reference);
             newPresentation.updateSpellbook(spellbook);
             newPresentation.updateLobbyPlayers(lobbyPlayers);
             newPresentation.updateHeroes(heroes);

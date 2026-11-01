@@ -121,6 +121,15 @@ public class NativeMethods
                     ((VcmiSDLActivity) ctx).publishThorSpellbook(revision, state));
     }
 
+    public static void publishThorReference(final long revision, final int[] data, final String[] text, final byte[] rgb)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final ThorReferenceState state = ThorReferenceState.copyOf(revision, data, text, rgb);
+        final Context ctx = context();
+        if (ctx instanceof VcmiSDLActivity)
+            ((VcmiSDLActivity) ctx).runOnUiThread(() -> ((VcmiSDLActivity) ctx).publishThorReference(revision, state));
+    }
+
     public static void publishThorServicePanel(final long revision, final int[] data, final String[] names)
     {
         if (!BuildConfig.AYN_THOR_BUILD) return;

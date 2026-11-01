@@ -111,6 +111,11 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.publishSpellbook(revision, state);
     }
 
+    void publishThorReference(final long revision, final ThorReferenceState state)
+    {
+        if (mThorSecondScreenController != null) mThorSecondScreenController.publishReference(revision, state);
+    }
+
     void publishThorServicePanel(final long revision, final ThorTownServiceState state)
     {
         if (mThorSecondScreenController != null)

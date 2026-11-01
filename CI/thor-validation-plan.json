@@ -1,46 +1,46 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-save-load",
-  "title": "Complete lower-screen in-game Save and native Load journeys",
-  "summary": "Browse the exact native Save list and folders, select slots, edit a new or existing filename in a scoped lower-display Android editor, Save through CSavingScreen and answer the original overwrite/autosave warnings. Load follows the actual upstream in-game route: Settings Load, native leave-game confirmation, Load menu, existing native lobby browser and Load callback. No file, compatibility or server behavior changes.",
-  "preparation": "Back up the app data and dedicated Saves-upstream directory before testing. Use disposable saves only. Verify the exact candidate receipt, APK SHA-256 and package is.xyz.vcmi.thor; install in place with adb install -r -d, never uninstall. Prepare an Adventure game with multiple manual saves/folders (more than five entries), long/Unicode names, an empty folder and distinct recognizable game states. Keep legacy Saves untouched. Record unavailable scenarios explicitly.",
-  "limitations": "The upstream base has no independent in-game Load browser: confirming Load ends the current gameplay and opens its real Load menu. No rejects that departure; Back after departure follows the original menu lifecycle and cannot resurrect the ended game. Save transport caps are 10000 native list entries and 240 UTF-8 filename bytes; malformed/oversized input fails closed. The native filename filter removes forbidden punctuation. The transient editor requests Android IME on the secondary display; actual keyboard display placement and focus restoration must pass on Thor. No physical pass is inferred from CI.",
+  "feature_id": "thor-adventure-reference",
+  "title": "Adventure reference companion: Quests, Scenario Journal and Puzzle Map",
+  "summary": "Complete native journal browsing/reading/tab/location/Close journeys and a one-shot final covered Puzzle Map image on the lower display. Native models, visibility, callbacks and save rules remain authoritative.",
+  "preparation": "Back up app data and Saves-upstream. Verify exact candidate receipt, APK SHA-256 and package is.xyz.vcmi.thor; install in place without uninstalling. Prepare disposable maps/saves with more than five quests/events, varied native components, long/Unicode text and zero/partial/full obelisk discovery; test multiple faction puzzle artworks. Record unavailable scenarios explicitly.",
+  "limitations": "Native journal windows are authoritative snapshots; reopen them to receive newly collected entries just as above. Transport bounds: 10000 entries, five rows, 8192 UTF-8 bytes of complete selected native text, 384 bytes per transport page and readable Android subpages. Unsupported text/list data uses the native upper window. Puzzle capture is one software snapshot after reveal, fixed 592x544 RGB with remaining native covers; it is not a continuous frame stream. No grail coordinates or unmasked image cross JNI. Hardware must verify masking, scaling, readability and focus.",
   "checks": [
     {
-      "id": "save-browser",
-      "title": "Save browsing and cancellation",
-      "steps": "From lower Adventure Actions open Save. Compare rows/order/selection with the native upper window. Page both directions through more than five entries. Open native folders and parent folders below; inspect an empty folder and a selected save date/map/dimensions. Change selection/sort/filter/folder above. Cancel below and above in separate trials. Also enter Save from lower Settings.",
-      "expected": "Every native entry in the bounded current folder is reachable; folder labels, current selection, page count and bounded readable names agree. Empty state is explicit. Native metadata is not invented. Both cancellation routes unpause and restore the actual originating game context; Settings Save follows its normal close-before-Save route."
+      "id": "quests",
+      "title": "Quest browsing and complete native information",
+      "steps": "Prepare more than five quests, differing requirements/states and long/Unicode text. Open Quests below, page in both directions, select first/middle/last entries, choose Read and page through all text/subpages. Compare native list, description and component popup information above. Change selection above while reading below.",
+      "expected": "Native order and current selection agree. Every bounded entry and full published native description/component information is readable, including Unicode. No invented rewards/completion or hidden quest data; upper selection invalidates stale text/actions."
     },
     {
-      "id": "new-save-name",
-      "title": "Create a named save entirely through the lower workflow",
-      "steps": "Choose New / edit filename, replace the selected draft with a unique disposable name and edit middle/end text, delete characters, use OK and keyboard Done in separate trials, then Save. Reopen Save/Load and verify the resulting name and game state. Try CJK, accented text, emoji, blank names, forbidden punctuation, dot/dot-dot and names beyond 240 UTF-8 bytes.",
-      "expected": "A transient editor and usable keyboard allow lower-display filename entry without overlapping browser/footer actions. OK/Done changes only the native filename widget; Save writes once through native behavior, with normal extension/location/filter/collision semantics. Invalid/oversized names cannot save. Unicode round-trips without JNI errors. If Android places an unusable keyboard on the upper display, fail this check and record the platform limitation; do not accept a complete lower workflow."
+      "id": "events-tabs",
+      "title": "Scenario Journal and native tab navigation",
+      "steps": "Prepare more than five scenario events, including multiline text and component rewards. Switch Quests/Events below and above; page/select/read every entry. Test unavailable tabs, no quest/no event cases and an empty journal where reachable.",
+      "expected": "The normal native close-and-open tab route is used. Correct day/message/component information appears. Disabled native tabs stay disabled; empty/unsupported states are explicit. Selection, text pages and hit regions never leak between owners."
     },
     {
-      "id": "name-cancel-focus",
-      "title": "Filename cancellation, focus and cleanup",
-      "steps": "Open the editor with an existing filename. Modify it then Cancel, press keyboard Back/dismiss, tap upper controls, background/resume, toggle the lower panel and recreate/detach/reconnect the display in separate trials. Replace/close the upper Save window during a draft. Test upper SDL filename editing before and after a lower editor session.",
-      "expected": "Every cancellation discards the local draft without writing or changing the native name. Context/revision/session changes withdraw the editor. No leaked keyboard/dialog, delayed IME reopening, duplicate commit, focus theft after dismissal or loss of upper touch/controller/text entry remains. Exactly one fresh lower panel returns."
+      "id": "locations-close",
+      "title": "Native location actions and Close",
+      "steps": "Select quests with a surviving native source and events with and without a valid location. Use Locate below and compare native map-marker centering. Close each journal using either screen; reopen from Adventure.",
+      "expected": "Locate follows the existing native marker callback and is disabled without a valid native target. No coordinates cross JNI. Close restores the actual native parent with correct selection/input and no residual window."
     },
     {
-      "id": "overwrite",
-      "title": "Existing-save overwrite and native warnings",
-      "steps": "Select a disposable existing save below, press Save, inspect the complete actual overwrite question, choose No and verify the original file/game state remains. Repeat with Yes and verify the updated save by loading it. Enter a native autosave-reserved name to exercise its warning and subsequent overwrite dialog where applicable. Exercise a native save failure/notice where safely reproducible.",
-      "expected": "Original native warnings, Yes/No callbacks and errors are used. No leaves the save unchanged and restores the exact Save parent/name/selection. Yes invokes the original save callback once and restores the game normally. Nested warnings cannot be confirmed by an old release; failures retain native behavior."
+      "id": "puzzle",
+      "title": "Covered Puzzle Map and progress",
+      "steps": "Use disposable games at zero, partial and complete obelisk discovery. Open Puzzle Map below; compare every revealed region and remaining cover with the native window after its reveal animation. Check progress, different factions/puzzle art, UI scaling/resolution and Close.",
+      "expected": "One final bounded masked image appears after reveal. Every native hidden region stays covered: no unmasked preview, grail coordinates or premature image. Progress matches native discovery. Image aspect ratio and readability remain correct, native upper rendering stays intact and Close restores Adventure. Missing/blank or incorrectly masked images fail this check."
     },
     {
-      "id": "load-journey",
-      "title": "Complete actual in-game Load route and main-menu regression",
-      "steps": "From lower Settings choose Load. Reject the leave-game question and compare the current game. Repeat and accept; use lower Load menu/Single Player and the existing native browser. Page/select saves, verify metadata and disabled Load for no valid selection, then load a recognizable disposable state. In a separate trial cancel/back through the browser/menu. Recheck a fresh main-menu Load and native error/rejection for an unavailable or incompatible save.",
-      "expected": "No returns to the live originating game. Yes follows the unchanged native endGameplay-to-Load-menu route. Browsing and Load use the real lobby authority, native asynchronous selection availability and existing start callback. The correct state loads, or native rejection/error is shown. Back after confirmed departure follows native menu restoration; no fabricated in-game window or previous-game selection persists."
+      "id": "stale-input",
+      "title": "Stale targets, multitouch and modal restoration",
+      "steps": "Hold a row, page, Locate, tab or Close while changing native selection/window above. Rapidly repeat actions; drag outside, add/remove a second pointer and hold too long. Cover each owner with a modal, then dismiss from either screen.",
+      "expected": "Only the exact live owner/parent/revision and current target executes, at most once. Old releases and duplicate taps cannot navigate/center/close a replacement window. Normal modal cleanup restores the real parent; no stuck pending controls."
     },
     {
-      "id": "stale-lifecycle-regressions",
-      "title": "Stale input, lifecycle and neighboring features",
-      "steps": "Hold lower Save/row/page/editor/Load controls while upper selection, folder, list order, filename or native owner changes. Refresh the native list with a file added/removed if available. Rapidly repeat actions, drag/release outside and add/remove a second pointer. Cover Save/Load with confirmations/errors, close them from either screen, toggle/recreate the lower panel and background/resume. Recheck Settings/shared confirmations, Adventure Actions, Hero/Town children, Battle/result restoration, upper touch/controller and single-display behavior.",
-      "expected": "Only the exact current owner/parent/revision/entry may execute, at most once. Old/off-page/replaced targets and malformed input fail closed without stuck controls or unintended save/overwrite/load. Modals restore the actual parent. Existing decks, native Save/Load, files, upper controls and single-display behavior remain intact."
+      "id": "lifecycle-regressions",
+      "title": "Display lifecycle and neighboring journeys",
+      "steps": "While reading and inspecting Puzzle Map, toggle the lower panel, background/resume and detach/reconnect/recreate the display. Recheck Save/name editor/Load, Settings/shared confirmations, spellbook, Adventure/Hero/Town and Battle/result restoration. Check upper touch/controller, hotseat player switch and single-display behavior.",
+      "expected": "Exactly one fresh non-focusable panel returns with current player/context data. No stale image/text, leaked gesture, focus theft, repeated snapshot loop or upper-screen regression. Existing native game, quest, visibility and save behavior stays unchanged."
     }
   ]
 }

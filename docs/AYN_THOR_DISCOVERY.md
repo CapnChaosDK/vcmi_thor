@@ -134,6 +134,26 @@ remain authoritative. Bespoke selection windows and physical key rebinding retai
 upper input. These source changes still require an exact-candidate APK/device gate;
 see the current [structured checklist](../CI/thor-validation-plan.json).
 
+### Adventure reference companion (Slice 64)
+
+`JournalWindow` provides the shared lower Quest/Event adapter around its existing
+native selection, text/component content, tab group and Close callbacks. Concrete
+owners expose their existing minimap marker-centering route. Exact native owner,
+immediate parent, revision and action epoch guard every command on MainGUI.
+Five-row native pages and complete bounded description pages are rendered by the
+Android reference deck with readable local subpages. Native snapshot semantics and
+quest/event visibility remain unchanged; no coordinates cross JNI.
+
+`CPuzzleWindow` captures one 592x544 RGB image after the reveal completes, using
+its existing software PuzzleMapView and every remaining native covering piece.
+The capture transaction reads no pixels until all covers are composed. The raw
+uncovered map and grail coordinates never cross JNI. Immutable image state is
+cached for lifecycle restoration; no continuous frame stream is introduced.
+Extended V1 commands 30–38 belong to this panel; legacy action IDs are unchanged.
+The complete contract, limits and device gates are in the backlog and current
+`CI/thor-validation-plan.json`; source implementation does not establish hardware
+masking, image readability or input/focus success.
+
 ### Save and native Load companion (Slice 63)
 
 `CSavingScreen` mirrors the current `SelectionTab` list, including folders, with

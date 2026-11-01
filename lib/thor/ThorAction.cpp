@@ -718,6 +718,15 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 			if(context.contextId != ThorContextIds::ADVENTURE_MAP) return ThorActionValidation::WRONG_CONTEXT;
 			return context.extendedCommands.allows(request.commandId) ? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
 		}
+		if(ThorExtended::referenceCommand(request.commandId))
+		{
+			if(!context.nativeOwnerToken || !context.nativeParentToken || !context.reference
+				|| context.contextId != (context.reference->kind == 1 ? ThorContextIds::QUEST_LOG
+					: context.reference->kind == 2 ? ThorContextIds::SCENARIO_EVENT_JOURNAL : ThorContextIds::PUZZLE_MAP))
+				return ThorActionValidation::WRONG_CONTEXT;
+			return context.reference->allows(request.commandId, request.targetId)
+				? ThorActionValidation::VALID : ThorActionValidation::UNAVAILABLE;
+		}
 		if(ThorExtended::spellbookCommand(request.commandId))
 		{
 			if(context.contextId != ThorContextIds::SPELLBOOK || !context.nativeOwnerToken) return ThorActionValidation::WRONG_CONTEXT;

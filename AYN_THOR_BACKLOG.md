@@ -59,6 +59,13 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 64 — Adventure reference companion (Quests, Scenario Journal and Puzzle
+  Map): `awaiting CI` on `codex/adventure-reference`, based on promoted Slice 63
+  product `eca74b682`. The user approved the complete bundled scope and one
+  integrated candidate/hardware checklist. See the contract below; no CI or
+  hardware pass is inferred from source implementation.
+
+
 - Slice 63 — lower-screen Save and native Load journeys: `hardware validated` by
   the user's confirmation on 2026-11-01 that all six hardware checks passed for
   exact candidate `da45a886ac06429510d3371c677e6148901e8b37`. Trusted CI
@@ -3247,3 +3254,99 @@ editing the Save name chooses the destination of a native save.
 - The permanent candidate remains at `da45a886ac06429510d3371c677e6148901e8b37`.
   This final receipt changes Markdown only and needs no new APK/hardware cycle.
   Slice 63 is complete and promoted; no next feature is selected.
+
+## Slice 64 — Adventure reference companion
+
+- Status: `awaiting CI`. The user approved bundling complete lower-screen Quest
+  Log, Scenario Journal and Puzzle Map journeys after Slice 63. No Kingdom
+  Overview, engine, quest-rule, visibility, save-format or general controller
+  rewrite belongs to this slice.
+- User journey: open the existing Adventure Quests/Puzzle actions; browse every
+  bounded quest/event in native order, select, Read the complete native description
+  and component information with readable paging, switch native journal tabs, use
+  available native marker location actions and Close. Puzzle Map shows progress
+  and one final covered image after its normal reveal animation; Close restores
+  the real native parent. Upper-screen selection and normal callbacks remain
+  authoritative. Empty/disabled/unsupported states are explicit.
+- Native boundary: `JournalWindow` shares its existing selection, `setContent`,
+  tab group and Close routes with a Thor-only adapter. Concrete quest/event owners
+  expose only their existing marker-centering callbacks. Publish five rows, native
+  selection, bounded translated text/components, page state and native tab/location
+  availability; bind exact owner, immediate parent and action epoch. Poll at most
+  every 100 ms and force revalidation immediately before MainGUI dispatch. Consume
+  each revision before any callback, including unchanged row selection/centering.
+- Text/list bounds: 10000 entries; five rows per page; bounded 128-byte row labels;
+  complete selected text up to 8192 UTF-8 bytes, paged through existing 384-byte
+  dialog chunks. Android wraps those pages at readable size and adds local subpages
+  when explicit line breaks need more room. Oversized descriptions retain native
+  upper-window access rather than silently truncating details. Native journal
+  models are snapshots; reopen for newly collected entries as with the upper UI.
+- Puzzle boundary: a single 592x544 RGB snapshot is captured on MainGUI only after
+  native disappearing pieces are gone. Draw the native PuzzleMapView and every
+  remaining covering piece into one software Canvas before reading ANY payload
+  pixels. No hidden raw-map image or grail coordinates cross JNI. Immutable cached
+  image state is republished only with semantic revisions/owner activation, not
+  streamed per frame. Native upper rendering and reveal animation remain unchanged.
+- Requests: extended V1 commands 30–38 cover selection, list/text previous/next,
+  Quests/Events, Locate and Close. Immutable legacy action IDs/masks are unchanged.
+  Native and Java validators enforce exact shapes/bounds/UTF-8, context, target,
+  availability, owner/parent/revision and one-shot dispatch. Controls are native
+  commands or Android-local reading/subpage navigation; Java never resolves game
+  objects or changes gameplay/visibility.
+- Android: bounded immutable panel state and a dedicated shared reference deck;
+  non-focusable Presentation unchanged. Cancel gestures across context/revision,
+  pointer, activity/display/session changes. Keep local reading mode across native
+  text-page revisions, clear it on context replacement, and disable submitted
+  native controls until fresh authority arrives. Controller retains the current
+  snapshot for recreation; stale publications never attach to another context.
+- Upstream-update cost: small guarded journal/puzzle owner hooks, the existing
+  MainGUI dispatcher and bounded JNI transport. The shared empty-list guard in
+  `JournalWindow::initializeItems` is necessary for explicit empty-journal display:
+  it avoids selecting `size()-1` from the new lower journey, preserving all
+  nonempty native behavior. No protected engine/server/renderer source changes.
+- Automated acceptance: native current/off-page/disabled command gates, owner,
+  parent, selection/text/list/epoch invalidation, payload bounds and Unicode
+  paging; production capture-transaction test forbids reads during reveal or
+  before all covers; JVM immutable payload, command/gesture/session, local reader,
+  subpage and measured-control geometry tests. Actual SDK/NDK/JUnit and native
+  runtime regressions remain permanent Thor CI gates.
+- Hardware authority: [six-part current checklist](CI/thor-validation-plan.json).
+  Previous Save/Load checklist is archived at
+  `docs/validation/thor-save-load-validation-plan.json`. Required physical checks
+  cover both journals, native location/tab/Close routes, zero/partial/full puzzle
+  masking/scaling, stale/multitouch/modal behavior, lifecycle and neighboring decks.
+  Missing/blank or incorrectly covered puzzle output is a failure, not a pass.
+
+### Slice 64 source completeness, review and local validation
+
+- Feature-completeness checkpoint: both journals cover bounded complete lists,
+  native selection, full supported description/component text, readable subpages,
+  tabs, valid/disabled location actions, empty/unsupported states and normal Close.
+  Puzzle Map covers pending reveal, one final covered snapshot, native discovery
+  progress and Close. No native rule, save or renderer modification is required.
+- Separate finished-diff review traced native callbacks and immediate-parent
+  restoration, upper selection and native tab availability, revision/epoch
+  consumption, UTF-8/UTF-16 limits, immutable image bounds, modal/lifecycle cleanup,
+  local reading/subpage state, non-Thor guards and test/build registration.
+- Review corrections: preserve reference-owner tokens through context normalization;
+  bind tab availability to actual native blocked buttons; force dispatch-time
+  refresh while throttling passive journal polling; preserve local reader mode
+  across native text pages; add readable local subpages for newline-heavy text;
+  use an explicit 384-byte UTF-16 bridge limit instead of the existing 128-byte
+  label default. Capture ordering is a production helper tested to prohibit reads
+  before native reveal completion and composition of every remaining cover.
+- Local results: **188 native contract tests pass**, including six new reference
+  tests. **26 JVM tests pass**, including seven new reference state/gesture/reader/
+  geometry cases and Save/Load, browser, Settings/dialog and control-gesture
+  regressions, using the standalone JDK assertion runner. The new actual renderer
+  compiles with narrow Android API declarations; all 133 production/test Java files
+  parse successfully. This is not an Android SDK/JUnit runtime result.
+- Journal, quest, event, puzzle and MainGUI translation units pass Android syntax
+  checks both with and without Thor enabled using cached Boost and declaration-only
+  JNI/SDL-mixer headers. Thor checks retain warning-as-error flags and the project's
+  existing switch/unused/sign/reorder exclusions. No NDK linkage is claimed.
+- Upstream boundary policy, checklist schema, four Python policy/checklist tests,
+  resource XML and `git diff --check` pass. Full upstream native runtime regression,
+  SDK/JUnit, ARM64 compilation/package and artifact checks remain permanent CI.
+  Final puzzle masking/artwork/scaling, native centering/tab/Close restoration,
+  readability and upper-input/lifecycle success remain the six-part hardware gate.

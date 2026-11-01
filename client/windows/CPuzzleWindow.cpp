@@ -31,19 +31,10 @@
 #include "../../lib/GameLibrary.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-#include "../../lib/CAndroidVMHelper.h"
-#include "../../lib/thor/ThorContext.h"
-
-namespace
-{
-	void publishThorInGameContext(ThorInGameContext inGameContext)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForInGameContext(inGameContext);
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
+#include "../thor/ThorReferenceSupport.h"
+#include "../thor/ThorPuzzleSnapshot.h"
+#include "../gui/WindowHandler.h"
+#include "render/Canvas.h"
 #endif
 
 
@@ -52,6 +43,9 @@ CPuzzleWindow::CPuzzleWindow(const int3 & GrailPos, double discoveredRatio)
 	grailPos(GrailPos),
 	currentAlpha(ColorRGBA::ALPHA_OPAQUE)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorProgress = static_cast<int>(std::clamp(discoveredRatio, 0.0, 1.0) * 100);
+#endif
 	OBJECT_CONSTRUCTION;
 
 	ENGINE->sound().playSound(soundBase::OBELISK);
@@ -102,7 +96,7 @@ void CPuzzleWindow::activate()
 	CWindowObject::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::PUZZLE_MAP);
+	refreshThorReference();
 #endif
 }
 
@@ -114,7 +108,7 @@ void CPuzzleWindow::deactivate()
 	CWindowObject::deactivate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	withdrawThorReference();
 #endif
 }
 
@@ -143,3 +137,48 @@ void CPuzzleWindow::show(Canvas & to)
 	if(mapView->needFullUpdate && piecesToRemove.empty())
 		mapView->needFullUpdate = false;
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CPuzzleWindow::refreshThorReference()
+{
+	if(!isActive()) return;
+	const auto stack = ENGINE->windows().findWindows<IShowActivatable>();
+	if(!thorParent && stack.size() > 1) thorParent = stack[stack.size() - 2].get();
+	if(!ENGINE->windows().isTopWindowWithParent(this, thorParent)) return;
+	// One software snapshot after the native reveal finishes. Draw the map and ALL
+	// remaining covers into the same surface before reading any transport pixels.
+	// Never render an unmasked map into the payload or publish native grail coordinates.
+	if(!thorCaptureAttempted && piecesToRemove.empty())
+	{
+		thorCaptureAttempted = true;
+		const Rect area = mapView->pos;
+		if(area.w == ThorReference::WIDTH && area.h == ThorReference::HEIGHT
+			&& area.x >= 0 && area.y >= 0 && area.x + area.w <= 4096 && area.y + area.h <= 4096)
+		{
+			Canvas canvas(Point(area.x + area.w, area.y + area.h), CanvasScalingPolicy::IGNORE);
+			thorImage = thorPuzzleSnapshot(piecesToRemove.empty(), visiblePieces.size(),
+				[&]() { mapView->showAll(canvas); },
+				[&](std::size_t i) { visiblePieces[i]->showAll(canvas); },
+				[&](int x, int y) { return canvas.getPixel(Point(area.x + x, area.y + y)); });
+		}
+	}
+	ThorReference panel;
+	panel.kind = 3;
+	panel.progress = thorProgress;
+	if(thorImage) { panel.rgb = thorImage; panel.width = ThorReference::WIDTH; panel.height = ThorReference::HEIGHT; }
+	publishThorReference(this, thorParent, std::move(panel), 0);
+}
+
+bool CPuzzleWindow::executeThorReference(const ThorActionRequest & request)
+{
+	refreshThorReference();
+	const auto state = thorContextStore().snapshot();
+	if(!isActive() || !ENGINE->windows().isTopWindowWithParent(this, thorParent)
+		|| state.nativeOwnerToken != this || state.nativeParentToken != thorParent
+		|| request.revision <= thorConsumed || validateThorActionRequest(request, state) != ThorActionValidation::VALID
+		|| request.commandId != ThorExtended::REFERENCE_CLOSE) return false;
+	thorConsumed = request.revision;
+	close();
+	return true;
+}
+#endif

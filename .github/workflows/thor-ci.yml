@@ -104,6 +104,7 @@ jobs:
             lib/thor/ThorVisualAssetCache.cpp \
             test/thor/ThorWindowPublisherTest.cpp \
             test/thor/ThorSaveControllerTest.cpp \
+            test/thor/ThorReferenceTest.cpp \
             test/thor/ThorContextTest.cpp \
             test/thor/ThorActionTest.cpp \
             test/thor/ThorAdventureMapTest.cpp \
@@ -113,7 +114,7 @@ jobs:
             test/googletest/googletest/src/gtest-all.cc \
             test/googletest/googletest/src/gtest_main.cc \
             -o "$RUNNER_TEMP/thor-context-tests"
-          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:ThorRequestTracker*'
+          "$RUNNER_TEMP/thor-context-tests" --gtest_filter='ThorContext*:ThorAction*:ThorRecruitment*:ThorVisualAsset*:ThorRequestTracker*:ThorReference*'
 
       - name: Install native regression dependencies
         run: |
@@ -371,6 +372,7 @@ jobs:
               --tests eu.vcmi.vcmi.ThorAdventureMapTest \
               --tests eu.vcmi.vcmi.ThorBrowserTest \
               --tests eu.vcmi.vcmi.ThorSaveLoadTest \
+              --tests eu.vcmi.vcmi.ThorReferenceTest \
               --tests eu.vcmi.vcmi.ThorSettingsDialogTest \
               --tests eu.vcmi.vcmi.ThorWindowNavigationTest \
               --tests eu.vcmi.vcmi.ThorTownServicesTest \
