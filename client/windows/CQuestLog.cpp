@@ -32,19 +32,7 @@
 #include "../../lib/texts/CGeneralTextHandler.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-#include "../../lib/CAndroidVMHelper.h"
-#include "../../lib/thor/ThorContext.h"
-
-namespace
-{
-	void publishThorInGameContext(ThorInGameContext inGameContext)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForInGameContext(inGameContext);
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
+#include "../thor/ThorReferenceSupport.h"
 #endif
 
 struct QuestInfo;
@@ -146,7 +134,7 @@ void CQuestLog::activate()
 	JournalWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::QUEST_LOG);
+	refreshThorReference(true);
 #endif
 }
 
@@ -158,7 +146,7 @@ void CQuestLog::deactivate()
 	JournalWindow::deactivate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	withdrawThorReference();
 #endif
 }
 
@@ -214,3 +202,15 @@ void CQuestLog::updateMinimap()
 {
 	minimap->update();
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CQuestLog::thorCanCenter() const
+{
+	return currentQuest && currentQuest->hasObjectInstance()
+		&& currentQuest->getObject(GAME->interface()->cb.get());
+}
+void CQuestLog::thorCenter()
+{
+	if(thorCanCenter()) minimap->iconClicked();
+}
+#endif

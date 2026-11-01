@@ -843,6 +843,7 @@ set(lib_MAIN_HEADERS
 	thor/ThorTavern.h
 	thor/ThorTownServicePanel.h
 	thor/ThorSpellbook.h
+	thor/ThorReference.h
 	thor/ThorMarket.h
 	thor/ThorExtendedCommand.h
 	thor/ThorBattleControls.h

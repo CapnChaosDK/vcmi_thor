@@ -9,6 +9,11 @@
  */
 #include "StdInc.h"
 #include "CJournalWindow.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../thor/ThorReferenceSupport.h"
+#include "../../lib/thor/ThorDialog.h"
+#include "../gui/WindowHandler.h"
+#endif
 
 #include "../CPlayerInterface.h"
 #include "../GameEngine.h"
@@ -56,6 +61,10 @@ JournalWindow::JournalWindow(EJournalMode mode)
 
 	questsTab->block(!GAME->interface()->hasDisplayableQuests());
 	eventsTab->block(!GAME->interface()->hasScenarioEventJournalEntries());
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorQuestsTab = questsTab;
+	thorEventsTab = eventsTab;
+#endif
 
 	journalTabs = std::make_shared<CToggleGroup>([this](int selectedMode)
 	{
@@ -93,7 +102,7 @@ void JournalWindow::initializeItems()
 
 	const int firstVisible = std::max(0, static_cast<int>(getItemCount()) - VISIBLE_ITEM_COUNT);
 	recreateItemList(firstVisible);
-	selectItem(getItemCount() - 1);
+	if(getItemCount() != 0) selectItem(getItemCount() - 1);
 
 	slider->setAmount(static_cast<int>(getItemCount()));
 	if(getItemCount() > VISIBLE_ITEM_COUNT)
@@ -110,12 +119,21 @@ void JournalWindow::initializeItems()
 
 void JournalWindow::selectItem(size_t itemIndex)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorPage = static_cast<int>(itemIndex) / ThorReference::PAGE_SIZE;
+	thorTextPage = 0;
+#endif
 	selectedLabel = static_cast<int>(itemIndex);
 	onItemSelected(itemIndex);
 }
 
 void JournalWindow::setContent(const std::string & text, std::vector<std::shared_ptr<CComponent>> components, int componentAreaHeight)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorText = text;
+	for(const auto & component : components)
+		thorText += "\n" + component->getSubtitle() + "\n" + component->getDescription();
+#endif
 	if(description->slider)
 		description->slider->scrollToMin();
 	description->setText(text);
@@ -166,3 +184,70 @@ void JournalWindow::showAll(Canvas & to)
 	selection.w += 2;
 	to.drawBorder(selection, Colors::METALLIC_GOLD);
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void JournalWindow::refreshThorReference(bool force)
+{
+	if(!isActive()) return;
+	const auto stack = ENGINE->windows().findWindows<IShowActivatable>();
+	if(!thorParent && stack.size() > 1) thorParent = stack[stack.size() - 2].get();
+	if(!ENGINE->windows().isTopWindowWithParent(this, thorParent)) return;
+	const auto now = std::chrono::steady_clock::now();
+	if(!force && now < thorNextRefresh) return;
+	thorNextRefresh = now + std::chrono::milliseconds(100);
+	ThorReference panel;
+	panel.kind = mode == EJournalMode::QUESTS ? 1 : 2;
+	panel.flags = 8 | (!thorQuestsTab->isBlocked() ? 1 : 0)
+		| (!thorEventsTab->isBlocked() ? 2 : 0);
+	if(getItemCount() <= ThorReference::MAX_ITEMS)
+	{
+		panel.pages = (static_cast<int>(getItemCount()) + ThorReference::PAGE_SIZE - 1) / ThorReference::PAGE_SIZE;
+		thorPage = std::clamp(thorPage, 0, std::max(0, panel.pages - 1));
+		panel.page = thorPage;
+		panel.selected = selectedLabel;
+		for(int i = thorPage * ThorReference::PAGE_SIZE; i < std::min(static_cast<int>(getItemCount()), (thorPage + 1) * ThorReference::PAGE_SIZE); ++i)
+		{
+			panel.targets.push_back(i);
+			panel.labels.push_back(thorBoundedText(getItemText(i), 128));
+		}
+		const auto pages = thorDialogPages(thorText);
+		panel.textPages = static_cast<int>(pages.size());
+		thorTextPage = std::clamp(thorTextPage, 0, std::max(0, panel.textPages - 1));
+		panel.textPage = thorTextPage;
+		if(!pages.empty()) for(const auto & part : pages[thorTextPage]) panel.text += part;
+		if(selectedLabel >= 0 && thorCanCenter()) panel.flags |= 4;
+	}
+	else panel.pages = -1; // Unsupported lists must not masquerade as empty.
+	publishThorReference(this, thorParent, std::move(panel), thorEpoch);
+}
+
+bool JournalWindow::executeThorReference(const ThorActionRequest & request)
+{
+	refreshThorReference(true);
+	const auto state = thorContextStore().snapshot();
+	if(!isActive() || !ENGINE->windows().isTopWindowWithParent(this, thorParent)
+		|| state.nativeOwnerToken != this || state.nativeParentToken != thorParent
+		|| request.revision <= thorConsumed || validateThorActionRequest(request, state) != ThorActionValidation::VALID) return false;
+	thorConsumed = request.revision;
+	++thorEpoch;
+	switch(request.commandId)
+	{
+	case ThorExtended::REFERENCE_SELECT:
+		selectItem(request.targetId);
+		slider->scrollTo(std::max(0, std::min(request.targetId, static_cast<int>(getItemCount()) - VISIBLE_ITEM_COUNT)));
+		redraw();
+		break;
+	case ThorExtended::REFERENCE_PREVIOUS: --thorPage; break;
+	case ThorExtended::REFERENCE_NEXT: ++thorPage; break;
+	case ThorExtended::REFERENCE_TEXT_PREVIOUS: --thorTextPage; break;
+	case ThorExtended::REFERENCE_TEXT_NEXT: ++thorTextPage; break;
+	case ThorExtended::REFERENCE_QUESTS: journalTabs->setSelected(static_cast<int>(EJournalMode::QUESTS)); return true;
+	case ThorExtended::REFERENCE_EVENTS: journalTabs->setSelected(static_cast<int>(EJournalMode::EVENTS)); return true;
+	case ThorExtended::REFERENCE_CENTER: thorCenter(); break;
+	case ThorExtended::REFERENCE_CLOSE: close(); return true;
+	default: return false;
+	}
+	refreshThorReference(true);
+	return true;
+}
+#endif

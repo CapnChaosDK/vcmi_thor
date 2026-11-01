@@ -26,19 +26,7 @@
 #include "../../lib/texts/CGeneralTextHandler.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-#include "../../lib/CAndroidVMHelper.h"
-#include "../../lib/thor/ThorContext.h"
-
-namespace
-{
-	void publishThorInGameContext(ThorInGameContext inGameContext)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForInGameContext(inGameContext);
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
+#include "../thor/ThorReferenceSupport.h"
 #endif
 
 ScenarioEventJournalMinimap::ScenarioEventJournalMinimap(const Rect & position)
@@ -97,7 +85,7 @@ void ScenarioEventJournal::activate()
 	JournalWindow::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::SCENARIO_EVENT_JOURNAL);
+	refreshThorReference(true);
 #endif
 }
 
@@ -109,7 +97,7 @@ void ScenarioEventJournal::deactivate()
 	JournalWindow::deactivate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	withdrawThorReference();
 #endif
 }
 
@@ -139,3 +127,14 @@ void ScenarioEventJournal::updateMinimap()
 {
 	minimap->update();
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool ScenarioEventJournal::thorCanCenter() const
+{
+	return minimap->marker != nullptr;
+}
+void ScenarioEventJournal::thorCenter()
+{
+	if(thorCanCenter()) minimap->markerClicked();
+}
+#endif

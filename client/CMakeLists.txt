@@ -270,6 +270,8 @@ set(vcmiclientcommon_HEADERS
 	thor/ThorArmyController.h
 	thor/ThorRequestTracker.h
 	thor/ThorSaveBrowser.h
+	thor/ThorReferenceSupport.h
+	thor/ThorPuzzleSnapshot.h
 	thor/ThorWindowPublisher.h
 	thor/ThorVisualAssetPublisher.h
 

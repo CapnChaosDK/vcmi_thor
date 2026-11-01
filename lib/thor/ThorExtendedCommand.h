@@ -23,10 +23,14 @@ enum Command : int
 	TAVERN_SELECT = 19, TAVERN_RECRUIT = 20, TAVERN_INVITE = 21,
 	TAVERN_GUILD = 22, TAVERN_CLOSE = 23,
 	BLACKSMITH_BUY = 24, GUILD_RESEARCH = 25, SERVICE_CLOSE = 26,
-	SPELLBOOK_CAST = 27, SPELLBOOK_CLOSE = 28, ADVENTURE_SPELLBOOK = 29
+	SPELLBOOK_CAST = 27, SPELLBOOK_CLOSE = 28, ADVENTURE_SPELLBOOK = 29,
+	REFERENCE_SELECT = 30, REFERENCE_PREVIOUS = 31, REFERENCE_NEXT = 32,
+	REFERENCE_TEXT_PREVIOUS = 33, REFERENCE_TEXT_NEXT = 34, REFERENCE_QUESTS = 35,
+	REFERENCE_EVENTS = 36, REFERENCE_CENTER = 37, REFERENCE_CLOSE = 38
 };
 
-inline bool known(int command) { return command >= AUTO_START && command <= ADVENTURE_SPELLBOOK; }
+inline bool known(int command) { return command >= AUTO_START && command <= REFERENCE_CLOSE; }
+inline bool referenceCommand(int command) { return command >= REFERENCE_SELECT && command <= REFERENCE_CLOSE; }
 inline bool marketCommand(int command) { return command >= MARKET_SELL && command <= MARKET_RESET; }
 inline bool tavernCommand(int command) { return command >= TAVERN_SELECT && command <= TAVERN_CLOSE; }
 
@@ -37,6 +41,7 @@ inline bool serviceCommand(int command) { return command >= BLACKSMITH_BUY && co
 inline bool playerCommand(int command) { return command >= PLAYER_SELECT && command <= BONUS_NEXT; }
 inline bool validTarget(int command, int target)
 {
+	if(command == REFERENCE_SELECT) return target >= 0 && target < 10000;
 	if(command == SPELLBOOK_CAST) return target >= 0;
 	if(command == BLACKSMITH_BUY || command == GUILD_RESEARCH) return target >= 0;
 	if(command == TAVERN_SELECT || command == TAVERN_INVITE) return target >= 0;
@@ -66,7 +71,7 @@ struct DLL_LINKAGE State
 			if(list.size() > MAX_AVAILABLE)
 				return false;
 			for(std::size_t i = 0; i < list.size(); ++i)
-				if(!known(list[i]) || playerCommand(list[i]) || marketCommand(list[i]) || tavernCommand(list[i]) || serviceCommand(list[i]) || spellbookCommand(list[i]) || std::find(list.begin(), list.begin() + i, list[i]) != list.begin() + i)
+				if(!known(list[i]) || playerCommand(list[i]) || marketCommand(list[i]) || tavernCommand(list[i]) || serviceCommand(list[i]) || spellbookCommand(list[i]) || referenceCommand(list[i]) || std::find(list.begin(), list.begin() + i, list[i]) != list.begin() + i)
 					return false;
 			return true;
 		};

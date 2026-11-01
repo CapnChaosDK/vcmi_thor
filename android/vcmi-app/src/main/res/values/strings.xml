@@ -347,4 +347,13 @@
     <string name="thor_save_edit">New / edit filename</string>
     <string name="thor_save_name_hint">Edit the name, then press OK. Save writes through the native game and asks before overwriting. Native filename filtering applies.</string>
     <string name="thor_save_name_invalid">Enter a nonempty name of at most 240 UTF-8 bytes, without control characters.</string>
+    <string name="thor_reference_quests">Quests</string>
+    <string name="thor_reference_events">Events</string>
+    <string name="thor_reference_read">Read</string>
+    <string name="thor_reference_list">List</string>
+    <string name="thor_reference_center">Locate</string>
+    <string name="thor_reference_empty">No entries</string>
+    <string name="thor_reference_unavailable">Details unavailable below; use the native window</string>
+    <string name="thor_reference_image_pending">Waiting for the native puzzle reveal</string>
+    <string name="thor_reference_progress">Obelisks discovered: %1$d%%</string>
 </resources>

@@ -11,6 +11,7 @@ endif()
 
 set(test_SRCS
 		thor/ThorActionTest.cpp
+		thor/ThorReferenceTest.cpp
 		thor/ThorAdventureMapTest.cpp
 		thor/ThorContextTest.cpp
 		thor/ThorRecruitmentTest.cpp

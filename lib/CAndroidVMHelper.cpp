@@ -96,9 +96,9 @@ namespace
 {
 	// Context/browser labels are bounded UTF-8, whereas NewStringUTF requires
 	// modified UTF-8. Use the existing bridge's UTF-16 pattern for supplementary characters.
-	jstring thorJavaString(JNIEnv * env, const std::string & value)
+	jstring thorJavaString(JNIEnv * env, const std::string & value, std::size_t maximumBytes = 128)
 	{
-		const auto text = thorBoundedText(value);
+		const auto text = thorBoundedText(value, maximumBytes);
 		std::vector<jchar> utf16;
 		for(std::size_t offset = 0; offset < text.size();)
 		{
@@ -441,6 +441,41 @@ void CAndroidVMHelper::publishThorCommands(std::uint64_t revision, const ThorExt
 			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), state.version, enabled, active);
 			env->DeleteLocalRef(enabled);
 			env->DeleteLocalRef(active);
+		}, true);
+}
+
+void CAndroidVMHelper::publishThorReference(std::uint64_t revision, const ThorReference & panel)
+{
+	if(!panel.valid()) return;
+	std::vector<jint> data{1, panel.kind, panel.page, panel.pages, panel.selected, panel.textPage,
+		panel.textPages, panel.flags, panel.width, panel.height, static_cast<int>(panel.targets.size()), panel.progress};
+	data.insert(data.end(), panel.targets.begin(), panel.targets.end());
+	std::vector<std::string> text{panel.text};
+	text.insert(text.end(), panel.labels.begin(), panel.labels.end());
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "publishThorReference", "(J[I[Ljava/lang/String;[B)V",
+		[&](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			jintArray values = env->NewIntArray(static_cast<jsize>(data.size()));
+			jclass stringClass = env->FindClass("java/lang/String");
+			jobjectArray names = stringClass ? env->NewObjectArray(static_cast<jsize>(text.size()), stringClass, nullptr) : nullptr;
+			const auto bytes = panel.rgb ? static_cast<jsize>(panel.rgb->size()) : 0;
+			jbyteArray pixels = env->NewByteArray(bytes);
+			if(values && names && pixels)
+			{
+				env->SetIntArrayRegion(values, 0, static_cast<jsize>(data.size()), data.data());
+				for(std::size_t i = 0; i < text.size(); ++i)
+				{
+					jstring label = thorJavaString(env, text[i], i == 0 ? 384 : 128);
+					env->SetObjectArrayElement(names, static_cast<jsize>(i), label);
+					env->DeleteLocalRef(label);
+				}
+				if(bytes) env->SetByteArrayRegion(pixels, 0, bytes, reinterpret_cast<const jbyte *>(panel.rgb->data()));
+				env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), values, names, pixels);
+			}
+			if(values) env->DeleteLocalRef(values);
+			if(names) env->DeleteLocalRef(names);
+			if(pixels) env->DeleteLocalRef(pixels);
+			if(stringClass) env->DeleteLocalRef(stringClass);
 		}, true);
 }
 

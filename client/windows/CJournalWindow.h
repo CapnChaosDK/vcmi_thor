@@ -10,15 +10,21 @@
 #pragma once
 
 #include "CWindowObject.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include <chrono>
+#endif
 
 #include "../widgets/MiscWidgets.h"
 #include "../widgets/TextControls.h"
+
+struct ThorActionRequest;
 
 class CButton;
 class CComponent;
 class CComponentBox;
 class CSlider;
 class CToggleGroup;
+class CToggleButton;
 
 enum class EJournalMode : uint8_t
 {
@@ -54,6 +60,14 @@ class JournalWindow : public CWindowObject
 	std::shared_ptr<CTextBox> description;
 	std::shared_ptr<CComponentBox> componentsBox;
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	IShowActivatable * thorParent = nullptr;
+	std::shared_ptr<CToggleButton> thorQuestsTab, thorEventsTab;
+	int thorPage = 0, thorTextPage = 0;
+	std::chrono::steady_clock::time_point thorNextRefresh;
+	std::uint64_t thorEpoch = 0, thorConsumed = 0;
+	std::string thorText;
+#endif
 	void selectItem(size_t itemIndex);
 	void recreateItemList(int firstVisible);
 	void sliderMoved(int newPosition);
@@ -68,7 +82,15 @@ protected:
 	virtual std::string getItemText(size_t itemIndex) const = 0;
 	virtual void onItemSelected(size_t itemIndex) = 0;
 	virtual void updateMinimap() = 0;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	virtual bool thorCanCenter() const = 0;
+	virtual void thorCenter() = 0;
+#endif
 
 public:
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void refreshThorReference(bool force = false);
+	bool executeThorReference(const ThorActionRequest & request);
+#endif
 	void showAll(Canvas & to) override;
 };

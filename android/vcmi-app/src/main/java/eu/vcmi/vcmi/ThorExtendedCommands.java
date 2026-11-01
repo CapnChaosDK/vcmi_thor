@@ -12,7 +12,10 @@ final class ThorExtendedCommands
     static final int TAVERN_SELECT = 19, TAVERN_RECRUIT = 20, TAVERN_INVITE = 21,
             TAVERN_GUILD = 22, TAVERN_CLOSE = 23;
     static final int BLACKSMITH_BUY = 24, GUILD_RESEARCH = 25, SERVICE_CLOSE = 26;
-    static final int SPELLBOOK_CAST = 27, SPELLBOOK_CLOSE = 28, ADVENTURE_SPELLBOOK = 29;
+    static final int SPELLBOOK_CAST = 27, SPELLBOOK_CLOSE = 28, ADVENTURE_SPELLBOOK = 29,
+            REFERENCE_SELECT = 30, REFERENCE_PREVIOUS = 31, REFERENCE_NEXT = 32,
+            REFERENCE_TEXT_PREVIOUS = 33, REFERENCE_TEXT_NEXT = 34, REFERENCE_QUESTS = 35,
+            REFERENCE_EVENTS = 36, REFERENCE_CENTER = 37, REFERENCE_CLOSE = 38;
     static final ThorExtendedCommands EMPTY = new ThorExtendedCommands(new int[0], new int[0]);
     private final int[] enabled, active;
 
@@ -22,7 +25,7 @@ final class ThorExtendedCommands
         this.active = active;
     }
 
-    static boolean known(final int command) { return command >= AUTO_START && command <= ADVENTURE_SPELLBOOK; }
+    static boolean known(final int command) { return command >= AUTO_START && command <= REFERENCE_CLOSE; }
 
     static int[] encode(final int version, final int command, final int target)
     {
@@ -32,6 +35,7 @@ final class ThorExtendedCommands
 
     static boolean validTarget(final int command, final int target)
     {
+        if (command == REFERENCE_SELECT) return target >= 0 && target < 10000;
         if (command == SPELLBOOK_CAST) return target >= 0;
         if (command == BLACKSMITH_BUY || command == GUILD_RESEARCH) return target >= 0;
         if (command == TAVERN_SELECT || command == TAVERN_INVITE) return target >= 0;

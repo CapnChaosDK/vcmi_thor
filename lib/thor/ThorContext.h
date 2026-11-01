@@ -6,6 +6,7 @@
 #include "ThorTavern.h"
 #include "ThorTownServicePanel.h"
 #include "ThorSpellbook.h"
+#include "ThorReference.h"
 
 #include "../../Global.h"
 
@@ -369,6 +370,7 @@ struct DLL_LINKAGE ThorContextRecord
 	std::optional<ThorTavern> tavern;
 	std::optional<ThorTownServicePanel> servicePanel;
 	std::optional<ThorSpellbook> spellbook;
+	std::optional<ThorReference> reference;
 	std::vector<ThorLobbyPlayer> lobbyPlayers;
 	int selectedHeroId = -1;
 	std::int64_t actionSubjectId = -1;

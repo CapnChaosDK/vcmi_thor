@@ -42,6 +42,8 @@
 #include "windows/CHeroWindow.h"
 #include "windows/CCastleInterface.h"
 #include "windows/CSpellWindow.h"
+#include "windows/CJournalWindow.h"
+#include "windows/CPuzzleWindow.h"
 #include "windows/GUIClasses.h"
 #include "windows/QuickRecruitmentWindow.h"
 #include "windows/CMarketWindow.h"
@@ -181,6 +183,8 @@ void GameEngine::updateFrame()
 		dwellingRecruitment->refreshThorNativeState();
 	if(auto saving = windows().topWindow<CSavingScreen>())
 		saving->publishThorContext(false);
+	if(auto journal = windows().topWindow<JournalWindow>()) journal->refreshThorReference();
+	if(auto puzzle = windows().topWindow<CPuzzleWindow>()) puzzle->refreshThorReference();
 	if(auto book = windows().topWindow<CSpellWindow>())
 		book->refreshThorSpellbook();
 	if(auto blacksmith = windows().topWindow<CBlacksmithDialog>())
@@ -236,6 +240,13 @@ void GameEngine::updateFrame()
 		else if(request->commandVersion != 0 && request->commandId == ThorExtended::ADVENTURE_SPELLBOOK)
 		{
 			if(adventureInt) executed = adventureInt->executeThorSpellbookEntry(*request);
+		}
+		else if(request->commandVersion != 0 && ThorExtended::referenceCommand(request->commandId))
+		{
+			if(auto journal = windows().topWindow<JournalWindow>(); journal && context.nativeOwnerToken == journal.get())
+				executed = journal->executeThorReference(*request);
+			else if(auto puzzle = windows().topWindow<CPuzzleWindow>(); puzzle && context.nativeOwnerToken == puzzle.get())
+				executed = puzzle->executeThorReference(*request);
 		}
 		else if(request->commandVersion != 0 && ThorExtended::spellbookCommand(request->commandId))
 		{

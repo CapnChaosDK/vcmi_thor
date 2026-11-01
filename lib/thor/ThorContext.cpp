@@ -22,6 +22,7 @@ namespace
 			&& lhs.tavern == rhs.tavern
 			&& lhs.servicePanel == rhs.servicePanel
 			&& lhs.spellbook == rhs.spellbook
+			&& lhs.reference == rhs.reference
 			&& lhs.lobbyPlayers == rhs.lobbyPlayers
 			&& lhs.scenarioSelectionRevision == rhs.scenarioSelectionRevision
 			&& lhs.campaignSelectionRevision == rhs.campaignSelectionRevision
@@ -61,6 +62,13 @@ namespace
 
 	void boundTextFields(ThorContextRecord & context)
 	{
+		if(!context.reference || !context.reference->valid()
+			|| context.contextId != (context.reference->kind == 1 ? ThorContextIds::QUEST_LOG
+				: context.reference->kind == 2 ? ThorContextIds::SCENARIO_EVENT_JOURNAL : ThorContextIds::PUZZLE_MAP)
+			|| thorBoundedText(context.reference->text, 384) != context.reference->text
+			|| std::any_of(context.reference->labels.begin(), context.reference->labels.end(),
+				[](const auto & label) { return thorBoundedText(label, 128) != label; }))
+			context.reference.reset();
 		if(context.contextId != ThorContextIds::SPELLBOOK || !context.spellbook || !context.spellbook->valid())
 			context.spellbook.reset();
 		if(!context.servicePanel || !context.servicePanel->valid()
@@ -108,7 +116,9 @@ namespace
 				&& context.contextId != ThorContextIds::TAVERN
 				&& context.contextId != ThorContextIds::SETTINGS && context.contextId != ThorContextIds::SETTINGS_SELECTION
 				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD
-				&& context.contextId != ThorContextIds::SPELLBOOK && context.contextId != ThorContextIds::SAVE_GAME)
+				&& context.contextId != ThorContextIds::SPELLBOOK && context.contextId != ThorContextIds::SAVE_GAME
+				&& context.contextId != ThorContextIds::QUEST_LOG && context.contextId != ThorContextIds::SCENARIO_EVENT_JOURNAL
+				&& context.contextId != ThorContextIds::PUZZLE_MAP)
 			{
 				context.nativeOwnerToken = nullptr;
 				context.nativeParentToken = nullptr;

@@ -43,6 +43,7 @@ class CQuestMinimap : public CMinimap
 	std::vector<int3> markerTiles; // computed once per selected quest, placed each redraw
 
 	void clickPressed(const Point & cursorPosition) override{}; //minimap ignores clicking on its surface
+	friend class CQuestLog;
 	void iconClicked();
 	void mouseDragged(const Point & cursorPosition, const Point & lastUpdateDistance) override{};
 
@@ -71,6 +72,10 @@ class CQuestLog : public JournalWindow
 	std::string getItemText(size_t itemIndex) const override;
 	void onItemSelected(size_t itemIndex) override;
 	void updateMinimap() override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool thorCanCenter() const override;
+	void thorCenter() override;
+#endif
 
 public:
 	CQuestLog(const std::vector<QuestInfo> & Quests);
