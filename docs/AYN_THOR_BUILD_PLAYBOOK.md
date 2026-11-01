@@ -7,15 +7,14 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Current hardware-accepted candidate: `30aab13f9e442d8c65f0215e8068edd7da4f2f6c`,
-  [Thor CI 41077769885](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41077769885),
-  Slice 62 complete lower-screen Adventure and Battle spellbook. Both CI jobs passed;
-  the user confirmed all six packaged checks passed on 2026-10-30.
-  CI-reported APK SHA-256:
-  `3981710b82c093c9bcbe4c59b5f85fd4ac3b6f46888aef9b85aed9b2a7874fa8`.
-  Promoted through PR #61 as `3be55ef63248516254e0edc6983157f03e705a78`; only
-  receipt Markdown differs from the tested candidate. See the backlog receipt for
-  artifact evidence, promotion history and verification limits.
+- Current hardware-accepted candidate: `41384670971141a7999eb7d1caf9d8248efebe5b`,
+  Settings and shared confirmations, reported six of six AYN Thor checks passed
+  on 2026-11-01. [PR #62](https://github.com/CapnChaosDK/vcmi_thor/pull/62)
+  is the implementation/promotion vehicle. [PR preflight 41231550581](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41231550581)
+  passed; its ARM64 job was intentionally skipped. The trusted full candidate run,
+  artifact and APK hashes were not independently retrieved during this handoff.
+  The user-reported physical pass is distinct from CI receipt verification.
+  See the backlog for details. No product/build changes follow the tested candidate.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
