@@ -3350,3 +3350,25 @@ editing the Save name chooses the destination of a native save.
   SDK/JUnit, ARM64 compilation/package and artifact checks remain permanent CI.
   Final puzzle masking/artwork/scaling, native centering/tab/Close restoration,
   readability and upper-input/lifecycle success remain the six-part hardware gate.
+
+### Slice 64 publication and permanent candidate handoff
+
+- Published [PR #64](https://github.com/CapnChaosDK/vcmi_thor/pull/64), targeting
+  `ayn-thor-dual-screen`. Implementation `343a9bc917f8792f0852f71b359e0e55c4c791fc`
+  was followed by reader-input guard `7833253367f6c81652c7a72fcc95ad8651e6c849`.
+  The latter is the current exact candidate. The final guard avoids local subpage
+  integer overflow if Next arrives before previous-page layout resolves its last-page
+  sentinel; a regression assertion covers that immediate tap. All 26 JVM checks
+  still pass. Separate review of that small diff found no remaining release blocker.
+- Verified clean intended tree, published PR head and candidate ancestry; normally
+  fast-forwarded permanent `ci/thor-candidate-validation` to the corrected SHA.
+  No force update, product merge or submodule revision change occurred.
+- [Trusted Thor CI 41343427557](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41343427557)
+  is observed `pending` on exact candidate `7833253367f6c81652c7a72fcc95ad8651e6c849`.
+  Cancellation was requested for superseded run `41343323440`; no pass or artifact
+  from that older source is a validation receipt for the corrected candidate.
+- Status: `awaiting CI`. Full native runtime/SDK/JUnit/ARM64 build, package/checksum
+  and artifact success are not yet established. After CI succeeds, verify the exact
+  artifact/APK and use all six packaged hardware checks. No physical acceptance or
+  merge authorization is claimed. This handoff adds backlog Markdown only and
+  leaves the permanent candidate at the exact reviewed source/build/checklist SHA.
