@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.text.TextUtils;
 import android.view.Display;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -34,6 +35,7 @@ final class ThorSecondScreenPresentation extends Presentation
     }
 
     private ThorFoundationView foundationView;
+    private ThorSaveNameEditor saveNameEditor;
     private final ThorVisualAssetCache<Bitmap> visualAssets;
     private final HapticsChangeListener hapticsChangeListener;
     private final boolean hapticsEnabled;
@@ -70,10 +72,18 @@ final class ThorSecondScreenPresentation extends Presentation
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         }
 
+        saveNameEditor = new ThorSaveNameEditor(this);
         foundationView = new ThorFoundationView(getContext(), visualAssets, hapticsEnabled,
-                hapticsChangeListener, presentationSessionId, sessionValidity);
+                hapticsChangeListener, presentationSessionId, sessionValidity, saveNameEditor);
         foundationView.setContentDescription(getContext().getString(R.string.thor_deck_title));
         setContentView(foundationView);
+    }
+
+    @Override
+    protected void onStop()
+    {
+        if (saveNameEditor != null) saveNameEditor.cancel();
+        super.onStop();
     }
 
     void updateContext(final long revision, final String contextId, final String title, final String status,
@@ -260,6 +270,8 @@ final class ThorSecondScreenPresentation extends Presentation
 
     private static final class ThorFoundationView extends View
     {
+        private final ThorSaveNameEditor saveNameEditor;
+
         private static final class RecruitmentHit
         {
             final int target;
@@ -338,9 +350,11 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorTownServices townServices = new ThorTownServices();
         ThorFoundationView(final Context context, final ThorVisualAssetCache<Bitmap> visualAssets,
                            final boolean hapticsEnabled, final HapticsChangeListener hapticsChangeListener,
-                           final long presentationSessionId, final SessionValidity sessionValidity)
+                           final long presentationSessionId, final SessionValidity sessionValidity,
+                           final ThorSaveNameEditor saveNameEditor)
         {
             super(context);
+            this.saveNameEditor = saveNameEditor;
             this.visualAssets = visualAssets;
             this.hapticsEnabled = hapticsEnabled;
             this.hapticsChangeListener = hapticsChangeListener;
@@ -391,6 +405,7 @@ final class ThorSecondScreenPresentation extends Presentation
 
         void clearTransientState()
         {
+            if (saveNameEditor != null) saveNameEditor.cancel();
             battleDeck.reset();
             marketDeck.reset();
             tavernDeck.reset();
@@ -442,6 +457,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 else marketDeck.reset();
                 playerSetup.withdraw(!ThorContextIds.LOBBY_NEW_GAME_SCENARIO.equals(contextId));
             }
+            if (saveNameEditor != null) saveNameEditor.update(contextId, revision, presentationSessionId);
             // publishContext resets the mask to zero before the action-state callback for a new
             // revision. Keep an already enabled Back press through that transient state; the
             // release still requires Back to be enabled under the new revision.
@@ -485,7 +501,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     && this.enabledActionMask != enabledActionMask)
                 buildConfirmationGesture.cancel();
             if (((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
-                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
+                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
+                    || ThorContextIds.SAVE_GAME.equals(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
                     && this.enabledActionMask != enabledActionMask && !retainLoadBackGesture)
@@ -737,7 +754,7 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (ThorContextIds.SAVE_GAME.equals(contextId))
             {
                 title = getContext().getString(R.string.thor_context_save_game);
-                status = getContext().getString(R.string.thor_context_save_game_status);
+                status = publishedStatus;
             }
             else
             {
@@ -867,7 +884,8 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean campaignBonus = ThorContextIds.CAMPAIGN_BONUS_SELECTION.equals(contextId);
             final boolean buildConfirmation = isConfirmationContext(contextId);
             final boolean browserContext = (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
-                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
+                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
+                    || ThorContextIds.SAVE_GAME.equals(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId);
             final boolean recruitmentContext = isRecruitmentContext(contextId);
@@ -1091,7 +1109,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.ADVENTURE_MAP.equals(contextId) && adventureTab == 3)
                 return handleAdventureMapTouch(event);
             if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
-                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
+                    || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
+                    || ThorContextIds.SAVE_GAME.equals(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
                 return handleBrowserTouch(event);
@@ -1283,6 +1302,7 @@ final class ThorSecondScreenPresentation extends Presentation
         @Override
         protected void onDetachedFromWindow()
         {
+            if (saveNameEditor != null) saveNameEditor.cancel();
             marketDeck.cancel();
             tavernDeck.cancel();
             serviceDeck.cancel();
@@ -1306,6 +1326,7 @@ final class ThorSecondScreenPresentation extends Presentation
             super.onWindowVisibilityChanged(visibility);
             if (visibility != View.VISIBLE)
             {
+                if (saveNameEditor != null) saveNameEditor.cancel();
                 marketDeck.cancel();
                 tavernDeck.cancel();
                 serviceDeck.cancel();
@@ -1624,6 +1645,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private void drawBrowserDashboard(final Canvas canvas, final RectF frame, final float density)
         {
             final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
+            final boolean saving = ThorContextIds.SAVE_GAME.equals(contextId);
             final boolean settings = ThorBrowserState.isSettings(contextId);
             if (ThorBrowserState.isDialog(contextId))
             {
@@ -1635,7 +1657,8 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(TEXT);
-            drawFittedText(canvas, (campaign || settings) ? title : townHallContext
+            drawFittedText(canvas, saving ? getContext().getString(R.string.thor_context_save_game)
+                            : (campaign || settings) ? title : townHallContext
                             ? getContext().getString(R.string.thor_town_hall_title)
                             : getContext().getString(R.string.thor_context_load_game),
                     frame.centerX(), frame.top + frame.height() * 0.065f, frame.width() * 0.78f,
@@ -1648,9 +1671,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     Math.min(26f * density, frame.height() * 0.04f));
             if (!campaign && !townHallContext && !settings)
             {
-                drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.157f,
-                        frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
-                drawFittedText(canvas, detailLines[0] + "   " + detailLines[1] + "   " + detailLines[3],
+                if (saving)
+                    drawEllipsizedText(canvas, saveFilename(), frame.centerX(), frame.top + frame.height() * 0.157f,
+                            frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
+                else
+                    drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.157f,
+                            frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
+                drawEllipsizedText(canvas, saving ? status + "   " + detailLines[3]
+                                : detailLines[0] + "   " + detailLines[1] + "   " + detailLines[3],
                         frame.centerX(), frame.top + frame.height() * 0.19f,
                         frame.width() * 0.84f, Math.min(22f * density, frame.height() * 0.035f));
             }
@@ -1659,6 +1687,12 @@ final class ThorSecondScreenPresentation extends Presentation
                 drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.157f,
                         frame.width() * 0.82f, Math.min(27f * density, frame.height() * 0.042f));
             }
+            if (saving)
+                drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_EDIT_NAME, frame),
+                        getContext().getString(R.string.thor_save_edit), browserControlEnabled(ThorBrowserState.CONTROL_EDIT_NAME), false, density);
+            if (visibleSaveBrowserEmpty())
+                drawFittedText(canvas, getContext().getString(saving ? R.string.thor_save_empty : R.string.thor_lobby_no_save), frame.centerX(),
+                        frame.top + frame.height() * 0.4f, frame.width() * 0.8f, 28f * density);
             final int first = townHallContext ? townHall.page() * ThorBrowserState.TOWN_HALL_PAGE_SIZE : 0;
             final int visibleCount = townHallContext
                     ? townHall.rowCount()
@@ -1680,8 +1714,15 @@ final class ThorSecondScreenPresentation extends Presentation
                 }
                 else if (browser.completed(index))
                     label += "  " + getContext().getString(R.string.thor_browser_completed);
+                final RectF rowBounds = browserControlBounds(ThorBrowserState.CONTROL_FIRST_ROW + row, frame);
+                if (saving || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
+                {
+                    final TextPaint rowPaint = new TextPaint(paint);
+                    rowPaint.setTextSize(Math.min(25f * density, rowBounds.height() * 0.36f));
+                    label = TextUtils.ellipsize(label, rowPaint, rowBounds.width() * 0.86f, TextUtils.TruncateAt.END).toString();
+                }
                 drawLobbyScenarioButton(canvas,
-                        browserControlBounds(ThorBrowserState.CONTROL_FIRST_ROW + row, frame),
+                        rowBounds,
                         label, browser.enabled(index) && isActionEnabled(campaign
                                 ? ThorActionIds.CAMPAIGN_BROWSER_SELECT : ThorActionIds.LOAD_BROWSER_SELECT),
                         browser.selected(index), density);
@@ -1694,7 +1735,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     browserControlEnabled(ThorBrowserState.CONTROL_NEXT), false, density);
             if (!campaign && (!settings || ThorContextIds.SETTINGS_SELECTION.equals(contextId)))
                 drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_PRIMARY, frame),
-                        getContext().getString(settings ? R.string.thor_menu_ok : townHallContext ? R.string.thor_town_hall_build : R.string.thor_lobby_load),
+                        getContext().getString(saving ? R.string.thor_action_save_game : settings ? R.string.thor_menu_ok : townHallContext ? R.string.thor_town_hall_build : R.string.thor_lobby_load),
                         browserControlEnabled(ThorBrowserState.CONTROL_PRIMARY), false, density);
             drawLobbyScenarioButton(canvas, browserControlBounds(ThorBrowserState.CONTROL_BACK, frame),
                     getContext().getString(R.string.thor_lobby_back),
@@ -3206,6 +3247,14 @@ final class ThorSecondScreenPresentation extends Presentation
                     frame.width(), frame.height(), dividerY - frame.top);
         }
 
+        private String saveFilename() { return detailLines[0] + detailLines[1] + detailLines[2]; }
+
+        private boolean visibleSaveBrowserEmpty()
+        {
+            return (ThorContextIds.SAVE_GAME.equals(contextId) || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId))
+                    && browser.rowCount() == 0;
+        }
+
         private int browserControlAt(final float x, final float y)
         {
             final RectF frame = adventureFrame();
@@ -3248,6 +3297,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.TOWN_WINDOW.equals(contextId))
                 return control >= ThorBrowserState.CONTROL_FIRST_ROW
                         && control < ThorBrowserState.CONTROL_FIRST_ROW + browser.rowCount();
+            if (ThorContextIds.SAVE_GAME.equals(contextId) && control == ThorBrowserState.CONTROL_EDIT_NAME)
+                return isActionEnabled(ThorActionIds.WINDOW_NEXT);
             if (actionId == ThorActionIds.NONE || !isActionEnabled(actionId))
                 return false;
             if (control == ThorBrowserState.CONTROL_PREVIOUS)
@@ -3312,6 +3363,8 @@ final class ThorSecondScreenPresentation extends Presentation
                         townHall.nextPage();
                     invalidate();
                 }
+                else if (ThorContextIds.SAVE_GAME.equals(contextId) && control == ThorBrowserState.CONTROL_EDIT_NAME)
+                    saveNameEditor.open(saveFilename(), revision, presentationSessionId, sessionValidity);
                 else if (actionId != ThorActionIds.NONE)
                     NativeMethods.submitThorAction(loadBack ? revision : submittedRevision, actionId, target);
             }
@@ -3532,6 +3585,11 @@ final class ThorSecondScreenPresentation extends Presentation
 
             if (ThorBrowserState.isDialog(contextId))
                 return title + ". " + String.join("", detailLines);
+            if (ThorContextIds.SAVE_GAME.equals(contextId))
+                return title + ". " + saveFilename() + ". " + status + ". " + detailLines[3] + ". "
+                        + getContext().getString(R.string.thor_save_edit) + ", "
+                        + getContext().getString(R.string.thor_action_save_game) + ", "
+                        + getContext().getString(R.string.thor_lobby_back);
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
 

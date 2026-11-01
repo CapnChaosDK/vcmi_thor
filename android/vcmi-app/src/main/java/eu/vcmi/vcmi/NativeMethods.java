@@ -61,6 +61,14 @@ public class NativeMethods
         submitThorActionNative(revision, actionId, targetId);
     }
 
+    static boolean submitThorSaveName(final long revision, final String text)
+    {
+        return BuildConfig.AYN_THOR_BUILD && revision > 0 && ThorSaveNameState.valid(text)
+                && submitThorSaveNameNative(revision, text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private static native boolean submitThorSaveNameNative(long revision, byte[] text);
+
     private static native void submitThorActionNative(long revision, int actionId, int targetId);
 
     public static void publishThorMarket(final long revision, final int[] data, final String[] names)

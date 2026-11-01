@@ -278,6 +278,20 @@ void CTextInput::setText(const std::string & nText)
 	updateLabel();
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CTextInput::setThorText(const std::string & text)
+{
+	const auto oldText = currentText;
+	currentText = text;
+	composedText.clear();
+	if(onTextFiltering)
+		onTextFiltering(currentText, oldText);
+	updateLabel();
+	if(currentText != oldText && onTextEdited)
+		onTextEdited(currentText);
+}
+#endif
+
 void CTextInput::updateLabel()
 {
 	std::string visibleText = getVisibleText();

@@ -59,6 +59,13 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 63 — lower-screen Save and native Load journeys: `hardware validated` by
+  the user's confirmation on 2026-11-01 that all six hardware checks passed for
+  exact candidate `da45a886ac06429510d3371c677e6148901e8b37`. Trusted CI
+  `41338283368` passed preflight and ARM64 packaging. The user explicitly authorized
+  documentation, commit, merge of PR #63 and stale-branch cleanup. See the acceptance
+  receipt below and [current checklist](CI/thor-validation-plan.json).
+
 - Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
   packaged hardware checks passed for reviewed candidate
   `41384670971141a7999eb7d1caf9d8248efebe5b`. Settings mirrors live
@@ -3030,3 +3037,194 @@ Promotion and cleanup receipt (2026-10-22):
 - Accepted scope: live Settings tabs, controls and selectors; spellbook-purchase Yes/No and error notices; ordinary restart/return/quit, Blacksmith/research and other shared dialogs; rapid/stale/multitouch safety; lifecycle, second-screen and upper-input regressions. Key binding capture and unsupported custom windows remain native upper-screen workflows.
 - [Thor CI 41231550581](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41231550581) is verified successful for PR preflight, including native regression and Thor contracts; ARM64 packaging in this PR-triggered run was skipped by design. The trusted candidate full ARM64 run ID, artifact digest and APK SHA-256 were **not independently retrieved in this handoff**. Do not confuse PR preflight with a full signed candidate build. The user's physical acceptance is recorded as reported, not as an independently measured installed-byte receipt.
 - PR #62 initially pointed to the exact accepted implementation SHA; receipt edits are confined to `AYN_THOR_BACKLOG.md` and `docs/AYN_THOR_BUILD_PLAYBOOK.md`. They do not change the candidate product/build tree. Preserve the permanent candidate at the tested SHA; no rebuild or repeated hardware cycle is needed solely for these Markdown changes.
+
+## Slice 63 — Complete lower-screen Save and native Load journeys
+
+- Status: `blocked` at ARM64 compilation/log access; implementation branch
+  `codex/thor-save-load` starts from
+  fresh product `08087dd1cad41dbcf6d9e463d3d26c722ff03169`. No hardware acceptance
+  or product merge is claimed. The current checklist is
+  [`CI/thor-validation-plan.json`](CI/thor-validation-plan.json); the preceding
+  Settings checklist is archived in `docs/validation/`.
+
+### Discovery and native contract
+
+| Journey | Prior lower support | Native authority reused |
+| --- | --- | --- |
+| Save entry | Read-only Save card after Adventure/Settings entry | `CSavingScreen` |
+| Save rows, native order, folders, selection and paging | Missing | `SelectionTab::curItems`, `selectAbs`, existing five-row browser controls |
+| New-save name and editing | Missing | Scoped Android `EditText` draft, then `CTextInput`'s existing filename filter |
+| Save, overwrite, autosave-name warning, errors and cancel | Save action missing; standard dialogs already supported | Unchanged `CSavingScreen::saveGame`, `close`, PR #62 `CInfoWindow` factories/callbacks |
+| In-game Load entry and departure question | Existing Settings control and shared confirmation | `SettingsMainWindow::loadGameButtonCallback`, `CPlayerInterface::proposeLoadingGame` |
+| Load browsing/selection/metadata/Load/Back | Already complete | Existing real `CLobbyScreen`/`SelectionTab` and `start(false)`/`leaveLobby()` |
+
+The actual upstream Load route confirms departure, calls `endGameplay`, and opens
+its native Load menu. There is no separate in-game Load browser to mirror. This
+slice preserves that route: rejecting departure restores the live game; accepting
+it makes later Back follow the original menu lifecycle. No fabricated lobby or
+alternate game-lifecycle implementation is added. Native file enumeration, sorting,
+compatibility, filename normalization, extensions, collision checks, file writes,
+serialization and server rules are unchanged. No file rename action exists here;
+editing the Save name chooses the destination of a native save.
+
+### Implementation and boundaries
+
+- The exact active Save owner binds its immediate parent on first activation.
+  Five current native entries, including folders, are published with native-order
+  position tokens bound to the complete list/object/path/name/date identity, native
+  selection revision, current filename, parent, page and action epoch. Off-page
+  replacement/reorder, folder change and upper filename editing invalidate input.
+  MainGUI observes at most every 100 ms and forces fresh revalidation on dispatch.
+- The small `ThorSaveController` executes only the exact live owner/parent and
+  consumes a revision before invoking any original callback. Save also withdraws
+  controls while its queued native warning is pending. Native modal deactivation
+  and activation restore the exact parent and clear stale requests.
+- The existing bounded browser/parser/geometry/gesture handles Save alongside Load,
+  Settings and dialogs. Save adds a New / edit filename control and its scoped
+  attached dialog; the permanent Presentation retains `FLAG_NOT_FOCUSABLE`.
+  Cancel, IME dismissal, native revision replacement, background, panel toggle,
+  display detach and presentation recreation discard the draft. OK/Done commits
+  text only; the separate Save action invokes native saving.
+- Filename requests use the context-qualified `WINDOW_NEXT` slot in `SAVE_GAME`,
+  with a dedicated bounded UTF-8 byte-array JNI method. Only this context/action
+  accepts text; other envelopes reject it. The native widget applies its actual
+  existing filename filter without synthetic SDL input or focus calls. Transport
+  caps are 240 filename bytes and 10000 native entries; invalid/oversized input
+  fails closed. The exact filename uses three UTF-8-safe context detail chunks.
+- Context and browser publication now use the existing JNI UTF-16 conversion pattern
+  so supplementary Unicode characters survive both directions. Save/Load row labels
+  ellipsize at readable size. No alternate browser framework or confirmation system
+  was introduced; unrelated decks and engine systems are untouched.
+
+### Completeness checkpoint and independent review
+
+- Reviewed the finished native/Java/JNI/test diff in a separate pass for complete
+  Save/new-name/overwrite/No/Yes/cancel/error and actual Load journeys; owner/parent
+  restoration; stale/duplicate input; focus and lifecycle cleanup; bounded transport;
+  upstream isolation; test registration; and generated/unrelated file hygiene.
+- Review corrected immediate-parent lookup to use the real window-stack API,
+  included folder labels and invalid upper filename changes in identity handling,
+  disabled actions while native Save warnings are queued, bounded local drafts,
+  retained drafts on queue rejection, guarded delayed editor dismissal/insets callbacks
+  against a replacement draft, and fixed supplementary Unicode transport.
+- Verified the native `saveGame()` body is byte-for-byte identical to the starting
+  product. Only Thor-guarded owner/widget hooks and the existing bridge change.
+- Local validation: 16 JVM production-state/gesture/geometry tests pass with Java's
+  compiler module and a standalone assertion runner, covering the new Save/Load
+  tests plus browser and Settings/dialog regressions. XML, upstream overlay policy,
+  structured checklist validation, all four Python policy/checklist tests and
+  `git diff --check` pass.
+- Seven additional native dispatch/snapshot/payload tests are registered in both
+  the focused runner and normal native suite. New Android tests and the previously
+  omitted Settings/dialog suite are registered in the permanent workflow. Full
+  native, Android SDK/JUnit and ARM64 checks require CI because local Boost/SDK
+  dependencies are absent; GitHub release-asset downloads are denied by environment
+  policy and the user explicitly selected CI for unavailable local checks.
+- The attached dialog/secondary-display IME, exact save/load gameplay outcomes,
+  upper touch/controller/focus and physical lifecycle remain device gates. Android
+  controls IME placement; a keyboard that cannot support lower-display entry is a
+  failed acceptance check, not an inferred successful fallback. See the single
+  structured checklist for explicit pass criteria and backup preparation.
+
+### Slice 63 publication and current CI gate
+
+- Published [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63), targeting
+  `ayn-thor-dual-screen`. Reviewed implementation `cc0934fb2d826b764fcd950ecae33ab315dc4faf`
+  was followed by the focused exact-editor callback guard commit
+  `cda07c494b578d13a0fae56943ea9909724b8522`. The latter is the current exact candidate.
+- Verified the published implementation, fetched both remote refs, checked ancestry
+  and tree equality, and normally fast-forwarded permanent `ci/thor-candidate-validation`
+  to the candidate. No force update, product merge or submodule revision change occurred.
+- [Trusted Thor CI 41328170707](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41328170707)
+  completed preflight successfully, including focused native Thor tests and upstream
+  native regressions/non-Thor contracts. ARM64 configuration passed; the APK build
+  failed before Android unit tests, package/checksum/receipt or artifact creation.
+  The earlier run 41327917193 was superseded by the callback guard commit and cancelled.
+- The GitHub API annotation contains only `Process completed with exit code 1`.
+  Detailed compiler-log retrieval is explicitly denied by the managed network policy
+  at `productionresultssa5.blob.core.windows.net`. The user has been asked to allow
+  that exact log host or provide the first compiler error. Diagnose and fix that
+  error, rerun affected checks/review and publish a new exact candidate before
+  claiming an installable build. Do not retry blindly or report failed CI as passed.
+- The implementation/PR remain unmerged. No installable APK, APK checksum or hardware
+  acceptance exists for this candidate. The structured hardware plan is ready, but
+  implementation completeness remains gated on resolving the compilation failure.
+
+### Slice 63 ARM64 compilation correction — 2026-11-01
+
+- Retrieved the full logs for failed ARM64 job `124913582548` in run
+  `41328170707` after log access became available. The sole compiler error is
+  `CExchangeWindow.cpp:860`: Clang's warning-as-error reports missing designated
+  initializer for the new `ThorActionRequest::text` member. This was a source
+  initialization warning, not an ARM64 ABI or dependency failure.
+- Give `text` an explicit empty default, consistent with every other request
+  member. Existing aggregate/designated callers retain empty text without edits;
+  filename-bearing requests and native Save/Load behavior remain unchanged.
+- Separate finished-diff review: the one-line source correction preserves aggregate
+  layout and default behavior, does not relax compiler warnings, and changes no
+  native callbacks, ownership, transport bounds, lifecycle or engine rules. The
+  existing six-part checklist remains applicable. Source completeness does not
+  establish an Android build or physical pass.
+- Local validation: all focused native tests pass using cached Boost headers; upstream
+  boundary policy, checklist schema, four Python policy/checklist tests and diff
+  whitespace checks pass. Full Android Clang/SDK/ARM64 verification remains CI.
+- Replacement candidate publication and validation receipts follow below. Stop
+  before hardware acceptance or merge under the user's explicit task boundary.
+
+### Slice 63 replacement candidate validation receipt — 2026-11-01
+
+- Published correction `da45a886ac06429510d3371c677e6148901e8b37` to
+  `codex/thor-save-load`, then normally fast-forwarded permanent
+  `ci/thor-candidate-validation` from `cda07c494` to that exact SHA. No force
+  update, product merge or submodule revision change occurred.
+- [Trusted Thor CI 41338283368](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41338283368)
+  completed successfully: preflight job `124942659241` and ARM64 job
+  `124943626174`. Native contracts, upstream regressions/non-Thor contracts, full
+  Android/ARM64 APK build, focused Android tests, package/checksum generation,
+  receipt creation, checklist binding and artifact upload all passed. Locally,
+  182 focused native tests, upstream boundary policy, checklist schema, four Python
+  policy/checklist tests and diff checks passed before publication.
+- Inspected ARM64 logs: package `is.xyz.vcmi.thor`, version `1.8.0` / `1800`;
+  APK SHA-256 `43dd0ff6e9fded7a0a43f328ae5903a33dbbbed7ec628c0dd07ae941f5401523`.
+  ARM64 build took 375 seconds; restored compiler cache had 778 hits / 891
+  cacheable calls (87.32%), with 113 valid misses.
+- Artifact `thor-candidate-arm64-41338283368`, ID `13095554664`, size 40,738,554
+  bytes; GitHub metadata and upload logs agree on ZIP SHA-256
+  `ab9e5681ad5073612edd78adb014912b83bcdc04f5f92005382ec9b288b789cb`.
+- Archive download was attempted but explicitly denied at
+  `productionresultssa11.blob.core.windows.net`. The environment allows the log
+  host `productionresultssa5.blob.core.windows.net`, not this artifact host.
+  Archive/APK bytes and packaged receipt/checklist were therefore not independently
+  downloaded, inspected or rehashed. Complete that verification through permitted
+  access before installation; the checksums above are CI/GitHub-reported evidence.
+- Current status: CI passed, awaiting hardware validation. The existing six-part
+  `CI/thor-validation-plan.json` applies to this exact candidate. No installation,
+  hardware acceptance or merge was performed or authorized. This receipt changes
+  backlog Markdown only; preserve the permanent candidate at the built SHA.
+
+### Slice 63 hardware acceptance and promotion authorization — 2026-11-01
+
+- The user reported **all six hardware checks passed** for the current candidate
+  `da45a886ac06429510d3371c677e6148901e8b37` and explicitly requested Markdown
+  updates, commit, merge of [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63)
+  and stale-branch cleanup. No failed or unavailable check was reported.
+- Accepted scope: Save browsing/folders/paging/cancellation; lower filename editing
+  and usable IME including Unicode/invalid input; editor cancellation/focus cleanup;
+  overwrite/autosave warnings; actual in-game and main-menu Load lifecycle; stale
+  input, multitouch, display/activity lifecycle and neighboring/upper-input regressions.
+  The six-part `CI/thor-validation-plan.json` remains the exact checklist authority.
+- Trusted CI `41338283368` passed both jobs on that candidate. CI-reported APK
+  SHA-256 is `43dd0ff6e9fded7a0a43f328ae5903a33dbbbed7ec628c0dd07ae941f5401523`.
+  Artifact `13095554664` has GitHub-reported archive SHA-256
+  `ab9e5681ad5073612edd78adb014912b83bcdc04f5f92005382ec9b288b789cb`.
+  Earlier independent download/rehash was blocked by the artifact-host allowlist;
+  no independently measured installed-byte checksum or companion export was supplied.
+  Physical acceptance is recorded as the user's report.
+- Verified PR head `674d091ecd2dd47edbcb93325f39798ddef2d615` differs from the
+  tested candidate only in backlog Markdown; no submitted blocking review or
+  unresolved inline thread exists. This acceptance changes backlog/playbook Markdown
+  only. Product code, resources, tests, workflow and checklist retain the exact
+  accepted tree; preserve the permanent candidate at the built SHA.
+- Earlier pending-CI/hardware and withheld-authorization statements are historical.
+  The current explicit request authorizes normal promotion and deletion of merged
+  feature branches; preserve product, permanent candidate and open-PR branches.

@@ -1,46 +1,46 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-settings-confirmations",
-  "title": "Lower-screen Settings and shared confirmation dialogs",
-  "summary": "Mirror live native Settings controls and their selectors. Present standard Yes/No and OK dialogs, including spellbook purchase, with the complete paged native message, item labels and named resource amounts. Execute original MainGUI callbacks under current owner, parent, revision and enabled-state checks.",
-  "preparation": "Verify exact candidate receipt, package is.xyz.vcmi.thor and APK SHA-256; install preserving data. Prepare disposable saves for Adventure and Battle Settings, a Town with Mage Guild and a visiting hero without a spellbook, sufficient/insufficient gold, Blacksmith replacement and spell research if available. Record unavailable cases explicitly.",
-  "limitations": "Keyboard/controller rebinding and its physical key-capture workflow remain on the upper screen. Custom selection/purchase windows outside standard CInfoWindow Yes/No or OK factories are not exposed by this shared adapter. Empty, invalid UTF-8, over-8192-byte dialog text, unnameable icon components and oversized settings lists fail closed; original upper controls remain authoritative. The ARM64 APK build requires CI; local host tests do not establish a physical pass.",
+  "feature_id": "thor-save-load",
+  "title": "Complete lower-screen in-game Save and native Load journeys",
+  "summary": "Browse the exact native Save list and folders, select slots, edit a new or existing filename in a scoped lower-display Android editor, Save through CSavingScreen and answer the original overwrite/autosave warnings. Load follows the actual upstream in-game route: Settings Load, native leave-game confirmation, Load menu, existing native lobby browser and Load callback. No file, compatibility or server behavior changes.",
+  "preparation": "Back up the app data and dedicated Saves-upstream directory before testing. Use disposable saves only. Verify the exact candidate receipt, APK SHA-256 and package is.xyz.vcmi.thor; install in place with adb install -r -d, never uninstall. Prepare an Adventure game with multiple manual saves/folders (more than five entries), long/Unicode names, an empty folder and distinct recognizable game states. Keep legacy Saves untouched. Record unavailable scenarios explicitly.",
+  "limitations": "The upstream base has no independent in-game Load browser: confirming Load ends the current gameplay and opens its real Load menu. No rejects that departure; Back after departure follows the original menu lifecycle and cannot resurrect the ended game. Save transport caps are 10000 native list entries and 240 UTF-8 filename bytes; malformed/oversized input fails closed. The native filename filter removes forbidden punctuation. The transient editor requests Android IME on the secondary display; actual keyboard display placement and focus restoration must pass on Thor. No physical pass is inferred from CI.",
   "checks": [
     {
-      "id": "settings-tabs-controls",
-      "title": "Complete Settings controls and live enabled state",
-      "steps": "Open Settings from Adventure and Battle. Page through General, Adventure and Battle controls, switching tabs below and above. Change music/sound in both directions to endpoints, nonlinear speed choices, toggles, and dependent controls such as large spellbook/animation. Compare live values and disabled states; check guest/battle Save/Load/Restart availability. Open Shortcuts on the upper screen, then return.",
-      "expected": "Every instantiated ordinary settings control is reachable on paged lower rows with its current native value/selection. Existing native callbacks apply each change once. Disabled controls and off-page/old targets cannot execute. Back returns to the correct Adventure/Battle context. Key binding capture stays upper-screen."
+      "id": "save-browser",
+      "title": "Save browsing and cancellation",
+      "steps": "From lower Adventure Actions open Save. Compare rows/order/selection with the native upper window. Page both directions through more than five entries. Open native folders and parent folders below; inspect an empty folder and a selected save date/map/dimensions. Change selection/sort/filter/folder above. Cancel below and above in separate trials. Also enter Save from lower Settings.",
+      "expected": "Every native entry in the bounded current folder is reachable; folder labels, current selection, page count and bounded readable names agree. Empty state is explicit. Native metadata is not invented. Both cancellation routes unpause and restore the actual originating game context; Settings Save follows its normal close-before-Save route."
     },
     {
-      "id": "settings-selectors",
-      "title": "Settings selectors, accept, cancel and display resize",
-      "steps": "Open scaling, long-touch duration and resolution selectors where available. Page all options below, select and accept once; repeat with cancel. Change selection using the upper screen between lower down/up. Test a resize/scaling change, then reopen Settings.",
-      "expected": "Current native options and selection match both screens. Accept applies the selected native option once; Cancel makes no change. Old revisions, changed selection and held releases are rejected. Resizing recreates the lower layout safely."
+      "id": "new-save-name",
+      "title": "Create a named save entirely through the lower workflow",
+      "steps": "Choose New / edit filename, replace the selected draft with a unique disposable name and edit middle/end text, delete characters, use OK and keyboard Done in separate trials, then Save. Reopen Save/Load and verify the resulting name and game state. Try CJK, accented text, emoji, blank names, forbidden punctuation, dot/dot-dot and names beyond 240 UTF-8 bytes.",
+      "expected": "A transient editor and usable keyboard allow lower-display filename entry without overlapping browser/footer actions. OK/Done changes only the native filename widget; Save writes once through native behavior, with normal extension/location/filter/collision semantics. Invalid/oversized names cannot save. Unicode round-trips without JNI errors. If Android places an unusable keyboard on the upper display, fail this check and record the platform limitation; do not accept a complete lower workflow."
     },
     {
-      "id": "spellbook-confirmation",
-      "title": "Spellbook purchase Yes/No and rejection",
-      "steps": "Enter a built Mage Guild with a visiting owned hero without a spellbook. Compare the full question and item with the lower panel. Choose No and verify no gold/book change; reopen, choose Yes and verify the ordinary 500-gold purchase and Guild result. Try insufficient gold and an ineligible hero; dismiss the native notice below.",
-      "expected": "The complete question and item identity are visible below; Yes and No use the original native callbacks. Cancel does not spend resources. Accepted purchase follows server rules once and restores the correct Guild/Town. Error notices expose OK, without an unsupported purchase action."
+      "id": "name-cancel-focus",
+      "title": "Filename cancellation, focus and cleanup",
+      "steps": "Open the editor with an existing filename. Modify it then Cancel, press keyboard Back/dismiss, tap upper controls, background/resume, toggle the lower panel and recreate/detach/reconnect the display in separate trials. Replace/close the upper Save window during a draft. Test upper SDL filename editing before and after a lower editor session.",
+      "expected": "Every cancellation discards the local draft without writing or changing the native name. Context/revision/session changes withdraw the editor. No leaked keyboard/dialog, delayed IME reopening, duplicate commit, focus theft after dismissal or loss of upper touch/controller/text entry remains. Exactly one fresh lower panel returns."
     },
     {
-      "id": "shared-confirmations",
-      "title": "Settings, service and ordinary native dialogs",
-      "steps": "Cancel and accept Settings restart, main-menu return and quit in separate disposable runs. Test a Blacksmith replacement and spell research if available. Exercise other standard native Yes/No questions and queued OK notices, comparing resource names/amounts and item labels with the upper dialog. Page a long/localized message in both directions.",
-      "expected": "All standard factory dialogs show their complete bounded message and named component values; Yes/No or OK invokes the same native button as above. Queued notices bind to their eventual live parent. Native timing/server results remain unchanged; closing a child restores the correct live parent. Unsupported custom/oversized content safely withdraws actions."
+      "id": "overwrite",
+      "title": "Existing-save overwrite and native warnings",
+      "steps": "Select a disposable existing save below, press Save, inspect the complete actual overwrite question, choose No and verify the original file/game state remains. Repeat with Yes and verify the updated save by loading it. Enter a native autosave-reserved name to exercise its warning and subsequent overwrite dialog where applicable. Exercise a native save failure/notice where safely reproducible.",
+      "expected": "Original native warnings, Yes/No callbacks and errors are used. No leaves the save unchanged and restores the exact Save parent/name/selection. Yes invokes the original save callback once and restores the game normally. Nested warnings cannot be confirmed by an old release; failures retain native behavior."
     },
     {
-      "id": "stale-modal-input",
-      "title": "Stale, rapid and cross-screen input",
-      "steps": "Hold a lower confirmation, then close it above, switch to another dialog, or let a timed dialog expire before releasing. Rapidly tap Yes/OK, change a setting above during a lower press, switch Settings tabs while paging, and try multitouch/cancel/outside releases.",
-      "expected": "No release crosses owner, parent, revision, page or Presentation boundaries. At most one current native callback executes; no accidental next-dialog confirmation, duplicate purchase, stale setting change or stuck input."
+      "id": "load-journey",
+      "title": "Complete actual in-game Load route and main-menu regression",
+      "steps": "From lower Settings choose Load. Reject the leave-game question and compare the current game. Repeat and accept; use lower Load menu/Single Player and the existing native browser. Page/select saves, verify metadata and disabled Load for no valid selection, then load a recognizable disposable state. In a separate trial cancel/back through the browser/menu. Recheck a fresh main-menu Load and native error/rejection for an unavailable or incompatible save.",
+      "expected": "No returns to the live originating game. Yes follows the unchanged native endGameplay-to-Load-menu route. Browsing and Load use the real lobby authority, native asynchronous selection availability and existing start callback. The correct state loads, or native rejection/error is shown. Back after confirmed departure follows native menu restoration; no fabricated in-game window or previous-game selection persists."
     },
     {
-      "id": "display-input-regressions",
-      "title": "Lifecycle and upper-input regressions",
-      "steps": "While Settings, a selector and a spellbook/other confirmation are open, toggle the lower panel, background/resume, and detach/reconnect/recreate the secondary display where practical. Recheck upper touch/controller, main-menu confirmations, Town/Guild/Blacksmith restoration and normal single-display operation. Recheck Adventure/Battle spellbook browsing, native casting/targeting and return after closing a standard child notice.",
-      "expected": "Exactly one current lower panel returns with correct text/actions and fresh gestures. No stale releases or focus theft. Upper input, existing build/menu confirmations and non-Thor behavior remain unchanged."
+      "id": "stale-lifecycle-regressions",
+      "title": "Stale input, lifecycle and neighboring features",
+      "steps": "Hold lower Save/row/page/editor/Load controls while upper selection, folder, list order, filename or native owner changes. Refresh the native list with a file added/removed if available. Rapidly repeat actions, drag/release outside and add/remove a second pointer. Cover Save/Load with confirmations/errors, close them from either screen, toggle/recreate the lower panel and background/resume. Recheck Settings/shared confirmations, Adventure Actions, Hero/Town children, Battle/result restoration, upper touch/controller and single-display behavior.",
+      "expected": "Only the exact current owner/parent/revision/entry may execute, at most once. Old/off-page/replaced targets and malformed input fail closed without stuck controls or unintended save/overwrite/load. Modals restore the actual parent. Existing decks, native Save/Load, files, upper controls and single-display behavior remain intact."
     }
   ]
 }

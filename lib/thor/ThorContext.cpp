@@ -108,7 +108,7 @@ namespace
 				&& context.contextId != ThorContextIds::TAVERN
 				&& context.contextId != ThorContextIds::SETTINGS && context.contextId != ThorContextIds::SETTINGS_SELECTION
 				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD
-				&& context.contextId != ThorContextIds::SPELLBOOK)
+				&& context.contextId != ThorContextIds::SPELLBOOK && context.contextId != ThorContextIds::SAVE_GAME)
 			{
 				context.nativeOwnerToken = nullptr;
 				context.nativeParentToken = nullptr;
@@ -227,6 +227,28 @@ namespace
 			hero.name = thorBoundedText(std::move(hero.name));
 		for(auto & town : context.towns)
 			town.name = thorBoundedText(std::move(town.name));
+		if(context.contextId == ThorContextIds::SAVE_GAME)
+		{
+			bool invalid = !context.nativeOwnerToken || !context.nativeParentToken
+				|| context.browserEntries.size() > THOR_SAVE_BROWSER_PAGE_SIZE
+				|| context.browserPageCount > 2000 || context.browserPageCount < 0 || context.browserPage < 0
+				|| (context.browserPageCount == 0 ? context.browserPage != 0 : context.browserPage >= context.browserPageCount)
+				|| context.browserNativeKeys.size() != context.browserEntries.size();
+			for(std::size_t i = 0; i < context.browserEntries.size(); ++i)
+			{
+				const auto & row = context.browserEntries[i];
+				invalid |= row.target < 0 || row.target >= 10000
+					|| std::any_of(context.browserEntries.begin(), context.browserEntries.begin() + i,
+						[&](const auto & earlier) { return earlier.target == row.target; });
+			}
+			if(invalid)
+			{
+				context.enabledActionMask = 0;
+				context.browserEntries.clear();
+				context.browserNativeKeys.clear();
+				context.browserPage = context.browserPageCount = 0;
+			}
+		}
 		bool exactTownServiceTargets = context.browserEntries.size() == THOR_TOWN_SERVICE_COUNT;
 		for(std::size_t index = 0; exactTownServiceTargets && index < context.browserEntries.size(); ++index)
 			exactTownServiceTargets = context.browserEntries[index].target == static_cast<int>(index);
@@ -239,7 +261,8 @@ namespace
 			&& context.browserPageCount == static_cast<int>((context.browserEntries.size()
 				+ THOR_TOWN_HALL_PAGE_SIZE - 1) / THOR_TOWN_HALL_PAGE_SIZE)
 			&& context.browserNativeKeys.size() == context.browserEntries.size();
-		const bool nativeBrowser = (context.contextId == ThorContextIds::CAMPAIGN_BROWSER
+		const bool nativeBrowser = (context.contextId == ThorContextIds::SAVE_GAME
+			|| context.contextId == ThorContextIds::CAMPAIGN_BROWSER
 			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO
 			|| context.contextId == ThorContextIds::SETTINGS || context.contextId == ThorContextIds::SETTINGS_SELECTION
 			|| context.contextId == ThorContextIds::DIALOG_CONFIRMATION || context.contextId == ThorContextIds::DIALOG_INFORMATION)

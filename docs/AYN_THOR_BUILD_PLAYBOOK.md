@@ -7,14 +7,17 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Current hardware-accepted candidate: `41384670971141a7999eb7d1caf9d8248efebe5b`,
-  Settings and shared confirmations, reported six of six AYN Thor checks passed
-  on 2026-11-01. [PR #62](https://github.com/CapnChaosDK/vcmi_thor/pull/62)
-  is the implementation/promotion vehicle. [PR preflight 41231550581](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41231550581)
-  passed; its ARM64 job was intentionally skipped. The trusted full candidate run,
-  artifact and APK hashes were not independently retrieved during this handoff.
-  The user-reported physical pass is distinct from CI receipt verification.
-  See the backlog for details. No product/build changes follow the tested candidate.
+- Current hardware-accepted candidate: `da45a886ac06429510d3371c677e6148901e8b37`,
+  Slice 63 Save and native Load journeys. The user reported all six AYN Thor checks
+  passed on 2026-11-01 and authorized promotion through
+  [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63).
+  [Trusted CI 41338283368](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41338283368)
+  passed preflight and full ARM64 validation. CI-reported APK SHA-256:
+  `43dd0ff6e9fded7a0a43f328ae5903a33dbbbed7ec628c0dd07ae941f5401523`.
+  Artifact ID `13095554664`; archive digest and download-verification limitation
+  are recorded in the backlog. The physical pass is the user's report; no
+  independently measured installed-byte receipt was supplied. Permanent candidate
+  stays at the exact built SHA; acceptance receipts change Markdown only.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
@@ -38,6 +41,22 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slices 20 and 21 are hardware validated on candidate `24a061c915977684299250ccd20b7668ab041901` and promoted with that exact product/build tree. Thor CI run `36048661976` passed; artifact ZIP SHA-256 `f87e45e01d99156b1deb072066c09006a29fa5ec3223ee92633ec92e327ffb22`; APK SHA-256 `112ffc5c94eace5c65990cb02f04dbe9ac1f067428d9247ef1a3fe12c9c4f658`. The verified APK was installed on an AYN Thor, and the user reported that the full Slice 21 checklist on the preceding candidate and the focused source-only action-15 retest on this candidate passed. The exact receipt and test history are in `AYN_THOR_BACKLOG.md`.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
+
+## Slice 63 candidate handoff
+
+The Save/Load implementation uses `codex/thor-save-load`, based on verified product
+`08087dd1c`. Publish its reviewed commit/PR, then hand that exact SHA to the permanent
+candidate branch using the procedure below. The current authored device plan is
+[`CI/thor-validation-plan.json`](../CI/thor-validation-plan.json); the previous
+Settings/shared-confirmations plan is archived in `docs/validation/`.
+
+Use disposable saves and back up `Saves-upstream` before device testing. Preserve
+app data with in-place installation. The scoped lower filename editor requires an
+explicit device pass for Android IME placement, dismissal and upper SDL/controller
+focus restoration. In-game Load intentionally follows upstream's departure question,
+`endGameplay` and real Load menu; rejecting departure retains the live game, whereas
+Back after accepted departure follows the normal menu lifecycle. The checklist owns
+the complete steps and pass criteria. No product merge is authorized by CI alone.
 
 ## Permanent Thor CI
 
