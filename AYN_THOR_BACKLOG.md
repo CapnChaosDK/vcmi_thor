@@ -59,10 +59,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 63 — lower-screen Save and native Load journeys: `awaiting CI` on
+- Slice 63 — lower-screen Save and native Load journeys: `blocked` on
   `codex/thor-save-load`, based on product `08087dd1c`. Native Save browsing,
   filename editing, overwrite/cancel and the existing native Load lifecycle are
-  integrated; full CI and exact-candidate hardware acceptance remain pending.
+  integrated; native preflight passed, but ARM64 compilation failed and detailed
+  logs require an additional allowed storage host. No APK or hardware acceptance.
   See the Slice 63 contract below and [current checklist](CI/thor-validation-plan.json).
 
 - Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
@@ -3039,7 +3040,8 @@ Promotion and cleanup receipt (2026-10-22):
 
 ## Slice 63 — Complete lower-screen Save and native Load journeys
 
-- Status: `awaiting CI`; implementation branch `codex/thor-save-load` starts from
+- Status: `blocked` at ARM64 compilation/log access; implementation branch
+  `codex/thor-save-load` starts from
   fresh product `08087dd1cad41dbcf6d9e463d3d26c722ff03169`. No hardware acceptance
   or product merge is claimed. The current checklist is
   [`CI/thor-validation-plan.json`](CI/thor-validation-plan.json); the preceding
@@ -3123,3 +3125,27 @@ editing the Save name chooses the destination of a native save.
   controls IME placement; a keyboard that cannot support lower-display entry is a
   failed acceptance check, not an inferred successful fallback. See the single
   structured checklist for explicit pass criteria and backup preparation.
+
+### Slice 63 publication and current CI gate
+
+- Published [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63), targeting
+  `ayn-thor-dual-screen`. Reviewed implementation `cc0934fb2d826b764fcd950ecae33ab315dc4faf`
+  was followed by the focused exact-editor callback guard commit
+  `cda07c494b578d13a0fae56943ea9909724b8522`. The latter is the current exact candidate.
+- Verified the published implementation, fetched both remote refs, checked ancestry
+  and tree equality, and normally fast-forwarded permanent `ci/thor-candidate-validation`
+  to the candidate. No force update, product merge or submodule revision change occurred.
+- [Trusted Thor CI 41328170707](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41328170707)
+  completed preflight successfully, including focused native Thor tests and upstream
+  native regressions/non-Thor contracts. ARM64 configuration passed; the APK build
+  failed before Android unit tests, package/checksum/receipt or artifact creation.
+  The earlier run 41327917193 was superseded by the callback guard commit and cancelled.
+- The GitHub API annotation contains only `Process completed with exit code 1`.
+  Detailed compiler-log retrieval is explicitly denied by the managed network policy
+  at `productionresultssa5.blob.core.windows.net`. The user has been asked to allow
+  that exact log host or provide the first compiler error. Diagnose and fix that
+  error, rerun affected checks/review and publish a new exact candidate before
+  claiming an installable build. Do not retry blindly or report failed CI as passed.
+- The implementation/PR remain unmerged. No installable APK, APK checksum or hardware
+  acceptance exists for this candidate. The structured hardware plan is ready, but
+  implementation completeness remains gated on resolving the compilation failure.
