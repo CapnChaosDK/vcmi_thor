@@ -59,12 +59,14 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 63 — lower-screen Save and native Load journeys: `awaiting CI` on
+- Slice 63 — lower-screen Save and native Load journeys: `awaiting hardware validation` on
   `codex/thor-save-load`, based on product `08087dd1c`. Native Save browsing,
   filename editing, overwrite/cancel and the existing native Load lifecycle are
   integrated. The ARM64 compiler failure is diagnosed and corrected with an explicit
-  empty default for request text; replacement candidate validation is pending.
-  No APK or hardware acceptance is claimed.
+  empty default for request text. Replacement CI `41338283368` passed both jobs on
+  exact candidate `da45a886ac06429510d3371c677e6148901e8b37`; the APK is published.
+  Independent artifact download/rehash is blocked by the storage-host allowlist.
+  No hardware acceptance is claimed.
   See the Slice 63 contract below and [current checklist](CI/thor-validation-plan.json).
 
 - Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
@@ -3171,3 +3173,34 @@ editing the Save name chooses the destination of a native save.
   whitespace checks pass. Full Android Clang/SDK/ARM64 verification remains CI.
 - Replacement candidate publication and validation receipts follow below. Stop
   before hardware acceptance or merge under the user's explicit task boundary.
+
+### Slice 63 replacement candidate validation receipt — 2026-11-01
+
+- Published correction `da45a886ac06429510d3371c677e6148901e8b37` to
+  `codex/thor-save-load`, then normally fast-forwarded permanent
+  `ci/thor-candidate-validation` from `cda07c494` to that exact SHA. No force
+  update, product merge or submodule revision change occurred.
+- [Trusted Thor CI 41338283368](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41338283368)
+  completed successfully: preflight job `124942659241` and ARM64 job
+  `124943626174`. Native contracts, upstream regressions/non-Thor contracts, full
+  Android/ARM64 APK build, focused Android tests, package/checksum generation,
+  receipt creation, checklist binding and artifact upload all passed. Locally,
+  182 focused native tests, upstream boundary policy, checklist schema, four Python
+  policy/checklist tests and diff checks passed before publication.
+- Inspected ARM64 logs: package `is.xyz.vcmi.thor`, version `1.8.0` / `1800`;
+  APK SHA-256 `43dd0ff6e9fded7a0a43f328ae5903a33dbbbed7ec628c0dd07ae941f5401523`.
+  ARM64 build took 375 seconds; restored compiler cache had 778 hits / 891
+  cacheable calls (87.32%), with 113 valid misses.
+- Artifact `thor-candidate-arm64-41338283368`, ID `13095554664`, size 40,738,554
+  bytes; GitHub metadata and upload logs agree on ZIP SHA-256
+  `ab9e5681ad5073612edd78adb014912b83bcdc04f5f92005382ec9b288b789cb`.
+- Archive download was attempted but explicitly denied at
+  `productionresultssa11.blob.core.windows.net`. The environment allows the log
+  host `productionresultssa5.blob.core.windows.net`, not this artifact host.
+  Archive/APK bytes and packaged receipt/checklist were therefore not independently
+  downloaded, inspected or rehashed. Complete that verification through permitted
+  access before installation; the checksums above are CI/GitHub-reported evidence.
+- Current status: CI passed, awaiting hardware validation. The existing six-part
+  `CI/thor-validation-plan.json` applies to this exact candidate. No installation,
+  hardware acceptance or merge was performed or authorized. This receipt changes
+  backlog Markdown only; preserve the permanent candidate at the built SHA.
