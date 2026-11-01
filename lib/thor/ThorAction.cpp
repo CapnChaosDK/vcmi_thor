@@ -1,4 +1,5 @@
 #include "ThorAction.h"
+#include "ThorSave.h"
 
 #include <algorithm>
 
@@ -312,6 +313,10 @@ std::optional<ThorTownService> thorTownServiceFromTarget(int targetId)
 
 bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId)
 {
+	if(contextId == ThorContextIds::SAVE_GAME)
+		return action == ThorAction::LOAD_BROWSER_SELECT || action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE
+			|| action == ThorAction::LOAD_BROWSER_NEXT_PAGE || action == ThorAction::WINDOW_CLOSE
+			|| action == ThorAction::WINDOW_CONFIRM || action == ThorAction::WINDOW_NEXT;
 	if(contextId == ThorContextIds::SETTINGS || contextId == ThorContextIds::SETTINGS_SELECTION)
 		return action == ThorAction::LOAD_BROWSER_SELECT || action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE
 			|| action == ThorAction::LOAD_BROWSER_NEXT_PAGE || action == ThorAction::WINDOW_CLOSE
@@ -691,6 +696,12 @@ ThorActionValidation validateThorAdventureMovementRequest(const ThorActionReques
 
 ThorActionValidation validateThorActionRequest(const ThorActionRequest & request, const ThorContextRecord & context)
 {
+	const bool filename = context.contextId == ThorContextIds::SAVE_GAME
+		&& request.action == ThorAction::WINDOW_NEXT && request.commandVersion == 0 && request.commandId == 0;
+	if(context.contextId == ThorContextIds::SAVE_GAME && request.recruitmentOperation != ThorRecruitmentOperation::NONE)
+		return ThorActionValidation::INVALID_TARGET;
+	if(filename ? !thorSaveFilenamePayloadValid(request.text) : !request.text.empty())
+		return ThorActionValidation::INVALID_TARGET;
 	if(request.commandVersion != 0 || request.commandId != 0)
 	{
 		const std::array payload{request.commandVersion, request.commandId, request.targetId};
@@ -752,6 +763,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::UNKNOWN_ACTION;
 	if(request.revision != context.revision)
 		return ThorActionValidation::STALE_REVISION;
+	if(context.contextId == ThorContextIds::SAVE_GAME && (!context.nativeOwnerToken || !context.nativeParentToken))
+		return ThorActionValidation::WRONG_CONTEXT;
 	if(!isThorActionAllowedInContext(request.action, context.contextId))
 		return ThorActionValidation::WRONG_CONTEXT;
 	if((context.enabledActionMask & thorActionMask(request.action)) == 0)
@@ -1038,7 +1051,7 @@ bool thorLobbyStartActionAvailable(bool mapAvailable, bool lobbyReady, bool uppe
 bool ThorActionQueue::submit(ThorActionRequest request)
 {
 	std::lock_guard lock(mutex);
-	if(count == capacity)
+	if(count == capacity || request.text.size() > THOR_SAVE_FILENAME_BYTES)
 		return false;
 
 	requests[(first + count) % capacity] = request;

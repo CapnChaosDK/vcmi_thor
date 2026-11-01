@@ -103,6 +103,7 @@ jobs:
             lib/thor/ThorContext.cpp \
             lib/thor/ThorVisualAssetCache.cpp \
             test/thor/ThorWindowPublisherTest.cpp \
+            test/thor/ThorSaveControllerTest.cpp \
             test/thor/ThorContextTest.cpp \
             test/thor/ThorActionTest.cpp \
             test/thor/ThorAdventureMapTest.cpp \
@@ -369,6 +370,8 @@ jobs:
               --tests eu.vcmi.vcmi.ThorMainMenuTest \
               --tests eu.vcmi.vcmi.ThorAdventureMapTest \
               --tests eu.vcmi.vcmi.ThorBrowserTest \
+              --tests eu.vcmi.vcmi.ThorSaveLoadTest \
+              --tests eu.vcmi.vcmi.ThorSettingsDialogTest \
               --tests eu.vcmi.vcmi.ThorWindowNavigationTest \
               --tests eu.vcmi.vcmi.ThorTownServicesTest \
               --tests eu.vcmi.vcmi.ThorTavernTest \

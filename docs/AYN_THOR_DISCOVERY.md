@@ -134,6 +134,26 @@ remain authoritative. Bespoke selection windows and physical key rebinding retai
 upper input. These source changes still require an exact-candidate APK/device gate;
 see the current [structured checklist](../CI/thor-validation-plan.json).
 
+### Save and native Load companion (Slice 63)
+
+`CSavingScreen` mirrors the current `SelectionTab` list, including folders, with
+five bounded rows, selection/date/map details, pages, Save and Back. Tokens bind to
+the whole native list identity, selection revision, filename, exact owner/parent
+and consumed action epoch. MainGUI rechecks live state before original callbacks.
+The scoped attached Android filename dialog never changes the permanent
+Presentation's non-focusable flags. OK/Done submits at most 240 UTF-8 bytes through
+a dedicated JNI method into the native widget's existing filter; Save separately
+uses the unchanged native overwrite/autosave-warning/callback path. Drafts cancel
+on revision, IME, activity and display lifecycle changes. Context/browser strings
+use UTF-16 JNI construction, preserving supplementary characters.
+
+The actual in-game Load route is `SettingsMainWindow::loadGameButtonCallback` →
+`CPlayerInterface::proposeLoadingGame` → native departure confirmation →
+`endGameplay` → real Load menu and existing `CLobbyScreen` browser. There is no
+independent in-game Load owner in this upstream base. Preserve that native lifecycle;
+never construct a fabricated main-menu lobby over the running game. Hardware must
+verify secondary-display IME placement and upper input after transient editing.
+
 ### Presentation responsibility boundary (Slice 47)
 
 The lower view retains snapshots, lifecycle cancellation, session checks and native action submission. `ThorPresentationLayout` is the shared immutable shell calculation for drawing and hit testing. `ThorMainMenuDeck` owns the existing menu family's drawing, local control detection, accessibility description and semantic gesture facade, using values supplied per call; it retains no game snapshot or view/controller reference. `ThorDeckDrawing` shares the existing palette and two paint primitives without retaining mutable state. See the [Slice 47 audit](AYN_THOR_COMPLEXITY_AUDIT.md#slice-47--presentation-geometry-and-main-menu-boundary) for measurements and limits.

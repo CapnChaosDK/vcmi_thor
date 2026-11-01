@@ -92,6 +92,29 @@ void CAndroidVMHelper::callCustomMethod(const std::string & cls, const std::stri
 	fun(env, javaHelper, methodId);
 }
 
+namespace
+{
+	// Context/browser labels are bounded UTF-8, whereas NewStringUTF requires
+	// modified UTF-8. Use the existing bridge's UTF-16 pattern for supplementary characters.
+	jstring thorJavaString(JNIEnv * env, const std::string & value)
+	{
+		const auto text = thorBoundedText(value);
+		std::vector<jchar> utf16;
+		for(std::size_t offset = 0; offset < text.size();)
+		{
+			const auto point = TextOperations::getUnicodeCodepoint(text.data() + offset, text.size() - offset);
+			if(point <= 0xffff) utf16.push_back(static_cast<jchar>(point));
+			else
+			{
+				utf16.push_back(static_cast<jchar>(0xd800 + ((point - 0x10000) >> 10)));
+				utf16.push_back(static_cast<jchar>(0xdc00 + ((point - 0x10000) & 0x3ff)));
+			}
+			offset += TextOperations::getUnicodeCharacterSize(text[offset]);
+		}
+		return env->NewString(utf16.data(), static_cast<jsize>(utf16.size()));
+	}
+}
+
 void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::string & contextId,
 	const std::string & title, const std::string & status,
 	const ThorContextDetails & details, std::uint64_t heroPortraitAssetKey)
@@ -101,12 +124,12 @@ void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::str
 		"Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V",
 		[revision, &contextId, &title, &status, &details, heroPortraitAssetKey](JNIEnv * env, jclass cls, jmethodID methodId)
 		{
-			jstring javaContextId = env->NewStringUTF(contextId.c_str());
-			jstring javaTitle = env->NewStringUTF(title.c_str());
-			jstring javaStatus = env->NewStringUTF(status.c_str());
+			jstring javaContextId = thorJavaString(env, contextId);
+			jstring javaTitle = thorJavaString(env, title);
+			jstring javaStatus = thorJavaString(env, status);
 			std::array<jstring, THOR_CONTEXT_DETAIL_LINE_COUNT> javaDetails;
 			for(std::size_t index = 0; index < details.size(); ++index)
-				javaDetails[index] = env->NewStringUTF(details[index].c_str());
+				javaDetails[index] = thorJavaString(env, details[index]);
 			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), javaContextId, javaTitle, javaStatus,
 				javaDetails[0], javaDetails[1], javaDetails[2], javaDetails[3], static_cast<jlong>(heroPortraitAssetKey));
 			env->DeleteLocalRef(javaContextId);
@@ -442,7 +465,7 @@ void CAndroidVMHelper::publishThorBrowser(std::uint64_t revision, int page, int 
 					| (entry.completed ? 4 : 0);
 				env->SetIntArrayRegion(targets, index, 1, &target);
 				env->SetIntArrayRegion(flags, index, 1, &state);
-				jstring label = env->NewStringUTF(entry.label.c_str());
+				jstring label = thorJavaString(env, entry.label);
 				env->SetObjectArrayElement(labels, index, label);
 				env->DeleteLocalRef(label);
 			}

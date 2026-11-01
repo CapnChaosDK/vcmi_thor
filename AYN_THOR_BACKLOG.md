@@ -59,6 +59,12 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 63 — lower-screen Save and native Load journeys: `awaiting CI` on
+  `codex/thor-save-load`, based on product `08087dd1c`. Native Save browsing,
+  filename editing, overwrite/cancel and the existing native Load lifecycle are
+  integrated; full CI and exact-candidate hardware acceptance remain pending.
+  See the Slice 63 contract below and [current checklist](CI/thor-validation-plan.json).
+
 - Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
   packaged hardware checks passed for reviewed candidate
   `41384670971141a7999eb7d1caf9d8248efebe5b`. Settings mirrors live
@@ -3030,3 +3036,90 @@ Promotion and cleanup receipt (2026-10-22):
 - Accepted scope: live Settings tabs, controls and selectors; spellbook-purchase Yes/No and error notices; ordinary restart/return/quit, Blacksmith/research and other shared dialogs; rapid/stale/multitouch safety; lifecycle, second-screen and upper-input regressions. Key binding capture and unsupported custom windows remain native upper-screen workflows.
 - [Thor CI 41231550581](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41231550581) is verified successful for PR preflight, including native regression and Thor contracts; ARM64 packaging in this PR-triggered run was skipped by design. The trusted candidate full ARM64 run ID, artifact digest and APK SHA-256 were **not independently retrieved in this handoff**. Do not confuse PR preflight with a full signed candidate build. The user's physical acceptance is recorded as reported, not as an independently measured installed-byte receipt.
 - PR #62 initially pointed to the exact accepted implementation SHA; receipt edits are confined to `AYN_THOR_BACKLOG.md` and `docs/AYN_THOR_BUILD_PLAYBOOK.md`. They do not change the candidate product/build tree. Preserve the permanent candidate at the tested SHA; no rebuild or repeated hardware cycle is needed solely for these Markdown changes.
+
+## Slice 63 — Complete lower-screen Save and native Load journeys
+
+- Status: `awaiting CI`; implementation branch `codex/thor-save-load` starts from
+  fresh product `08087dd1cad41dbcf6d9e463d3d26c722ff03169`. No hardware acceptance
+  or product merge is claimed. The current checklist is
+  [`CI/thor-validation-plan.json`](CI/thor-validation-plan.json); the preceding
+  Settings checklist is archived in `docs/validation/`.
+
+### Discovery and native contract
+
+| Journey | Prior lower support | Native authority reused |
+| --- | --- | --- |
+| Save entry | Read-only Save card after Adventure/Settings entry | `CSavingScreen` |
+| Save rows, native order, folders, selection and paging | Missing | `SelectionTab::curItems`, `selectAbs`, existing five-row browser controls |
+| New-save name and editing | Missing | Scoped Android `EditText` draft, then `CTextInput`'s existing filename filter |
+| Save, overwrite, autosave-name warning, errors and cancel | Save action missing; standard dialogs already supported | Unchanged `CSavingScreen::saveGame`, `close`, PR #62 `CInfoWindow` factories/callbacks |
+| In-game Load entry and departure question | Existing Settings control and shared confirmation | `SettingsMainWindow::loadGameButtonCallback`, `CPlayerInterface::proposeLoadingGame` |
+| Load browsing/selection/metadata/Load/Back | Already complete | Existing real `CLobbyScreen`/`SelectionTab` and `start(false)`/`leaveLobby()` |
+
+The actual upstream Load route confirms departure, calls `endGameplay`, and opens
+its native Load menu. There is no separate in-game Load browser to mirror. This
+slice preserves that route: rejecting departure restores the live game; accepting
+it makes later Back follow the original menu lifecycle. No fabricated lobby or
+alternate game-lifecycle implementation is added. Native file enumeration, sorting,
+compatibility, filename normalization, extensions, collision checks, file writes,
+serialization and server rules are unchanged. No file rename action exists here;
+editing the Save name chooses the destination of a native save.
+
+### Implementation and boundaries
+
+- The exact active Save owner binds its immediate parent on first activation.
+  Five current native entries, including folders, are published with native-order
+  position tokens bound to the complete list/object/path/name/date identity, native
+  selection revision, current filename, parent, page and action epoch. Off-page
+  replacement/reorder, folder change and upper filename editing invalidate input.
+  MainGUI observes at most every 100 ms and forces fresh revalidation on dispatch.
+- The small `ThorSaveController` executes only the exact live owner/parent and
+  consumes a revision before invoking any original callback. Save also withdraws
+  controls while its queued native warning is pending. Native modal deactivation
+  and activation restore the exact parent and clear stale requests.
+- The existing bounded browser/parser/geometry/gesture handles Save alongside Load,
+  Settings and dialogs. Save adds a New / edit filename control and its scoped
+  attached dialog; the permanent Presentation retains `FLAG_NOT_FOCUSABLE`.
+  Cancel, IME dismissal, native revision replacement, background, panel toggle,
+  display detach and presentation recreation discard the draft. OK/Done commits
+  text only; the separate Save action invokes native saving.
+- Filename requests use the context-qualified `WINDOW_NEXT` slot in `SAVE_GAME`,
+  with a dedicated bounded UTF-8 byte-array JNI method. Only this context/action
+  accepts text; other envelopes reject it. The native widget applies its actual
+  existing filename filter without synthetic SDL input or focus calls. Transport
+  caps are 240 filename bytes and 10000 native entries; invalid/oversized input
+  fails closed. The exact filename uses three UTF-8-safe context detail chunks.
+- Context and browser publication now use the existing JNI UTF-16 conversion pattern
+  so supplementary Unicode characters survive both directions. Save/Load row labels
+  ellipsize at readable size. No alternate browser framework or confirmation system
+  was introduced; unrelated decks and engine systems are untouched.
+
+### Completeness checkpoint and independent review
+
+- Reviewed the finished native/Java/JNI/test diff in a separate pass for complete
+  Save/new-name/overwrite/No/Yes/cancel/error and actual Load journeys; owner/parent
+  restoration; stale/duplicate input; focus and lifecycle cleanup; bounded transport;
+  upstream isolation; test registration; and generated/unrelated file hygiene.
+- Review corrected immediate-parent lookup to use the real window-stack API,
+  included folder labels and invalid upper filename changes in identity handling,
+  disabled actions while native Save warnings are queued, bounded local drafts,
+  retained drafts on queue rejection, guarded delayed editor dismissal/insets callbacks
+  against a replacement draft, and fixed supplementary Unicode transport.
+- Verified the native `saveGame()` body is byte-for-byte identical to the starting
+  product. Only Thor-guarded owner/widget hooks and the existing bridge change.
+- Local validation: 16 JVM production-state/gesture/geometry tests pass with Java's
+  compiler module and a standalone assertion runner, covering the new Save/Load
+  tests plus browser and Settings/dialog regressions. XML, upstream overlay policy,
+  structured checklist validation, all four Python policy/checklist tests and
+  `git diff --check` pass.
+- Seven additional native dispatch/snapshot/payload tests are registered in both
+  the focused runner and normal native suite. New Android tests and the previously
+  omitted Settings/dialog suite are registered in the permanent workflow. Full
+  native, Android SDK/JUnit and ARM64 checks require CI because local Boost/SDK
+  dependencies are absent; GitHub release-asset downloads are denied by environment
+  policy and the user explicitly selected CI for unavailable local checks.
+- The attached dialog/secondary-display IME, exact save/load gameplay outcomes,
+  upper touch/controller/focus and physical lifecycle remain device gates. Android
+  controls IME placement; a keyboard that cannot support lower-display entry is a
+  failed acceptance check, not an inferred successful fallback. See the single
+  structured checklist for explicit pass criteria and backup preparation.

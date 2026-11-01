@@ -342,4 +342,9 @@
     <string name="thor_spellbook_cost">Level %1$d · Cost %2$d · Mana %3$d</string>
     <string name="thor_spellbook_row">%1$d · %2$s · %3$d mana</string>
     <string name="thor_spellbook_hint">Casting uses native rules; choose targets on the upper screen.</string>
+    <string name="thor_save_empty">No saves in this folder</string>
+    <string name="thor_save_filename">Filename</string>
+    <string name="thor_save_edit">New / edit filename</string>
+    <string name="thor_save_name_hint">Edit the name, then press OK. Save writes through the native game and asks before overwriting. Native filename filtering applies.</string>
+    <string name="thor_save_name_invalid">Enter a nonempty name of at most 240 UTF-8 bytes, without control characters.</string>
 </resources>

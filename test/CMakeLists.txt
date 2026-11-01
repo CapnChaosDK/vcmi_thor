@@ -16,6 +16,7 @@ set(test_SRCS
 		thor/ThorRecruitmentTest.cpp
 		thor/ThorRequestTrackerTest.cpp
 		thor/ThorSaveBrowserTest.cpp
+		thor/ThorSaveControllerTest.cpp
 		thor/ThorVisualAssetTest.cpp
 		thor/ThorWindowPublisherTest.cpp
  		StdInc.cpp

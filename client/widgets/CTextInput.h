@@ -94,6 +94,10 @@ public:
 	const std::string & getText() const;
 
 	void setText(const std::string & nText);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	/// Replace a lower-screen draft through this widget's existing native filter.
+	void setThorText(const std::string & text);
+#endif
 
 	/// Set callback that will be called whenever player enters new text
 	void setCallback(const TextEditedCallback & cb);

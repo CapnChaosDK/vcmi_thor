@@ -69,6 +69,7 @@
 #ifdef VCMI_ANDROID
 #include "../lib/CAndroidVMHelper.h"
 #include "../lib/thor/ThorAction.h"
+#include "../lib/thor/ThorSave.h"
 #ifdef VCMI_SDL3
 #include <SDL3/SDL_system.h>
 #else
@@ -76,6 +77,20 @@
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorSaveNameNative(
+	JNIEnv * env, jclass, jlong revision, jbyteArray bytes)
+{
+	if(revision <= 0 || !bytes || env->GetArrayLength(bytes) <= 0
+		|| env->GetArrayLength(bytes) > THOR_SAVE_FILENAME_BYTES) return JNI_FALSE;
+	ThorActionRequest request;
+	request.revision = static_cast<std::uint64_t>(revision);
+	request.action = ThorAction::WINDOW_NEXT;
+	request.text.resize(env->GetArrayLength(bytes));
+	env->GetByteArrayRegion(bytes, 0, static_cast<jsize>(request.text.size()), reinterpret_cast<jbyte *>(request.text.data()));
+	if(env->ExceptionCheck() || !thorSaveFilenamePayloadValid(request.text)) return JNI_FALSE;
+	return thorActionQueue().submit(std::move(request)) ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorCommandNative(
 	JNIEnv * env, jclass, jlong revision, jintArray payload)
 {

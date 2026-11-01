@@ -52,6 +52,7 @@
 #include "mainmenu/CHighScoreScreen.h"
 #include "windows/InfoWindows.h"
 #include "windows/settings/SettingsMainWindow.h"
+#include "lobby/CSavingScreen.h"
 #endif
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -178,6 +179,8 @@ void GameEngine::updateFrame()
 		quickRecruitment->refreshThorNativeState();
 	else if(auto dwellingRecruitment = windows().topWindow<CRecruitmentWindow>())
 		dwellingRecruitment->refreshThorNativeState();
+	if(auto saving = windows().topWindow<CSavingScreen>())
+		saving->publishThorContext(false);
 	if(auto book = windows().topWindow<CSpellWindow>())
 		book->refreshThorSpellbook();
 	if(auto blacksmith = windows().topWindow<CBlacksmithDialog>())
@@ -421,6 +424,11 @@ void GameEngine::updateFrame()
 			if(validateThorActionRequest(*request, thorContextStore().snapshot()) != ThorActionValidation::VALID)
 				continue;
 			executed = joinWindow->executeThorAction(request->action);
+		}
+		else if(context.contextId == ThorContextIds::SAVE_GAME)
+		{
+			auto owner = windows().topWindow<CSavingScreen>();
+			if(owner && context.nativeOwnerToken == owner.get()) executed = owner->executeThorAction(*request);
 		}
 		else if(context.contextId == ThorContextIds::SETTINGS)
 		{

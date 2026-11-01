@@ -189,6 +189,8 @@ struct DLL_LINKAGE ThorActionRequest
 	/// Zero retains the legacy envelope. Nonzero requires NONE and a V1 command.
 	int commandVersion = 0;
 	int commandId = 0;
+	/// Only SAVE_GAME / WINDOW_NEXT carries bounded UTF-8 filename input.
+	std::string text;
 };
 
 /// Live MainGUI authority, resolved from the actual Adventure owner before dispatch.

@@ -15,6 +15,7 @@ final class ThorBrowserState
     static final int CONTROL_NEXT = 10;
     static final int CONTROL_PRIMARY = 11;
     static final int CONTROL_BACK = 12;
+    static final int CONTROL_EDIT_NAME = 13;
     static final ThorBrowserState EMPTY = new ThorBrowserState(0, 0, new int[0], new String[0], new int[0]);
 
     final int page;
@@ -47,7 +48,8 @@ final class ThorBrowserState
                                    final int[] targets, final String[] labels, final int[] flags)
     {
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
-        final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
+        final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                || ThorContextIds.SAVE_GAME.equals(contextId);
         final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
         final boolean settings = isSettings(contextId);
@@ -115,6 +117,16 @@ final class ThorBrowserState
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
         final boolean settings = isSettings(contextId);
         final boolean dialog = isDialog(contextId);
+        if (ThorContextIds.SAVE_GAME.equals(contextId))
+        {
+            if (control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + SAVE_ROWS) return ThorActionIds.LOAD_BROWSER_SELECT;
+            if (control == CONTROL_PREVIOUS) return ThorActionIds.LOAD_BROWSER_PREVIOUS_PAGE;
+            if (control == CONTROL_NEXT) return ThorActionIds.LOAD_BROWSER_NEXT_PAGE;
+            if (control == CONTROL_PRIMARY) return ThorActionIds.WINDOW_CONFIRM;
+            if (control == CONTROL_BACK) return ThorActionIds.WINDOW_CLOSE;
+            if (control == CONTROL_EDIT_NAME) return ThorActionIds.LOCAL_CONTROL;
+            return ThorActionIds.NONE;
+        }
         if (settings || dialog)
         {
             if (isRowControl(control))
@@ -159,7 +171,8 @@ final class ThorBrowserState
                                     final float width, final float height)
     {
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
-        final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
+        final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
+                || ThorContextIds.SAVE_GAME.equals(contextId);
         final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
         final boolean settings = isSettings(contextId);
@@ -175,11 +188,13 @@ final class ThorBrowserState
             final int line = row / columns;
             final int column = row % columns;
             final float cellWidth = (width - side * 2f - gap * (columns - 1)) / columns;
-            final float lineHeight = height * (campaign ? 0.143f : 0.114f);
+            final float lineHeight = height * (campaign ? 0.143f : ThorContextIds.SAVE_GAME.equals(contextId) ? 0.099f : 0.114f);
             final float top = height * 0.215f + line * lineHeight;
             final float left = side + column * (cellWidth + gap);
             return new float[]{left, top, left + cellWidth, top + lineHeight * 0.92f};
         }
+        if (control == CONTROL_EDIT_NAME && ThorContextIds.SAVE_GAME.equals(contextId))
+            return new float[]{side, height * 0.735f, width - side, height * 0.802f};
         if (control >= CONTROL_PREVIOUS && control <= CONTROL_BACK)
         {
             final int index = control - CONTROL_PREVIOUS;
@@ -209,7 +224,7 @@ final class ThorBrowserState
             if (x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3])
                 return CONTROL_FIRST_ROW + row;
         }
-        for (int control = CONTROL_PREVIOUS; control <= CONTROL_BACK; ++control)
+        for (int control = CONTROL_PREVIOUS; control <= CONTROL_EDIT_NAME; ++control)
         {
             final float[] bounds = boundsForControl(contextId, control, width, height);
             if (bounds[2] > bounds[0] && x >= bounds[0] && x <= bounds[2]

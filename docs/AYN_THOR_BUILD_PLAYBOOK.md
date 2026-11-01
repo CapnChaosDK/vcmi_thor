@@ -14,7 +14,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
   passed; its ARM64 job was intentionally skipped. The trusted full candidate run,
   artifact and APK hashes were not independently retrieved during this handoff.
   The user-reported physical pass is distinct from CI receipt verification.
-  See the backlog for details. No product/build changes follow the tested candidate.
+  See the backlog for details. Slice 63 is a separate unaccepted implementation candidate.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
@@ -38,6 +38,22 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Slices 20 and 21 are hardware validated on candidate `24a061c915977684299250ccd20b7668ab041901` and promoted with that exact product/build tree. Thor CI run `36048661976` passed; artifact ZIP SHA-256 `f87e45e01d99156b1deb072066c09006a29fa5ec3223ee92633ec92e327ffb22`; APK SHA-256 `112ffc5c94eace5c65990cb02f04dbe9ac1f067428d9247ef1a3fe12c9c4f658`. The verified APK was installed on an AYN Thor, and the user reported that the full Slice 21 checklist on the preceding candidate and the focused source-only action-15 retest on this candidate passed. The exact receipt and test history are in `AYN_THOR_BACKLOG.md`.
 
 `origin` is the Thor fork. Never push to `upstream`; its push URL is intentionally disabled.
+
+## Slice 63 candidate handoff
+
+The Save/Load implementation uses `codex/thor-save-load`, based on verified product
+`08087dd1c`. Publish its reviewed commit/PR, then hand that exact SHA to the permanent
+candidate branch using the procedure below. The current authored device plan is
+[`CI/thor-validation-plan.json`](../CI/thor-validation-plan.json); the previous
+Settings/shared-confirmations plan is archived in `docs/validation/`.
+
+Use disposable saves and back up `Saves-upstream` before device testing. Preserve
+app data with in-place installation. The scoped lower filename editor requires an
+explicit device pass for Android IME placement, dismissal and upper SDL/controller
+focus restoration. In-game Load intentionally follows upstream's departure question,
+`endGameplay` and real Load menu; rejecting departure retains the live game, whereas
+Back after accepted departure follows the normal menu lifecycle. The checklist owns
+the complete steps and pass criteria. No product merge is authorized by CI alone.
 
 ## Permanent Thor CI
 
