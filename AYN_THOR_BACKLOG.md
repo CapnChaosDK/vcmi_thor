@@ -63,7 +63,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   the user's confirmation on 2026-11-01 that all six hardware checks passed for
   exact candidate `da45a886ac06429510d3371c677e6148901e8b37`. Trusted CI
   `41338283368` passed preflight and ARM64 packaging. The user explicitly authorized
-  documentation, commit, merge of PR #63 and stale-branch cleanup. See the acceptance
+  documentation, commit, merge of PR #63 and stale-branch cleanup. PR #63 is merged
+  as `38ffdb8198721400d8939db568a7476a269d831b`. See the acceptance
   receipt below and [current checklist](CI/thor-validation-plan.json).
 
 - Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
@@ -3228,3 +3229,21 @@ editing the Save name chooses the destination of a native save.
 - Earlier pending-CI/hardware and withheld-authorization statements are historical.
   The current explicit request authorizes normal promotion and deletion of merged
   feature branches; preserve product, permanent candidate and open-PR branches.
+
+### Slice 63 promotion and branch-cleanup receipt — 2026-11-01
+
+- Published hardware-acceptance commit `e2f9e1b9488d689696c6a2f3e7da53e1b37a6568`,
+  verified the exact expected PR head, then merged PR #63 normally into
+  `ayn-thor-dual-screen` as `38ffdb8198721400d8939db568a7476a269d831b` under
+  the user's explicit authorization.
+- Compared the merged tree to accepted candidate `da45a886ac06429510d3371c677e6148901e8b37`:
+  only `AYN_THOR_BACKLOG.md` and `docs/AYN_THOR_BUILD_PLAYBOOK.md` differ. The exact
+  hardware-accepted product/build/checklist tree is preserved.
+- Verified merged ancestry before deleting remote `codex/thor-save-load`,
+  `codex/settings-confirmations` and `codex/spellbook-companion`. Deleted merged
+  local `codex/thor-save-load`, `codex/fix-slice-52-compile` and `work`; pruned
+  stale tracking refs. Product, permanent candidate and all five open Dependabot
+  PR branches were retained. Local checkout is synchronized to product.
+- The permanent candidate remains at `da45a886ac06429510d3371c677e6148901e8b37`.
+  This final receipt changes Markdown only and needs no new APK/hardware cycle.
+  Slice 63 is complete and promoted; no next feature is selected.

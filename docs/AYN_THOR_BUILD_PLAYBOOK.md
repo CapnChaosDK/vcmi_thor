@@ -10,7 +10,8 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - Current hardware-accepted candidate: `da45a886ac06429510d3371c677e6148901e8b37`,
   Slice 63 Save and native Load journeys. The user reported all six AYN Thor checks
   passed on 2026-11-01 and authorized promotion through
-  [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63).
+  [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63), merged as
+  `38ffdb8198721400d8939db568a7476a269d831b`.
   [Trusted CI 41338283368](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41338283368)
   passed preflight and full ARM64 validation. CI-reported APK SHA-256:
   `43dd0ff6e9fded7a0a43f328ae5903a33dbbbed7ec628c0dd07ae941f5401523`.
