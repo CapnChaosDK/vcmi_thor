@@ -45,7 +45,7 @@ final class ThorReferenceJourney
         if (state == ThorReferenceState.EMPTY || submitted) return false;
         if (control == READ) return state.selected() >= 0 && state.textPages() > 0;
         if (control == LIST) return reading;
-        if (reading && control == NEXT && localPage + 1 < localPages) return true;
+        if (reading && control == NEXT && localPage < localPages - 1) return true;
         if (reading && control == PREVIOUS && localPage > 0) return true;
         return state.allows(command(control), target(control));
     }
@@ -56,7 +56,7 @@ final class ThorReferenceJourney
         if (!gesture.finish(state.context(), control, count, pointer, revision, session, enabled(control), current)) return null;
         if (control == READ) { reading = true; return null; }
         if (control == LIST) { reading = false; return null; }
-        if (reading && control == NEXT && localPage + 1 < localPages) { ++localPage; return null; }
+        if (reading && control == NEXT && localPage < localPages - 1) { ++localPage; return null; }
         if (reading && control == PREVIOUS && localPage > 0) { --localPage; return null; }
         if (reading && control == PREVIOUS) lastPage = true;
         return new int[]{command(control), target(control)};

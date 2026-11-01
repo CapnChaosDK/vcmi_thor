@@ -77,6 +77,12 @@ public class ThorReferenceTest
         j.localPages = 3;
         j.begin(ThorReferenceJourney.NEXT, 7, 3, 0, 1);
         assertNull(j.release(ThorReferenceJourney.NEXT, 7, 3, 0, 1, true)); assertEquals(1, j.localPage);
+        // Previous-native-page restoration may await the next draw. Its sentinel
+        // must not overflow into a negative local page on an immediate new tap.
+        j.localPage = Integer.MAX_VALUE;
+        j.begin(ThorReferenceJourney.NEXT, 7, 3, 0, 1);
+        assertArrayEquals(new int[]{ThorExtendedCommands.REFERENCE_TEXT_NEXT, -1}, j.release(ThorReferenceJourney.NEXT, 7, 3, 0, 1, true));
+        assertTrue(j.localPage >= 0);
         j.localPage = 2;
         j.begin(ThorReferenceJourney.NEXT, 7, 3, 0, 1);
         assertArrayEquals(new int[]{ThorExtendedCommands.REFERENCE_TEXT_NEXT, -1}, j.release(ThorReferenceJourney.NEXT, 7, 3, 0, 1, true));
