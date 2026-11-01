@@ -59,8 +59,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Settings and shared confirmations (2026-10-31): local implementation; awaiting
-  native/Android CI and exact-candidate hardware validation. Settings mirrors live
+- Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
+  packaged hardware checks passed for reviewed candidate
+  `41384670971141a7999eb7d1caf9d8248efebe5b`. Settings mirrors live
   native tab/action buttons, toggles, grouped choices and slider steps through
   bounded five-row pages; native Settings selectors support paging, selection,
   accept and cancel. Standard `CInfoWindow` Yes/No and OK factories publish complete
@@ -81,7 +82,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   declaration-only JNI/SDL stubs (not Android linkage). Upstream-boundary and all
   four CI policy/checklist tests pass. Source completeness/self-review covers
   settings navigation, callbacks, modal parent restoration, bounded text/targets,
-  disabled states and stale input; this does not establish an APK/device pass.
+  disabled states and stale input; the physical pass is the user's report.
   The initial default-sandbox proxy/authentication errors were resolved by enabling
   network access on commands; GitHub authentication is valid. The current product
   spellbook implementation is integrated before candidate publication.
@@ -3022,3 +3023,10 @@ Promotion and cleanup receipt (2026-10-22):
 - Synchronized local product by fast-forward. The permanent candidate remains at
   the accepted SHA. This final receipt changes Markdown only; no new APK or device
   cycle is required. Slice 62 is complete and promoted; no next feature is selected.
+
+## Settings and shared confirmations — hardware acceptance (2026-11-01)
+
+- The user reported **all six hardware checks passed** on their AYN Thor and explicitly authorized Markdown updates, commit and merge of [PR #62](https://github.com/CapnChaosDK/vcmi_thor/pull/62). Exact reviewed implementation/candidate: `41384670971141a7999eb7d1caf9d8248efebe5b`. No failures or skipped checks were reported.
+- Accepted scope: live Settings tabs, controls and selectors; spellbook-purchase Yes/No and error notices; ordinary restart/return/quit, Blacksmith/research and other shared dialogs; rapid/stale/multitouch safety; lifecycle, second-screen and upper-input regressions. Key binding capture and unsupported custom windows remain native upper-screen workflows.
+- [Thor CI 41231550581](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41231550581) is verified successful for PR preflight, including native regression and Thor contracts; ARM64 packaging in this PR-triggered run was skipped by design. The trusted candidate full ARM64 run ID, artifact digest and APK SHA-256 were **not independently retrieved in this handoff**. Do not confuse PR preflight with a full signed candidate build. The user's physical acceptance is recorded as reported, not as an independently measured installed-byte receipt.
+- PR #62 initially pointed to the exact accepted implementation SHA; receipt edits are confined to `AYN_THOR_BACKLOG.md` and `docs/AYN_THOR_BUILD_PLAYBOOK.md`. They do not change the candidate product/build tree. Preserve the permanent candidate at the tested SHA; no rebuild or repeated hardware cycle is needed solely for these Markdown changes.
