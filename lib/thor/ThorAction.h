@@ -190,7 +190,7 @@ struct DLL_LINKAGE ThorActionRequest
 	int commandVersion = 0;
 	int commandId = 0;
 	/// Only SAVE_GAME / WINDOW_NEXT carries bounded UTF-8 filename input.
-	std::string text;
+	std::string text = {};
 };
 
 /// Live MainGUI authority, resolved from the actual Adventure owner before dispatch.

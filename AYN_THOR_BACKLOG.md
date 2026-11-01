@@ -59,11 +59,12 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 63 — lower-screen Save and native Load journeys: `blocked` on
+- Slice 63 — lower-screen Save and native Load journeys: `awaiting CI` on
   `codex/thor-save-load`, based on product `08087dd1c`. Native Save browsing,
   filename editing, overwrite/cancel and the existing native Load lifecycle are
-  integrated; native preflight passed, but ARM64 compilation failed and detailed
-  logs require an additional allowed storage host. No APK or hardware acceptance.
+  integrated. The ARM64 compiler failure is diagnosed and corrected with an explicit
+  empty default for request text; replacement candidate validation is pending.
+  No APK or hardware acceptance is claimed.
   See the Slice 63 contract below and [current checklist](CI/thor-validation-plan.json).
 
 - Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
@@ -3149,3 +3150,24 @@ editing the Save name chooses the destination of a native save.
 - The implementation/PR remain unmerged. No installable APK, APK checksum or hardware
   acceptance exists for this candidate. The structured hardware plan is ready, but
   implementation completeness remains gated on resolving the compilation failure.
+
+### Slice 63 ARM64 compilation correction — 2026-11-01
+
+- Retrieved the full logs for failed ARM64 job `124913582548` in run
+  `41328170707` after log access became available. The sole compiler error is
+  `CExchangeWindow.cpp:860`: Clang's warning-as-error reports missing designated
+  initializer for the new `ThorActionRequest::text` member. This was a source
+  initialization warning, not an ARM64 ABI or dependency failure.
+- Give `text` an explicit empty default, consistent with every other request
+  member. Existing aggregate/designated callers retain empty text without edits;
+  filename-bearing requests and native Save/Load behavior remain unchanged.
+- Separate finished-diff review: the one-line source correction preserves aggregate
+  layout and default behavior, does not relax compiler warnings, and changes no
+  native callbacks, ownership, transport bounds, lifecycle or engine rules. The
+  existing six-part checklist remains applicable. Source completeness does not
+  establish an Android build or physical pass.
+- Local validation: all focused native tests pass using cached Boost headers; upstream
+  boundary policy, checklist schema, four Python policy/checklist tests and diff
+  whitespace checks pass. Full Android Clang/SDK/ARM64 verification remains CI.
+- Replacement candidate publication and validation receipts follow below. Stop
+  before hardware acceptance or merge under the user's explicit task boundary.
