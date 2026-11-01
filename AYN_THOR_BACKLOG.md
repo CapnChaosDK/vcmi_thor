@@ -60,10 +60,11 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 ## Current state
 
 - Slice 64 — Adventure reference companion (Quests, Scenario Journal and Puzzle
-  Map): `awaiting CI` on `codex/adventure-reference`, based on promoted Slice 63
-  product `eca74b682`. The user approved the complete bundled scope and one
-  integrated candidate/hardware checklist. See the contract below; no CI or
-  hardware pass is inferred from source implementation.
+  Map): `hardware validated` by the user's 2026-11-01 report that all six hardware
+  checks passed on exact candidate `7833253367f6c81652c7a72fcc95ad8651e6c849`.
+  Trusted CI `41343427557` passed both jobs. The user explicitly authorized Markdown
+  updates, commit, PR #64 merge and stale-branch cleanup. See the acceptance receipt
+  below and [current checklist](CI/thor-validation-plan.json).
 
 
 - Slice 63 — lower-screen Save and native Load journeys: `hardware validated` by
@@ -3372,3 +3373,35 @@ editing the Save name chooses the destination of a native save.
   artifact/APK and use all six packaged hardware checks. No physical acceptance or
   merge authorization is claimed. This handoff adds backlog Markdown only and
   leaves the permanent candidate at the exact reviewed source/build/checklist SHA.
+
+### Slice 64 CI and hardware acceptance — 2026-11-01
+
+- The user reported **all six hardware checks passed** for current exact candidate
+  `7833253367f6c81652c7a72fcc95ad8651e6c849` and explicitly requested Markdown
+  updates, commit, merge of [PR #64](https://github.com/CapnChaosDK/vcmi_thor/pull/64)
+  and stale-branch cleanup. No failed or unavailable check was reported.
+- Accepted scope: complete quest/event browsing and reading, native tab/location/
+  Close routes, zero/partial/full covered Puzzle Map and progress, stale/multitouch/
+  modal behavior, display/activity lifecycle, readability and neighboring/upper-input
+  regressions. The six-part `CI/thor-validation-plan.json` is the checklist authority.
+- [Trusted CI 41343427557](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41343427557)
+  passed preflight job `124958172428` and ARM64 job `124959502508` on that exact SHA,
+  including native regressions, Android tests, full package creation, checksum,
+  receipt/checklist binding and artifact upload. ARM64 logs confirm package
+  `is.xyz.vcmi.thor`, version `1.8.0` / `1800`, APK SHA-256
+  `ba402730b3bf0ab25c9d8165026f19f4915c90e2f4a2a5a9816e8db4d53b1578`.
+- Artifact `thor-candidate-arm64-41343427557`, ID `13098890916`, size 40,748,802
+  bytes; GitHub-reported archive SHA-256
+  `d78ea74f51b444cb27e4450c4e6166f61a9f4a2f3b5335cb08c6dd39d4fede1d`.
+  Independent artifact download was denied at `productionresultssa10.blob.core.windows.net`.
+  CLI aggregate logs were denied at `results-receiver.actions.githubusercontent.com`;
+  individual ARM64 logs were successfully inspected through the GitHub connector.
+  Archive/APK bytes were not independently downloaded/rehashed, and no installed-byte
+  checksum or companion export was supplied. Physical acceptance is the user's report.
+- Verified PR head `afea4bbe57eb44ad4d8470b0374dd31ae6fa62e9` differs from the tested
+  candidate only in backlog Markdown; no blocking review or unresolved inline thread
+  exists. These acceptance edits change backlog/playbook Markdown only. Preserve
+  the permanent candidate at the exact built SHA; no rebuild or hardware repetition
+  is needed for receipt-only changes.
+- Earlier pending-CI/hardware and withheld-authorization statements are historical.
+  The current explicit request authorizes normal promotion and merged-branch cleanup.
