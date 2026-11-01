@@ -15,6 +15,9 @@
 #include "ThorRecruitmentSupport.h"
 #include "CHeroWindow.h"
 #include "InfoWindows.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "settings/SettingsMainWindow.h"
+#endif
 
 #include "../CServerHandler.h"
 #include "../Client.h"
@@ -2098,6 +2101,12 @@ CObjectListWindow::CObjectListWindow(const std::vector<std::string> & _items, st
 
 void CObjectListWindow::init(std::shared_ptr<CIntObject> titleWidget_, const std::string & _title, const std::string & _descr, bool searchBoxEnabled, bool blue)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	// Only settings-owned selectors are exposed. Other object selectors may
+	// contain gameplay choices whose authority needs their own native adapter.
+	thorSettingsOwner = ENGINE->windows().topWindow<SettingsMainWindow>().get();
+	thorSettingsPage = static_cast<int>(selected / 5);
+#endif
 	titleWidget = titleWidget_;
 
 	title = std::make_shared<CLabel>(152, titleWidget_ ? 27 : 51, FONT_BIG, ETextAlignment::CENTER, Colors::YELLOW, _title);
@@ -2152,10 +2161,23 @@ void CObjectListWindow::activate()
 {
 	CWindowObject::activate();
 	updateControllerCursorVisibility();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	publishThorSettingsContext();
+#endif
 }
 
 void CObjectListWindow::deactivate()
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(thorSettingsOwner)
+	{
+		thorActionQueue().clear();
+		ThorContextRecord context;
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorActionState(context.revision, 0, 0);
+	}
+#endif
 	if(controllerActionPromptsConfigured)
 		ENGINE->cursor().setControllerNativeHidden(false);
 	CWindowObject::deactivate();
@@ -2251,6 +2273,10 @@ void CObjectListWindow::itemsSearchCallback(const std::string & text)
 	list->resize(itemsVisible.size());
 	list->scrollTo(0);
 	ok->block(!itemsVisible.size());
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorSettingsPage = 0;
+	publishThorSettingsContext();
+#endif
 
 	redraw();
 }
@@ -2297,6 +2323,10 @@ void CObjectListWindow::changeSelection(size_t which)
 		}
 	}
 	selected = which;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorSettingsPage = static_cast<int>(selected / 5);
+	publishThorSettingsContext();
+#endif
 }
 
 void CObjectListWindow::keyPressed(EShortcut key)
@@ -2393,3 +2423,121 @@ void VideoWindow::notFocusedClick()
 {
 	exit(true);
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CObjectListWindow::publishThorSettingsContext()
+{
+	if(!thorSettingsOwner || !isActive() || !ENGINE->windows().isTopWindow(this)
+		|| !ENGINE->windows().isTopWindowWithParent(this, thorSettingsOwner))
+		return;
+	ThorContextRecord context;
+	if(itemsVisible.size() > 10000)
+	{
+		thorActionQueue().clear();
+		context = thorContextStore().publishNext(std::move(context));
+		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+		CAndroidVMHelper().publishThorActionState(context.revision, 0, 0);
+		return;
+	}
+	context.contextId = ThorContextIds::SETTINGS_SELECTION;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = thorSettingsOwner;
+	context.actionEpoch = thorSettingsEpoch;
+	context.title = title ? title->getText() : std::string();
+	context.status = descr ? descr->getText() : std::string();
+	context.browserPageCount = std::max(1, static_cast<int>((itemsVisible.size() + 4) / 5));
+	thorSettingsPage = std::clamp(thorSettingsPage, 0, context.browserPageCount - 1);
+	context.browserPage = thorSettingsPage;
+	if(exit && !exit->isBlocked() && !exit->isDisabled())
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CLOSE);
+	if(ok && !ok->isBlocked() && !ok->isDisabled() && selected < itemsVisible.size()
+		&& !itemsVisible[selected].second.empty() && itemsVisible[selected].second.size() <= 128)
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+	if(thorSettingsPage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorSettingsPage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	for(std::size_t i = 0; i < itemsVisible.size(); ++i)
+	{
+		const auto & item = itemsVisible[i];
+		if(i / 5 != static_cast<std::size_t>(thorSettingsPage))
+			continue;
+		const bool enabled = !item.second.empty() && item.second.size() <= 128;
+		context.browserEntries.push_back({static_cast<int>(i), thorBoundedText(item.second, 128), enabled, i == selected});
+		context.browserNativeKeys.push_back(std::to_string(item.first) + ":" + thorBoundedText(item.second, 128));
+		if(enabled)
+			context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	}
+	if(itemsVisible != thorSettingsLastItems)
+	{
+		thorSettingsLastItems = itemsVisible;
+		++thorSettingsItemsRevision;
+	}
+	context.scenarioSelectionRevision = thorSettingsItemsRevision;
+	// Keep off-page selection revision-bound without transporting it as a row.
+	context.campaignSelectionRevision = selected;
+	const auto previous = thorContextStore().snapshot().revision;
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision == previous)
+		return;
+	CAndroidVMHelper bridge;
+	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status);
+	bridge.publishThorActionState(context.revision, context.enabledActionMask, 0);
+	bridge.publishThorBrowser(context.revision, context.browserPage, context.browserPageCount, context.browserEntries);
+}
+
+bool CObjectListWindow::matchesThorSettingsContext(const ThorContextRecord & context) const
+{
+	return thorSettingsOwner && isActive()
+		&& ENGINE->windows().isTopWindowWithParent(const_cast<CObjectListWindow *>(this), thorSettingsOwner)
+		&& context.contextId == ThorContextIds::SETTINGS_SELECTION
+		&& context.nativeOwnerToken == this && context.nativeParentToken == thorSettingsOwner;
+}
+
+bool CObjectListWindow::executeThorSettingsAction(const ThorActionRequest & request)
+{
+	publishThorSettingsContext();
+	const auto context = thorContextStore().snapshot();
+	if(!thorSettingsOwner || !isActive() || !ENGINE->windows().isTopWindowWithParent(this, thorSettingsOwner)
+		|| context.contextId != ThorContextIds::SETTINGS_SELECTION || context.nativeOwnerToken != this
+		|| context.nativeParentToken != thorSettingsOwner
+		|| validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+	{
+		const auto row = std::find_if(context.browserEntries.begin(), context.browserEntries.end(),
+			[&request](const auto & entry) { return entry.target == request.targetId && entry.enabled; });
+		if(row == context.browserEntries.end() || request.targetId < 0
+			|| static_cast<std::size_t>(request.targetId) >= itemsVisible.size())
+			return false;
+		++thorSettingsEpoch;
+		thorActionQueue().clear();
+		changeSelection(request.targetId);
+		list->scrollTo(request.targetId);
+		redraw();
+		publishThorSettingsContext();
+		return true;
+	}
+	if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE || request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+	{
+		++thorSettingsEpoch;
+		thorActionQueue().clear();
+		thorSettingsPage += request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE ? 1 : -1;
+		publishThorSettingsContext();
+		return true;
+	}
+	if(request.action == ThorAction::WINDOW_CONFIRM)
+	{
+		auto button = ok;
+		thorActionQueue().clear();
+		return button && !button->isDisabled() && button->invokeThorCallback();
+	}
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		auto button = exit;
+		thorActionQueue().clear();
+		return button && !button->isDisabled() && button->invokeThorCallback();
+	}
+	return false;
+}
+#endif

@@ -12,6 +12,13 @@
 
 #include "gui/InterfaceObjectConfigurable.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../../lib/thor/ThorAction.h"
+#include <functional>
+#include <map>
+#include <vector>
+#endif
+
 class BattleInterface;
 class CTabbedInt;
 enum class EUserEvent;
@@ -22,6 +29,30 @@ enum class EUserEvent;
 /// </summary>
 class SettingsMainWindow : public InterfaceObjectConfigurable
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	struct ThorControl
+	{
+		std::string key;
+		std::string label;
+		bool enabled = false;
+		bool selected = false;
+		std::function<bool()> invoke;
+	};
+	std::vector<ThorControl> thorControls;
+	bool thorControlsValid = true;
+	std::map<std::string, JsonNode> thorConfigs;
+	int thorPage = 0;
+	std::uint64_t thorEpoch = 0;
+	std::vector<std::string> thorLastState;
+	std::uint64_t thorStateRevision = 0;
+	void collectThorControls(InterfaceObjectConfigurable & source, const std::string & configPath);
+public:
+	void activate() override;
+	void deactivate() override;
+	void publishThorContext();
+	bool matchesThorContext(const ThorContextRecord & context) const;
+	bool executeThorAction(const ThorActionRequest & request);
+#endif
 private:
 	BattleInterface * parentBattleInterface;
 	std::shared_ptr<CTabbedInt> tabContentArea;

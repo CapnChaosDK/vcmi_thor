@@ -2,6 +2,10 @@ package eu.vcmi.vcmi;
 
 final class ThorContextIds
 {
+    static final String SETTINGS = "SETTINGS";
+    static final String SETTINGS_SELECTION = "SETTINGS_SELECTION";
+    static final String DIALOG_CONFIRMATION = "DIALOG_CONFIRMATION";
+    static final String DIALOG_INFORMATION = "DIALOG_INFORMATION";
     static final String SPELLBOOK = "SPELLBOOK";
     static final String BLACKSMITH = "BLACKSMITH";
     static final String MAGE_GUILD = "MAGE_GUILD";

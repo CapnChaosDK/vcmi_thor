@@ -9,6 +9,9 @@
  */
 #include "StdInc.h"
 #include "InfoWindows.h"
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorDialog.h"
+#endif
 
 #include "../CPlayerInterface.h"
 #include "../PlayerLocalState.h"
@@ -191,6 +194,9 @@ void CInfoWindow::showYesNoDialog(const std::string & text, const TCompsInfo & c
 	temp->buttons[0]->addCallback(onYes);
 	temp->buttons[1]->addCallback(onNo);
 	temp->ID = questionID;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	temp->configureThorDialog(ThorMenuModalType::CONFIRMATION);
+#endif
 	if(timeoutMs > 0)
 		temp->closeAfter(timeoutMs);
 
@@ -198,6 +204,13 @@ void CInfoWindow::showYesNoDialog(const std::string & text, const TCompsInfo & c
 }
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CInfoWindow::configureThorDialog(ThorMenuModalType type)
+{
+	// Information windows can be queued before their eventual parent is active.
+	// Bind only when the window enters the MainGUI stack.
+	configureThorMenuModal(type, nullptr, {});
+}
+
 void CInfoWindow::configureThorMenuModal(ThorMenuModalType type, IShowActivatable * sourceOwner, std::string sourceContext)
 {
 	thorMenuModalType = type;
@@ -208,6 +221,11 @@ void CInfoWindow::configureThorMenuModal(ThorMenuModalType type, IShowActivatabl
 void CInfoWindow::activate()
 {
 	WindowBase::activate();
+	if(thorMenuModalType == ThorMenuModalType::CONFIRMATION || thorMenuModalType == ThorMenuModalType::INFORMATION)
+	{
+		const auto stack = ENGINE->windows().findWindows<IShowActivatable>();
+		thorMenuModalSourceOwner = stack.size() > 1 ? stack[stack.size() - 2].get() : nullptr;
+	}
 	if(thorMenuModalType != ThorMenuModalType::NONE)
 		publishThorMenuModalContext();
 }
@@ -238,17 +256,23 @@ void CInfoWindow::publishThorMenuModalContext()
 		: thorMenuModalType == ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION
 			? ThorContextIds::HIGH_SCORE_RESET_CONFIRMATION
 			: thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION
-				? ThorContextIds::TUTORIAL_MISSING_DIALOG : ThorContextIds::UNKNOWN;
+				? ThorContextIds::TUTORIAL_MISSING_DIALOG
+				: thorMenuModalType == ThorMenuModalType::CONFIRMATION ? ThorContextIds::DIALOG_CONFIRMATION
+				: thorMenuModalType == ThorMenuModalType::INFORMATION ? ThorContextIds::DIALOG_INFORMATION
+				: ThorContextIds::UNKNOWN;
 	const bool parentMatches = thorMenuModalSourceOwner
 		&& ENGINE->windows().isTopWindowWithParent(this, thorMenuModalSourceOwner);
 	if(thorMenuModalOwnerMatches(context, thorMenuModalType, thorMenuModalSourceContext,
 		this, thorMenuModalSourceOwner, isActive(), parentMatches))
 	{
 		const bool isConfirmation = thorMenuModalType == ThorMenuModalType::QUIT_CONFIRMATION
-			|| thorMenuModalType == ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION;
-		if((isConfirmation && buttons.size() == 2 && !buttons[0]->isBlocked() && !buttons[1]->isBlocked())
-			|| (thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION
-				&& buttons.size() == 1 && !buttons[0]->isBlocked()))
+			|| thorMenuModalType == ThorMenuModalType::HIGH_SCORE_RESET_CONFIRMATION
+			|| thorMenuModalType == ThorMenuModalType::CONFIRMATION;
+		if((isConfirmation && buttons.size() == 2 && !buttons[0]->isBlocked() && !buttons[1]->isBlocked()
+				&& !buttons[0]->isDisabled() && !buttons[1]->isDisabled())
+			|| ((thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION
+				|| thorMenuModalType == ThorMenuModalType::INFORMATION)
+				&& buttons.size() == 1 && !buttons[0]->isBlocked() && !buttons[0]->isDisabled()))
 		{
 			context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
 			if(isConfirmation)
@@ -259,6 +283,44 @@ void CInfoWindow::publishThorMenuModalContext()
 		else
 			context.contextId = ThorContextIds::UNKNOWN;
 	}
+	const bool generic = thorMenuModalType == ThorMenuModalType::CONFIRMATION
+		|| thorMenuModalType == ThorMenuModalType::INFORMATION;
+	if(generic && context.contextId != ThorContextIds::UNKNOWN)
+	{
+		std::string message = text && text->label ? text->label->getText() : std::string{};
+		bool complete = true;
+		if(components)
+		{
+			std::size_t count = 0;
+			for(auto * child : components->children)
+			{
+				auto * component = dynamic_cast<CComponent *>(child);
+				if(!component) continue;
+				if(++count > 64) { complete = false; break; }
+				std::string subtitle = component->getSubtitle();
+				if(component->data.type == ComponentType::RESOURCE || component->data.type == ComponentType::RESOURCE_PER_DAY)
+					subtitle += " " + GAME->translator().translate("core.restypes", component->data.subType.getNum());
+				// An icon with no textual identity must not disappear from a decision.
+				if(subtitle.empty()) { complete = false; break; }
+				message += "\n" + subtitle;
+			}
+		}
+		const auto pages = complete ? thorDialogPages(message) : std::vector<ThorContextDetails>{};
+		if(pages.empty() || !context.enabledActionMask)
+			context.contextId = ThorContextIds::UNKNOWN;
+		else
+		{
+			thorDialogPage = std::min(thorDialogPage, pages.size() - 1);
+			context.details = pages[thorDialogPage];
+			context.browserPage = static_cast<int>(thorDialogPage);
+			context.browserPageCount = static_cast<int>(pages.size());
+			context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CONFIRM);
+			if(thorMenuModalType == ThorMenuModalType::CONFIRMATION)
+				context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CLOSE);
+			if(thorDialogPage) context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_PREVIOUS);
+			if(thorDialogPage + 1 < pages.size()) context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_NEXT);
+		}
+	}
 	if(context.contextId == ThorContextIds::UNKNOWN)
 	{
 		context.menuModalType = ThorMenuModalType::NONE;
@@ -267,8 +329,9 @@ void CInfoWindow::publishThorMenuModalContext()
 		context.nativeParentToken = nullptr;
 	}
 	context = thorContextStore().publishNext(std::move(context));
-	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
+	CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status, context.details);
 	CAndroidVMHelper().publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
+	if(generic) CAndroidVMHelper().publishThorBrowser(context.revision, context.browserPage, context.browserPageCount, {});
 }
 
 bool CInfoWindow::matchesThorMenuModalContext(const ThorContextRecord & context) const
@@ -284,6 +347,15 @@ bool CInfoWindow::executeThorMenuModalAction(ThorAction action)
 	const auto context = thorContextStore().snapshot();
 	if(!matchesThorMenuModalContext(context) || (context.enabledActionMask & thorActionMask(action)) == 0)
 		return false;
+	if(action == ThorAction::WINDOW_PREVIOUS || action == ThorAction::WINDOW_NEXT)
+	{
+		if(thorMenuModalType != ThorMenuModalType::CONFIRMATION && thorMenuModalType != ThorMenuModalType::INFORMATION)
+			return false;
+		if(action == ThorAction::WINDOW_PREVIOUS) --thorDialogPage;
+		else ++thorDialogPage;
+		publishThorMenuModalContext();
+		return true;
+	}
 	std::size_t buttonIndex = 0;
 	if(action == ThorAction::WINDOW_CLOSE)
 		buttonIndex = thorMenuModalType == ThorMenuModalType::MISSING_TUTORIAL_INFORMATION ? 0 : 1;
@@ -293,7 +365,7 @@ bool CInfoWindow::executeThorMenuModalAction(ThorAction action)
 	if(buttonIndex >= buttons.size())
 		return false;
 	auto button = buttons[buttonIndex];
-	return button && button->invokeThorCallback();
+	return button && !button->isDisabled() && button->invokeThorCallback();
 }
 
 void CInfoWindow::showThorMenuConfirmation(const std::string & text, const CFunctionList<void()> & onYes,
@@ -323,7 +395,11 @@ std::shared_ptr<CInfoWindow> CInfoWindow::create(const std::string & text, Playe
 {
 	std::vector<std::pair<AnimationPath, CFunctionList<void()>>> pom;
 	pom.emplace_back(AnimationPath::builtin("IOKAY.DEF"), nullptr);
-	return std::make_shared<CInfoWindow>(text, playerID, components, pom);
+	auto window = std::make_shared<CInfoWindow>(text, playerID, components, pom);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	window->configureThorDialog(ThorMenuModalType::INFORMATION);
+#endif
+	return window;
 }
 
 std::string CInfoWindow::genText(const std::string & title, const std::string & description)

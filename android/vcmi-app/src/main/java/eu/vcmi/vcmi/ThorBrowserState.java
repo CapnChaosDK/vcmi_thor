@@ -33,6 +33,16 @@ final class ThorBrowserState
         this.flags = flags;
     }
 
+    static boolean isSettings(final String context)
+    {
+        return ThorContextIds.SETTINGS.equals(context) || ThorContextIds.SETTINGS_SELECTION.equals(context);
+    }
+
+    static boolean isDialog(final String context)
+    {
+        return ThorContextIds.DIALOG_CONFIRMATION.equals(context) || ThorContextIds.DIALOG_INFORMATION.equals(context);
+    }
+
     static ThorBrowserState copyOf(final String contextId, final int page, final int pageCount,
                                    final int[] targets, final String[] labels, final int[] flags)
     {
@@ -40,14 +50,16 @@ final class ThorBrowserState
         final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
         final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
-        final int maxRows = campaign ? CAMPAIGN_MAX_ROWS : town ? ThorTownServices.SERVICE_COUNT : (load ? SAVE_ROWS : MAX_ROWS);
+        final boolean settings = isSettings(contextId);
+        final boolean dialog = isDialog(contextId);
+        final int maxRows = campaign ? CAMPAIGN_MAX_ROWS : town ? ThorTownServices.SERVICE_COUNT : ((load || settings) ? SAVE_ROWS : MAX_ROWS);
         final int maxPages = hall ? (MAX_ROWS + TOWN_HALL_PAGE_SIZE - 1) / TOWN_HALL_PAGE_SIZE : 2000;
-        if ((!campaign && !load && !town && !hall) || page < 0 || pageCount < 0
+        if ((!campaign && !load && !town && !hall && !settings && !dialog) || page < 0 || pageCount < 0
                 || pageCount > maxPages
                 || (pageCount == 0 ? page != 0 : page >= pageCount)
                 || targets == null || labels == null || flags == null
                 || targets.length != labels.length || targets.length != flags.length
-                || targets.length > maxRows
+                || targets.length > maxRows || (dialog && targets.length != 0)
                 || (town && (page != 0 || pageCount != 1 || targets.length != ThorTownServices.SERVICE_COUNT))
                 || (hall && (page != 0 || pageCount != (targets.length + TOWN_HALL_PAGE_SIZE - 1) / TOWN_HALL_PAGE_SIZE))
                 || (pageCount == 0 && targets.length != 0))
@@ -101,6 +113,20 @@ final class ThorBrowserState
     {
         final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
+        final boolean settings = isSettings(contextId);
+        final boolean dialog = isDialog(contextId);
+        if (settings || dialog)
+        {
+            if (isRowControl(control))
+                return settings && control < CONTROL_FIRST_ROW + SAVE_ROWS ? ThorActionIds.LOAD_BROWSER_SELECT : ThorActionIds.NONE;
+            if (control == CONTROL_PREVIOUS) return dialog ? ThorActionIds.WINDOW_PREVIOUS : ThorActionIds.LOAD_BROWSER_PREVIOUS_PAGE;
+            if (control == CONTROL_NEXT) return dialog ? ThorActionIds.WINDOW_NEXT : ThorActionIds.LOAD_BROWSER_NEXT_PAGE;
+            if (control == CONTROL_PRIMARY) return dialog || ThorContextIds.SETTINGS_SELECTION.equals(contextId)
+                    ? ThorActionIds.WINDOW_CONFIRM : ThorActionIds.NONE;
+            if (control == CONTROL_BACK) return ThorContextIds.DIALOG_INFORMATION.equals(contextId)
+                    ? ThorActionIds.NONE : ThorActionIds.WINDOW_CLOSE;
+            return ThorActionIds.NONE;
+        }
         if (!campaign && !ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId) && !hall)
             return ThorActionIds.NONE;
         if (hall)
@@ -136,7 +162,9 @@ final class ThorBrowserState
         final boolean load = ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId);
         final boolean town = ThorContextIds.TOWN_WINDOW.equals(contextId);
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
-        if ((!campaign && !load && !town && !hall) || width <= 0f || height <= 0f)
+        final boolean settings = isSettings(contextId);
+        final boolean dialog = isDialog(contextId);
+        if ((!campaign && !load && !town && !hall && !settings && !dialog) || width <= 0f || height <= 0f)
             return new float[]{0f, 0f, 0f, 0f};
         final float side = width * 0.055f;
         final float gap = width * 0.018f;

@@ -2,6 +2,7 @@
 
 #include "../../lib/thor/ThorAction.h"
 #include "../../lib/thor/ThorContext.h"
+#include "../../lib/thor/ThorDialog.h"
 
 TEST(ThorContextStoreTest, StartsUnknown)
 {
@@ -1007,4 +1008,72 @@ TEST(ThorContextStoreTest, WindowSubjectChangeInvalidatesNavigationRevision)
 	EXPECT_GT(store.publishNext(first).revision, next.revision);
 	first.contextId = ThorContextIds::UNKNOWN;
 	EXPECT_EQ(store.publishNext(first).windowSubjectId, -1);
+}
+
+TEST(ThorContextStoreTest, DialogPagesPreserveTheEntireUtf8Question)
+{
+	std::string text;
+	for(int i = 0; i < 150; ++i) text += "Spellbook: 500 gold. 世界\n";
+	const auto pages = thorDialogPages(text);
+	ASSERT_GT(pages.size(), 1);
+	std::string restored;
+	for(const auto & page : pages)
+		for(const auto & chunk : page)
+		{
+			EXPECT_LE(chunk.size(), 96);
+			EXPECT_EQ(thorBoundedText(chunk, chunk.size()), chunk);
+			restored += chunk;
+		}
+	EXPECT_EQ(restored, text);
+	EXPECT_TRUE(thorDialogPages("").empty());
+	EXPECT_TRUE(thorDialogPages(std::string(8193, 'a')).empty());
+	EXPECT_TRUE(thorDialogPages(std::string("Invalid\xff")).empty());
+}
+
+TEST(ThorContextStoreTest, GenericDialogRequiresTheExactLiveOwnerAndParent)
+{
+	int owner = 0, parent = 0, other = 0;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::DIALOG_CONFIRMATION;
+	context.menuModalType = ThorMenuModalType::CONFIRMATION;
+	context.nativeOwnerToken = &owner;
+	context.nativeParentToken = &parent;
+	EXPECT_TRUE(thorMenuModalOwnerMatches(context, ThorMenuModalType::CONFIRMATION,
+		"", &owner, &parent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(context, ThorMenuModalType::CONFIRMATION,
+		"", &other, &parent, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(context, ThorMenuModalType::CONFIRMATION,
+		"", &owner, &other, true, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(context, ThorMenuModalType::CONFIRMATION,
+		"", &owner, &parent, false, true));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(context, ThorMenuModalType::CONFIRMATION,
+		"", &owner, &parent, true, false));
+	EXPECT_FALSE(thorMenuModalOwnerMatches(context, ThorMenuModalType::INFORMATION,
+		"", &owner, &parent, true, true));
+}
+
+TEST(ThorContextStoreTest, SettingsBrowserKeepsOwnerPageAndNativeIdentityRevisionBound)
+{
+	ThorContextStore store;
+	int owner = 0;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::SETTINGS;
+	context.nativeOwnerToken = &owner;
+	context.browserPage = 1;
+	context.browserPageCount = 3;
+	context.browserEntries = {{5, "Music 50% +", true, false}};
+	context.browserNativeKeys = {"musicSlider:+1"};
+	context.enabledActionMask = thorActionMask(ThorAction::LOAD_BROWSER_SELECT) | thorActionMask(ThorAction::WINDOW_CLOSE);
+	const auto first = store.publishNext(context);
+	EXPECT_EQ(first.nativeOwnerToken, &owner);
+	ASSERT_EQ(first.browserEntries.size(), 1);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::LOAD_BROWSER_SELECT, 5}, first), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::LOAD_BROWSER_SELECT, 0}, first), ThorActionValidation::INVALID_TARGET);
+	context.browserEntries[0].enabled = false;
+	const auto disabled = store.publishNext(context);
+	EXPECT_GT(disabled.revision, first.revision);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::LOAD_BROWSER_SELECT, 5}, disabled), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(validateThorActionRequest({disabled.revision, ThorAction::LOAD_BROWSER_SELECT, 5}, disabled), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({disabled.revision, ThorAction::WINDOW_CONFIRM}, disabled), ThorActionValidation::WRONG_CONTEXT);
+	EXPECT_EQ(validateThorActionRequest({disabled.revision, ThorAction::WINDOW_CLOSE}, disabled), ThorActionValidation::VALID);
 }

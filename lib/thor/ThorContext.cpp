@@ -106,6 +106,7 @@ namespace
 				&& context.contextId != ThorContextIds::LOBBY_NEW_GAME_SCENARIO
 				&& context.contextId != ThorContextIds::RESOURCE_MARKET
 				&& context.contextId != ThorContextIds::TAVERN
+				&& context.contextId != ThorContextIds::SETTINGS && context.contextId != ThorContextIds::SETTINGS_SELECTION
 				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD
 				&& context.contextId != ThorContextIds::SPELLBOOK)
 			{
@@ -239,7 +240,9 @@ namespace
 				+ THOR_TOWN_HALL_PAGE_SIZE - 1) / THOR_TOWN_HALL_PAGE_SIZE)
 			&& context.browserNativeKeys.size() == context.browserEntries.size();
 		const bool nativeBrowser = (context.contextId == ThorContextIds::CAMPAIGN_BROWSER
-			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO)
+			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO
+			|| context.contextId == ThorContextIds::SETTINGS || context.contextId == ThorContextIds::SETTINGS_SELECTION
+			|| context.contextId == ThorContextIds::DIALOG_CONFIRMATION || context.contextId == ThorContextIds::DIALOG_INFORMATION)
 			&& context.browserNativeKeys.size() == context.browserEntries.size();
 		if((!townServices && !nativeBrowser && !townHall)
 			|| context.browserEntries.size() > (context.contextId == ThorContextIds::TOWN_HALL
@@ -490,6 +493,10 @@ bool thorMenuModalOwnerMatches(const ThorContextRecord & context, ThorMenuModalT
 	case ThorMenuModalType::MISSING_TUTORIAL_INFORMATION:
 		return context.contextId == ThorContextIds::TUTORIAL_MISSING_DIALOG
 			&& (sourceContext == ThorContextIds::MAIN_MENU_NEW_GAME || sourceContext == ThorContextIds::MAIN_MENU_LOAD_GAME);
+	case ThorMenuModalType::CONFIRMATION:
+		return ownerToken && parentToken && context.contextId == ThorContextIds::DIALOG_CONFIRMATION;
+	case ThorMenuModalType::INFORMATION:
+		return ownerToken && parentToken && context.contextId == ThorContextIds::DIALOG_INFORMATION;
 	case ThorMenuModalType::NONE:
 		return false;
 	}

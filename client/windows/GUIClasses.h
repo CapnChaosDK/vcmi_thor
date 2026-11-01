@@ -200,6 +200,19 @@ private:
 /// Town portal, castle gate window
 class CObjectListWindow : public CWindowObject
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	IShowActivatable * thorSettingsOwner = nullptr;
+	int thorSettingsPage = 0;
+	std::uint64_t thorSettingsEpoch = 0;
+	std::vector<std::pair<int, std::string>> thorSettingsLastItems;
+	std::uint64_t thorSettingsItemsRevision = 0;
+public:
+	void publishThorSettingsContext();
+	bool matchesThorSettingsContext(const ThorContextRecord & context) const;
+	bool executeThorSettingsAction(const ThorActionRequest & request);
+private:
+#endif
+
 	class CItem : public CIntObject
 	{
 		CObjectListWindow * owner;

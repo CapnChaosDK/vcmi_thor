@@ -312,6 +312,14 @@ std::optional<ThorTownService> thorTownServiceFromTarget(int targetId)
 
 bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId)
 {
+	if(contextId == ThorContextIds::SETTINGS || contextId == ThorContextIds::SETTINGS_SELECTION)
+		return action == ThorAction::LOAD_BROWSER_SELECT || action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE
+			|| action == ThorAction::LOAD_BROWSER_NEXT_PAGE || action == ThorAction::WINDOW_CLOSE
+			|| (contextId == ThorContextIds::SETTINGS_SELECTION && action == ThorAction::WINDOW_CONFIRM);
+	if(contextId == ThorContextIds::DIALOG_CONFIRMATION || contextId == ThorContextIds::DIALOG_INFORMATION)
+		return action == ThorAction::WINDOW_PREVIOUS || action == ThorAction::WINDOW_NEXT
+			|| action == ThorAction::WINDOW_CONFIRM
+			|| (contextId == ThorContextIds::DIALOG_CONFIRMATION && action == ThorAction::WINDOW_CLOSE);
 	if(thorMainMenuChoice(contextId, action))
 		return true;
 	if(contextId == ThorContextIds::ADVENTURE_MAP)

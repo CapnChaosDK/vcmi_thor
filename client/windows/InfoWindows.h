@@ -50,6 +50,8 @@ public:
 	std::vector<std::shared_ptr<CButton>> buttons;
 	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	private:
+	std::size_t thorDialogPage = 0;
+	void configureThorDialog(ThorMenuModalType type);
 	ThorMenuModalType thorMenuModalType = ThorMenuModalType::NONE;
 	std::string thorMenuModalSourceContext;
 	IShowActivatable * thorMenuModalSourceOwner = nullptr;
