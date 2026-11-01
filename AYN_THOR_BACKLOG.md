@@ -63,7 +63,8 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
   Map): `hardware validated` by the user's 2026-11-01 report that all six hardware
   checks passed on exact candidate `7833253367f6c81652c7a72fcc95ad8651e6c849`.
   Trusted CI `41343427557` passed both jobs. The user explicitly authorized Markdown
-  updates, commit, PR #64 merge and stale-branch cleanup. See the acceptance receipt
+  updates, commit, PR #64 merge and stale-branch cleanup. PR #64 is merged as
+  `22609a3b19eef1f30e88bcf34849a1dd46481244`. See the acceptance receipt
   below and [current checklist](CI/thor-validation-plan.json).
 
 
@@ -3405,3 +3406,21 @@ editing the Save name chooses the destination of a native save.
   is needed for receipt-only changes.
 - Earlier pending-CI/hardware and withheld-authorization statements are historical.
   The current explicit request authorizes normal promotion and merged-branch cleanup.
+
+### Slice 64 promotion and branch-cleanup receipt — 2026-11-01
+
+- Published acceptance commit `04b05297b274ab7b73fca5bccbcc71bb71d8f060`, verified
+  the exact expected PR head and mergeability, then merged PR #64 normally into
+  `ayn-thor-dual-screen` as `22609a3b19eef1f30e88bcf34849a1dd46481244` under
+  the user's explicit authorization.
+- Compared the merged tree against hardware-accepted candidate
+  `7833253367f6c81652c7a72fcc95ad8651e6c849`: only `AYN_THOR_BACKLOG.md` and
+  `docs/AYN_THOR_BUILD_PLAYBOOK.md` differ. Product code, resources, tests, workflow
+  and checklist preserve the exact accepted tree.
+- Verified merged ancestry, deleted remote/local `codex/adventure-reference` and
+  pruned stale tracking refs. No other merged feature branch remained. Product,
+  permanent candidate and all five open Dependabot branches were preserved.
+- Local checkout is synchronized to product; the permanent candidate stays at
+  `7833253367f6c81652c7a72fcc95ad8651e6c849`. This final receipt changes Markdown
+  only and requires no new APK/hardware cycle. Slice 64 is complete and promoted;
+  no next feature is selected.
