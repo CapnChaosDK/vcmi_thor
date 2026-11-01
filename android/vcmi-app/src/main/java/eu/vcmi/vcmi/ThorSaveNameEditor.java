@@ -47,7 +47,8 @@ final class ThorSaveNameEditor
         {
             @Override public boolean onKeyPreIme(final int keyCode, final KeyEvent event)
             {
-                if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP)
+                if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP
+                        && dialog != null && dialog.getCurrentFocus() == this)
                 {
                     cancel();
                     return true;
@@ -91,8 +92,10 @@ final class ThorSaveNameEditor
                 | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
         next.setOnShowListener(d ->
         {
+            if (dialog != next) return;
             next.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v ->
             {
+                if (dialog != next) return;
                 final String text = input.getText().toString();
                 if (!ThorSaveNameState.valid(text))
                 {
@@ -113,6 +116,7 @@ final class ThorSaveNameEditor
             });
             input.setOnEditorActionListener((v, action, event) ->
             {
+                if (dialog != next) return true;
                 if (action != EditorInfo.IME_ACTION_DONE) return false;
                 next.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
                 return true;
