@@ -59,15 +59,12 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 63 — lower-screen Save and native Load journeys: `awaiting hardware validation` on
-  `codex/thor-save-load`, based on product `08087dd1c`. Native Save browsing,
-  filename editing, overwrite/cancel and the existing native Load lifecycle are
-  integrated. The ARM64 compiler failure is diagnosed and corrected with an explicit
-  empty default for request text. Replacement CI `41338283368` passed both jobs on
-  exact candidate `da45a886ac06429510d3371c677e6148901e8b37`; the APK is published.
-  Independent artifact download/rehash is blocked by the storage-host allowlist.
-  No hardware acceptance is claimed.
-  See the Slice 63 contract below and [current checklist](CI/thor-validation-plan.json).
+- Slice 63 — lower-screen Save and native Load journeys: `hardware validated` by
+  the user's confirmation on 2026-11-01 that all six hardware checks passed for
+  exact candidate `da45a886ac06429510d3371c677e6148901e8b37`. Trusted CI
+  `41338283368` passed preflight and ARM64 packaging. The user explicitly authorized
+  documentation, commit, merge of PR #63 and stale-branch cleanup. See the acceptance
+  receipt below and [current checklist](CI/thor-validation-plan.json).
 
 - Settings and shared confirmations (2026-10-31): `hardware validated` by the user's 2026-11-01 confirmation that all six
   packaged hardware checks passed for reviewed candidate
@@ -3204,3 +3201,30 @@ editing the Save name chooses the destination of a native save.
   `CI/thor-validation-plan.json` applies to this exact candidate. No installation,
   hardware acceptance or merge was performed or authorized. This receipt changes
   backlog Markdown only; preserve the permanent candidate at the built SHA.
+
+### Slice 63 hardware acceptance and promotion authorization — 2026-11-01
+
+- The user reported **all six hardware checks passed** for the current candidate
+  `da45a886ac06429510d3371c677e6148901e8b37` and explicitly requested Markdown
+  updates, commit, merge of [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63)
+  and stale-branch cleanup. No failed or unavailable check was reported.
+- Accepted scope: Save browsing/folders/paging/cancellation; lower filename editing
+  and usable IME including Unicode/invalid input; editor cancellation/focus cleanup;
+  overwrite/autosave warnings; actual in-game and main-menu Load lifecycle; stale
+  input, multitouch, display/activity lifecycle and neighboring/upper-input regressions.
+  The six-part `CI/thor-validation-plan.json` remains the exact checklist authority.
+- Trusted CI `41338283368` passed both jobs on that candidate. CI-reported APK
+  SHA-256 is `43dd0ff6e9fded7a0a43f328ae5903a33dbbbed7ec628c0dd07ae941f5401523`.
+  Artifact `13095554664` has GitHub-reported archive SHA-256
+  `ab9e5681ad5073612edd78adb014912b83bcdc04f5f92005382ec9b288b789cb`.
+  Earlier independent download/rehash was blocked by the artifact-host allowlist;
+  no independently measured installed-byte checksum or companion export was supplied.
+  Physical acceptance is recorded as the user's report.
+- Verified PR head `674d091ecd2dd47edbcb93325f39798ddef2d615` differs from the
+  tested candidate only in backlog Markdown; no submitted blocking review or
+  unresolved inline thread exists. This acceptance changes backlog/playbook Markdown
+  only. Product code, resources, tests, workflow and checklist retain the exact
+  accepted tree; preserve the permanent candidate at the built SHA.
+- Earlier pending-CI/hardware and withheld-authorization statements are historical.
+  The current explicit request authorizes normal promotion and deletion of merged
+  feature branches; preserve product, permanent candidate and open-PR branches.

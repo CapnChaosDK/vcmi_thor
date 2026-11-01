@@ -7,14 +7,17 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Current hardware-accepted candidate: `41384670971141a7999eb7d1caf9d8248efebe5b`,
-  Settings and shared confirmations, reported six of six AYN Thor checks passed
-  on 2026-11-01. [PR #62](https://github.com/CapnChaosDK/vcmi_thor/pull/62)
-  is the implementation/promotion vehicle. [PR preflight 41231550581](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41231550581)
-  passed; its ARM64 job was intentionally skipped. The trusted full candidate run,
-  artifact and APK hashes were not independently retrieved during this handoff.
-  The user-reported physical pass is distinct from CI receipt verification.
-  See the backlog for details. Slice 63 is a separate unaccepted implementation candidate.
+- Current hardware-accepted candidate: `da45a886ac06429510d3371c677e6148901e8b37`,
+  Slice 63 Save and native Load journeys. The user reported all six AYN Thor checks
+  passed on 2026-11-01 and authorized promotion through
+  [PR #63](https://github.com/CapnChaosDK/vcmi_thor/pull/63).
+  [Trusted CI 41338283368](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41338283368)
+  passed preflight and full ARM64 validation. CI-reported APK SHA-256:
+  `43dd0ff6e9fded7a0a43f328ae5903a33dbbbed7ec628c0dd07ae941f5401523`.
+  Artifact ID `13095554664`; archive digest and download-verification limitation
+  are recorded in the backlog. The physical pass is the user's report; no
+  independently measured installed-byte receipt was supplied. Permanent candidate
+  stays at the exact built SHA; acceptance receipts change Markdown only.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`
