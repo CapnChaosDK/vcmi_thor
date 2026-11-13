@@ -27,6 +27,7 @@ class CGObelisk;
 
 class CComponent;
 class CComponentBox;
+class CPlayerInterface;
 class CSelectableComponent;
 class CTextBox;
 class CButton;
@@ -51,6 +52,8 @@ public:
 	#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	private:
 	std::size_t thorDialogPage = 0;
+	CPlayerInterface * thorQuestionInterface = nullptr;
+	std::string thorOfferDetails;
 	void configureThorDialog(ThorMenuModalType type);
 	ThorMenuModalType thorMenuModalType = ThorMenuModalType::NONE;
 	std::string thorMenuModalSourceContext;
@@ -146,10 +149,29 @@ public:
 	CInfoBoxPopup(Point position, const CGCreature * creature);
 };
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void publishThorEncounterContext(ThorContextRecord context = {});
+#endif
+
 /// component selection window
 class CSelWindow : public CInfoWindow
 {
 public:
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+private:
+	CPlayerInterface * thorChoiceInterface = nullptr;
+	IShowActivatable * thorChoiceParent = nullptr;
+	std::vector<std::shared_ptr<CSelectableComponent>> thorChoices;
+	int thorChoicePage = 0;
+	int thorChoiceTextPage = 0;
+	std::uint64_t thorChoiceEpoch = 0;
+public:
+	void configureThorEncounter(CPlayerInterface * player);
+	void activate() override;
+	void deactivate() override;
+	void publishThorEncounter();
+	bool executeThorEncounter(const ThorActionRequest & request);
+#endif
 	void madeChoice(); //looks for selected component and calls callback
 	void madeChoiceAndClose();
 	CSelWindow(const std::string & text, PlayerColor player, int charperline, const std::vector<std::shared_ptr<CSelectableComponent>> & comps, const std::vector<std::pair<AnimationPath,CFunctionList<void()> > > &Buttons, QuestionID questionID);

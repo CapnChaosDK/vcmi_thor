@@ -16,6 +16,9 @@ final class ThorBrowserState
     static final int CONTROL_PRIMARY = 11;
     static final int CONTROL_BACK = 12;
     static final int CONTROL_EDIT_NAME = 13;
+    static final int CONTROL_TEXT_PREVIOUS = 14;
+    static final int CONTROL_TEXT_NEXT = 15;
+    static final int ENCOUNTER_ROWS = 4;
     static final ThorBrowserState EMPTY = new ThorBrowserState(0, 0, new int[0], new String[0], new int[0]);
 
     final int page;
@@ -39,6 +42,11 @@ final class ThorBrowserState
         return ThorContextIds.SETTINGS.equals(context) || ThorContextIds.SETTINGS_SELECTION.equals(context);
     }
 
+    static boolean isEncounter(final String context)
+    {
+        return ThorContextIds.ENCOUNTER_CHOICE.equals(context);
+    }
+
     static boolean isDialog(final String context)
     {
         return ThorContextIds.DIALOG_CONFIRMATION.equals(context) || ThorContextIds.DIALOG_INFORMATION.equals(context);
@@ -54,9 +62,10 @@ final class ThorBrowserState
         final boolean hall = ThorContextIds.TOWN_HALL.equals(contextId);
         final boolean settings = isSettings(contextId);
         final boolean dialog = isDialog(contextId);
-        final int maxRows = campaign ? CAMPAIGN_MAX_ROWS : town ? ThorTownServices.SERVICE_COUNT : ((load || settings) ? SAVE_ROWS : MAX_ROWS);
+        final boolean encounter = isEncounter(contextId);
+        final int maxRows = encounter ? ENCOUNTER_ROWS : campaign ? CAMPAIGN_MAX_ROWS : town ? ThorTownServices.SERVICE_COUNT : ((load || settings) ? SAVE_ROWS : MAX_ROWS);
         final int maxPages = hall ? (MAX_ROWS + TOWN_HALL_PAGE_SIZE - 1) / TOWN_HALL_PAGE_SIZE : 2000;
-        if ((!campaign && !load && !town && !hall && !settings && !dialog) || page < 0 || pageCount < 0
+        if ((!campaign && !load && !town && !hall && !settings && !dialog && !encounter) || page < 0 || pageCount < 0
                 || pageCount > maxPages
                 || (pageCount == 0 ? page != 0 : page >= pageCount)
                 || targets == null || labels == null || flags == null
@@ -68,7 +77,7 @@ final class ThorBrowserState
             return EMPTY;
         for (int index = 0; index < targets.length; ++index)
         {
-            if (targets[index] < 0 || ((!hall) && targets[index] > 10000) || labels[index] == null
+            if (targets[index] < 0 || (!hall && !encounter && targets[index] > 10000) || labels[index] == null
                     || labels[index].length() > 128 || (flags[index] & ~7) != 0
                     || (town && targets[index] != index))
                 return EMPTY;
@@ -125,6 +134,18 @@ final class ThorBrowserState
             if (control == CONTROL_PRIMARY) return ThorActionIds.WINDOW_CONFIRM;
             if (control == CONTROL_BACK) return ThorActionIds.WINDOW_CLOSE;
             if (control == CONTROL_EDIT_NAME) return ThorActionIds.LOCAL_CONTROL;
+            return ThorActionIds.NONE;
+        }
+        if (isEncounter(contextId))
+        {
+            if (control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + ENCOUNTER_ROWS)
+                return ThorActionIds.LOAD_BROWSER_SELECT;
+            if (control == CONTROL_PREVIOUS) return ThorActionIds.LOAD_BROWSER_PREVIOUS_PAGE;
+            if (control == CONTROL_NEXT) return ThorActionIds.LOAD_BROWSER_NEXT_PAGE;
+            if (control == CONTROL_TEXT_PREVIOUS) return ThorActionIds.WINDOW_PREVIOUS;
+            if (control == CONTROL_TEXT_NEXT) return ThorActionIds.WINDOW_NEXT;
+            if (control == CONTROL_PRIMARY) return ThorActionIds.WINDOW_CONFIRM;
+            if (control == CONTROL_BACK) return ThorActionIds.WINDOW_CLOSE;
             return ThorActionIds.NONE;
         }
         if (settings || dialog)
@@ -211,6 +232,59 @@ final class ThorBrowserState
                     side + column * (buttonWidth + gap) + buttonWidth, bottom};
         }
         return new float[]{0f, 0f, 0f, 0f};
+    }
+
+    static float[] encounterBounds(final int control, final float width, final float height,
+                                   final float density, final boolean choice)
+    {
+        final float side = width * .055f;
+        final float gap = 4f * density;
+        final float content = width - 2f * side;
+        final float target = Math.max(48f * density, height * .084f);
+        final float bottom = height - gap;
+        final float pagingTop = bottom - 2f * target - gap;
+        final float rowsTop = pagingTop - ENCOUNTER_ROWS * (target + gap);
+        final float textTop = height * .055f;
+        if (density <= 0f || content < 4f * 48f * density + 3f * gap
+                || (choice ? rowsTop : pagingTop) - textTop < 48f * density)
+            return new float[4];
+
+        if (choice && control >= CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + ENCOUNTER_ROWS)
+        {
+            final float top = rowsTop + (control - CONTROL_FIRST_ROW) * (target + gap);
+            return new float[]{side, top, width - side, top + target};
+        }
+        final boolean text = control == CONTROL_TEXT_PREVIOUS || control == CONTROL_TEXT_NEXT;
+        if (text || control == CONTROL_PREVIOUS || control == CONTROL_NEXT)
+        {
+            if (text && !choice) return new float[4];
+            final int column = text ? control - CONTROL_TEXT_PREVIOUS : control - CONTROL_PREVIOUS + (choice ? 2 : 0);
+            final int columns = choice ? 4 : 2;
+            final float cell = (content - (columns - 1) * gap) / columns;
+            final float left = side + column * (cell + gap);
+            return new float[]{left, pagingTop, left + cell, pagingTop + target};
+        }
+        if (control == CONTROL_PRIMARY || control == CONTROL_BACK)
+        {
+            final float cell = (content - gap) / 2f;
+            final float left = control == CONTROL_PRIMARY ? side : side + cell + gap;
+            return new float[]{left, bottom - target, left + cell, bottom};
+        }
+        return new float[4];
+    }
+
+    static int encounterControlAt(final float x, final float y, final float width, final float height,
+                                  final float density, final int rowCount, final boolean choice)
+    {
+        for (int control = CONTROL_FIRST_ROW; control <= CONTROL_TEXT_NEXT; ++control)
+        {
+            if (isRowControl(control) && control - CONTROL_FIRST_ROW >= rowCount) continue;
+            final float[] bounds = encounterBounds(control, width, height, density, choice);
+            if (bounds[2] > bounds[0] && x >= bounds[0] && x < bounds[2]
+                    && y >= bounds[1] && y < bounds[3])
+                return control;
+        }
+        return CONTROL_NONE;
     }
 
     static int controlAt(final String contextId, final float x, final float y,

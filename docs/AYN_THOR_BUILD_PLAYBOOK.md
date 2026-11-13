@@ -7,18 +7,11 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Current hardware-accepted candidate: `7833253367f6c81652c7a72fcc95ad8651e6c849`,
-  Slice 64 Adventure reference companion (Quests, Scenario Journal and Puzzle Map).
-  The user reported all six AYN Thor checks passed on 2026-11-01 and authorized
-  promotion through [PR #64](https://github.com/CapnChaosDK/vcmi_thor/pull/64), merged
-  as `22609a3b19eef1f30e88bcf34849a1dd46481244`.
-  [Trusted CI 41343427557](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/41343427557)
-  passed preflight and full ARM64 validation. CI-reported APK SHA-256:
-  `ba402730b3bf0ab25c9d8165026f19f4915c90e2f4a2a5a9816e8db4d53b1578`.
-  Artifact ID `13098890916`; archive digest and independent download-verification
-  limitation are recorded in the backlog. Physical acceptance is the user's report;
-  no independently measured installed-byte receipt was supplied. Preserve the
-  permanent candidate at the built SHA; acceptance receipts change Markdown only.
+- Current hardware-accepted candidate: `4916f37f17884e3040f949c508ea5e89a4f9ff4d`
+  (Slice 65, Adventure encounter decisions). The user reported all four AYN Thor
+  checks passed on 2026-11-13. The [backlog receipt](../AYN_THOR_BACKLOG.md#slice-65-ci-and-hardware-acceptance)
+  records CI, the verified APK checksum and [PR #65](https://github.com/CapnChaosDK/vcmi_thor/pull/65).
+  Preserve the permanent candidate at the built SHA. The acceptance commit changes Markdown only.
 
 - Current upstream base: `46f2e15ec69e0507e6d0195d6357df5a2813dde1`; integration and compatibility changes: [upstream overlay](AYN_THOR_UPSTREAM_OVERLAY.md). Older baseline/receipt references below are historical.
 - Thor package: `is.xyz.vcmi.thor`

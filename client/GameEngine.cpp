@@ -59,6 +59,7 @@
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "../lib/CAndroidVMHelper.h"
+#include "../lib/ScopeGuard.h"
 #include "../lib/thor/ThorAction.h"
 #include "../lib/thor/ThorContext.h"
 #endif
@@ -183,6 +184,8 @@ void GameEngine::updateFrame()
 		dwellingRecruitment->refreshThorNativeState();
 	if(auto saving = windows().topWindow<CSavingScreen>())
 		saving->publishThorContext(false);
+	if(auto picker = windows().topWindow<CObjectListWindow>())
+		picker->refreshThorDestination();
 	if(auto journal = windows().topWindow<JournalWindow>()) journal->refreshThorReference();
 	if(auto puzzle = windows().topWindow<CPuzzleWindow>()) puzzle->refreshThorReference();
 	if(auto book = windows().topWindow<CSpellWindow>())
@@ -200,6 +203,16 @@ void GameEngine::updateFrame()
 	while(const auto request = thorActionQueue().pop())
 	{
 		const auto context = thorContextStore().snapshot();
+		bool executed = false;
+		const auto notifyDialogRejection = vstd::makeScopeGuard([&]
+		{
+			if(!executed && request->revision == context.revision
+				&& thorContextStore().snapshot().revision == request->revision
+				&& (context.contextId == ThorContextIds::ENCOUNTER_CHOICE
+					|| context.contextId == ThorContextIds::DIALOG_CONFIRMATION
+					|| context.contextId == ThorContextIds::DIALOG_INFORMATION))
+				CAndroidVMHelper().rejectThorDialogAction(request->revision, request->action);
+		});
 		switch(validateThorActionRequest(*request, context))
 		{
 		case ThorActionValidation::UNKNOWN_ACTION:
@@ -230,7 +243,6 @@ void GameEngine::updateFrame()
 		case ThorActionValidation::VALID:
 			break;
 		}
-		bool executed = false;
 		if(request->commandVersion != 0 && ThorExtended::playerCommand(request->commandId))
 		{
 			auto lobby = windows().topWindow<CLobbyScreen>();
@@ -447,11 +459,18 @@ void GameEngine::updateFrame()
 			if(!owner || !owner->matchesThorContext(context)) continue;
 			executed = owner->executeThorAction(*request);
 		}
+		else if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
+		{
+			if(auto choice = windows().topWindow<CSelWindow>(); choice && context.nativeOwnerToken == choice.get())
+				executed = choice->executeThorEncounter(*request);
+			else if(auto picker = windows().topWindow<CObjectListWindow>(); picker && context.nativeOwnerToken == picker.get())
+				executed = picker->executeThorListAction(*request);
+		}
 		else if(context.contextId == ThorContextIds::SETTINGS_SELECTION)
 		{
 			auto owner = windows().topWindow<CObjectListWindow>();
-			if(!owner || !owner->matchesThorSettingsContext(context)) continue;
-			executed = owner->executeThorSettingsAction(*request);
+			if(!owner || !owner->matchesThorListContext(context)) continue;
+			executed = owner->executeThorListAction(*request);
 		}
 		else if(context.contextId == ThorContextIds::DIALOG_CONFIRMATION
 			|| context.contextId == ThorContextIds::DIALOG_INFORMATION

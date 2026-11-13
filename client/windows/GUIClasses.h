@@ -201,15 +201,24 @@ private:
 class CObjectListWindow : public CWindowObject
 {
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	IShowActivatable * thorSettingsOwner = nullptr;
-	int thorSettingsPage = 0;
-	std::uint64_t thorSettingsEpoch = 0;
-	std::vector<std::pair<int, std::string>> thorSettingsLastItems;
-	std::uint64_t thorSettingsItemsRevision = 0;
+	IShowActivatable * thorListParent = nullptr;
+	CPlayerInterface * thorDestinationInterface = nullptr;
+	std::vector<int> thorDestinationIds;
+	std::function<bool(ObjectInstanceID)> thorDestinationAvailable;
+	int thorListTextPage = 0;
+	int thorListPage = 0;
+	int thorListPageSize() const;
+	const char * thorListContextId() const;
+	int thorDestinationId(std::size_t index) const;
+	std::uint64_t thorListEpoch = 0;
+	std::vector<std::pair<int, std::string>> thorListLastItems;
+	std::uint64_t thorListItemsRevision = 0;
 public:
-	void publishThorSettingsContext();
-	bool matchesThorSettingsContext(const ThorContextRecord & context) const;
-	bool executeThorSettingsAction(const ThorActionRequest & request);
+	void configureThorDestination(CPlayerInterface * player, std::vector<int> ids, std::function<bool(ObjectInstanceID)> available);
+	void refreshThorDestination();
+	void publishThorListContext();
+	bool matchesThorListContext(const ThorContextRecord & context) const;
+	bool executeThorListAction(const ThorActionRequest & request);
 private:
 #endif
 

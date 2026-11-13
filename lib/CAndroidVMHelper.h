@@ -48,6 +48,7 @@ public:
 	void publishThorContext(std::uint64_t revision, const std::string & contextId,
 							const std::string & title, const std::string & status,
 							const ThorContextDetails & details = {}, std::uint64_t heroPortraitAssetKey = 0);
+	void rejectThorDialogAction(std::uint64_t revision, ThorAction action);
 	void publishThorActionState(std::uint64_t revision, std::uint64_t enabledActionMask,
 		std::uint64_t activeActionMask);
 	void acknowledgeThorCommand(std::uint64_t revision, int command);

@@ -27,6 +27,7 @@ namespace ThorContextIds
 {
 	inline constexpr char SETTINGS[] = "SETTINGS";
 	inline constexpr char SETTINGS_SELECTION[] = "SETTINGS_SELECTION";
+	inline constexpr char ENCOUNTER_CHOICE[] = "ENCOUNTER_CHOICE";
 	inline constexpr char DIALOG_CONFIRMATION[] = "DIALOG_CONFIRMATION";
 	inline constexpr char DIALOG_INFORMATION[] = "DIALOG_INFORMATION";
 	inline constexpr char UNKNOWN[] = "UNKNOWN";
@@ -383,6 +384,7 @@ struct DLL_LINKAGE ThorContextRecord
 	int browserPage = 0;
 	int browserPageCount = 0;
 	std::vector<ThorBrowserEntry> browserEntries;
+	int encounterSelection = -1; // Native only, including selections outside the current page.
 	/// Native-only identity of the exact ordered list; never sent through JNI.
 	std::vector<std::string> browserNativeKeys;
 	std::optional<ThorHeroMeetingArmies> heroMeetingArmies;

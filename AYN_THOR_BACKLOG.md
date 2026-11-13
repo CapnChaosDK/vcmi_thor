@@ -59,13 +59,16 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 65 — Adventure encounter decisions: implementation and exact-candidate
+  device plan are in the [slice contract](#slice-65--adventure-encounter-decisions).
+  Thor CI and all four on-device checks passed on candidate `4916f37f1`.
 - Slice 64 — Adventure reference companion (Quests, Scenario Journal and Puzzle
   Map): `hardware validated` by the user's 2026-11-01 report that all six hardware
   checks passed on exact candidate `7833253367f6c81652c7a72fcc95ad8651e6c849`.
   Trusted CI `41343427557` passed both jobs. The user explicitly authorized Markdown
   updates, commit, PR #64 merge and stale-branch cleanup. PR #64 is merged as
   `22609a3b19eef1f30e88bcf34849a1dd46481244`. See the acceptance receipt
-  below and [current checklist](CI/thor-validation-plan.json).
+  below and [historical checklist](docs/validation/thor-adventure-reference-validation-plan.json).
 
 
 - Slice 63 — lower-screen Save and native Load journeys: `hardware validated` by
@@ -3424,3 +3427,47 @@ editing the Save name chooses the destination of a native save.
   `7833253367f6c81652c7a72fcc95ad8651e6c849`. This final receipt changes Markdown
   only and requires no new APK/hardware cycle. Slice 64 is complete and promoted;
   no next feature is selected.
+
+## Slice 65 — Adventure encounter decisions
+
+[Feature contract](docs/AYN_THOR_ADVENTURE_ENCOUNTER_SPEC.md) ·
+[Integrated device checklist](CI/thor-validation-plan.json)
+
+The lower screen uses the native component chooser, shared Yes/No and OK dialogs,
+and explicitly opted-in server and Castle Gate destination lists. Row selection is
+separate from confirmation. Question and detail paging preserve the native selection.
+The free creature offer gets its quantity from the active native visit. Destination
+IDs are checked against the offered list and current callback visibility; Castle Gate
+also checks the original visitor and current destination eligibility. Actions use the
+native selection and button paths on MainGUI. The protected upstream boundary remains
+in effect.
+
+Source review checked current native ownership, availability and target mapping,
+separate select and confirm actions, one-shot input, cancellation and restoration
+after a child window. Local validation includes Android-target native syntax,
+focused JVM contracts, the upstream boundary and the structured plan. The Windows
+native test executable linked, but Device Guard blocked execution. The permanent
+Thor preflight subsequently passed the native tests.
+
+The previous
+[Adventure reference checklist](docs/validation/thor-adventure-reference-validation-plan.json)
+is retained as a historical record.
+
+### Slice 65 CI and hardware acceptance
+
+- [Thor CI run 43471147237](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/43471147237)
+  passed preflight, focused native and Android tests, and ARM64 packaging for
+  `4916f37f17884e3040f949c508ea5e89a4f9ff4d`. The user reported all four
+  checklist checks passed on the AYN Thor on 2026-11-13 and authorized
+  promotion through [PR #65](https://github.com/CapnChaosDK/vcmi_thor/pull/65).
+  The downloaded APK matched receipt SHA-256
+  `2aaf0f6acd1257a7fdcbd94b8901ef3016fbb5b850653fc6c393ed03629fa986`.
+
+### Adventure-map shipyard follow-up
+
+The user observed the lower-screen placeholder when buying a boat at an
+Adventure-map shipyard. The purchase opens the dedicated `CShipyardWindow`,
+which currently has no Thor publication. A lower-screen shipyard journey would
+show native gold and wood costs, current purchase availability, Buy and Cancel,
+and restore Adventure controls when the native window closes. Boat buying is
+outside the encounter checklist.

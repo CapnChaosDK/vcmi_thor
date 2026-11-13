@@ -1,5 +1,6 @@
 #include "ThorContext.h"
 #include "ThorAction.h"
+#include "ThorDialog.h"
 
 #include <utility>
 
@@ -29,6 +30,7 @@ namespace
 			&& lhs.browserPage == rhs.browserPage
 			&& lhs.browserPageCount == rhs.browserPageCount
 			&& lhs.browserEntries == rhs.browserEntries
+			&& lhs.encounterSelection == rhs.encounterSelection
 			&& lhs.browserNativeKeys == rhs.browserNativeKeys
 			&& lhs.selectedHeroId == rhs.selectedHeroId
 			&& lhs.heroPortraitAssetKey == rhs.heroPortraitAssetKey
@@ -115,6 +117,7 @@ namespace
 				&& context.contextId != ThorContextIds::RESOURCE_MARKET
 				&& context.contextId != ThorContextIds::TAVERN
 				&& context.contextId != ThorContextIds::SETTINGS && context.contextId != ThorContextIds::SETTINGS_SELECTION
+				&& context.contextId != ThorContextIds::ENCOUNTER_CHOICE
 				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD
 				&& context.contextId != ThorContextIds::SPELLBOOK && context.contextId != ThorContextIds::SAVE_GAME
 				&& context.contextId != ThorContextIds::QUEST_LOG && context.contextId != ThorContextIds::SCENARIO_EVENT_JOURNAL
@@ -259,6 +262,28 @@ namespace
 				context.browserPage = context.browserPageCount = 0;
 			}
 		}
+		if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
+		{
+			bool invalid = !context.nativeOwnerToken || !context.nativeParentToken
+				|| context.browserEntries.size() > THOR_ENCOUNTER_PAGE_SIZE
+				|| context.browserPageCount <= 0 || context.browserPageCount > THOR_ENCOUNTER_MAX_CHOICES / THOR_ENCOUNTER_PAGE_SIZE
+				|| context.browserPage < 0 || context.browserPage >= context.browserPageCount
+				|| context.browserNativeKeys.size() != context.browserEntries.size();
+			for(std::size_t i = 0; i < context.browserEntries.size(); ++i)
+			{
+				const auto & row = context.browserEntries[i];
+				invalid |= row.target < 0 || !thorEncounterLabelValid(row.label)
+					|| std::any_of(context.browserEntries.begin(), context.browserEntries.begin() + i,
+						[&](const auto & earlier) { return earlier.target == row.target; });
+			}
+			if(invalid)
+			{
+				context.enabledActionMask = 0;
+				context.browserEntries.clear();
+				context.browserNativeKeys.clear();
+				context.browserPage = context.browserPageCount = 0;
+			}
+		}
 		bool exactTownServiceTargets = context.browserEntries.size() == THOR_TOWN_SERVICE_COUNT;
 		for(std::size_t index = 0; exactTownServiceTargets && index < context.browserEntries.size(); ++index)
 			exactTownServiceTargets = context.browserEntries[index].target == static_cast<int>(index);
@@ -275,6 +300,7 @@ namespace
 			|| context.contextId == ThorContextIds::CAMPAIGN_BROWSER
 			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO
 			|| context.contextId == ThorContextIds::SETTINGS || context.contextId == ThorContextIds::SETTINGS_SELECTION
+			|| context.contextId == ThorContextIds::ENCOUNTER_CHOICE
 			|| context.contextId == ThorContextIds::DIALOG_CONFIRMATION || context.contextId == ThorContextIds::DIALOG_INFORMATION)
 			&& context.browserNativeKeys.size() == context.browserEntries.size();
 		if((!townServices && !nativeBrowser && !townHall)

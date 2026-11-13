@@ -209,6 +209,15 @@ final class ThorSecondScreenPresentation extends Presentation
             foundationView.mapViewState = state;
     }
 
+    void rejectDialogAction(final long revision)
+    {
+        if (foundationView != null && foundationView.pendingDialogRevision == revision)
+        {
+            foundationView.pendingDialogRevision = 0;
+            foundationView.invalidate();
+        }
+    }
+
     void updateBrowser(final ThorBrowserState browser)
     {
         if (foundationView != null)
@@ -358,6 +367,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private final ThorLobbyScenarioGesture lobbyScenarioGesture = new ThorLobbyScenarioGesture();
         private final ThorLobbyScenarioGesture buildConfirmationGesture = new ThorLobbyScenarioGesture();
         private final ThorMainMenuDeck mainMenu = new ThorMainMenuDeck();
+        private long pendingDialogRevision;
         private final ThorBrowserGesture browserGesture = new ThorBrowserGesture();
         private final ThorWindowNavigation windowNavigation = new ThorWindowNavigation();
         private final ThorTownServices townServices = new ThorTownServices();
@@ -442,6 +452,7 @@ final class ThorSecondScreenPresentation extends Presentation
             buildConfirmationGesture.cancel();
             cancelMainMenuTouch();
             browserGesture.cancel();
+            pendingDialogRevision = 0;
             windowNavigation.cancel();
             townServices.cancel();
             townManagementTouchCancelled = townManagementTouchSequence;
@@ -501,6 +512,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 towns = ThorTownRoster.EMPTY;
                 townManagement = ThorTownManagement.EMPTY;
                 browser = ThorBrowserState.EMPTY;
+                pendingDialogRevision = 0;
                 recruitment = ThorRecruitmentState.EMPTY;
                 recruitmentPage = 0;
                 townPage = 0;
@@ -519,6 +531,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 buildConfirmationGesture.cancel();
             if (((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
+                    || ThorBrowserState.isEncounter(contextId)
                     || ThorContextIds.SAVE_GAME.equals(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
@@ -682,12 +695,16 @@ final class ThorSecondScreenPresentation extends Presentation
                 status = ThorLobbyScenarioState.scenarioName(publishedStatus,
                         getContext().getString(R.string.thor_context_campaign));
             }
-            else if (ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId))
+            else if (ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
+                    || ThorBrowserState.isEncounter(contextId))
             {
-                title = ThorBrowserState.isSettings(contextId)
-                        ? (publishedTitle.isEmpty() ? getContext().getString(R.string.thor_settings_title) : publishedTitle)
-                        : getContext().getString(ThorContextIds.DIALOG_CONFIRMATION.equals(contextId)
-                                ? R.string.thor_dialog_confirmation : R.string.thor_dialog_information);
+                if (ThorBrowserState.isEncounter(contextId))
+                    title = publishedTitle;
+                else if (ThorBrowserState.isSettings(contextId))
+                    title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_settings_title) : publishedTitle;
+                else
+                    title = getContext().getString(ThorContextIds.DIALOG_CONFIRMATION.equals(contextId)
+                            ? R.string.thor_dialog_confirmation : R.string.thor_dialog_information);
                 status = publishedStatus;
             }
             else if (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId))
@@ -902,6 +919,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean buildConfirmation = isConfirmationContext(contextId);
             final boolean browserContext = (ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
+                    || ThorBrowserState.isEncounter(contextId)
                     || ThorContextIds.SAVE_GAME.equals(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId);
@@ -1140,6 +1158,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 return handleAdventureMapTouch(event);
             if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
+                    || ThorBrowserState.isEncounter(contextId)
                     || ThorContextIds.SAVE_GAME.equals(contextId))
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId))
@@ -1376,8 +1395,11 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private RectF browserControlBounds(final int control, final RectF frame)
         {
-            final float[] bounds = ThorBrowserState.boundsForControl(contextId, control,
-                    frame.width(), frame.height());
+            final boolean choice = ThorBrowserState.isEncounter(contextId);
+            final float[] bounds = choice || ThorBrowserState.isDialog(contextId)
+                    ? ThorBrowserState.encounterBounds(control, frame.width(), frame.height(),
+                            getResources().getDisplayMetrics().density, choice)
+                    : ThorBrowserState.boundsForControl(contextId, control, frame.width(), frame.height());
             return new RectF(frame.left + bounds[0], frame.top + bounds[1],
                     frame.left + bounds[2], frame.top + bounds[3]);
         }
@@ -1679,6 +1701,11 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean campaign = ThorContextIds.CAMPAIGN_BROWSER.equals(contextId);
             final boolean saving = ThorContextIds.SAVE_GAME.equals(contextId);
             final boolean settings = ThorBrowserState.isSettings(contextId);
+            if (ThorBrowserState.isEncounter(contextId))
+            {
+                drawEncounterChoices(canvas, frame, density);
+                return;
+            }
             if (ThorBrowserState.isDialog(contextId))
             {
                 drawDialogDashboard(canvas, frame, density);
@@ -1775,6 +1802,85 @@ final class ThorSecondScreenPresentation extends Presentation
                     false, density);
         }
 
+        private void drawEncounterChoices(final Canvas canvas, final RectF frame, final float density)
+        {
+            if (browser.pageCount == 0) return;
+            final RectF firstRow = browserControlBounds(ThorBrowserState.CONTROL_FIRST_ROW, frame);
+            if (firstRow.isEmpty())
+            {
+                paint.setColor(TEXT);
+                paint.setTextAlign(Paint.Align.CENTER);
+                drawFittedText(canvas, getContext().getString(R.string.thor_encounter_use_upper),
+                        frame.centerX(), frame.centerY(), frame.width() * .85f, 20f * density);
+                return;
+            }
+            paint.setColor(TEXT);
+            paint.setTextAlign(Paint.Align.CENTER);
+            drawFittedText(canvas, getContext().getString(R.string.thor_encounter_pages, title,
+                            browser.page + 1, browser.pageCount),
+                    frame.centerX(), frame.top + frame.height() * .045f, firstRow.width(), 17f * density);
+            drawDialogText(canvas, frame, density, frame.height() * .055f,
+                    firstRow.top - frame.top - frame.height() * .06f);
+
+            if (browser.rowCount() == 0)
+                drawFittedText(canvas, getContext().getString(R.string.thor_encounter_empty),
+                        firstRow.centerX(), firstRow.centerY(), firstRow.width(), 20f * density);
+            for (int row = 0; row < browser.rowCount(); ++row)
+            {
+                final int control = ThorBrowserState.CONTROL_FIRST_ROW + row;
+                drawLobbyScenarioButton(canvas, browserControlBounds(control, frame),
+                        dialogText(browser.labels[row]).replace('\n', ' '), browserControlEnabled(control),
+                        browser.selected(row), density);
+            }
+
+            final int[] controls = {ThorBrowserState.CONTROL_TEXT_PREVIOUS, ThorBrowserState.CONTROL_TEXT_NEXT,
+                    ThorBrowserState.CONTROL_PREVIOUS, ThorBrowserState.CONTROL_NEXT,
+                    ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
+            final int[] labels = {R.string.thor_encounter_text_previous, R.string.thor_encounter_text_next,
+                    R.string.thor_encounter_choices_previous, R.string.thor_encounter_choices_next,
+                    R.string.thor_route_confirm, R.string.thor_split_cancel};
+            for (int i = 0; i < controls.length; ++i)
+            {
+                final int action = ThorBrowserState.actionForControl(contextId, controls[i]);
+                if (!isActionEnabled(action) && controls[i] != ThorBrowserState.CONTROL_PRIMARY)
+                    continue;
+                final String label = controls[i] == ThorBrowserState.CONTROL_PRIMARY && !status.isEmpty()
+                        ? getContext().getString(R.string.thor_encounter_confirm_selection, dialogText(status))
+                        : getContext().getString(labels[i]);
+                drawLobbyScenarioButton(canvas, browserControlBounds(controls[i], frame), label,
+                        browserControlEnabled(controls[i]), false, density);
+            }
+        }
+
+        private static String dialogText(final String text)
+        {
+            return text.replaceAll("\\{#[0-9a-fA-F]{6}\\|", "").replace("{", "").replace("}", "");
+        }
+
+        private void drawDialogText(final Canvas canvas, final RectF frame, final float density,
+                                    final float top, final float height)
+        {
+            if (height <= 0f) return;
+            final String message = dialogText(String.join("", detailLines));
+            final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            textPaint.setColor(PARCHMENT_DARK);
+            final int width = Math.max(1, (int) (frame.width() * .86f));
+            StaticLayout textLayout;
+            float size = Math.min(28f * density, frame.height() * .047f);
+            do
+            {
+                textPaint.setTextSize(size);
+                textLayout = StaticLayout.Builder.obtain(message, 0, message.length(), textPaint, width)
+                        .setAlignment(Layout.Alignment.ALIGN_NORMAL).setIncludePad(false).build();
+                size *= .9f;
+            } while (textLayout.getHeight() > height && size > 1f);
+            canvas.save();
+            canvas.clipRect(frame.left, frame.top + top, frame.right, frame.top + top + height);
+            canvas.translate(frame.left + frame.width() * .07f, frame.top + top);
+            textLayout.draw(canvas);
+            canvas.restore();
+        }
+
         private void drawDialogDashboard(final Canvas canvas, final RectF frame, final float density)
         {
             paint.setTextAlign(Paint.Align.CENTER);
@@ -1786,24 +1892,15 @@ final class ThorSecondScreenPresentation extends Presentation
             drawFittedText(canvas, getContext().getString(R.string.thor_browser_page, browser.page + 1,
                     browser.pageCount), frame.centerX(), frame.top + frame.height() * 0.13f,
                     frame.width() * 0.8f, Math.min(24f * density, frame.height() * 0.04f));
-            final String message = String.join("", detailLines).replace("{", "").replace("}", "");
-            final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-            textPaint.setColor(PARCHMENT_DARK);
-            final int width = Math.max(1, (int) (frame.width() * 0.86f));
-            final float height = frame.height() * 0.60f;
-            StaticLayout textLayout;
-            float size = Math.min(28f * density, frame.height() * 0.047f);
-            do
+            final RectF paging = browserControlBounds(ThorBrowserState.CONTROL_PREVIOUS, frame);
+            if (paging.isEmpty())
             {
-                textPaint.setTextSize(size);
-                textLayout = StaticLayout.Builder.obtain(message, 0, message.length(), textPaint, width)
-                        .setAlignment(Layout.Alignment.ALIGN_NORMAL).setIncludePad(false).build();
-                size *= 0.9f;
-            } while (textLayout.getHeight() > height && size > 1f);
-            canvas.save();
-            canvas.translate(frame.left + frame.width() * 0.07f, frame.top + frame.height() * 0.18f);
-            textLayout.draw(canvas);
-            canvas.restore();
+                drawFittedText(canvas, getContext().getString(R.string.thor_encounter_use_upper),
+                        frame.centerX(), frame.centerY(), frame.width() * .85f, 20f * density);
+                return;
+            }
+            drawDialogText(canvas, frame, density, frame.height() * .18f,
+                    paging.top - frame.top - frame.height() * .19f);
             final boolean confirmation = ThorContextIds.DIALOG_CONFIRMATION.equals(contextId);
             final int[] controls = {ThorBrowserState.CONTROL_PREVIOUS, ThorBrowserState.CONTROL_NEXT,
                     ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
@@ -1811,7 +1908,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     confirmation ? R.string.thor_menu_yes : R.string.thor_menu_ok, R.string.thor_menu_no};
             for (int index = 0; index < controls.length; ++index)
             {
-                if (!confirmation && controls[index] == ThorBrowserState.CONTROL_BACK) continue;
+                if (!isActionEnabled(ThorBrowserState.actionForControl(contextId, controls[index]))) continue;
                 drawLobbyScenarioButton(canvas, browserControlBounds(controls[index], frame),
                         getContext().getString(labels[index]), browserControlEnabled(controls[index]), false, density);
             }
@@ -3290,6 +3387,11 @@ final class ThorSecondScreenPresentation extends Presentation
         private int browserControlAt(final float x, final float y)
         {
             final RectF frame = adventureFrame();
+            final boolean choice = ThorBrowserState.isEncounter(contextId);
+            if (choice || ThorBrowserState.isDialog(contextId))
+                return ThorBrowserState.encounterControlAt(x - frame.left, y - frame.top,
+                        frame.width(), frame.height(), getResources().getDisplayMetrics().density,
+                        browser.rowCount(), choice);
             return ThorBrowserState.controlAt(contextId, x - frame.left, y - frame.top,
                     frame.width(), frame.height(), browser.rowCount());
         }
@@ -3306,7 +3408,7 @@ final class ThorSecondScreenPresentation extends Presentation
                         && row < ThorBrowserState.TOWN_HALL_PAGE_SIZE && index < browser.rowCount()
                         ? townHall.targetAt(row) : ThorActionIds.NO_TARGET;
             }
-            return control >= ThorBrowserState.CONTROL_FIRST_ROW && row < browser.rowCount()
+            return ThorBrowserState.isRowControl(control) && row < browser.rowCount()
                     ? browser.targets[row] : ThorActionIds.NO_TARGET;
         }
 
@@ -3332,6 +3434,9 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.SAVE_GAME.equals(contextId) && control == ThorBrowserState.CONTROL_EDIT_NAME)
                 return isActionEnabled(ThorActionIds.WINDOW_NEXT);
             if (actionId == ThorActionIds.NONE || !isActionEnabled(actionId))
+                return false;
+            if ((ThorBrowserState.isEncounter(contextId) || ThorBrowserState.isDialog(contextId))
+                    && (pendingDialogRevision == revision || browser.pageCount == 0))
                 return false;
             if (control == ThorBrowserState.CONTROL_PREVIOUS)
                 return browser.pageCount > 0 && browser.page > 0;
@@ -3365,6 +3470,10 @@ final class ThorSecondScreenPresentation extends Presentation
                 browserGesture.cancel();
                 return true;
             }
+            if (action == MotionEvent.ACTION_MOVE
+                    && (ThorBrowserState.isEncounter(contextId) || ThorBrowserState.isDialog(contextId))
+                    && browserControlAt(event.getX(), event.getY()) != browserGesture.control())
+                browserGesture.cancel();
             if (action != MotionEvent.ACTION_UP)
                 return true;
             final int control = browserGesture.control();
@@ -3398,7 +3507,14 @@ final class ThorSecondScreenPresentation extends Presentation
                 else if (ThorContextIds.SAVE_GAME.equals(contextId) && control == ThorBrowserState.CONTROL_EDIT_NAME)
                     saveNameEditor.open(saveFilename(), revision, presentationSessionId, sessionValidity);
                 else if (actionId != ThorActionIds.NONE)
-                    NativeMethods.submitThorAction(loadBack ? revision : submittedRevision, actionId, target);
+                {
+                    final boolean dialog = ThorBrowserState.isEncounter(contextId) || ThorBrowserState.isDialog(contextId);
+                    if (NativeMethods.submitThorAction(loadBack ? revision : submittedRevision, actionId, target) && dialog)
+                    {
+                        pendingDialogRevision = submittedRevision;
+                        invalidate();
+                    }
+                }
             }
             return true;
         }
@@ -3616,8 +3732,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.HERO_MEETING.equals(contextId))
                 return heroMeeting.description(title, status);
 
-            if (ThorBrowserState.isDialog(contextId))
-                return title + ". " + String.join("", detailLines);
+            if (ThorBrowserState.isDialog(contextId) || ThorBrowserState.isEncounter(contextId))
+                return dialogText(String.join("", detailLines)) + ". " + dialogText(status);
             if (ThorContextIds.SAVE_GAME.equals(contextId))
                 return title + ". " + saveFilename() + ". " + status + ". " + detailLines[3] + ". "
                         + getContext().getString(R.string.thor_save_edit) + ", "

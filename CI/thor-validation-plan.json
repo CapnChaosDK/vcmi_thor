@@ -1,46 +1,34 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-adventure-reference",
-  "title": "Adventure reference companion: Quests, Scenario Journal and Puzzle Map",
-  "summary": "Complete native journal browsing/reading/tab/location/Close journeys and a one-shot final covered Puzzle Map image on the lower display. Native models, visibility, callbacks and save rules remain authoritative.",
-  "preparation": "Back up app data and Saves-upstream. Verify exact candidate receipt, APK SHA-256 and package is.xyz.vcmi.thor; install in place without uninstalling. Prepare disposable maps/saves with more than five quests/events, varied native components, long/Unicode text and zero/partial/full obelisk discovery; test multiple faction puzzle artworks. Record unavailable scenarios explicitly.",
-  "limitations": "Native journal windows are authoritative snapshots; reopen them to receive newly collected entries just as above. Transport bounds: 10000 entries, five rows, 8192 UTF-8 bytes of complete selected native text, 384 bytes per transport page and readable Android subpages. Unsupported text/list data uses the native upper window. Puzzle capture is one software snapshot after reveal, fixed 592x544 RGB with remaining native covers; it is not a continuous frame stream. No grail coordinates or unmasked image cross JNI. Hardware must verify masking, scaling, readability and focus.",
+  "feature_id": "thor-adventure-encounters",
+  "title": "Adventure encounters and destination decisions",
+  "summary": "Complete native reward selection, creature-joining decisions and interactive destinations from the lower touchscreen.",
+  "preparation": "Back up saves. Verify the exact candidate receipt, APK SHA-256 and package is.xyz.vcmi.thor. Install in place. Prepare disposable saves with mandatory and cancellable rewards, long localized text and five or more choices, free and paid wandering creatures, a full army and low gold, an interactive Town Portal or other server picker, two available Castle Gates, and automatic teleports.",
+  "limitations": "Choice pages carry up to four entries. Unsupported text or layout uses the upper window. Dedicated army rearrangement uses its existing native window. No test result is implied by this checklist.",
   "checks": [
     {
-      "id": "quests",
-      "title": "Quest browsing and complete native information",
-      "steps": "Prepare more than five quests, differing requirements/states and long/Unicode text. Open Quests below, page in both directions, select first/middle/last entries, choose Read and page through all text/subpages. Compare native list, description and component popup information above. Change selection above while reading below.",
-      "expected": "Native order and current selection agree. Every bounded entry and full published native description/component information is readable, including Unicode. No invented rewards/completion or hidden quest data; upper selection invalidates stale text/actions."
+      "id": "reward",
+      "title": "Reward choice and details",
+      "steps": "Open a mandatory reward and a cancellable reward. Compare question, components and initial selection above and below. Browse beyond row four and page through long localized questions and selected details. Select a non-default row twice, confirm once, then repeat and cancel where offered. Change selection above while a lower row or Confirm is held.",
+      "expected": "Selection follows native order and synchronizes both screens. Rows and footer are comfortably tappable. A row never confirms. The selected choice stays identifiable across pages. One native reward or cancellation is applied. Mandatory prompts have no Cancel."
     },
     {
-      "id": "events-tabs",
-      "title": "Scenario Journal and native tab navigation",
-      "steps": "Prepare more than five scenario events, including multiline text and component rewards. Switch Quests/Events below and above; page/select/read every entry. Test unavailable tabs, no quest/no event cases and an empty journal where reachable.",
-      "expected": "The normal native close-and-open tab route is used. Correct day/message/component information appears. Disabled native tabs stay disabled; empty/unsupported states are explicit. Selection, text pages and hit regions never leak between owners."
+      "id": "join",
+      "title": "Free and paid creature joining",
+      "steps": "Accept and decline free and paid offers on disposable saves. Compare quantity, creature name, offer and price. Exercise insufficient gold, full army, and native follow-up prompts. If dedicated army rearrangement opens, finish or cancel above.",
+      "expected": "Yes and No act directly and once. Army and gold follow native results. Shared follow-ups appear in sequence and the live parent returns after the dedicated window closes."
     },
     {
-      "id": "locations-close",
-      "title": "Native location actions and Close",
-      "steps": "Select quests with a surviving native source and events with and without a valid location. Use Locate below and compare native map-marker centering. Close each journal using either screen; reopen from Adventure.",
-      "expected": "Locate follows the existing native marker callback and is disabled without a valid native target. No coordinates cross JNI. Close restores the actual native parent with correct selection/input and no residual window."
+      "id": "destinations",
+      "title": "Server destinations and Castle Gate",
+      "steps": "Open the server-driven picker and Castle Gate with several towns. Compare native ordering and current selection. Select and confirm a non-default destination. Cancel each picker. Exercise an empty Castle Gate and an offered target that becomes invalid. Check an ordinary monolith and whirlpool.",
+      "expected": "Selection can center the map where native behavior provides it. Travel requires Confirm and uses the selected native destination. Invalid choices cannot travel. Empty lists allow exit and disable Confirm. Cancel restores the parent and automatic teleport behavior follows the native route."
     },
     {
-      "id": "puzzle",
-      "title": "Covered Puzzle Map and progress",
-      "steps": "Use disposable games at zero, partial and complete obelisk discovery. Open Puzzle Map below; compare every revealed region and remaining cover with the native window after its reveal animation. Check progress, different factions/puzzle art, UI scaling/resolution and Close.",
-      "expected": "One final bounded masked image appears after reveal. Every native hidden region stays covered: no unmasked preview, grail coordinates or premature image. Progress matches native discovery. Image aspect ratio and readability remain correct, native upper rendering stays intact and Close restores Adventure. Missing/blank or incorrectly masked images fail this check."
-    },
-    {
-      "id": "stale-input",
-      "title": "Stale targets, multitouch and modal restoration",
-      "steps": "Hold a row, page, Locate, tab or Close while changing native selection/window above. Rapidly repeat actions; drag outside, add/remove a second pointer and hold too long. Cover each owner with a modal, then dismiss from either screen.",
-      "expected": "Only the exact live owner/parent/revision and current target executes, at most once. Old releases and duplicate taps cannot navigate/center/close a replacement window. Normal modal cleanup restores the real parent; no stuck pending controls."
-    },
-    {
-      "id": "lifecycle-regressions",
-      "title": "Display lifecycle and neighboring journeys",
-      "steps": "While reading and inspecting Puzzle Map, toggle the lower panel, background/resume and detach/reconnect/recreate the display. Recheck Save/name editor/Load, Settings/shared confirmations, spellbook, Adventure/Hero/Town and Battle/result restoration. Check upper touch/controller, hotseat player switch and single-display behavior.",
-      "expected": "Exactly one fresh non-focusable panel returns with current player/context data. No stale image/text, leaked gesture, focus theft, repeated snapshot loop or upper-screen regression. Existing native game, quest, visibility and save behavior stays unchanged."
+      "id": "lifecycle",
+      "title": "Touch, window and display lifecycle",
+      "steps": "Hold a lower choice or action while closing or changing the native prompt above. Open two identical prompts in succession. Drag outside and back, add a second finger, and tap rapidly. Toggle and reconnect the lower display, background and resume, and recreate or rotate where supported. Recheck upper touch, controller, hotseat and single-display play.",
+      "expected": "Held or repeated input cannot act on a changed window or selection. Exactly one current lower panel returns and uses the current player and prompt. No pending control gets stuck. Upper controls and native results remain usable."
     }
   ]
 }
