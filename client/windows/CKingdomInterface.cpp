@@ -49,19 +49,8 @@
 #include "../../lib/GameSettings.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-#include "../../lib/CAndroidVMHelper.h"
-#include "../../lib/thor/ThorContext.h"
-
-namespace
-{
-	void publishThorInGameContext(ThorInGameContext inGameContext)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForInGameContext(inGameContext);
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
+#include "InfoWindows.h"
+#include "../../lib/thor/ThorDialog.h"
 #endif
 
 static const std::string OVERVIEW_BACKGROUND = "OvCast.pcx";
@@ -522,7 +511,7 @@ void CKingdomInterface::activate()
 	CWindowWithArtifacts::activate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::KINGDOM_OVERVIEW);
+	refreshThorKingdom();
 #endif
 }
 
@@ -534,7 +523,8 @@ void CKingdomInterface::deactivate()
 	CWindowWithArtifacts::deactivate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
 #endif
 }
 
@@ -776,7 +766,150 @@ void CKingdomInterface::activateTab(size_t which)
 	btnHeroes->block(which == 0);
 	btnTowns->block(which == 1);
 	tabArea->setActive(which);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorTownTab = which == 1;
+	thorKingdomPage = 0;
+	thorKingdomSelection = ObjectInstanceID();
+	refreshThorKingdom();
+#endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CKingdomInterface::refreshThorKingdom()
+{
+	auto * player = GAME->interface();
+	if(!player || !isActive() || !ENGINE->windows().isTopWindow(this))
+		return;
+	std::vector<const CGObjectInstance *> entries;
+	if(thorTownTab)
+	{
+		for(const auto * town : player->cb->getTownsInfo(true))
+			if(town && town->tempOwner == player->playerID)
+				entries.push_back(town);
+	}
+	else
+	{
+		for(const auto * hero : player->localState->getWanderingHeroes())
+			if(hero && hero->tempOwner == player->playerID)
+				entries.push_back(hero);
+	}
+	constexpr int pageSize = THOR_ENCOUNTER_PAGE_SIZE - 1;
+	if(entries.size() > THOR_ENCOUNTER_MAX_CHOICES / THOR_ENCOUNTER_PAGE_SIZE * pageSize)
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = ENGINE->windows().thorParentOfTopWindow(this);
+	context.actionSubjectId = player->playerID.getNum();
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	const int count = static_cast<int>(entries.size());
+	context.browserPageCount = std::max(1, (count + pageSize - 1) / pageSize);
+	thorKingdomPage = std::clamp(thorKingdomPage, 0, context.browserPageCount - 1);
+	context.browserPage = thorKingdomPage;
+	auto heading = LIBRARY->generaltexth->translate(thorTownTab ? "core.jktext.24" : "core.jktext.25");
+	auto otherTab = LIBRARY->generaltexth->translate(thorTownTab ? "core.jktext.25" : "core.jktext.24");
+	auto question = heading + " (" + std::to_string(count) + ")";
+	for(const auto * object : entries)
+	{
+		if(object->id != thorKingdomSelection)
+			continue;
+		context.encounterSelection = object->id.getNum();
+		context.status = object->getObjectName().toString(&GAME->translator());
+		if(const auto * hero = dynamic_cast<const CGHeroInstance *>(object))
+		{
+			context.status = GAME->translator().translate(hero->getNameTextID());
+			question += "\n" + std::to_string(hero->level) + " " + GAME->translator().translate(hero->getClassNameTextID());
+		}
+		if(const auto * town = dynamic_cast<const CGTownInstance *>(object))
+			context.status = GAME->translator().translate(town->getNameTextID());
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+		break;
+	}
+	const auto pages = thorEncounterPages(question);
+	if(pages.empty() || !thorEncounterLabelValid(otherTab))
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	thorEncounterText(context, pages, thorKingdomTextPage);
+	if(thorKingdomPage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorKingdomPage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	// Reserve the first row for switching tabs.
+	constexpr int tabTarget = std::numeric_limits<int>::max();
+	context.browserEntries.push_back({tabTarget, std::move(otherTab), true, false});
+	context.browserNativeKeys.push_back("tab");
+	for(int index = thorKingdomPage * pageSize; index < std::min(count, (thorKingdomPage + 1) * pageSize); ++index)
+	{
+		const auto * object = entries[index];
+		auto label = object->getObjectName().toString(&GAME->translator());
+		if(const auto * hero = dynamic_cast<const CGHeroInstance *>(object))
+			label = GAME->translator().translate(hero->getNameTextID());
+		else if(const auto * town = dynamic_cast<const CGTownInstance *>(object))
+			label = GAME->translator().translate(town->getNameTextID());
+		if(!thorEncounterLabelValid(label))
+		{
+			publishThorEncounterContext();
+			return;
+		}
+		context.browserEntries.push_back({object->id.getNum(), std::move(label), true, object->id == thorKingdomSelection});
+		context.browserNativeKeys.push_back(std::to_string(object->id.getNum()));
+	}
+	context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CKingdomInterface::executeThorKingdom(const ThorActionRequest & request)
+{
+	refreshThorKingdom();
+	const auto context = thorContextStore().snapshot();
+	if(!isActive() || !ENGINE->windows().isTopWindow(this) || context.nativeOwnerToken != this
+		|| validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		auto button = btnExit;
+		return !button->isDisabled() && button->invokeThorCallback();
+	}
+	if(request.action == ThorAction::WINDOW_CONFIRM)
+	{
+		const auto * object = GAME->interface()->cb->tryGetObj(thorKingdomSelection);
+		if(!object || object->tempOwner != GAME->interface()->playerID)
+			return false;
+		if(const auto * town = dynamic_cast<const CGTownInstance *>(object); thorTownTab && town)
+			ENGINE->windows().createAndPushWindow<CCastleInterface>(town);
+		else if(const auto * hero = dynamic_cast<const CGHeroInstance *>(object); !thorTownTab && hero)
+			ENGINE->windows().createAndPushWindow<CHeroWindow>(hero);
+		else
+			return false;
+		return true;
+	}
+	if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+	{
+		if(request.targetId == std::numeric_limits<int>::max())
+			activateTab(thorTownTab ? 0 : 1);
+		else
+			thorKingdomSelection = ObjectInstanceID(request.targetId);
+		thorKingdomTextPage = 0;
+	}
+	else if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+		--thorKingdomPage;
+	else if(request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		++thorKingdomPage;
+	else if(request.action == ThorAction::WINDOW_PREVIOUS)
+		--thorKingdomTextPage;
+	else if(request.action == ThorAction::WINDOW_NEXT)
+		++thorKingdomTextPage;
+	else
+		return false;
+	refreshThorKingdom();
+	return true;
+}
+#endif
 
 void CKingdomInterface::buildChanged()
 {

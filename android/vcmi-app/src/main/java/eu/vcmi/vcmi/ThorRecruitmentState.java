@@ -9,6 +9,7 @@ final class ThorRecruitmentState
 {
     static final int QUICK_TOWN = 1;
     static final int TOWN_DWELLING = 2;
+    static final int ADVENTURE_DWELLING = 3;
     static final int MAX_ROWS = 64;
     static final int PAGE_SIZE = 5;
     static final int MAX_VARIANTS = 16;
@@ -93,7 +94,8 @@ final class ThorRecruitmentState
                 || visualKeys == null || names == null || unitCosts == null || selectedCosts == null)
             return EMPTY;
         if (!((mode == QUICK_TOWN && ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(contextId))
-                || (mode == TOWN_DWELLING && ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId))))
+                || (mode == TOWN_DWELLING && ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId))
+                || (mode == ADVENTURE_DWELLING && ThorContextIds.ADVENTURE_RECRUITMENT.equals(contextId))))
             return EMPTY;
         final int count = targets.length;
         if (count > MAX_ROWS || creatureIds.length != count || available.length != count
@@ -127,7 +129,7 @@ final class ThorRecruitmentState
             final boolean armyAvailable = (flags[index] & 4) != 0;
             if (enabled && !armyAvailable)
                 return EMPTY;
-            if (mode == TOWN_DWELLING && !selected && selectedAmounts[index] != 0)
+            if (mode != QUICK_TOWN && !selected && selectedAmounts[index] != 0)
                 return EMPTY;
             if (selected && targets[index] == selectedTarget)
                 selectedTargetFound = true;

@@ -59,6 +59,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 66 — lower-screen gameplay follow-through. See the
+  [slice contract](#slice-66--lower-screen-gameplay-follow-through) for scope and
+  the current candidate checklist. Hardware validation is pending.
 - Slice 65 — Adventure encounter decisions: implementation and exact-candidate
   device plan are in the [slice contract](#slice-65--adventure-encounter-decisions).
   Thor CI and all four on-device checks passed on candidate `4916f37f1`.
@@ -371,10 +374,9 @@ Focused Thor hardware checklist after build/install/explicit launch:
 
 ## Roadmap
 
-Current handoff (2026-10-30): Slices 60/61 Blacksmith and Mage Guild are hardware
-validated and promoted through PR #60. Slice 62 complete lower-screen spellbook
-companion for Adventure and Battle is also hardware validated; its promotion
-receipt below records the merge state. Do not restart completed journeys.
+The [current state](#current-state) records the latest implementation and
+validation status. Slice 66 covers the remaining gameplay journeys identified
+after the hardware acceptance of Adventure encounter decisions.
 The user has superseded the
 selective engine-migration roadmap with a second-screen-only scope. No chunked-save,
 activity, AI or general controller rewrite is queued as the next Thor feature.
@@ -3466,8 +3468,31 @@ is retained as a historical record.
 ### Adventure-map shipyard follow-up
 
 The user observed the lower-screen placeholder when buying a boat at an
-Adventure-map shipyard. The purchase opens the dedicated `CShipyardWindow`,
-which currently has no Thor publication. A lower-screen shipyard journey would
-show native gold and wood costs, current purchase availability, Buy and Cancel,
-and restore Adventure controls when the native window closes. Boat buying is
-outside the encounter checklist.
+Adventure-map shipyard on the Slice 65 candidate. Boat buying was outside its
+encounter checklist and is covered by Slice 66.
+
+## Slice 66 — lower-screen gameplay follow-through
+
+[Integrated device checklist](CI/thor-validation-plan.json) ·
+[Slice 65 checklist](docs/validation/thor-adventure-encounters-validation-plan.json)
+
+- Shipyards share the native boat purchase window for Adventure and Town, with
+  current prices, availability and Buy/Cancel. Town Services opens the native
+  shipyard from the lower panel.
+- Battle Result shows the outcome and both casualty lists, with Continue and
+  Replay where available. Hero and Commander level-ups expose the native choices
+  and confirmation, including prompts that stay open for another level.
+- Adventure dwellings use the recruitment deck and native purchase and quantity
+  controls. Joining monsters use the native garrison window with lower stack
+  selection and transfer while it owns the active visit.
+- University skills, Skeleton Transformer staging, market modes, and Altar
+  selections use the current native service window and existing callbacks.
+  Resource trading keeps its dedicated deck and exposes the native mode picker.
+- Kingdom Overview pages through the player's heroes and towns and opens their
+  native windows. Thieves' Guild displays the rankings and ties shown by the
+  existing Guild window.
+
+The Android deck uses existing bounded dialog, browser, recruitment and purchase
+layouts. MainGUI resolves the current owner and revision before calling native
+controls. The changed Town Services layout and multi-step service and encounter
+flows require the exact candidate's physical AYN Thor checklist.

@@ -49,7 +49,8 @@ final class ThorVisualAssetReferences
                     return true;
         }
         if ((ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(contextId)
-                || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId))
+                || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId)
+                || ThorContextIds.ADVENTURE_RECRUITMENT.equals(contextId))
                 && recruitment != null && recruitment.revision == revision)
             for (final long referenced : recruitment.visualAssetKeys())
                 if (referenced == key)

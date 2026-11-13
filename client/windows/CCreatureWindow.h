@@ -9,6 +9,8 @@
  */
 #pragma once
 
+struct ThorActionRequest;
+
 #include "../../lib/bonuses/Bonus.h"
 #include "../../lib/filesystem/ResourcePath.h"
 #include "../widgets/MiscWidgets.h"
@@ -122,6 +124,9 @@ class CStackWindow : public CWindowObject
 		std::shared_ptr<CButton> rightBtn;
 	public:
 		CommanderMainSection(CStackWindow * owner, int yOffset);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		std::shared_ptr<CCommanderSkillIcon> thorSkillIcon(int skill);
+#endif
 	};
 
 	class MainSection : public CWindowSection
@@ -224,6 +229,12 @@ public:
 	CStackWindow(const CCommanderInstance * commander, bool popup);
 	CStackWindow(CPlayerInterface * askedInterface, const CCommanderInstance * commander, const std::vector<ui32> & skills, bool moreLevels, QuestionID question);
 	bool isCommanderLevelUpDialog() const;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorCommander();
+	bool executeThorCommander(const ThorActionRequest & request);
+#endif
 	void close() override;
 
 	void keyPressed(EShortcut key) override;
@@ -234,4 +245,9 @@ private:
 	CPlayerInterface * owner = nullptr; ///< interface that was asked; in hotseat it may not be the current one
 	bool moreLevelsFollow = false; ///< level-up window stays open for the next level instead of closing on selection
 	bool selectionSubmitted = false;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	int thorCommanderPage = 0;
+	int thorCommanderTextPage = 0;
+	std::string thorCommanderSkillText(int skill);
+#endif
 };

@@ -77,7 +77,8 @@ std::vector<std::uint64_t> collectThorContextVisualAssetKeys(const ThorContextRe
 			context.heroMeetingArtifacts.value_or(ThorHeroMeetingArtifacts{}));
 	}
 	if((context.contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK
-		|| context.contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING) && context.recruitment)
+		|| context.contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING
+		|| context.contextId == ThorContextIds::ADVENTURE_RECRUITMENT) && context.recruitment)
 	{
 		std::vector<std::uint64_t> result;
 		std::unordered_set<std::uint64_t> seen;

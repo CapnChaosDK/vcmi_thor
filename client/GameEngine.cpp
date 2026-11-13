@@ -35,6 +35,7 @@
 #include "GameEngineUser.h"
 #include "battle/BattleInterface.h"
 #include "battle/BattleWindow.h"
+#include "battle/BattleResultWindow.h"
 #include "CPlayerInterface.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
@@ -53,6 +54,8 @@
 #include "mainmenu/CCampaignScreen.h"
 #include "mainmenu/CHighScoreScreen.h"
 #include "windows/InfoWindows.h"
+#include "windows/CCreatureWindow.h"
+#include "windows/CKingdomInterface.h"
 #include "windows/settings/SettingsMainWindow.h"
 #include "lobby/CSavingScreen.h"
 #endif
@@ -188,6 +191,14 @@ void GameEngine::updateFrame()
 		picker->refreshThorDestination();
 	if(auto journal = windows().topWindow<JournalWindow>()) journal->refreshThorReference();
 	if(auto puzzle = windows().topWindow<CPuzzleWindow>()) puzzle->refreshThorReference();
+	if(auto shipyard = windows().topWindow<CShipyardWindow>()) shipyard->refreshThorShipyard();
+	if(auto level = windows().topWindow<CLevelWindow>()) level->refreshThorLevel();
+	if(auto commander = windows().topWindow<CStackWindow>()) commander->refreshThorCommander();
+	if(auto kingdom = windows().topWindow<CKingdomInterface>()) kingdom->refreshThorKingdom();
+	if(auto university = windows().topWindow<CUniversityWindow>()) university->refreshThorUniversity();
+	if(auto confirmation = windows().topWindow<CUnivConfirmWindow>()) confirmation->refreshThorUniversityConfirm();
+	if(auto garrison = windows().topWindow<CGarrisonWindow>()) garrison->refreshThorJoining();
+	if(auto transformer = windows().topWindow<CTransformerWindow>()) transformer->refreshThorTransformer();
 	if(auto book = windows().topWindow<CSpellWindow>())
 		book->refreshThorSpellbook();
 	if(auto blacksmith = windows().topWindow<CBlacksmithDialog>())
@@ -210,7 +221,9 @@ void GameEngine::updateFrame()
 				&& thorContextStore().snapshot().revision == request->revision
 				&& (context.contextId == ThorContextIds::ENCOUNTER_CHOICE
 					|| context.contextId == ThorContextIds::DIALOG_CONFIRMATION
-					|| context.contextId == ThorContextIds::DIALOG_INFORMATION))
+					|| context.contextId == ThorContextIds::DIALOG_INFORMATION
+					|| context.contextId == ThorContextIds::BATTLE_RESULT
+					|| context.contextId == ThorContextIds::THIEVES_GUILD))
 				CAndroidVMHelper().rejectThorDialogAction(request->revision, request->action);
 		});
 		switch(validateThorActionRequest(*request, context))
@@ -465,6 +478,20 @@ void GameEngine::updateFrame()
 				executed = choice->executeThorEncounter(*request);
 			else if(auto picker = windows().topWindow<CObjectListWindow>(); picker && context.nativeOwnerToken == picker.get())
 				executed = picker->executeThorListAction(*request);
+			else if(auto level = windows().topWindow<CLevelWindow>(); level && context.nativeOwnerToken == level.get())
+				executed = level->executeThorLevel(*request);
+			else if(auto commander = windows().topWindow<CStackWindow>(); commander && context.nativeOwnerToken == commander.get())
+				executed = commander->executeThorCommander(*request);
+			else if(auto kingdom = windows().topWindow<CKingdomInterface>(); kingdom && context.nativeOwnerToken == kingdom.get())
+				executed = kingdom->executeThorKingdom(*request);
+			else if(auto university = windows().topWindow<CUniversityWindow>(); university && context.nativeOwnerToken == university.get())
+				executed = university->executeThorUniversity(*request);
+			else if(auto garrison = windows().topWindow<CGarrisonWindow>(); garrison && context.nativeOwnerToken == garrison.get())
+				executed = garrison->executeThorJoining(*request);
+			else if(auto transformer = windows().topWindow<CTransformerWindow>(); transformer && context.nativeOwnerToken == transformer.get())
+				executed = transformer->executeThorTransformer(*request);
+			else if(auto market = windows().topWindow<CMarketWindow>(); market && context.nativeOwnerToken == market.get())
+				executed = market->executeThorSpecialMarket(*request);
 		}
 		else if(context.contextId == ThorContextIds::SETTINGS_SELECTION)
 		{
@@ -512,12 +539,37 @@ void GameEngine::updateFrame()
 			}
 			executed = hallWindow->executeThorAction(*request);
 		}
+		else if(context.contextId == ThorContextIds::THIEVES_GUILD)
+		{
+			auto guild = windows().topWindow<CThievesGuildWindow>();
+			if(guild && context.nativeOwnerToken == guild.get())
+				executed = guild->executeThorGuildRankings(*request);
+		}
+		else if(context.contextId == ThorContextIds::BATTLE_RESULT)
+		{
+			auto result = windows().topWindow<BattleResultWindow>();
+			if(result && context.nativeOwnerToken == result.get())
+				executed = result->executeThorResult(*request);
+		}
+		else if(context.contextId == ThorContextIds::SHIPYARD)
+		{
+			auto shipyard = windows().topWindow<CShipyardWindow>();
+			if(shipyard && context.nativeOwnerToken == shipyard.get())
+				executed = shipyard->executeThorShipyard(*request);
+		}
 		else if(context.contextId == ThorContextIds::BUILD_CONFIRMATION)
 		{
-			auto buildWindow = windows().topWindow<CBuildWindow>();
-			if(!buildWindow || !buildWindow->matchesThorContext(context))
-				continue;
-			executed = buildWindow->executeThorAction(*request);
+			if(auto university = windows().topWindow<CUnivConfirmWindow>(); university && context.nativeOwnerToken == university.get())
+			{
+				executed = university->executeThorUniversityConfirm(*request);
+			}
+			else
+			{
+				auto buildWindow = windows().topWindow<CBuildWindow>();
+				if(!buildWindow || !buildWindow->matchesThorContext(context))
+					continue;
+				executed = buildWindow->executeThorAction(*request);
+			}
 		}
 		else if(context.contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK)
 		{
@@ -535,7 +587,8 @@ void GameEngine::updateFrame()
 			}
 			executed = recruitmentWindow->executeThorAction(*request);
 		}
-		else if(context.contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING)
+		else if(context.contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING
+			|| context.contextId == ThorContextIds::ADVENTURE_RECRUITMENT)
 		{
 			auto recruitmentWindow = windows().topWindow<CRecruitmentWindow>();
 			if(!recruitmentWindow || !recruitmentWindow->matchesThorContext(context))

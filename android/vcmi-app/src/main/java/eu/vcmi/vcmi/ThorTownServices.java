@@ -10,7 +10,8 @@ final class ThorTownServices
     static final int MAGE_GUILD = 3;
     static final int MARKETPLACE = 4;
     static final int BLACKSMITH = 5;
-    static final int SERVICE_COUNT = 6;
+    static final int SHIPYARD = 6;
+    static final int SERVICE_COUNT = 7;
 
     private final ThorControlGesture gesture = new ThorControlGesture(NONE);
 
@@ -23,7 +24,7 @@ final class ThorTownServices
         final float cell = (width - 2f * side - gap) / 2f;
         final int row = service / 2;
         final int column = service % 2;
-        final float top = height * (0.585f + row * 0.098f);
+        final float top = height * (0.50f + row * 0.095f);
         final float left = side + column * (cell + gap);
         return new float[]{left, top, left + cell, top + height * 0.082f};
     }

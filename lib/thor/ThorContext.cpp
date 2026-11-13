@@ -54,8 +54,11 @@ namespace
 		if(context.contextId != ThorContextIds::BATTLE && context.contextId != ThorContextIds::BATTLE_TACTICS
 			&& context.contextId != ThorContextIds::TOWN_HALL
 			&& context.contextId != ThorContextIds::BUILD_CONFIRMATION
+			&& context.contextId != ThorContextIds::SHIPYARD
+			&& context.contextId != ThorContextIds::ENCOUNTER_CHOICE
 			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
-			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING)
+			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING
+			&& context.contextId != ThorContextIds::ADVENTURE_RECRUITMENT)
 			context.actionSubjectId = -1;
 		if(context.contextId != ThorContextIds::HERO_WINDOW && context.contextId != ThorContextIds::TOWN_WINDOW
 			&& context.contextId != ThorContextIds::BUILD_CONFIRMATION)
@@ -171,7 +174,8 @@ namespace
 		if(context.contextId != ThorContextIds::HERO_WINDOW)
 			context.heroManagement.reset();
 		if(context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
-			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING)
+			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING
+			&& context.contextId != ThorContextIds::ADVENTURE_RECRUITMENT)
 			context.recruitment.reset();
 		if(context.recruitment)
 		{
@@ -182,7 +186,9 @@ namespace
 				&& recruitment.destinationArmyFreeSlots <= static_cast<int>(GameConstants::ARMY_SIZE)
 				&& recruitment.rows.size() <= THOR_MAX_RECRUITMENT_ROWS
 				&& (quick ? recruitment.mode == ThorRecruitmentMode::QUICK_TOWN && recruitment.dwellingLevel == -1
-					: recruitment.mode == ThorRecruitmentMode::TOWN_DWELLING && recruitment.dwellingLevel >= 0)
+					: context.contextId == ThorContextIds::ADVENTURE_RECRUITMENT
+						? recruitment.mode == ThorRecruitmentMode::ADVENTURE_DWELLING && recruitment.dwellingLevel >= -1
+						: recruitment.mode == ThorRecruitmentMode::TOWN_DWELLING && recruitment.dwellingLevel >= 0)
 				&& recruitment.townName.size() <= 128 && recruitment.totalCost.size() <= 128;
 			std::size_t selectedRows = 0;
 			bool selectedTargetFound = recruitment.selectedTarget == -1;
@@ -196,7 +202,7 @@ namespace
 					&& row.variantCount >= 1 && row.variantCount <= static_cast<int>(THOR_MAX_RECRUITMENT_VARIANTS)
 					&& row.variantIndex >= 0 && row.variantIndex < row.variantCount
 					&& (!row.enabled || row.armyAvailable)
-					&& (recruitment.mode != ThorRecruitmentMode::TOWN_DWELLING
+					&& (quick
 						|| row.selected || row.selectedAmount == 0)
 					&& (row.visualAssetKey == 0 || row.visualAssetKey == thorCreatureVisualAssetKey(row.creatureId));
 				if(!valid)
