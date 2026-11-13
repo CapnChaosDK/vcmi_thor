@@ -229,7 +229,7 @@ void publishThorEncounterContext(ThorContextRecord context)
 
 	CAndroidVMHelper bridge;
 	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status, context.details);
-	bridge.publishThorActionState(context.revision, context.enabledActionMask, 0);
+	bridge.publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
 	if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
 		bridge.publishThorBrowser(context.revision, context.browserPage, context.browserPageCount, context.browserEntries);
 }

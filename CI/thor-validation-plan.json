@@ -1,34 +1,52 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-adventure-encounters",
-  "title": "Adventure encounters and destination decisions",
-  "summary": "Complete native reward selection, creature-joining decisions and interactive destinations from the lower touchscreen.",
-  "preparation": "Back up saves. Verify the exact candidate receipt, APK SHA-256 and package is.xyz.vcmi.thor. Install in place. Prepare disposable saves with mandatory and cancellable rewards, long localized text and five or more choices, free and paid wandering creatures, a full army and low gold, an interactive Town Portal or other server picker, two available Castle Gates, and automatic teleports.",
-  "limitations": "Choice pages carry up to four entries. Unsupported text or layout uses the upper window. Dedicated army rearrangement uses its existing native window. No test result is implied by this checklist.",
+  "feature_id": "thor-companion-gameplay",
+  "title": "Complete lower-screen gameplay journeys",
+  "summary": "Add lower-screen shipyards, battle results and level-ups, Adventure recruitment and army rearrangement, specialized services, and Kingdom and Guild reference panels.",
+  "preparation": "Back up saves and use disposable saves with the required windows. Verify the candidate commit, APK SHA-256 and is.xyz.vcmi.thor package against the receipt, then install in place. Enable the Commander module for its level-up check.",
+  "limitations": "Unsupported layouts and oversized text retain native input. Spatial targeting stays on the upper screen. Device outcomes are recorded separately.",
   "checks": [
     {
-      "id": "reward",
-      "title": "Reward choice and details",
-      "steps": "Open a mandatory reward and a cancellable reward. Compare question, components and initial selection above and below. Browse beyond row four and page through long localized questions and selected details. Select a non-default row twice, confirm once, then repeat and cancel where offered. Change selection above while a lower row or Confirm is held.",
-      "expected": "Selection follows native order and synchronizes both screens. Rows and footer are comfortably tappable. A row never confirms. The selected choice stays identifiable across pages. One native reward or cancellation is applied. Mandatory prompts have no Cancel."
+      "id": "shipyard",
+      "title": "Town and Adventure shipyards",
+      "steps": "Visit a map shipyard and open an owned Town shipyard from the lower Services tab. Check gold and wood costs, buy once, cancel once, and exercise insufficient resources and a blocked berth. Change availability above during a held lower Buy.",
+      "expected": "One native purchase occurs for an available berth. Cancel and blocked Buy leave resources unchanged. The appropriate live Town or Adventure deck returns."
     },
     {
-      "id": "join",
-      "title": "Free and paid creature joining",
-      "steps": "Accept and decline free and paid offers on disposable saves. Compare quantity, creature name, offer and price. Exercise insufficient gold, full army, and native follow-up prompts. If dedicated army rearrangement opens, finish or cancel above.",
-      "expected": "Yes and No act directly and once. Army and gold follow native results. Shared follow-ups appear in sequence and the live parent returns after the dedicated window closes."
+      "id": "battle",
+      "title": "Battle results and level-ups",
+      "steps": "Finish battles with victory and defeat, with and without casualties, and with Replay available. Page through casualties, Continue or Replay, then choose a hero skill and a commander upgrade where enabled. Exercise zero, one, and multiple skill choices and a chained level-up.",
+      "expected": "Casualties and available actions agree with the upper window. A skill tap selects, and Confirm submits one native choice. Chained prompts replace the prior controls and the last prompt restores Adventure."
     },
     {
-      "id": "destinations",
-      "title": "Server destinations and Castle Gate",
-      "steps": "Open the server-driven picker and Castle Gate with several towns. Compare native ordering and current selection. Select and confirm a non-default destination. Cancel each picker. Exercise an empty Castle Gate and an offered target that becomes invalid. Check an ordinary monolith and whirlpool.",
-      "expected": "Selection can center the map where native behavior provides it. Travel requires Confirm and uses the selected native destination. Invalid choices cannot travel. Empty lists allow exit and disable Confirm. Cancel restores the parent and automatic teleport behavior follows the native route."
+      "id": "recruitment",
+      "title": "Adventure recruitment and joining armies",
+      "steps": "Visit paid and free dwellings. Select a creature, adjust quantity and buy or close. Check insufficient resources, sold-out creatures, and no room. Accept wandering creatures with a full army and exercise merge, swapping eligible stacks and leaving the window.",
+      "expected": "Quote and army eligibility match the native window. Each purchase or army move happens once. The final native close resolves the visit and restores Adventure."
+    },
+    {
+      "id": "services",
+      "title": "University and Skeleton Transformer",
+      "steps": "Use Town and map Universities. Compare skills and gold price, cancel a confirmation, test insufficient gold, and buy an available skill. At a Transformer, stage one stack, unstage it, stage all, and convert.",
+      "expected": "Only offered and learnable skills can open the purchase confirmation. Conversions apply once to the staged live stacks. Each service returns to its live parent."
+    },
+    {
+      "id": "markets",
+      "title": "Specialized market modes and Altars",
+      "steps": "Enter Other trades from the resource market. Exercise resource gifts, artifact buying and selling, creature sales, creature sacrifice, and artifact staging, return and sacrifice, including a full backpack or altar. Compare quote, quantity, experience and funds before and after each operation.",
+      "expected": "Modes match the native window. Market edits use current selections and quantities. The native response updates resources, equipment and experience exactly once. Unavailable rows stay inert. Closing restores the correct parent."
+    },
+    {
+      "id": "kingdom",
+      "title": "Kingdom and Thieves Guild reference",
+      "steps": "Page across the owned hero and town lists, switch tabs from both screens, open a hero or town and return. Open Thieves Guild, page through rankings and compare ties against the native table.",
+      "expected": "Only current owned objects appear in Kingdom Overview. Opening and closing a child restores the current tab. Guild rankings match native visibility and display tied players together."
     },
     {
       "id": "lifecycle",
-      "title": "Touch, window and display lifecycle",
-      "steps": "Hold a lower choice or action while closing or changing the native prompt above. Open two identical prompts in succession. Drag outside and back, add a second finger, and tap rapidly. Toggle and reconnect the lower display, background and resume, and recreate or rotate where supported. Recheck upper touch, controller, hotseat and single-display play.",
-      "expected": "Held or repeated input cannot act on a changed window or selection. Exactly one current lower panel returns and uses the current player and prompt. No pending control gets stuck. Upper controls and native results remain usable."
+      "title": "Input and display lifecycle",
+      "steps": "Hold a lower action during an upper selection change or close. Tap rapidly, add a second finger, background and resume, and toggle or reconnect the lower display while a service or result is open. Recheck upper touch and controller, hotseat, and single-display play.",
+      "expected": "Stale and repeated input cannot affect a replaced window or selection. The current player and native owner determine the restored deck. Upper controls remain usable."
     }
   ]
 }

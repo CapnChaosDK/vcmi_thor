@@ -353,10 +353,16 @@ bool isThorActionAllowedInContext(ThorAction action, const std::string & context
 		|| contextId == ThorContextIds::JOIN_SCREEN_NEW_GAME || contextId == ThorContextIds::JOIN_SCREEN_LOAD_GAME
 		|| contextId == ThorContextIds::SIMPLE_JOIN)
 		return action == ThorAction::WINDOW_CLOSE;
-	if(contextId == ThorContextIds::BUILD_CONFIRMATION)
+	if(contextId == ThorContextIds::BUILD_CONFIRMATION || contextId == ThorContextIds::SHIPYARD)
 		return action == ThorAction::WINDOW_CONFIRM || action == ThorAction::WINDOW_CLOSE;
+	if(contextId == ThorContextIds::BATTLE_RESULT)
+		return action == ThorAction::WINDOW_CONFIRM || action == ThorAction::WINDOW_CLOSE
+			|| action == ThorAction::WINDOW_PREVIOUS || action == ThorAction::WINDOW_NEXT;
+	if(contextId == ThorContextIds::THIEVES_GUILD)
+		return action == ThorAction::WINDOW_CONFIRM || action == ThorAction::WINDOW_PREVIOUS || action == ThorAction::WINDOW_NEXT;
 	if(contextId == ThorContextIds::TOWN_RECRUITMENT_QUICK
-		|| contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING)
+		|| contextId == ThorContextIds::TOWN_RECRUITMENT_DWELLING
+		|| contextId == ThorContextIds::ADVENTURE_RECRUITMENT)
 		return action == ThorAction::RECRUITMENT_EDIT || action == ThorAction::RECRUITMENT_BUY
 			|| action == ThorAction::WINDOW_CLOSE;
 	if(contextId == ThorContextIds::BATTLE)
@@ -404,10 +410,15 @@ bool thorBuildConfirmationOwnerMatches(const ThorContextRecord & context,
 bool thorRecruitmentOwnerMatches(const ThorContextRecord & context, ThorRecruitmentMode mode,
 	int townId, int dwellingLevel, int destinationArmyId, int destinationArmyFreeSlots, bool active, bool top)
 {
-	if(mode != ThorRecruitmentMode::QUICK_TOWN && mode != ThorRecruitmentMode::TOWN_DWELLING)
+	const char * expectedContext = nullptr;
+	switch(mode)
+	{
+	case ThorRecruitmentMode::QUICK_TOWN: expectedContext = ThorContextIds::TOWN_RECRUITMENT_QUICK; break;
+	case ThorRecruitmentMode::TOWN_DWELLING: expectedContext = ThorContextIds::TOWN_RECRUITMENT_DWELLING; break;
+	case ThorRecruitmentMode::ADVENTURE_DWELLING: expectedContext = ThorContextIds::ADVENTURE_RECRUITMENT; break;
+	}
+	if(!expectedContext)
 		return false;
-	const auto expectedContext = mode == ThorRecruitmentMode::QUICK_TOWN
-		? ThorContextIds::TOWN_RECRUITMENT_QUICK : ThorContextIds::TOWN_RECRUITMENT_DWELLING;
 	return active && top && townId >= 0 && destinationArmyId >= 0 && context.contextId == expectedContext
 		&& context.actionSubjectId == townId && context.recruitment
 		&& context.recruitment->mode == mode && context.recruitment->townId == townId

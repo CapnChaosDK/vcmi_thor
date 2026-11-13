@@ -26,12 +26,13 @@ enum Command : int
 	SPELLBOOK_CAST = 27, SPELLBOOK_CLOSE = 28, ADVENTURE_SPELLBOOK = 29,
 	REFERENCE_SELECT = 30, REFERENCE_PREVIOUS = 31, REFERENCE_NEXT = 32,
 	REFERENCE_TEXT_PREVIOUS = 33, REFERENCE_TEXT_NEXT = 34, REFERENCE_QUESTS = 35,
-	REFERENCE_EVENTS = 36, REFERENCE_CENTER = 37, REFERENCE_CLOSE = 38
+	REFERENCE_EVENTS = 36, REFERENCE_CENTER = 37, REFERENCE_CLOSE = 38,
+	MARKET_MODES = 39
 };
 
-inline bool known(int command) { return command >= AUTO_START && command <= REFERENCE_CLOSE; }
+inline bool known(int command) { return command >= AUTO_START && command <= MARKET_MODES; }
 inline bool referenceCommand(int command) { return command >= REFERENCE_SELECT && command <= REFERENCE_CLOSE; }
-inline bool marketCommand(int command) { return command >= MARKET_SELL && command <= MARKET_RESET; }
+inline bool marketCommand(int command) { return (command >= MARKET_SELL && command <= MARKET_RESET) || command == MARKET_MODES; }
 inline bool tavernCommand(int command) { return command >= TAVERN_SELECT && command <= TAVERN_CLOSE; }
 
 inline bool spellbookCommand(int command) { return command >= SPELLBOOK_CAST && command <= SPELLBOOK_CLOSE; }

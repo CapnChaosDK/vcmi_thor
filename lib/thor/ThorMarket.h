@@ -59,6 +59,7 @@ struct DLL_LINKAGE ThorMarket
 		case ThorExtended::MARKET_AMOUNT: return maximum > 0 && target <= maximum;
 		case ThorExtended::MARKET_TRADE: return amount > 0 && maximum >= amount;
 		case ThorExtended::MARKET_RESET: return true;
+		case ThorExtended::MARKET_MODES: return true;
 		default: return false;
 		}
 	}

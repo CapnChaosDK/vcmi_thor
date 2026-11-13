@@ -48,6 +48,10 @@
 #include "../../lib/texts/TextOperations.h"
 #include "../../lib/texts/Languages.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../../lib/thor/ThorDialog.h"
+#endif
+
 
 class UnitView
 {
@@ -892,6 +896,148 @@ bool CStackWindow::isCommanderLevelUpDialog() const
 {
 	return info && info->commander && info->levelupInfo.has_value();
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+std::shared_ptr<CCommanderSkillIcon> CStackWindow::CommanderMainSection::thorSkillIcon(int skill)
+{
+	if(skill >= 0 && static_cast<std::size_t>(skill) < skillIcons.size())
+		return skillIcons[skill];
+	if(!abilities || skill < 100)
+		return {};
+	std::size_t index = 0;
+	for(const auto offered : stackWindow->info->levelupInfo->skills)
+	{
+		if(offered == skill)
+		{
+			abilities->scrollTo(index);
+			return std::dynamic_pointer_cast<CCommanderSkillIcon>(abilities->getItem(index));
+		}
+		if(offered >= 100)
+			++index;
+	}
+	return {};
+}
+
+void CStackWindow::activate()
+{
+	CWindowObject::activate();
+	refreshThorCommander();
+}
+
+void CStackWindow::deactivate()
+{
+	CWindowObject::deactivate();
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+std::string CStackWindow::thorCommanderSkillText(int skill)
+{
+	if(skill >= 0 && skill <= ECommander::SPELL_POWER)
+		return getCommanderSkillDescription(skill, info->commander->secondarySkills[skill] + 1);
+	if(skill < 100 || skill - 100 >= LIBRARY->creh->skillRequirements.size())
+		return {};
+	std::string result;
+	for(const auto & bonus : LIBRARY->creh->skillRequirements[skill - 100].first)
+	{
+		if(!result.empty())
+			result += "\n";
+		result += LIBRARY->bth->bonusToString(bonus);
+	}
+	return result;
+}
+
+void CStackWindow::refreshThorCommander()
+{
+	if(!isCommanderLevelUpDialog() || !isActive() || !ENGINE->windows().isTopWindow(this))
+		return;
+	if(owner != GAME->interface())
+	{
+		if(thorContextStore().snapshot().nativeOwnerToken == this)
+			publishThorEncounterContext();
+		return;
+	}
+	const auto & skills = info->levelupInfo->skills;
+	const int count = static_cast<int>(skills.size());
+	const int selected = vstd::find_pos(skills, selectedSkill);
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = ENGINE->windows().thorParentOfTopWindow(this);
+	context.encounterSelection = selected;
+	context.browserPage = thorCommanderPage;
+	context.browserPageCount = std::max(1, (count + THOR_ENCOUNTER_PAGE_SIZE - 1) / THOR_ENCOUNTER_PAGE_SIZE);
+	auto question = info->getName();
+	if(selected >= 0)
+		question += "\n\n" + thorCommanderSkillText(selectedSkill);
+	const auto pages = thorEncounterPages(question);
+	if(count > THOR_ENCOUNTER_MAX_CHOICES || pages.empty())
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	thorEncounterText(context, pages, thorCommanderTextPage);
+	if(!selectionSubmitted)
+	{
+		if(count == 0 || selected >= 0)
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+		if(count)
+			context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	}
+	if(thorCommanderPage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorCommanderPage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	for(int index = thorCommanderPage * THOR_ENCOUNTER_PAGE_SIZE;
+		index < std::min(count, (thorCommanderPage + 1) * THOR_ENCOUNTER_PAGE_SIZE); ++index)
+	{
+		auto label = thorCommanderSkillText(skills[index]);
+		std::replace(label.begin(), label.end(), '\n', ' ');
+		label = thorBoundedText(std::move(label));
+		if(!thorEncounterLabelValid(label))
+		{
+			publishThorEncounterContext();
+			return;
+		}
+		context.browserEntries.push_back({index, std::move(label), !selectionSubmitted, index == selected});
+		context.browserNativeKeys.push_back(std::to_string(skills[index]));
+	}
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CStackWindow::executeThorCommander(const ThorActionRequest & request)
+{
+	refreshThorCommander();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CONFIRM)
+		submitSelection();
+	else if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+	{
+		auto section = std::static_pointer_cast<CommanderMainSection>(commanderMainSection);
+		const int skill = info->levelupInfo->skills[request.targetId];
+		auto icon = section->thorSkillIcon(skill);
+		if(!icon)
+			return false;
+		setSelection(skill, std::move(icon));
+		thorCommanderTextPage = 0;
+		redraw();
+	}
+	else if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+		--thorCommanderPage;
+	else if(request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		++thorCommanderPage;
+	else if(request.action == ThorAction::WINDOW_PREVIOUS)
+		--thorCommanderTextPage;
+	else if(request.action == ThorAction::WINDOW_NEXT)
+		++thorCommanderTextPage;
+	else
+		return false;
+	refreshThorCommander();
+	return true;
+}
+#endif
 
 void CStackWindow::submitSelection()
 {

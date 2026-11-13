@@ -82,6 +82,9 @@ public:
 	bool isTopWindow(IShowActivatable * window) const;
 	/// True only when parent immediately under child is on the active window stack.
 	bool isTopWindowWithParent(IShowActivatable * child, IShowActivatable * parent) const;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	IShowActivatable * thorParentOfTopWindow(const IShowActivatable * child) const;
+#endif
 
 	/// returns top window if it matches requested class
 	template <typename T>

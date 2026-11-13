@@ -15,6 +15,7 @@
 #include "../../lib/filesystem/ResourcePath.h"
 
 struct BattleResult;
+struct ThorActionRequest;
 
 class CLabel;
 class CButton;
@@ -43,6 +44,11 @@ private:
 	std::shared_ptr<CTextBox> description;
 	std::shared_ptr<VideoWidget> videoPlayer;
 	CPlayerInterface & owner;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::string thorSummary;
+	int thorPage = 0;
+	void publishThorResult();
+#endif
 
 	BattleResultResources getResources(const BattleResult & br);
 
@@ -56,4 +62,7 @@ public:
 
 	void activate() override;
 	void deactivate() override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool executeThorResult(const ThorActionRequest & request);
+#endif
 };

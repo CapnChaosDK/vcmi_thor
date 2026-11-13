@@ -16,6 +16,10 @@
 #include "CHeroWindow.h"
 #include "InfoWindows.h"
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../thor/ThorRequestTracker.h"
+#include "../thor/ThorArmyController.h"
+#endif
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 #include "settings/SettingsMainWindow.h"
 #endif
 
@@ -415,12 +419,36 @@ void CRecruitmentWindow::sliderMoved(int to)
 }
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CRecruitmentWindow::configureThorAdventureRecruitment(CPlayerInterface * player)
+{
+	if(dynamic_cast<const CGTownInstance *>(dwelling))
+		return;
+	thorRecruitmentPlayer = player;
+	thorRecruitmentDwelling = dwelling->id;
+	thorRecruitmentArmy = dst->id;
+	thorRecruitmentParent = ENGINE->windows().topWindow<IShowActivatable>().get();
+}
+
+bool CRecruitmentWindow::thorAdventureRecruitmentCurrent() const
+{
+	return thorRecruitmentPlayer && GAME->interface() == thorRecruitmentPlayer
+		&& thorRecruitmentParent && ENGINE->windows().thorParentOfTopWindow(this) == thorRecruitmentParent
+		&& thorRecruitmentPlayer->cb->tryGetObj(thorRecruitmentDwelling) == dwelling
+		&& thorRecruitmentPlayer->cb->tryGetObj(thorRecruitmentArmy) == dst;
+}
+
 void CRecruitmentWindow::activate()
 {
 	if(isActive())
 		return;
 	CWindowObject::activate();
 	refreshThorNativeState();
+}
+
+void CRecruitmentWindow::completeThorRecruitment(int requestId)
+{
+	if(thorRecruitmentPending == requestId)
+		thorRecruitmentPending = -1;
 }
 
 void CRecruitmentWindow::deactivate()
@@ -438,7 +466,7 @@ void CRecruitmentWindow::refreshThorNativeState()
 	if(!isActive() || ENGINE->windows().topWindow<CRecruitmentWindow>().get() != this)
 		return;
 	auto * town = dynamic_cast<const CGTownInstance *>(dwelling);
-	if(!town || level < 0 || dst != town->getUpperArmy())
+	if(!thorAdventureRecruitmentCurrent() && (!town || level < 0 || dst != town->getUpperArmy()))
 	{
 		ThorContextRecord empty;
 		empty = thorContextStore().publishNext(std::move(empty));
@@ -448,8 +476,8 @@ void CRecruitmentWindow::refreshThorNativeState()
 
 	const auto resources = GAME->interface()->cb->getResourceAmount();
 	std::vector<int> stocks;
-	stocks.reserve(town->creatures.size());
-	for(const auto & tier : town->creatures)
+	stocks.reserve(dwelling->creatures.size());
+	for(const auto & tier : dwelling->creatures)
 		stocks.push_back(tier.first);
 	if(!lastThorResources || *lastThorResources != resources || lastThorStocks != stocks)
 	{
@@ -466,12 +494,13 @@ void CRecruitmentWindow::refreshThorNativeState()
 void CRecruitmentWindow::publishThorContext()
 {
 	auto * town = dynamic_cast<const CGTownInstance *>(dwelling);
-	if(!town || level < 0 || dst != town->getUpperArmy())
+	const bool adventure = thorAdventureRecruitmentCurrent();
+	if(!adventure && (!town || level < 0 || dst != town->getUpperArmy()))
 		return;
 	const auto castleWindows = ENGINE->windows().findWindows<CCastleInterface>();
 	const bool hasOwningTownWindow = std::any_of(castleWindows.begin(), castleWindows.end(),
 		[&](const auto & window) { return window && window->town == town; });
-	if(!hasOwningTownWindow)
+	if(!adventure && !hasOwningTownWindow)
 	{
 		ThorContextRecord empty;
 		empty = thorContextStore().publishNext(std::move(empty));
@@ -480,21 +509,24 @@ void CRecruitmentWindow::publishThorContext()
 	}
 
 	ThorContextRecord context;
-	context.contextId = ThorContextIds::TOWN_RECRUITMENT_DWELLING;
-	context.title = GAME->translator().translate(town->getNameTextID());
-	context.actionSubjectId = town->id.getNum();
+	context.contextId = adventure ? ThorContextIds::ADVENTURE_RECRUITMENT : ThorContextIds::TOWN_RECRUITMENT_DWELLING;
+	context.title = adventure ? dwelling->getObjectName().toString(&GAME->translator())
+		: GAME->translator().translate(town->getNameTextID());
+	context.actionSubjectId = dwelling->id.getNum();
+	context.nativeOwnerToken = this;
 	context.actionEpoch = thorActionEpoch;
 	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
 	ThorRecruitmentSnapshot recruitment;
-	recruitment.mode = ThorRecruitmentMode::TOWN_DWELLING;
-	recruitment.townId = town->id.getNum();
+	recruitment.mode = adventure ? ThorRecruitmentMode::ADVENTURE_DWELLING : ThorRecruitmentMode::TOWN_DWELLING;
+	recruitment.townId = dwelling->id.getNum();
 	recruitment.dwellingLevel = level;
 	recruitment.destinationArmyId = dst->id.getNum();
 	recruitment.destinationArmyFreeSlots = static_cast<int>(dst->getFreeSlots().size());
 	recruitment.selectedTarget = -1;
 	recruitment.townName = context.title;
-	recruitment.locallyControllable = hasOwningTownWindow && GAME->interface()->playerID == town->tempOwner
-		&& GAME->interface()->makingTurn;
+	recruitment.locallyControllable = thorRecruitmentPending < 0 && GAME->interface()->makingTurn
+		&& (adventure ? GAME->interface()->playerID == dst->tempOwner
+			: hasOwningTownWindow && GAME->interface()->playerID == town->tempOwner);
 	const auto resources = GAME->interface()->cb->getResourceAmount();
 	if(selected)
 	{
@@ -550,6 +582,11 @@ void CRecruitmentWindow::publishThorContext()
 
 bool CRecruitmentWindow::matchesThorContext(const ThorContextRecord & context) const
 {
+	if(thorRecruitmentPlayer)
+		return context.nativeOwnerToken == this && thorAdventureRecruitmentCurrent()
+			&& thorRecruitmentOwnerMatches(context, ThorRecruitmentMode::ADVENTURE_DWELLING,
+				thorRecruitmentDwelling.getNum(), level, thorRecruitmentArmy.getNum(),
+				static_cast<int>(dst->getFreeSlots().size()), isActive(), true);
 	auto * town = dynamic_cast<const CGTownInstance *>(dwelling);
 	if(!town || level < 0 || dst != town->getUpperArmy())
 		return false;
@@ -579,7 +616,13 @@ bool CRecruitmentWindow::executeThorAction(const ThorActionRequest & request)
 	{
 		if(!current.recruitment->locallyControllable || !current.recruitment->canBuy || !selected)
 			return false;
-		buy();
+		++thorActionEpoch;
+		if(thorRecruitmentPlayer)
+			thorRecruitmentPending = captureThorRequest([&] { buy(); });
+		else
+			buy();
+		if(isActive())
+			refreshThorNativeState();
 		return true;
 	}
 	if(request.action != ThorAction::RECRUITMENT_EDIT || !current.recruitment->locallyControllable)
@@ -717,6 +760,11 @@ void CLevelWindow::initLevelUpData(CPlayerInterface * askedInterface, const CGHe
 	questionID = question;
 	skills = availableSkills;
 	skillViewOffset = 0;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorSkillPage = 0;
+	thorLevelTextPage = 0;
+	++thorLevelEpoch;
+#endif
 	sortedSkills = availableSkills;
 	std::sort(sortedSkills.begin(), sortedSkills.end(), [heroInstance](auto a, auto b) {
 		if(heroInstance->getSecSkillLevel(a) == heroInstance->getSecSkillLevel(b))
@@ -816,6 +864,9 @@ void CLevelWindow::createSkillBox()
 	OBJECT_CONSTRUCTION;
 
 	box.reset();
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorSkillComponents.clear();
+#endif
 
 	std::vector<SecondarySkill> skillsToShow = skills.size() > 3 ? getSkillsToShow(sortedSkills, skillViewOffset, 3) : sortedSkills;
 	if(!skillsToShow.empty())
@@ -829,6 +880,9 @@ void CLevelWindow::createSkillBox()
 		}
 
 		box = std::make_shared<CComponentBox>(comps, Rect(75, 300, pos.w - 150, 100));
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		thorSkillComponents = std::move(comps);
+#endif
 	}
 
 	setRedrawParent(true);
@@ -881,6 +935,118 @@ void CLevelWindow::answer(ui32 selection)
 	if(questionID.hasValue())
 		owner->cb->selectionMade(selection, questionID);
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CLevelWindow::activate()
+{
+	CWindowObject::activate();
+	refreshThorLevel();
+}
+
+void CLevelWindow::deactivate()
+{
+	CWindowObject::deactivate();
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+void CLevelWindow::refreshThorLevel()
+{
+	if(!isActive() || !ENGINE->windows().isTopWindow(this) || owner != GAME->interface())
+	{
+		if(thorContextStore().snapshot().nativeOwnerToken == this)
+			publishThorEncounterContext();
+		return;
+	}
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = ENGINE->windows().thorParentOfTopWindow(this);
+	context.actionEpoch = thorLevelEpoch;
+	const int count = static_cast<int>(sortedSkills.size());
+	const int nativeSelection = box ? box->selectedIndex() : -1;
+	const int selected = nativeSelection >= 0 ? (nativeSelection + skillViewOffset) % count : count == 1 ? 0 : -1;
+	context.encounterSelection = selected;
+	context.browserPageCount = std::max(1, (count + THOR_ENCOUNTER_PAGE_SIZE - 1) / THOR_ENCOUNTER_PAGE_SIZE);
+	context.browserPage = thorSkillPage;
+	auto question = mainTitle->getText() + "\n" + levelTitle->getText() + "\n" + skillValue->getText();
+	if(selected >= 0)
+		context.status = LIBRARY->skillh->getById(sortedSkills[selected])->getNameTranslated();
+	if(nativeSelection >= 0)
+		question += "\n\n" + thorSkillComponents[nativeSelection]->getDescription();
+	const auto pages = thorEncounterPages(question);
+	if(count > THOR_ENCOUNTER_MAX_CHOICES || pages.empty())
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	thorEncounterText(context, pages, thorLevelTextPage);
+	if(!selectionSubmitted)
+	{
+		if((count == 0 || selected >= 0) && !ok->isDisabled() && !ok->isBlocked())
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+		if(count)
+			context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	}
+	if(thorSkillPage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorSkillPage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	for(int index = thorSkillPage * THOR_ENCOUNTER_PAGE_SIZE;
+		index < std::min(count, (thorSkillPage + 1) * THOR_ENCOUNTER_PAGE_SIZE); ++index)
+	{
+		auto label = LIBRARY->skillh->getById(sortedSkills[index])->getNameTranslated();
+		if(!thorEncounterLabelValid(label))
+		{
+			publishThorEncounterContext();
+			return;
+		}
+		context.browserEntries.push_back({index, std::move(label), !selectionSubmitted, index == selected});
+		context.browserNativeKeys.push_back(std::to_string(sortedSkills[index].getNum()));
+	}
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CLevelWindow::executeThorLevel(const ThorActionRequest & request)
+{
+	refreshThorLevel();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CONFIRM)
+	{
+		auto button = ok;
+		const bool accepted = button->invokeThorCallback();
+		if(accepted)
+			refreshThorLevel();
+		return accepted;
+	}
+	++thorLevelEpoch;
+	if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+	{
+		if(sortedSkills.size() > 3)
+		{
+			skillViewOffset = request.targetId;
+			createSkillBox();
+		}
+		const int index = sortedSkills.size() > 3 ? 0 : request.targetId;
+		thorSkillComponents[index]->onSelect();
+		thorLevelTextPage = 0;
+	}
+	else if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+		--thorSkillPage;
+	else if(request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		++thorSkillPage;
+	else if(request.action == ThorAction::WINDOW_PREVIOUS)
+		--thorLevelTextPage;
+	else if(request.action == ThorAction::WINDOW_NEXT)
+		++thorLevelTextPage;
+	else
+		return false;
+	refreshThorLevel();
+	return true;
+}
+#endif
 
 void CLevelWindow::close()
 {
@@ -1250,6 +1416,88 @@ CShipyardWindow::CShipyardWindow(const TResources & cost, int state, BoatId boat
 	costLabel = std::make_shared<CLabel>(164, 220, FONT_MEDIUM, ETextAlignment::CENTER, Colors::WHITE, LIBRARY->generaltexth->translate("core.jktext.14"));
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CShipyardWindow::configureThorShipyard(CPlayerInterface * player, ObjectInstanceID shipyard)
+{
+	thorShipyardPlayer = player;
+	thorShipyardId = shipyard;
+	thorShipyardParent = ENGINE->windows().topWindow<IShowActivatable>().get();
+}
+
+void CShipyardWindow::activate()
+{
+	CStatusbarWindow::activate();
+	refreshThorShipyard();
+}
+
+void CShipyardWindow::deactivate()
+{
+	const bool wasActive = isActive();
+	CStatusbarWindow::deactivate();
+	if(wasActive && thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+void CShipyardWindow::refreshThorShipyard()
+{
+	if(!thorShipyardPlayer || GAME->interface() != thorShipyardPlayer || !isActive()
+		|| !ENGINE->windows().isTopWindowWithParent(this, thorShipyardParent))
+	{
+		if(thorContextStore().snapshot().nativeOwnerToken == this)
+			publishThorEncounterContext();
+		return;
+	}
+
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::SHIPYARD;
+	context.title = title->getText();
+	context.details[0] = costLabel->getText();
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = thorShipyardParent;
+	context.actionSubjectId = thorShipyardId.getNum();
+	if(!quit->isDisabled() && !quit->isBlocked())
+		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+
+	const auto * object = thorShipyardPlayer->cb->tryGetObj(thorShipyardId);
+	if(const auto * shipyard = dynamic_cast<const IShipyard *>(object))
+	{
+		TResources cost;
+		shipyard->getBoatCost(cost);
+		context.details[1] = formatThorRecruitmentCost(cost);
+		const auto available = thorShipyardPlayer->cb->getResourceAmount();
+		const bool affordable = available.canAfford(cost);
+		build->block(!affordable);
+		if(shipyard->shipyardStatus() != IBoatGenerator::GOOD)
+		{
+			MetaString problem;
+			shipyard->getProblemText(problem);
+			context.details[2] = problem.toString(&GAME->translator());
+		}
+		else if(thorShipyardPlayer->makingTurn)
+		{
+			const auto * town = dynamic_cast<const CGTownInstance *>(object);
+			if((!town || town->tempOwner == thorShipyardPlayer->playerID)
+				&& !build->isDisabled() && !build->isBlocked()
+				&& affordable)
+				context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+		}
+	}
+
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CShipyardWindow::executeThorShipyard(const ThorActionRequest & request)
+{
+	refreshThorShipyard();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || context.contextId != ThorContextIds::SHIPYARD
+		|| validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	auto button = request.action == ThorAction::WINDOW_CONFIRM ? build : quit;
+	return button->invokeThorCallback();
+}
+#endif
+
 void CTransformerWindow::CItem::move()
 {
 	if(left)
@@ -1361,6 +1609,138 @@ void CTransformerWindow::close()
 
 	CStatusbarWindow::close();
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CTransformerWindow::activate()
+{
+	CStatusbarWindow::activate();
+	refreshThorTransformer();
+}
+
+void CTransformerWindow::deactivate()
+{
+	CStatusbarWindow::deactivate();
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+void CTransformerWindow::completeThorTransformer(int requestId)
+{
+	if(thorTransformerPending == requestId)
+		thorTransformerPending = -1;
+}
+
+void CTransformerWindow::refreshThorTransformer()
+{
+	auto * player = GAME->interface();
+	if(!player || !isActive() || !ENGINE->windows().isTopWindow(this))
+		return;
+	const bool ready = army && player->makingTurn && army->tempOwner == player->playerID
+		&& player->cb->tryGetObj(army->id) == army && thorTransformerPending < 0
+		&& dynamic_cast<const IMarket *>(player->cb->tryGetObj(market->getObjInstanceID())) == market;
+	const auto pages = thorEncounterPages(LIBRARY->generaltexth->allTexts[487] + "\n" + LIBRARY->generaltexth->allTexts[488]);
+	if(pages.empty())
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = ENGINE->windows().thorParentOfTopWindow(this);
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	constexpr int allTarget = GameConstants::ARMY_SIZE;
+	constexpr int pageSize = THOR_ENCOUNTER_PAGE_SIZE - 1;
+	context.browserPage = thorTransformerPage;
+	context.browserPageCount = std::max(1, (static_cast<int>(items.size()) + pageSize - 1) / pageSize);
+	thorEncounterText(context, pages, thorTransformerTextPage);
+	if(thorTransformerPage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorTransformerPage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	std::string fingerprint;
+	int staged = 0;
+	bool valid = ready;
+	for(const auto & item : items)
+	{
+		const auto * stack = army->getStackPtr(SlotID(item->id));
+		if(!stack)
+		{
+			valid = false;
+			continue;
+		}
+		fingerprint += std::to_string(stack->getType()->getId().getNum()) + "/" + std::to_string(stack->getCount())
+			+ (item->left ? "L;" : "R;");
+		staged += !item->left;
+	}
+	if(valid && staged > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+	const bool canAddAll = valid && staged < items.size();
+	context.browserEntries.push_back({allTarget, LIBRARY->generaltexth->zelp[590].first, canAddAll, false});
+	for(int index = thorTransformerPage * pageSize;
+		index < std::min(static_cast<int>(items.size()), (thorTransformerPage + 1) * pageSize); ++index)
+	{
+		const auto & item = items[index];
+		const auto * stack = army->getStackPtr(SlotID(item->id));
+		if(!stack)
+			continue;
+		auto label = std::to_string(stack->getCount()) + " " + stack->getType()->getNamePluralTranslated();
+		context.browserEntries.push_back({item->id, thorBoundedText(std::move(label)), valid, !item->left});
+	}
+	if(valid && !items.empty())
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	context.browserNativeKeys.assign(context.browserEntries.size(), fingerprint);
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CTransformerWindow::executeThorTransformer(const ThorActionRequest & request)
+{
+	refreshThorTransformer();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		auto button = cancel;
+		return !button->isDisabled() && button->invokeThorCallback();
+	}
+	if(request.action == ThorAction::WINDOW_CONFIRM)
+	{
+		thorTransformerPending = captureThorRequest([&] { makeDeal(); });
+		if(thorTransformerPending >= 0)
+			for(const auto & item : items)
+				if(!item->left)
+					item->move();
+		redraw();
+	}
+	else if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+	{
+		if(request.targetId == GameConstants::ARMY_SIZE)
+			addAll();
+		else
+		{
+			const auto item = std::find_if(items.begin(), items.end(),
+				[&](const auto & entry) { return entry->id == request.targetId; });
+			if(item == items.end())
+				return false;
+			(*item)->move();
+			redraw();
+		}
+	}
+	else if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+		--thorTransformerPage;
+	else if(request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		++thorTransformerPage;
+	else if(request.action == ThorAction::WINDOW_PREVIOUS)
+		--thorTransformerTextPage;
+	else if(request.action == ThorAction::WINDOW_NEXT)
+		++thorTransformerTextPage;
+	else
+		return false;
+	refreshThorTransformer();
+	return true;
+}
+#endif
 
 CUniversityWindow::CItem::CItem(CUniversityWindow * _parent, int _ID, int X, int Y)
 	: CIntObject(LCLICK | SHOW_POPUP | HOVER),
@@ -1484,12 +1864,21 @@ void CUniversityWindow::updateSecondarySkills()
 
 void CUniversityWindow::makeDeal(SecondarySkill skill)
 {
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorUniversityPending = captureThorRequest([&] {
+		GAME->interface()->cb->trade(market->getObjInstanceID(), EMarketMode::RESOURCE_SKILL, GameResID(GameResID::GOLD), skill, 1, hero);
+	});
+#else
 	GAME->interface()->cb->trade(market->getObjInstanceID(), EMarketMode::RESOURCE_SKILL, GameResID(GameResID::GOLD), skill, 1, hero);
+#endif
 }
 
 CUnivConfirmWindow::CUnivConfirmWindow(CUniversityWindow * owner_, SecondarySkill SKILL, bool available)
 	: CWindowObject(PLAYER_COLORED_BORDERED_STATUSBAR, CUniversityWindow::getUniversityConfirmBackground(1)),
 	owner(owner_)
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	, thorUniversitySkill(SKILL)
+#endif
 {
 	OBJECT_CONSTRUCTION;
 
@@ -1543,11 +1932,314 @@ CUnivConfirmWindow::CUnivConfirmWindow(CUniversityWindow * owner_, SecondarySkil
 	statusbar = CGStatusBar::create(std::make_shared<CPicture>(background->getSurface(), Rect(8, pos.h - 26, pos.w - 16, 19), 8, pos.h - 26));
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CUniversityWindow::canThorLearn(SecondarySkill skill) const
+{
+	const auto * player = GAME->interface();
+	return player && player->makingTurn && player->playerID == hero->tempOwner && thorUniversityPending < 0
+		&& player->cb->tryGetObj(hero->id) == hero
+		&& dynamic_cast<const IMarket *>(player->cb->tryGetObj(market->getObjInstanceID())) == market
+		&& !hero->getSecSkillLevel(skill) && hero->canLearnSkill(skill)
+		&& vstd::contains(market->availableItemsIds(EMarketMode::RESOURCE_SKILL), TradeItemBuy(skill));
+}
+
+void CUniversityWindow::completeThorUniversity(std::int64_t request)
+{
+	if(thorUniversityPending == request)
+		thorUniversityPending = -1;
+}
+
+void CUniversityWindow::activate()
+{
+	CStatusbarWindow::activate();
+	refreshThorUniversity();
+}
+
+void CUniversityWindow::deactivate()
+{
+	CStatusbarWindow::deactivate();
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+void CUniversityWindow::refreshThorUniversity()
+{
+	if(!isActive() || !ENGINE->windows().isTopWindow(this))
+		return;
+	const int count = static_cast<int>(items.size());
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = ENGINE->windows().thorParentOfTopWindow(this);
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	context.encounterSelection = thorUniversitySelection;
+	context.browserPage = thorUniversityPage;
+	context.browserPageCount = std::max(1, (count + THOR_ENCOUNTER_PAGE_SIZE - 1) / THOR_ENCOUNTER_PAGE_SIZE);
+	const auto gold = GAME->interface()->cb->getSettings().getInteger(EGameSettings::MARKETS_UNIVERSITY_GOLD_COST);
+	const auto pages = thorEncounterPages(title->getText() + "\n" + std::to_string(gold) + " "
+		+ GameResID(EGameResID::GOLD).toResource()->getNameTranslated());
+	if(count > THOR_ENCOUNTER_MAX_CHOICES || pages.empty())
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	thorEncounterText(context, pages, thorUniversityTextPage);
+	if(thorUniversitySelection >= 0)
+	{
+		const auto skill = items[thorUniversitySelection]->ID;
+		context.status = skill.toEntity(LIBRARY)->getNameTranslated();
+		if(canThorLearn(skill))
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+	}
+	if(thorUniversityPage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorUniversityPage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	for(int index = thorUniversityPage * THOR_ENCOUNTER_PAGE_SIZE;
+		index < std::min(count, (thorUniversityPage + 1) * THOR_ENCOUNTER_PAGE_SIZE); ++index)
+	{
+		const auto skill = items[index]->ID;
+		auto label = skill.toEntity(LIBRARY)->getNameTranslated();
+		if(!thorEncounterLabelValid(label))
+		{
+			publishThorEncounterContext();
+			return;
+		}
+		const bool enabled = canThorLearn(skill);
+		context.browserEntries.push_back({index, std::move(label), enabled, index == thorUniversitySelection});
+		context.browserNativeKeys.push_back(std::to_string(skill.getNum()));
+		if(enabled)
+			context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	}
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CUniversityWindow::executeThorUniversity(const ThorActionRequest & request)
+{
+	refreshThorUniversity();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		close();
+		return true;
+	}
+	if(request.action == ThorAction::WINDOW_CONFIRM)
+	{
+		const auto skill = items[thorUniversitySelection]->ID;
+		const auto gold = GAME->interface()->cb->getSettings().getInteger(EGameSettings::MARKETS_UNIVERSITY_GOLD_COST);
+		ENGINE->windows().createAndPushWindow<CUnivConfirmWindow>(this, skill,
+			GAME->interface()->cb->getResourceAmount(EGameResID::GOLD) >= gold);
+		return true;
+	}
+	if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+		thorUniversitySelection = request.targetId;
+	else if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+		--thorUniversityPage;
+	else if(request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		++thorUniversityPage;
+	else if(request.action == ThorAction::WINDOW_PREVIOUS)
+		--thorUniversityTextPage;
+	else if(request.action == ThorAction::WINDOW_NEXT)
+		++thorUniversityTextPage;
+	else
+		return false;
+	refreshThorUniversity();
+	return true;
+}
+
+void CUnivConfirmWindow::activate()
+{
+	CStatusbarWindow::activate();
+	refreshThorUniversityConfirm();
+}
+
+void CUnivConfirmWindow::deactivate()
+{
+	CStatusbarWindow::deactivate();
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+void CUnivConfirmWindow::refreshThorUniversityConfirm()
+{
+	if(!isActive() || !ENGINE->windows().isTopWindowWithParent(this, owner))
+		return;
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BUILD_CONFIRMATION;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = owner;
+	context.title = LIBRARY->generaltexth->allTexts[602];
+	context.details[0] = thorUniversitySkill.toEntity(LIBRARY)->getNameTranslated();
+	const auto gold = GAME->interface()->cb->getSettings().getInteger(EGameSettings::MARKETS_UNIVERSITY_GOLD_COST);
+	context.details[1] = std::to_string(gold) + " " + GameResID(EGameResID::GOLD).toResource()->getNameTranslated();
+	context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
+	if(owner->canThorLearn(thorUniversitySkill) && !confirm->isDisabled() && !confirm->isBlocked()
+		&& GAME->interface()->cb->getResourceAmount(EGameResID::GOLD) >= gold)
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CUnivConfirmWindow::executeThorUniversityConfirm(const ThorActionRequest & request)
+{
+	refreshThorUniversityConfirm();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	auto button = request.action == ThorAction::WINDOW_CONFIRM ? confirm : cancel;
+	return !button->isDisabled() && button->invokeThorCallback();
+}
+#endif
+
 void CUnivConfirmWindow::makeDeal(SecondarySkill skill)
 {
 	owner->makeDeal(skill);
 	close();
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CGarrisonWindow::configureThorJoining(CPlayerInterface * player, ObjectInstanceID source, ObjectInstanceID hero)
+{
+	thorJoiningPlayer = player;
+	thorJoiningSource = source;
+	thorJoiningHero = hero;
+}
+
+void CGarrisonWindow::activate()
+{
+	CStatusbarWindow::activate();
+	refreshThorJoining();
+}
+
+void CGarrisonWindow::deactivate()
+{
+	CStatusbarWindow::deactivate();
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+void CGarrisonWindow::completeThorJoining(int requestId)
+{
+	if(thorJoiningPending == requestId)
+		thorJoiningPending = -1;
+}
+
+void CGarrisonWindow::refreshThorJoining()
+{
+	if(!thorJoiningPlayer || GAME->interface() != thorJoiningPlayer || !isActive() || !ENGINE->windows().isTopWindow(this))
+		return;
+	const auto * source = dynamic_cast<const CArmedInstance *>(thorJoiningPlayer->cb->tryGetObj(thorJoiningSource));
+	const auto * hero = dynamic_cast<const CGHeroInstance *>(thorJoiningPlayer->cb->tryGetObj(thorJoiningHero));
+	if(!source || !hero || hero->tempOwner != thorJoiningPlayer->playerID || garr->upperArmy() != source || garr->lowerArmy() != hero)
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	const int slots = GameConstants::ARMY_SIZE;
+	const int count = slots * 2;
+	const auto armyAt = [&](int target) -> const CArmedInstance * { return target < slots ? source : hero; };
+	const auto stackAt = [&](int target) { return armyAt(target)->getStackPtr(SlotID(target % slots)); };
+	if(thorJoiningSelection >= 0 && !stackAt(thorJoiningSelection))
+		thorJoiningSelection = -1;
+
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = ENGINE->windows().thorParentOfTopWindow(this);
+	context.encounterSelection = thorJoiningSelection;
+	context.browserPage = thorJoiningPage;
+	context.browserPageCount = (count + THOR_ENCOUNTER_PAGE_SIZE - 1) / THOR_ENCOUNTER_PAGE_SIZE;
+	const bool ready = thorJoiningPending < 0 && thorJoiningPlayer->makingTurn;
+	const auto pages = thorEncounterPages(title->getText());
+	if(pages.empty())
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	thorEncounterText(context, pages, thorJoiningTextPage);
+	if(ready && !quit->isBlocked() && !quit->isDisabled())
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CLOSE);
+	if(thorJoiningPage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorJoiningPage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	const ThorArmyController controller(source, hero);
+	for(int target = 0; target < count; ++target)
+	{
+		const auto * stack = stackAt(target);
+		context.browserNativeKeys.push_back(stack ? std::to_string(stack->getType()->getId().getNum()) + "/" + std::to_string(stack->getCount()) : "-");
+		if(target / THOR_ENCOUNTER_PAGE_SIZE != thorJoiningPage)
+			continue;
+		const bool selected = target == thorJoiningSelection;
+		const auto name = armyAt(target)->getObjectName().toString(&GAME->translator());
+		auto label = name + " " + std::to_string(target % slots + 1);
+		if(stack)
+			label += " · " + std::to_string(stack->getCount()) + " " + stack->getType()->getNamePluralTranslated();
+		if(selected)
+			context.status = label;
+		const auto owned = [&](int key) {
+			const auto owner = armyAt(key)->tempOwner;
+			return owner == thorJoiningPlayer->playerID || owner == PlayerColor::UNFLAGGABLE;
+		};
+		const bool allowed = ready && (thorJoiningSelection < 0 ? stack && owned(target)
+			: selected || (owned(thorJoiningSelection)
+				&& (owned(target) || !stack || stack->getType() == stackAt(thorJoiningSelection)->getType())
+				&& controller.canTransferStack(thorJoiningSelection < slots, SlotID(thorJoiningSelection % slots),
+					target < slots, SlotID(target % slots))));
+		context.browserEntries.push_back({target, thorBoundedText(std::move(label)), allowed, selected});
+		if(allowed)
+			context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	}
+	// Include both armies in the revision, even when an affected stack is off-page.
+	std::string fingerprint;
+	for(const auto & key : context.browserNativeKeys)
+		fingerprint += key + ";";
+	context.browserNativeKeys.assign(context.browserEntries.size(), std::move(fingerprint));
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CGarrisonWindow::executeThorJoining(const ThorActionRequest & request)
+{
+	refreshThorJoining();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CLOSE)
+	{
+		auto button = quit;
+		return button->invokeThorCallback();
+	}
+	if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+	{
+		if(thorJoiningSelection == request.targetId)
+			thorJoiningSelection = -1;
+		else if(thorJoiningSelection < 0)
+			thorJoiningSelection = request.targetId;
+		else
+		{
+			const auto * source = dynamic_cast<const CArmedInstance *>(thorJoiningPlayer->cb->tryGetObj(thorJoiningSource));
+			const auto * hero = dynamic_cast<const CGHeroInstance *>(thorJoiningPlayer->cb->tryGetObj(thorJoiningHero));
+			const int slots = GameConstants::ARMY_SIZE;
+			thorJoiningPending = ThorArmyController(source, hero).transferStackRequest(thorJoiningSelection < slots,
+				SlotID(thorJoiningSelection % slots), request.targetId < slots, SlotID(request.targetId % slots));
+			thorJoiningSelection = -1;
+		}
+	}
+	else if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+		--thorJoiningPage;
+	else if(request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		++thorJoiningPage;
+	else if(request.action == ThorAction::WINDOW_PREVIOUS)
+		--thorJoiningTextPage;
+	else if(request.action == ThorAction::WINDOW_NEXT)
+		++thorJoiningTextPage;
+	else
+		return false;
+	refreshThorJoining();
+	return true;
+}
+#endif
 
 CGarrisonWindow::CGarrisonWindow(const CArmedInstance * up, const CGHeroInstance * down, const MetaString & customTitle)
 	: CWindowObject(PLAYER_COLORED, ImagePath::builtin("GARRISON"))
@@ -1835,6 +2527,51 @@ CHillFortWindow::State CHillFortWindow::getState(SlotID slot)
 	return State::MAKE_UPGRADE;
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void CThievesGuildWindow::activate()
+{
+	CStatusbarWindow::activate();
+	publishThorGuildRankings();
+}
+
+void CThievesGuildWindow::deactivate()
+{
+	CStatusbarWindow::deactivate();
+	if(thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
+}
+
+void CThievesGuildWindow::publishThorGuildRankings()
+{
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::THIEVES_GUILD;
+	context.nativeOwnerToken = this;
+	const auto pages = thorDialogPages(thorRankings, 96, 7);
+	thorEncounterText(context, pages, thorRankingsPage);
+	if(!exitb->isDisabled() && !exitb->isBlocked())
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CThievesGuildWindow::executeThorGuildRankings(const ThorActionRequest & request)
+{
+	if(!isActive() || !ENGINE->windows().isTopWindow(this))
+		return false;
+	publishThorGuildRankings();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_CONFIRM)
+	{
+		auto button = exitb;
+		return button->invokeThorCallback();
+	}
+	thorRankingsPage += request.action == ThorAction::WINDOW_NEXT ? 1 : -1;
+	publishThorGuildRankings();
+	return true;
+}
+#endif
+
 CThievesGuildWindow::CThievesGuildWindow(const CGObjectInstance * _owner):
 	CWindowObject(PLAYER_COLORED | BORDERED, ImagePath::builtin("TpRank")),
 	owner(_owner)
@@ -1856,6 +2593,28 @@ CThievesGuildWindow::CThievesGuildWindow(const CGObjectInstance * _owner):
 		{ &SThievesGuildInfo::numOfTowns, &SThievesGuildInfo::numOfHeroes,       &SThievesGuildInfo::gold,
 		  &SThievesGuildInfo::woodOre,    &SThievesGuildInfo::mercSulfCrystGems, &SThievesGuildInfo::obelisks,
 		  &SThievesGuildInfo::artifacts,  &SThievesGuildInfo::army,              &SThievesGuildInfo::income };
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	for(int category = 0; category < std::size(fields); ++category)
+	{
+		thorRankings += GAME->translator().translate("core.jktext", 24 + category) + "\n";
+		const auto & ranks = tgi.*fields[category];
+		for(std::size_t place = 0; place < ranks.size(); ++place)
+		{
+			thorRankings += GAME->translator().translate("core.jktext", 16 + place) + " ";
+			bool first = true;
+			for(const auto color : ranks[place])
+			{
+				if(!first)
+					thorRankings += ", ";
+				thorRankings += GAME->translator().translate("core.plcolors", color.getNum());
+				first = false;
+			}
+			thorRankings += "\n";
+		}
+		thorRankings += "\n";
+	}
+#endif
 
 	for(int g=0; g<12; ++g)
 	{
