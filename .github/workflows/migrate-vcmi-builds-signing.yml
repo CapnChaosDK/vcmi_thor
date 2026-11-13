@@ -1,0 +1,62 @@
+name: Migrate VCMI Builds signing secrets
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: migrate-vcmi-builds-signing-secrets
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.repository == 'CapnChaosDK/vcmi_thor' && github.ref == 'refs/heads/ayn-thor-dual-screen'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Transfer and verify signing secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.VCMI_MIGRATION_TOKEN }}
+          GH_PROMPT_DISABLED: '1'
+          VCMI_BUILDS_KEYSTORE_BASE64: ${{ secrets.VCMI_BUILDS_KEYSTORE_BASE64 }}
+          VCMI_BUILDS_KEYSTORE_PASSWORD: ${{ secrets.VCMI_BUILDS_KEYSTORE_PASSWORD }}
+        run: |
+          set +x
+          unset GH_DEBUG DEBUG
+          destination=github.com/CapnChaosDK/vcmi-builds
+          secret_names=(VCMI_BUILDS_KEYSTORE_BASE64 VCMI_BUILDS_KEYSTORE_PASSWORD)
+
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::VCMI_MIGRATION_TOKEN is missing or empty."
+            exit 1
+          fi
+
+          for name in "${secret_names[@]}"; do
+            value="${!name}"
+            if [[ -z "$value" ]]; then
+              echo "::error::$name is missing or empty."
+              exit 1
+            fi
+            # gh secret set trims trailing CR and LF from stdin.
+            if [[ "$value" == *$'\r' || "$value" == *$'\n' ]]; then
+              echo "::error::$name ends in a line break that gh would strip. No secrets were copied."
+              exit 1
+            fi
+          done
+
+          for name in "${secret_names[@]}"; do
+            if ! printf '%s' "${!name}" | gh secret set "$name" --app actions --repo "$destination" >/dev/null 2>&1; then
+              echo "::error::Could not write $name. Check the token and rerun to copy both secrets."
+              exit 1
+            fi
+          done
+
+          for name in "${secret_names[@]}"; do
+            if ! gh api "repos/CapnChaosDK/vcmi-builds/actions/secrets/$name" --hostname github.com --silent >/dev/null 2>&1; then
+              echo "::error::Could not verify destination metadata for $name."
+              exit 1
+            fi
+            echo "Verified destination secret $name."
+          done
