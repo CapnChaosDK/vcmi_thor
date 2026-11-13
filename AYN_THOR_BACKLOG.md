@@ -61,7 +61,7 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 - Slice 65 — Adventure encounter decisions: implementation and exact-candidate
   device plan are in the [slice contract](#slice-65--adventure-encounter-decisions).
-  CI and hardware acceptance are pending.
+  Thor CI and all four on-device checks passed on candidate `4916f37f1`.
 - Slice 64 — Adventure reference companion (Quests, Scenario Journal and Puzzle
   Map): `hardware validated` by the user's 2026-11-01 report that all six hardware
   checks passed on exact candidate `7833253367f6c81652c7a72fcc95ad8651e6c849`.
@@ -3447,8 +3447,27 @@ separate select and confirm actions, one-shot input, cancellation and restoratio
 after a child window. Local validation includes Android-target native syntax,
 focused JVM contracts, the upstream boundary and the structured plan. The Windows
 native test executable linked, but Device Guard blocked execution. The permanent
-Thor preflight must run the native tests.
+Thor preflight subsequently passed the native tests.
 
-CI and device acceptance require the exact reviewed candidate. The previous
+The previous
 [Adventure reference checklist](docs/validation/thor-adventure-reference-validation-plan.json)
 is retained as a historical record.
+
+### Slice 65 CI and hardware acceptance
+
+- [Thor CI run 43471147237](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/43471147237)
+  passed preflight, focused native and Android tests, and ARM64 packaging for
+  `4916f37f17884e3040f949c508ea5e89a4f9ff4d`. The user reported all four
+  checklist checks passed on the AYN Thor on 2026-11-13 and authorized
+  promotion through [PR #65](https://github.com/CapnChaosDK/vcmi_thor/pull/65).
+  The downloaded APK matched receipt SHA-256
+  `2aaf0f6acd1257a7fdcbd94b8901ef3016fbb5b850653fc6c393ed03629fa986`.
+
+### Adventure-map shipyard follow-up
+
+The user observed the lower-screen placeholder when buying a boat at an
+Adventure-map shipyard. The purchase opens the dedicated `CShipyardWindow`,
+which currently has no Thor publication. A lower-screen shipyard journey would
+show native gold and wood costs, current purchase availability, Buy and Cancel,
+and restore Adventure controls when the native window closes. Boat buying is
+outside the encounter checklist.
