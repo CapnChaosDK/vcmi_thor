@@ -59,13 +59,16 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Slice 65 — Adventure encounter decisions: implementation and exact-candidate
+  device plan are in the [slice contract](#slice-65--adventure-encounter-decisions).
+  CI and hardware acceptance are pending.
 - Slice 64 — Adventure reference companion (Quests, Scenario Journal and Puzzle
   Map): `hardware validated` by the user's 2026-11-01 report that all six hardware
   checks passed on exact candidate `7833253367f6c81652c7a72fcc95ad8651e6c849`.
   Trusted CI `41343427557` passed both jobs. The user explicitly authorized Markdown
   updates, commit, PR #64 merge and stale-branch cleanup. PR #64 is merged as
   `22609a3b19eef1f30e88bcf34849a1dd46481244`. See the acceptance receipt
-  below and [current checklist](CI/thor-validation-plan.json).
+  below and [historical checklist](docs/validation/thor-adventure-reference-validation-plan.json).
 
 
 - Slice 63 — lower-screen Save and native Load journeys: `hardware validated` by
@@ -3424,3 +3427,28 @@ editing the Save name chooses the destination of a native save.
   `7833253367f6c81652c7a72fcc95ad8651e6c849`. This final receipt changes Markdown
   only and requires no new APK/hardware cycle. Slice 64 is complete and promoted;
   no next feature is selected.
+
+## Slice 65 — Adventure encounter decisions
+
+[Feature contract](docs/AYN_THOR_ADVENTURE_ENCOUNTER_SPEC.md) ·
+[Integrated device checklist](CI/thor-validation-plan.json)
+
+The lower screen uses the native component chooser, shared Yes/No and OK dialogs,
+and explicitly opted-in server and Castle Gate destination lists. Row selection is
+separate from confirmation. Question and detail paging preserve the native selection.
+The free creature offer gets its quantity from the active native visit. Destination
+IDs are checked against the offered list and current callback visibility; Castle Gate
+also checks the original visitor and current destination eligibility. Actions use the
+native selection and button paths on MainGUI. The protected upstream boundary remains
+in effect.
+
+Source review checked current native ownership, availability and target mapping,
+separate select and confirm actions, one-shot input, cancellation and restoration
+after a child window. Local validation includes Android-target native syntax,
+focused JVM contracts, the upstream boundary and the structured plan. The Windows
+native test executable linked, but Device Guard blocked execution. The permanent
+Thor preflight must run the native tests.
+
+CI and device acceptance require the exact reviewed candidate. The previous
+[Adventure reference checklist](docs/validation/thor-adventure-reference-validation-plan.json)
+is retained as a historical record.

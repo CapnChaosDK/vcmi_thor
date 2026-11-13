@@ -332,6 +332,14 @@
     <string name="thor_service_blacksmith_hint">Confirm replacement in the dialog.</string>
     <string name="thor_service_guild_hint">Select a spell to read it. Research opens a confirmation dialog.</string>
     <string name="thor_settings_title">Settings</string>
+    <string name="thor_encounter_pages">Text %1$s · Choices %2$d / %3$d</string>
+    <string name="thor_encounter_use_upper">Use the upper screen to continue</string>
+    <string name="thor_encounter_empty">No choices available</string>
+    <string name="thor_encounter_text_previous">Previous text</string>
+    <string name="thor_encounter_text_next">Next text</string>
+    <string name="thor_encounter_choices_previous">Previous choices</string>
+    <string name="thor_encounter_choices_next">Next choices</string>
+    <string name="thor_encounter_confirm_selection">Confirm %1$s</string>
     <string name="thor_dialog_confirmation">Confirm</string>
     <string name="thor_dialog_information">Information</string>
     <string name="thor_spellbook_title">Spellbook</string>

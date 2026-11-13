@@ -120,7 +120,7 @@ void JournalWindow::initializeItems()
 void JournalWindow::selectItem(size_t itemIndex)
 {
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	thorPage = static_cast<int>(itemIndex) / ThorReference::PAGE_SIZE;
+	thorPage = static_cast<int>(itemIndex) / ThorReference::ROWS_PER_PAGE;
 	thorTextPage = 0;
 #endif
 	selectedLabel = static_cast<int>(itemIndex);
@@ -201,11 +201,11 @@ void JournalWindow::refreshThorReference(bool force)
 		| (!thorEventsTab->isBlocked() ? 2 : 0);
 	if(getItemCount() <= ThorReference::MAX_ITEMS)
 	{
-		panel.pages = (static_cast<int>(getItemCount()) + ThorReference::PAGE_SIZE - 1) / ThorReference::PAGE_SIZE;
+		panel.pages = (static_cast<int>(getItemCount()) + ThorReference::ROWS_PER_PAGE - 1) / ThorReference::ROWS_PER_PAGE;
 		thorPage = std::clamp(thorPage, 0, std::max(0, panel.pages - 1));
 		panel.page = thorPage;
 		panel.selected = selectedLabel;
-		for(int i = thorPage * ThorReference::PAGE_SIZE; i < std::min(static_cast<int>(getItemCount()), (thorPage + 1) * ThorReference::PAGE_SIZE); ++i)
+		for(int i = thorPage * ThorReference::ROWS_PER_PAGE; i < std::min(static_cast<int>(getItemCount()), (thorPage + 1) * ThorReference::ROWS_PER_PAGE); ++i)
 		{
 			panel.targets.push_back(i);
 			panel.labels.push_back(thorBoundedText(getItemText(i), 128));

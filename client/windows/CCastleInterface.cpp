@@ -1280,7 +1280,27 @@ void CCastleBuildings::enterCastleGate(BuildingID building)
 	auto wnd = std::make_shared<CObjectListWindow>(availableTowns, gateIcon, LIBRARY->generaltexth->translate("core.jktext.40"), LIBRARY->generaltexth->translate("core.jktext.41"), [availableTowns](int index){
 		GAME->interface()->castleInt->castleTeleport(availableTowns[index]);
 	}, 0, images);
-	wnd->onPopup = [availableTowns](int index) { CRClickPopup::createAndPush(GAME->interface()->cb->getObjInstance(ObjectInstanceID(availableTowns[index])), ENGINE->getCursorPosition()); };
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	auto * player = GAME->interface();
+	const auto sourceId = town->id;
+	const auto visitorId = town->getVisitingHero()->id;
+	wnd->configureThorDestination(player, availableTowns, [player, sourceId, visitorId](ObjectInstanceID id)
+	{
+		const auto * source = dynamic_cast<const CGTownInstance *>(player->cb->tryGetObj(sourceId));
+		const auto * destination = dynamic_cast<const CGTownInstance *>(player->cb->tryGetObj(id));
+		return source && destination && source->getOwner() == player->playerID
+			&& source->hasBuilt(BuildingSubID::CASTLE_GATE)
+			&& source->getVisitingHero() && source->getVisitingHero()->id == visitorId
+			&& destination->id != sourceId && destination->getOwner() == player->playerID
+			&& !destination->getVisitingHero() && destination->getFactionID() == source->getFactionID()
+			&& destination->hasBuilt(BuildingSubID::CASTLE_GATE);
+	});
+#endif
+	wnd->onPopup = [availableTowns](int index)
+	{
+		if(const auto * object = GAME->interface()->cb->tryGetObj(ObjectInstanceID(availableTowns[index])))
+			CRClickPopup::createAndPush(object, ENGINE->getCursorPosition());
+	};
 	ENGINE->windows().pushWindow(wnd);
 }
 

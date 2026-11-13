@@ -1077,3 +1077,68 @@ TEST(ThorContextStoreTest, SettingsBrowserKeepsOwnerPageAndNativeIdentityRevisio
 	EXPECT_EQ(validateThorActionRequest({disabled.revision, ThorAction::WINDOW_CONFIRM}, disabled), ThorActionValidation::WRONG_CONTEXT);
 	EXPECT_EQ(validateThorActionRequest({disabled.revision, ThorAction::WINDOW_CLOSE}, disabled), ThorActionValidation::VALID);
 }
+
+TEST(ThorContextStoreTest, EncounterSelectionRequiresLiveOwnerAndOfferedTarget)
+{
+	ThorContextStore store;
+	int owner, parent, replacement;
+	ThorContextRecord panel;
+	panel.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	panel.nativeOwnerToken = &owner;
+	panel.nativeParentToken = &parent;
+	panel.browserPage = 1;
+	panel.browserPageCount = 2;
+	panel.browserEntries = {{70001, "Inferno", true, false}, {24, "Castle", false, true}};
+	panel.browserNativeKeys = {"4", "5"};
+	panel.enabledActionMask = thorActionMask(ThorAction::LOAD_BROWSER_SELECT)
+		| thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE) | thorActionMask(ThorAction::WINDOW_CLOSE);
+
+	const auto first = store.publishNext(panel);
+	EXPECT_TRUE(thorEncounterOwnerMatches(first, &owner, &parent, true));
+	EXPECT_FALSE(thorEncounterOwnerMatches(first, &replacement, &parent, true));
+	EXPECT_FALSE(thorEncounterOwnerMatches(first, &owner, &replacement, true));
+	EXPECT_FALSE(thorEncounterOwnerMatches(first, &owner, &parent, false));
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::LOAD_BROWSER_SELECT, 70001}, first), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::LOAD_BROWSER_SELECT, 24}, first), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::LOAD_BROWSER_SELECT, 4}, first), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::WINDOW_CONFIRM}, first), ThorActionValidation::UNAVAILABLE);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::WINDOW_CLOSE}, first), ThorActionValidation::VALID);
+	const std::array targets{19, 15, 17, 42, 70001, 24};
+	auto targetAt = [&](int i) { return targets[i]; };
+	EXPECT_EQ(thorEncounterIndex(4, 6, 70001, targetAt), 4);
+	EXPECT_EQ(thorEncounterIndex(4, 6, 19, targetAt), -1);
+
+	panel.nativeOwnerToken = &replacement;
+	panel.enabledActionMask = thorActionMask(ThorAction::WINDOW_CONFIRM);
+	const auto next = store.publishNext(panel);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::WINDOW_CONFIRM}, next), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(validateThorActionRequest({next.revision, ThorAction::WINDOW_CONFIRM, 70001}, next), ThorActionValidation::INVALID_TARGET);
+	EXPECT_EQ(validateThorActionRequest({next.revision, ThorAction::WINDOW_CONFIRM}, next), ThorActionValidation::VALID);
+	EXPECT_EQ(validateThorActionRequest({next.revision, ThorAction::WINDOW_CLOSE}, next), ThorActionValidation::UNAVAILABLE);
+
+	panel.browserEntries[1].target = panel.browserEntries[0].target;
+	const auto malformed = store.publishNext(panel);
+	EXPECT_EQ(malformed.enabledActionMask, 0);
+	EXPECT_TRUE(malformed.browserEntries.empty());
+}
+
+TEST(ThorContextStoreTest, EncounterQuestionAndDetailsSurviveTextPaging)
+{
+	std::string message = "Choose an artifact\n";
+	for(int i = 0; i < 20; ++i)
+		message += "L'épée du héros ⚔\n";
+	const auto pages = thorEncounterPages(message);
+	ASSERT_GT(pages.size(), 1);
+	std::string reconstructed;
+	for(const auto & page : pages)
+		for(const auto & chunk : page)
+			reconstructed += chunk;
+	EXPECT_EQ(reconstructed, message);
+	ThorContextRecord context;
+	int page = 1;
+	thorEncounterText(context, pages, page);
+	EXPECT_EQ(context.details, pages[1]);
+	EXPECT_NE(context.enabledActionMask & thorActionMask(ThorAction::WINDOW_PREVIOUS), 0);
+	EXPECT_TRUE(thorEncounterPages(std::string(8193, 'x')).empty());
+	EXPECT_FALSE(thorEncounterLabelValid(std::string(129, 'x')));
+}

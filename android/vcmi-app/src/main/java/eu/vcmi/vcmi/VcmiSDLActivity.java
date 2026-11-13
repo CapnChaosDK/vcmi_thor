@@ -175,6 +175,12 @@ public class VcmiSDLActivity extends SDLActivity
             mThorSecondScreenController.registerActionSubmission(revision, actionId);
     }
 
+    void rejectThorDialogAction(final long revision, final int actionId)
+    {
+        if (mThorSecondScreenController != null)
+            mThorSecondScreenController.rejectDialogAction(revision, actionId);
+    }
+
     void cancelThorActionSubmission(final long revision, final int actionId)
     {
         if (mThorSecondScreenController != null)

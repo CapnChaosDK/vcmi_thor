@@ -140,6 +140,15 @@ void CAndroidVMHelper::publishThorContext(std::uint64_t revision, const std::str
 		}, true);
 }
 
+void CAndroidVMHelper::rejectThorDialogAction(std::uint64_t revision, ThorAction action)
+{
+	callCustomMethod(NATIVE_METHODS_DEFAULT_CLASS, "rejectThorDialogAction", "(JI)V",
+		[revision, action](JNIEnv * env, jclass cls, jmethodID methodId)
+		{
+			env->CallStaticVoidMethod(cls, methodId, static_cast<jlong>(revision), static_cast<jint>(action));
+		}, true);
+}
+
 void CAndroidVMHelper::publishThorActionState(std::uint64_t revision, std::uint64_t enabledActionMask,
 	std::uint64_t activeActionMask)
 {

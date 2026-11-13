@@ -9,7 +9,7 @@
 /// No map coordinates, quest model, paths or unmasked puzzle pixels are transported.
 struct DLL_LINKAGE ThorReference
 {
-	static constexpr int PAGE_SIZE = 5, MAX_ITEMS = 10000, WIDTH = 592, HEIGHT = 544;
+	static constexpr int ROWS_PER_PAGE = 5, MAX_ITEMS = 10000, WIDTH = 592, HEIGHT = 544;
 	int kind = 0; // 1 quests, 2 events, 3 puzzle
 	int page = 0, pages = 0, selected = -1, textPage = 0, textPages = 0;
 	int flags = 8; // quests, events, center, close
@@ -21,21 +21,21 @@ struct DLL_LINKAGE ThorReference
 	bool operator==(const ThorReference &) const = default;
 	bool valid() const
 	{
-		if(kind < 1 || kind > 3 || page < 0 || pages < 0 || pages > MAX_ITEMS / PAGE_SIZE
+		if(kind < 1 || kind > 3 || page < 0 || pages < 0 || pages > MAX_ITEMS / ROWS_PER_PAGE
 			|| (pages == 0 ? page != 0 : page >= pages) || selected < -1 || selected >= MAX_ITEMS
 			|| textPage < 0 || textPages < 0 || textPages > 512 || (textPages == 0 ? textPage != 0 : textPage >= textPages)
 			|| (textPages == 0 && !text.empty()) || ((flags & 4) && selected < 0)
 			|| flags < 0 || flags > 15 || !(flags & 8) || progress < 0 || progress > 100
-			|| targets.size() > PAGE_SIZE || targets.size() != labels.size() || text.size() > 384)
+			|| targets.size() > ROWS_PER_PAGE || targets.size() != labels.size() || text.size() > 384)
 			return false;
 		for(std::size_t i = 0; i < targets.size(); ++i)
-			if(targets[i] != page * PAGE_SIZE + static_cast<int>(i) || targets[i] >= MAX_ITEMS || labels[i].empty() || labels[i].size() > 128)
+			if(targets[i] != page * ROWS_PER_PAGE + static_cast<int>(i) || targets[i] >= MAX_ITEMS || labels[i].empty() || labels[i].size() > 128)
 				return false;
 		if(kind == 3)
 			return pages == 0 && targets.empty() && selected == -1 && flags == 8 && textPages == 0
 				&& ((width == 0 && height == 0 && !rgb) || (width == WIDTH && height == HEIGHT && rgb && rgb->size() == WIDTH * HEIGHT * 3));
 		return width == 0 && height == 0 && !rgb && progress == 0
-			&& (pages != 0 ? selected < pages * PAGE_SIZE : targets.empty() && selected == -1);
+			&& (pages != 0 ? selected < pages * ROWS_PER_PAGE : targets.empty() && selected == -1);
 	}
 	bool allows(int command, int target) const
 	{

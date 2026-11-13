@@ -87,8 +87,12 @@ class CPlayerInterface : public CGameInterface
 	std::unique_ptr<PathfinderCache> pathfinderCache;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	std::uint64_t thorPathsGeneration = 0;
+	ObjectInstanceID thorVisitedObject = ObjectInstanceID::NONE;
 #endif
 public: // TODO: make private
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::string thorFreeCreatureOffer(const std::string & question) const;
+#endif
 	std::unique_ptr<ArtifactsUIController> artifactController;
 	std::shared_ptr<Environment> env;
 

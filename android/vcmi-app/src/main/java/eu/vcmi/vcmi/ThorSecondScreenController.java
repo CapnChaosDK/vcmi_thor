@@ -128,6 +128,12 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
         hapticState.registerSubmission(revision, actionId);
     }
 
+    void rejectDialogAction(final long revision, final int actionId)
+    {
+        hapticState.cancelSubmission(revision, actionId);
+        if (presentation != null) presentation.rejectDialogAction(revision);
+    }
+
     void cancelActionSubmission(final long revision, final int actionId)
     {
         hapticState.cancelSubmission(revision, actionId);

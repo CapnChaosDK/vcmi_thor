@@ -50,15 +50,15 @@ public class NativeMethods
     public static native void initClassloader();
     public static native void heroesDataUpdate();
 
-    public static void submitThorAction(final long revision, final int actionId, final int targetId)
+    public static boolean submitThorAction(final long revision, final int actionId, final int targetId)
     {
-        if (BuildConfig.AYN_THOR_BUILD)
-        {
-            final Context ctx = context();
-            if (ctx instanceof VcmiSDLActivity)
-                ((VcmiSDLActivity) ctx).registerThorActionSubmission(revision, actionId);
-        }
-        submitThorActionNative(revision, actionId, targetId);
+        if (!BuildConfig.AYN_THOR_BUILD) return false;
+        final Context ctx = context();
+        final VcmiSDLActivity activity = ctx instanceof VcmiSDLActivity ? (VcmiSDLActivity) ctx : null;
+        if (activity != null) activity.registerThorActionSubmission(revision, actionId);
+        final boolean queued = submitThorActionNative(revision, actionId, targetId);
+        if (!queued && activity != null) activity.cancelThorActionSubmission(revision, actionId);
+        return queued;
     }
 
     static boolean submitThorSaveName(final long revision, final String text)
@@ -69,7 +69,7 @@ public class NativeMethods
 
     private static native boolean submitThorSaveNameNative(long revision, byte[] text);
 
-    private static native void submitThorActionNative(long revision, int actionId, int targetId);
+    private static native boolean submitThorActionNative(long revision, int actionId, int targetId);
 
     public static void publishThorMarket(final long revision, final int[] data, final String[] names)
     {
@@ -202,6 +202,16 @@ public class NativeMethods
             if (callbackToken > 0)
                 activity.acknowledgeThorAction(revision, submittedRevision, actionId, callbackToken);
         });
+    }
+
+    @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)
+    public static void rejectThorDialogAction(final long revision, final int actionId)
+    {
+        if (!BuildConfig.AYN_THOR_BUILD) return;
+        final Context ctx = context();
+        if (!(ctx instanceof VcmiSDLActivity)) return;
+        final VcmiSDLActivity activity = (VcmiSDLActivity) ctx;
+        activity.runOnUiThread(() -> activity.rejectThorDialogAction(revision, actionId));
     }
 
     @SuppressWarnings(Const.JNI_METHOD_SUPPRESS)

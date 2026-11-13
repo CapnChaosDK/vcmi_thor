@@ -112,28 +112,29 @@ extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThor
 	return thorActionQueue().submit(request) ? JNI_TRUE : JNI_FALSE;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActionNative(JNIEnv *, jclass, jlong revision, jint actionId, jint targetId)
+extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorActionNative(JNIEnv *, jclass, jlong revision, jint actionId, jint targetId)
 {
 	if(revision <= 0)
 	{
 		logGlobal->debug("Thor action rejected: invalid revision");
-		return;
+		return JNI_FALSE;
 	}
 
 	const auto action = thorActionFromId(actionId);
 	if(!action)
 	{
 		logGlobal->debug("Thor action rejected: unknown or dedicated action %d", actionId);
-		return;
+		return JNI_FALSE;
 	}
 
 	if(!thorActionQueue().submit({static_cast<std::uint64_t>(revision), *action, targetId}))
 	{
 		logGlobal->debug("Thor action rejected: queue full");
-		return;
+		return JNI_FALSE;
 	}
 
 	logGlobal->debug("Thor action queued: revision %llu action %d", static_cast<unsigned long long>(revision), actionId);
+	return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_eu_vcmi_vcmi_NativeMethods_submitThorRecruitmentEditNative(

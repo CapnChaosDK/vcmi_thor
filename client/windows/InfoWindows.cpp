@@ -78,7 +78,18 @@ CSelWindow::CSelWindow( const std::string & Text, PlayerColor player, int charpe
 
 	if(!comps.empty())
 	{
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		thorChoices = comps;
+		components = std::make_shared<CComponentBox>(comps, Rect(0,0,0,0), [this](int selection)
+		{
+			thorChoicePage = selection / THOR_ENCOUNTER_PAGE_SIZE;
+			thorChoiceTextPage = 0;
+			if(thorChoiceInterface)
+				publishThorEncounter();
+		});
+#else
 		components = std::make_shared<CComponentBox>(comps, Rect(0,0,0,0));
+#endif
 		for (auto & comp : comps)
 			comp->onChoose = [this](){ madeChoiceAndClose(); };
 	}
@@ -196,6 +207,11 @@ void CInfoWindow::showYesNoDialog(const std::string & text, const TCompsInfo & c
 	temp->ID = questionID;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	temp->configureThorDialog(ThorMenuModalType::CONFIRMATION);
+	if(questionID != QuestionID::NONE && GAME->interface())
+	{
+		temp->thorQuestionInterface = GAME->interface();
+		temp->thorOfferDetails = temp->thorQuestionInterface->thorFreeCreatureOffer(text);
+	}
 #endif
 	if(timeoutMs > 0)
 		temp->closeAfter(timeoutMs);
@@ -204,6 +220,156 @@ void CInfoWindow::showYesNoDialog(const std::string & text, const TCompsInfo & c
 }
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void publishThorEncounterContext(ThorContextRecord context)
+{
+	const auto previous = thorContextStore().snapshot().revision;
+	context = thorContextStore().publishNext(std::move(context));
+	if(context.revision == previous)
+		return;
+
+	CAndroidVMHelper bridge;
+	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status, context.details);
+	bridge.publishThorActionState(context.revision, context.enabledActionMask, 0);
+	if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
+		bridge.publishThorBrowser(context.revision, context.browserPage, context.browserPageCount, context.browserEntries);
+}
+
+void CSelWindow::configureThorEncounter(CPlayerInterface * player)
+{
+	thorChoiceInterface = player;
+	thorChoiceParent = ENGINE->windows().topWindow<IShowActivatable>().get();
+}
+
+void CSelWindow::activate()
+{
+	CInfoWindow::activate();
+	if(thorChoiceInterface)
+		publishThorEncounter();
+}
+
+void CSelWindow::deactivate()
+{
+	CInfoWindow::deactivate();
+	if(thorChoiceInterface)
+	{
+		thorActionQueue().clear();
+		publishThorEncounterContext();
+	}
+}
+
+void CSelWindow::publishThorEncounter()
+{
+	if(!isActive() || !ENGINE->windows().isTopWindow(this))
+		return;
+	if(GAME->interface() != thorChoiceInterface || !thorChoiceParent
+		|| !ENGINE->windows().isTopWindowWithParent(this, thorChoiceParent)
+		|| thorChoices.size() > THOR_ENCOUNTER_MAX_CHOICES)
+	{
+		publishThorEncounterContext();
+		return;
+	}
+
+	const int count = static_cast<int>(thorChoices.size());
+	const int selected = components ? components->selectedIndex() : -1;
+	auto labelFor = [](const CComponent & component)
+	{
+		auto label = component.getSubtitle();
+		if(component.data.type == ComponentType::RESOURCE && !component.data.value)
+			return std::string{};
+		if(component.data.type == ComponentType::RESOURCE || component.data.type == ComponentType::RESOURCE_PER_DAY)
+			label += " " + GAME->translator().translate("core.restypes", component.data.subType.getNum());
+		if(component.data.type == ComponentType::EXPERIENCE)
+			label = GAME->translator().translate("core.genrltxt", 241) + " " + label;
+		std::replace(label.begin(), label.end(), '\n', ' ');
+		return label;
+	};
+
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.nativeOwnerToken = this;
+	context.nativeParentToken = thorChoiceParent;
+	context.actionEpoch = thorChoiceEpoch;
+	context.browserPageCount = std::max(1, (count + THOR_ENCOUNTER_PAGE_SIZE - 1) / THOR_ENCOUNTER_PAGE_SIZE);
+	context.browserPage = thorChoicePage;
+	context.encounterSelection = selected;
+	auto question = text && text->label ? text->label->getText() : std::string{};
+	if(selected >= 0 && selected < count)
+	{
+		context.status = labelFor(*thorChoices[selected]);
+		if(!thorEncounterLabelValid(context.status))
+		{
+			publishThorEncounterContext();
+			return;
+		}
+		const auto description = thorChoices[selected]->getDescription();
+		if(!description.empty())
+			question += "\n\n" + context.status + "\n" + description;
+		if(!buttons.empty() && !buttons[0]->isBlocked() && !buttons[0]->isDisabled())
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+	}
+	const auto pages = thorEncounterPages(question);
+	if(pages.empty())
+	{
+		publishThorEncounterContext();
+		return;
+	}
+	thorEncounterText(context, pages, thorChoiceTextPage);
+	if(buttons.size() > 1 && !buttons[1]->isBlocked() && !buttons[1]->isDisabled())
+		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CLOSE);
+	if(thorChoicePage > 0)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_PREVIOUS_PAGE);
+	if(thorChoicePage + 1 < context.browserPageCount)
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
+	const int pageStart = thorChoicePage * THOR_ENCOUNTER_PAGE_SIZE;
+	const int pageEnd = std::min(count, pageStart + THOR_ENCOUNTER_PAGE_SIZE);
+	for(int i = pageStart; i < pageEnd; ++i)
+	{
+		auto label = labelFor(*thorChoices[i]);
+		if(!thorEncounterLabelValid(label))
+		{
+			publishThorEncounterContext();
+			return;
+		}
+		context.browserEntries.push_back({i, std::move(label), true, i == selected});
+		context.browserNativeKeys.push_back(std::to_string(i));
+		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_SELECT);
+	}
+	publishThorEncounterContext(std::move(context));
+}
+
+bool CSelWindow::executeThorEncounter(const ThorActionRequest & request)
+{
+	publishThorEncounter();
+	const auto context = thorContextStore().snapshot();
+	if(!thorEncounterOwnerMatches(context, this, thorChoiceParent,
+		isActive() && ENGINE->windows().isTopWindowWithParent(this, thorChoiceParent))
+		|| validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+
+	if(request.action == ThorAction::WINDOW_CONFIRM || request.action == ThorAction::WINDOW_CLOSE)
+	{
+		const std::size_t index = request.action == ThorAction::WINDOW_CLOSE ? 1 : 0;
+		if(index >= buttons.size())
+			return false;
+		auto button = buttons[index];
+		return !button->isDisabled() && button->invokeThorCallback();
+	}
+
+	++thorChoiceEpoch;
+	if(request.action == ThorAction::LOAD_BROWSER_SELECT)
+		thorChoices[request.targetId]->clickPressed(ENGINE->getCursorPosition());
+	else if(request.action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE)
+		--thorChoicePage;
+	else if(request.action == ThorAction::LOAD_BROWSER_NEXT_PAGE)
+		++thorChoicePage;
+	else if(request.action == ThorAction::WINDOW_PREVIOUS)
+		--thorChoiceTextPage;
+	else if(request.action == ThorAction::WINDOW_NEXT)
+		++thorChoiceTextPage;
+	publishThorEncounter();
+	return true;
+}
+
 void CInfoWindow::configureThorDialog(ThorMenuModalType type)
 {
 	// Information windows can be queued before their eventual parent is active.
@@ -260,6 +426,8 @@ void CInfoWindow::publishThorMenuModalContext()
 				: thorMenuModalType == ThorMenuModalType::CONFIRMATION ? ThorContextIds::DIALOG_CONFIRMATION
 				: thorMenuModalType == ThorMenuModalType::INFORMATION ? ThorContextIds::DIALOG_INFORMATION
 				: ThorContextIds::UNKNOWN;
+	if(thorQuestionInterface && thorQuestionInterface != GAME->interface())
+		context.contextId = ThorContextIds::UNKNOWN;
 	const bool parentMatches = thorMenuModalSourceOwner
 		&& ENGINE->windows().isTopWindowWithParent(this, thorMenuModalSourceOwner);
 	if(thorMenuModalOwnerMatches(context, thorMenuModalType, thorMenuModalSourceContext,
@@ -288,6 +456,7 @@ void CInfoWindow::publishThorMenuModalContext()
 	if(generic && context.contextId != ThorContextIds::UNKNOWN)
 	{
 		std::string message = text && text->label ? text->label->getText() : std::string{};
+		if(!thorOfferDetails.empty()) message += "\n" + thorOfferDetails;
 		bool complete = true;
 		if(components)
 		{
@@ -305,7 +474,7 @@ void CInfoWindow::publishThorMenuModalContext()
 				message += "\n" + subtitle;
 			}
 		}
-		const auto pages = complete ? thorDialogPages(message) : std::vector<ThorContextDetails>{};
+		const auto pages = complete ? thorDialogPages(message, 96, 12) : std::vector<ThorContextDetails>{};
 		if(pages.empty() || !context.enabledActionMask)
 			context.contextId = ThorContextIds::UNKNOWN;
 		else
@@ -338,7 +507,8 @@ bool CInfoWindow::matchesThorMenuModalContext(const ThorContextRecord & context)
 {
 	const bool parentMatches = thorMenuModalSourceOwner
 		&& ENGINE->windows().isTopWindowWithParent(const_cast<CInfoWindow *>(this), thorMenuModalSourceOwner);
-	return thorMenuModalOwnerMatches(context, thorMenuModalType, thorMenuModalSourceContext,
+	return (!thorQuestionInterface || thorQuestionInterface == GAME->interface())
+		&& thorMenuModalOwnerMatches(context, thorMenuModalType, thorMenuModalSourceContext,
 		this, thorMenuModalSourceOwner, isActive(), parentMatches);
 }
 

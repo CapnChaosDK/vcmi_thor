@@ -99,6 +99,9 @@
 
 #include "../lib/gameState/CGameState.h"
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+#include "../lib/mapObjects/CGCreature.h"
+#endif
 #include "../lib/mapObjects/CGMarket.h"
 #include "../lib/mapObjects/CGTownInstance.h"
 #include "../lib/mapObjects/MiscObjects.h"
@@ -457,9 +460,37 @@ void CPlayerInterface::townRemoved(const CGTownInstance* town)
 }
 
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+std::string CPlayerInterface::thorFreeCreatureOffer(const std::string & question) const
+{
+	if(GAME->interface() != this || thorVisitedObject == ObjectInstanceID::NONE)
+		return {};
+	const auto * creature = dynamic_cast<const CGCreature *>(cb->tryGetObj(thorVisitedObject));
+	if(!creature)
+		return {};
+
+	// The free-offer packet contains the native question but omits the amount.
+	// Match the question for the current visit before presenting its native quantity.
+	const auto amount = creature->getJoiningAmount();
+	auto offer = MetaString::createFromTextID("core.advevent.86");
+	offer.replaceName(creature->getCreatureID(), amount);
+	if(offer.toString(&GAME->translator()) != question)
+		return {};
+
+	MetaString details;
+	details.appendNumber(amount);
+	details.appendRawString(" ");
+	details.appendName(creature->getCreatureID(), amount);
+	return details.toString(&GAME->translator());
+}
+#endif
+
 void CPlayerInterface::heroVisit(const CGHeroInstance * visitor, const CGObjectInstance * visitedObj, bool start)
 {
 	EVENT_HANDLER_CALLED_BY_CLIENT;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorVisitedObject = start && visitedObj ? visitedObj->id : ObjectInstanceID::NONE;
+#endif
 	if(start && visitedObj)
 	{
 		auto visitSound = visitedObj->getVisitSound(CRandomGenerator::getDefault());
@@ -1177,9 +1208,17 @@ void CPlayerInterface::showBlockingDialog(const std::string &text, const std::ve
 		int charperline = 35;
 		if (pom.size() > 1)
 			charperline = 50;
-		ENGINE->windows().createAndPushWindow<CSelWindow>(text, playerID, charperline, intComps, pom, questionID);
-		intComps[0]->clickPressed(ENGINE->getCursorPosition());
-		intComps[0]->clickReleased(ENGINE->getCursorPosition());
+		auto window = std::make_shared<CSelWindow>(text, playerID, charperline, intComps, pom, questionID);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		if(ENGINE->windows().topWindow<AdventureMapInterface>() || ENGINE->windows().topWindow<CCastleInterface>())
+			window->configureThorEncounter(this);
+#endif
+		ENGINE->windows().pushWindow(window);
+		if(!intComps.empty())
+		{
+			intComps.front()->clickPressed(ENGINE->getCursorPosition());
+			intComps.front()->clickReleased(ENGINE->getCursorPosition());
+		}
 	}
 }
 
@@ -1248,8 +1287,22 @@ void CPlayerInterface::showMapObjectSelectDialog(QuestionID questionID, const Co
 
 	auto wnd = std::make_shared<CObjectListWindow>(tempList, localIcon, localTitle, localDescription, selectCallback, 0, images);
 	wnd->onExit = cancelCallback;
-	wnd->onPopup = [this, objectGuiOrdered](int index) { CRClickPopup::createAndPush(cb->getObj(objectGuiOrdered[index]), ENGINE->getCursorPosition()); };
-	wnd->onClicked = [this, objectGuiOrdered](int index) { adventureInt->centerOnObject(cb->getObj(objectGuiOrdered[index])); ENGINE->windows().totalRedraw(); };
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	wnd->configureThorDestination(this, tempList, [this](ObjectInstanceID id) { return cb->tryGetObj(id) != nullptr; });
+#endif
+	wnd->onPopup = [this, objectGuiOrdered](int index)
+	{
+		if(const auto * object = cb->tryGetObj(objectGuiOrdered[index]))
+			CRClickPopup::createAndPush(object, ENGINE->getCursorPosition());
+	};
+	wnd->onClicked = [this, objectGuiOrdered](int index)
+	{
+		if(const auto * object = cb->tryGetObj(objectGuiOrdered[index]))
+		{
+			adventureInt->centerOnObject(object);
+			ENGINE->windows().totalRedraw();
+		}
+	};
 	ENGINE->windows().pushWindow(wnd);
 }
 
