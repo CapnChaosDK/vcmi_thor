@@ -59,9 +59,9 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
-- Slice 66 — lower-screen gameplay follow-through. See the
-  [slice contract](#slice-66--lower-screen-gameplay-follow-through) for scope and
-  the current candidate checklist. Hardware validation is pending.
+- Slice 66 — lower-screen gameplay follow-through is hardware validated on
+  candidate `c4c8c5d32bac720c2a9dcf04b2a58269be4d002d`. See the
+  [slice contract and receipt](#slice-66--lower-screen-gameplay-follow-through).
 - Slice 65 — Adventure encounter decisions: implementation and exact-candidate
   device plan are in the [slice contract](#slice-65--adventure-encounter-decisions).
   Thor CI and all four on-device checks passed on candidate `4916f37f1`.
@@ -3500,4 +3500,12 @@ flows require the exact candidate's physical AYN Thor checklist.
 On candidate `426b6836a`, device logs showed that Shipyard Buy and Cancel
 reached MainGUI but failed dispatch. The context store now retains the native
 window and parent for the shipyard and the other Slice 66 panels that check
-window identity. The replacement candidate must repeat the shipyard checklist.
+window identity.
+
+On 2026-11-14 the user reported all hardware checks passed on replacement
+candidate `c4c8c5d32bac720c2a9dcf04b2a58269be4d002d` and authorized merging
+[PR #66](https://github.com/CapnChaosDK/vcmi_thor/pull/66).
+[Thor CI run 43632124813](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/43632124813)
+passed preflight and ARM64 packaging. The downloaded artifact matched its
+GitHub digest, and the APK matched receipt SHA-256
+`efd5c76975abe5a85450e168d23e8729b679133e1926e04c1340015d5f31c807`.
