@@ -1,8 +1,11 @@
 # Thor candidate companion
 
-The standalone `dev.vcmi.builds` helper supports the development loop: discover the
-latest Thor candidate, verify and install the APK, launch the game, follow the
-candidate's checks, and copy/share exact-build results. It does not merge or promote.
+The standalone [VCMI Builds app](https://github.com/CapnChaosDK/vcmi-builds)
+(`dev.vcmi.builds`) consumes Thor candidate artifacts through GitHub. It discovers
+candidate runs, verifies and installs APKs, launches the game, and stores and shares
+exact-build validation results. Its source, Android CI, device tests, and releases
+are maintained in the standalone repository. `vcmi_thor` owns the game APK,
+validation plan, receipt, and artifact publication.
 
 ## Plan ownership and artifact contract
 
@@ -65,22 +68,14 @@ is user testimony, not authorization to merge/promote or automatic backlog mutat
 ## Validation and handoff
 
 - Python tests: `python -m unittest discover -s CI -p test_thor_validation_plan.py`.
-- Helper CI: assemble/lint release, compile the instrumentation APK, validate/package-contract tests, verify signature/checksum.
-- Device contract tests: install the same-signed test APK and run
-  `adb shell am instrument -w -e phase candidate dev.vcmi.builds.test/dev.vcmi.builds.TokenStoreInstrumentation`.
-  Synthetic isolated files test good/legacy bundles; modified APK/archive/checksum,
-  wrong receipt/plan/package/failed-CI rejection; exact-build result isolation,
-  persistence, report content, blocked/pass summaries and path bounds. The installed
-  Thor APK is only read for identity verification. Token tests remain separate.
+- Companion build, signing, and contract-test instructions are maintained in
+  [VCMI Builds](https://github.com/CapnChaosDK/vcmi-builds).
 - User check: newest/running/failed candidate visibility; download/cancel/retry and
   background/recreation; Android cancel/permission/install; exact installed identity;
   launch/return; Save result/drafts, restart/reboot, candidate switching and report sharing.
 
-For future helper changes, branch from current product using `codex/vcmi-builds-helper`
-(recreate it after merged-branch cleanup); the existing signed helper workflow watches
-that ref. Reuse the stable signing secrets to preserve installed app data.
-Keep helper source/build changes on that implementation branch until explicitly
-merged into product. Integrate the companion packaging with the latest reviewed game
-candidate without discarding concurrent work, then hand that exact reviewed integrated
-SHA to the existing permanent candidate ref. Full ARM64 build and user hardware checks
-remain required; local helper checks are not a game-package or hardware pass.
+Coordinate changes to the artifact layout, receipt fields, or validation-plan
+schema explicitly with both repositories. Check that the standalone app can
+consume the proposed artifact and that supported older candidates still work.
+Use the [Thor playbook](AYN_THOR_BUILD_PLAYBOOK.md) for game candidate and hardware
+validation.

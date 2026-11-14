@@ -304,9 +304,11 @@ The Thor-only graceful-stop entry sets the controller's existing stopping flag a
 
 ## Standalone candidate companion
 
-The `dev.vcmi.builds` app owns candidate discovery, verified downloads, installation
-handoff and local validation reports. It is independent of VCMI's MainGUI/JNI/game
-state, and hashes the installed `is.xyz.vcmi.thor` APK to identify the tested candidate.
+The [standalone VCMI Builds app](https://github.com/CapnChaosDK/vcmi-builds)
+(`dev.vcmi.builds`) consumes GitHub artifacts and owns candidate discovery, verified
+downloads, installation handoff and local validation reports. It operates outside
+the game process and hashes the installed `is.xyz.vcmi.thor` APK to identify the
+tested candidate.
 The existing Thor CI packages the commit-bound validation plan alongside its receipt.
 See [companion contract](THOR_CANDIDATE_COMPANION.md) for ownership and lifecycle details.
 

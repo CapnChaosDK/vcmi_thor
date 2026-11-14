@@ -45,6 +45,20 @@ For “implement the next feature”, select only an incomplete second-screen jo
 in the current code. Historical engine, save, AI or primary-input roadmap entries
 are not eligible. Keep the integration small enough for normal future upstream merges.
 
+## Repository ownership
+
+`vcmi_thor` owns the game engine, Thor dual-screen functionality, native and
+Android game builds, candidate artifacts, and validation-plan generation.
+
+[CapnChaosDK/vcmi-builds](https://github.com/CapnChaosDK/vcmi-builds) owns the
+standalone downloader, including candidate discovery, downloads, installations,
+verification, local validation results, and independent Android releases.
+Develop and release downloader features in that repository.
+
+Coordinate changes to the [candidate artifact contract](docs/THOR_CANDIDATE_COMPANION.md)
+explicitly with both repositories before changing what Thor publishes or what the
+companion accepts.
+
 ## Sources of truth
 
 Use these sources by responsibility:
