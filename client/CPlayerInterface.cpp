@@ -1406,6 +1406,10 @@ void CPlayerInterface::showGarrisonDialog(const CArmedInstance * up, const CGHer
 
 	auto cgw = std::make_shared<CGarrisonWindow>(up, down, customTitle);
 	cgw->quit->addCallback(onEnd);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(dynamic_cast<const CGCreature *>(up))
+		cgw->configureThorJoining(this, up->id, down->id);
+#endif
 	ENGINE->windows().pushWindow(cgw);
 }
 
@@ -1415,12 +1419,23 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 		movementController->onMoveHeroApplied();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	if(pa->packType == CTypeList::getInstance().getTypeID<RecruitCreatures>(nullptr))
+		for(const auto & recruitment : ENGINE->windows().findWindows<CRecruitmentWindow>())
+			recruitment->completeThorRecruitment(pa->requestID);
 	if(pa->packType == CTypeList::getInstance().getTypeID<TradeOnMarketplace>(nullptr))
+	{
 		for(const auto & market : ENGINE->windows().findWindows<CMarketWindow>())
 			market->completeThorMarket(static_cast<int>(pa->requestID), pa->result);
+		for(const auto & university : ENGINE->windows().findWindows<CUniversityWindow>())
+			university->completeThorUniversity(pa->requestID);
+		for(const auto & transformer : ENGINE->windows().findWindows<CTransformerWindow>())
+			transformer->completeThorTransformer(pa->requestID);
+	}
 	const auto notifyExchangeWindow = [](int requestId, bool success)
 	{
 		CExchangeWindow::completeThorArtifactRequest(requestId);
+		for(const auto & market : ENGINE->windows().findWindows<CMarketWindow>())
+			market->completeThorMarketArtifact(requestId);
 		for(const auto & exchangeWindow : ENGINE->windows().findWindows<CExchangeWindow>())
 		{
 			exchangeWindow->onThorArtifactRequestResult(requestId, success);
@@ -1439,7 +1454,11 @@ void CPlayerInterface::requestRealized( PackageApplied *pa )
 	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
 		notifyHeroWindow(static_cast<int>(pa->requestID));
 	if(pa->packType == CTypeList::getInstance().getTypeID<ArrangeStacks>(nullptr))
+	{
 		notifyTownWindow(static_cast<int>(pa->requestID));
+		for(const auto & garrison : ENGINE->windows().findWindows<CGarrisonWindow>())
+			garrison->completeThorJoining(pa->requestID);
+	}
 	if(pa->packType == CTypeList::getInstance().getTypeID<BulkExchangeArtifacts>(nullptr))
 		notifyExchangeWindow(static_cast<int>(pa->requestID), pa->result);
 	if(pa->packType == CTypeList::getInstance().getTypeID<ExchangeArtifacts>(nullptr))
@@ -1615,7 +1634,13 @@ void CPlayerInterface::showRecruitmentDialog(const CGDwelling *dwelling, const C
 	{
 		cb->selectionMade(0, questionID);
 	};
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	auto window = std::make_shared<CRecruitmentWindow>(dwelling, level, dst, recruitCb, closeCb);
+	window->configureThorAdventureRecruitment(this);
+	ENGINE->windows().pushWindow(window);
+#else
 	ENGINE->windows().createAndPushWindow<CRecruitmentWindow>(dwelling, level, dst, recruitCb, closeCb);
+#endif
 }
 
 void CPlayerInterface::waitWhileDialog()
@@ -1636,7 +1661,14 @@ void CPlayerInterface::showShipyardDialog(const IShipyard *obj)
 	auto state = obj->shipyardStatus();
 	TResources cost;
 	obj->getBoatCost(cost);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	auto window = std::make_shared<CShipyardWindow>(cost, state, obj->getBoatType(), [this, obj](){ cb->buildBoat(obj); });
+	if(const auto * shipyard = dynamic_cast<const CGObjectInstance *>(obj))
+		window->configureThorShipyard(this, shipyard->id);
+	ENGINE->windows().pushWindow(window);
+#else
 	ENGINE->windows().createAndPushWindow<CShipyardWindow>(cost, state, obj->getBoatType(), [this, obj](){ cb->buildBoat(obj); });
+#endif
 }
 
 void CPlayerInterface::newObject( const CGObjectInstance * obj )

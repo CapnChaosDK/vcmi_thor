@@ -107,7 +107,8 @@ namespace
 			{static_cast<int>(ThorTownService::TAVERN), "", owned && town->hasBuilt(BuildingID::TAVERN), false, false},
 			{static_cast<int>(ThorTownService::MAGE_GUILD), "", owned && town->hasBuilt(BuildingID::MAGES_GUILD_1), false, false},
 			{static_cast<int>(ThorTownService::MARKETPLACE), "", owned && town->hasBuilt(BuildingID::MARKETPLACE), false, false},
-			{static_cast<int>(ThorTownService::BLACKSMITH), "", owned && town->getWarMachineInBuilding(BuildingID::BLACKSMITH).hasValue(), false, false}
+			{static_cast<int>(ThorTownService::BLACKSMITH), "", owned && town->getWarMachineInBuilding(BuildingID::BLACKSMITH).hasValue(), false, false},
+			{static_cast<int>(ThorTownService::SHIPYARD), "", owned && town->hasBuilt(BuildingID::SHIPYARD), false, false}
 		};
 	}
 
@@ -1880,6 +1881,9 @@ bool CCastleInterface::executeThorAction(const ThorActionRequest & request)
 			break;
 		case ThorTownService::MARKETPLACE:
 			keyPressed(EShortcut::TOWN_OPEN_MARKET);
+			break;
+		case ThorTownService::SHIPYARD:
+			keyPressed(EShortcut::TOWN_OPEN_SHIPYARD);
 			break;
 		}
 		return true;

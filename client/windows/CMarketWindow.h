@@ -34,7 +34,10 @@ public:
 	void deactivate() override;
 	void refreshThorMarket(bool invalidate = false);
 	bool executeThorMarket(const ThorActionRequest & request);
+	bool executeThorSpecialMarket(const ThorActionRequest & request);
+	bool openThorMarketModes(const ThorActionRequest & request);
 	void completeThorMarket(int requestId, bool success);
+	void completeThorMarketArtifact(int requestId);
 #endif
 
 private:
@@ -42,6 +45,16 @@ private:
 	int thorPendingTrade = -1;
 	int thorTradeStatus = 0;
 	std::uint64_t thorTradeRevision = 0;
+	int thorMarketPage = 0;
+	int thorMarketTextPage = 0;
+	bool thorSpecialMarketRequest = false;
+	bool thorBrowseMarketModes = false;
+	int thorMarketArtifactRequest = -1;
+	std::vector<std::string> thorMarketModeNames;
+	void publishThorSpecialMarket();
+	std::vector<std::shared_ptr<CTradeableItem>> thorMarketSlots() const;
+	std::vector<ArtifactPosition> thorMarketArtifacts(bool staged) const;
+	EMarketMode thorMarketMode;
 #endif
 	void createChangeModeButtons(EMarketMode currentMode, const IMarket * market, const CGHeroInstance * hero);
 	void initWidgetInternals(const EMarketMode mode, const std::pair<std::string, std::string> & quitButtonHelpContainer);

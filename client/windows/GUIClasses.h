@@ -36,6 +36,7 @@ class MoraleLuckBox;
 class CHeroArea;
 class CSlider;
 class CComponentBox;
+class CSelectableComponent;
 class CTextInput;
 class CListBox;
 class CLabelGroup;
@@ -121,6 +122,16 @@ public:
 	void publishThorContext();
 	bool matchesThorContext(const ThorContextRecord & context) const;
 	bool executeThorAction(const ThorActionRequest & request);
+	void configureThorAdventureRecruitment(CPlayerInterface * player);
+	void completeThorRecruitment(int requestId);
+
+private:
+	bool thorAdventureRecruitmentCurrent() const;
+	CPlayerInterface * thorRecruitmentPlayer = nullptr;
+	ObjectInstanceID thorRecruitmentDwelling;
+	ObjectInstanceID thorRecruitmentArmy;
+	IShowActivatable * thorRecruitmentParent = nullptr;
+	int thorRecruitmentPending = -1;
 #endif
 };
 
@@ -190,11 +201,23 @@ class CLevelWindow : public CWindowObject
 public:
 	CLevelWindow(CPlayerInterface * askedInterface, const CGHeroInstance *hero, PrimarySkill pskill, const std::vector<SecondarySkill> &skills, bool moreLevels, QuestionID question);
 	void updateLevelUpData(CPlayerInterface * askedInterface, const CGHeroInstance * heroInstance, PrimarySkill pskill, const std::vector<SecondarySkill> & availableSkills, bool moreLevels, QuestionID question);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorLevel();
+	bool executeThorLevel(const ThorActionRequest & request);
+#endif
 
 	void close() override;
 
 private:
 	bool selectionSubmitted = false;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	std::vector<std::shared_ptr<CSelectableComponent>> thorSkillComponents;
+	int thorSkillPage = 0;
+	int thorLevelTextPage = 0;
+	std::uint64_t thorLevelEpoch = 0;
+#endif
 };
 
 /// Town portal, castle gate window
@@ -380,6 +403,18 @@ class CShipyardWindow : public CStatusbarWindow
 
 public:
 	CShipyardWindow(const TResources & cost, int state, BoatId boatType, const std::function<void()> & onBuy);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void configureThorShipyard(CPlayerInterface * player, ObjectInstanceID shipyard);
+	void activate() override;
+	void deactivate() override;
+	void refreshThorShipyard();
+	bool executeThorShipyard(const ThorActionRequest & request);
+
+private:
+	CPlayerInterface * thorShipyardPlayer = nullptr;
+	ObjectInstanceID thorShipyardId;
+	IShowActivatable * thorShipyardParent = nullptr;
+#endif
 };
 
 /// Creature transformer window
@@ -425,6 +460,17 @@ public:
 	void updateGarrisons() override;
 	bool holdsGarrison(const CArmedInstance * army) override;
 	CTransformerWindow(const IMarket * _market, const CGHeroInstance * _hero, const std::function<void()> & onWindowClosed);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorTransformer();
+	bool executeThorTransformer(const ThorActionRequest & request);
+	void completeThorTransformer(int requestId);
+private:
+	int thorTransformerPage = 0;
+	int thorTransformerTextPage = 0;
+	int thorTransformerPending = -1;
+#endif
 };
 
 class CUniversityWindow final : public CStatusbarWindow, public IMarketHolder
@@ -468,6 +514,20 @@ public:
 
 	// IMarketHolder impl
 	void updateSecondarySkills() override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorUniversity();
+	bool executeThorUniversity(const ThorActionRequest & request);
+	bool canThorLearn(SecondarySkill skill) const;
+private:
+	int thorUniversityPage = 0;
+	int thorUniversityTextPage = 0;
+	int thorUniversitySelection = -1;
+	std::int64_t thorUniversityPending = -1;
+public:
+	void completeThorUniversity(std::int64_t request);
+#endif
 };
 
 /// Confirmation window for University
@@ -489,6 +549,14 @@ class CUnivConfirmWindow final : public CStatusbarWindow
 
 public:
 	CUnivConfirmWindow(CUniversityWindow * PARENT, SecondarySkill SKILL, bool available);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	void refreshThorUniversityConfirm();
+	bool executeThorUniversityConfirm(const ThorActionRequest & request);
+private:
+	SecondarySkill thorUniversitySkill;
+#endif
 };
 
 /// Garrison window where you can take creatures out of the hero to place it on the garrison
@@ -507,6 +575,22 @@ public:
 
 	void updateGarrisons() override;
 	bool holdsGarrison(const CArmedInstance * army) override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void configureThorJoining(CPlayerInterface * player, ObjectInstanceID source, ObjectInstanceID hero);
+	void activate() override;
+	void deactivate() override;
+	void refreshThorJoining();
+	bool executeThorJoining(const ThorActionRequest & request);
+	void completeThorJoining(int requestId);
+private:
+	CPlayerInterface * thorJoiningPlayer = nullptr;
+	ObjectInstanceID thorJoiningSource;
+	ObjectInstanceID thorJoiningHero;
+	int thorJoiningPage = 0;
+	int thorJoiningTextPage = 0;
+	int thorJoiningSelection = -1;
+	int thorJoiningPending = -1;
+#endif
 };
 
 /// Hill fort is the building where you can upgrade units
@@ -573,6 +657,15 @@ class CThievesGuildWindow : public CStatusbarWindow
 	std::vector<std::shared_ptr<CLabel>> personalities;
 public:
 	CThievesGuildWindow(const CGObjectInstance * _owner);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void activate() override;
+	void deactivate() override;
+	bool executeThorGuildRankings(const ThorActionRequest & request);
+private:
+	std::string thorRankings;
+	int thorRankingsPage = 0;
+	void publishThorGuildRankings();
+#endif
 };
 
 class VideoWindow : public CWindowObject, public IVideoHolder

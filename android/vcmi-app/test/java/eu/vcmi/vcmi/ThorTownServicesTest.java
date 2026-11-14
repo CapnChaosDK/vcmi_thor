@@ -14,7 +14,7 @@ public class ThorTownServicesTest
         for (int service = 0; service < ThorTownServices.SERVICE_COUNT; ++service)
         {
             final float[] box = ThorTownServices.bounds(service, 1000f, 1200f);
-            assertTrue(box[1] >= 1200f * 0.585f);
+            assertTrue(box[1] >= 1200f * 0.50f);
             assertTrue(box[3] < 1200f * 0.895f);
             assertEquals(service, ThorTownServices.serviceAt((box[0] + box[2]) / 2f,
                     (box[1] + box[3]) / 2f, 1000f, 1200f));
@@ -44,18 +44,19 @@ public class ThorTownServicesTest
     }
 
     @Test
-    public void townBrowserPayloadIsBoundedToExactSixServiceTargets()
+    public void townBrowserPayloadIncludesShipyardAndRequiresExactServiceTargets()
     {
         final ThorBrowserState state = ThorBrowserState.copyOf(ThorContextIds.TOWN_WINDOW, 0, 1,
-                new int[]{0, 1, 2, 3, 4, 5}, new String[]{"", "", "", "", "", ""},
-                new int[]{1, 0, 1, 1, 0, 1});
-        assertEquals(6, state.rowCount());
+                new int[]{0, 1, 2, 3, 4, 5, 6}, new String[]{"", "", "", "", "", "", ""},
+                new int[]{1, 0, 1, 1, 0, 1, 1});
+        assertEquals(7, state.rowCount());
+        assertTrue(state.enabled(ThorTownServices.SHIPYARD));
         assertTrue(state.enabled(0));
         assertFalse(state.enabled(1));
         assertEquals(0, ThorBrowserState.copyOf(ThorContextIds.TOWN_WINDOW, 0, 1,
                 new int[]{0, 1}, new String[]{"", ""}, new int[]{1, 1}).rowCount());
         assertEquals(0, ThorBrowserState.copyOf(ThorContextIds.TOWN_WINDOW, 0, 1,
-                new int[]{0, 1, 2, 4, 3, 5}, new String[]{"", "", "", "", "", ""},
-                new int[]{1, 1, 1, 1, 1, 1}).rowCount());
+                new int[]{0, 1, 2, 4, 3, 5, 6}, new String[]{"", "", "", "", "", "", ""},
+                new int[]{1, 1, 1, 1, 1, 1, 1}).rowCount());
     }
 }

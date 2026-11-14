@@ -9,6 +9,8 @@
  */
 #pragma once
 
+struct ThorActionRequest;
+
 #include "CWindowWithArtifacts.h"
 
 #include "../../lib/mapObjectConstructors/CommonConstructors.h"
@@ -262,6 +264,15 @@ public:
 	void updateGarrisons() override;
 	bool holdsGarrison(const CArmedInstance * army) override;
 	void buildChanged() override;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	void refreshThorKingdom();
+	bool executeThorKingdom(const ThorActionRequest & request);
+private:
+	bool thorTownTab = false;
+	int thorKingdomPage = 0;
+	int thorKingdomTextPage = 0;
+	ObjectInstanceID thorKingdomSelection;
+#endif
 };
 
 /// List item with town

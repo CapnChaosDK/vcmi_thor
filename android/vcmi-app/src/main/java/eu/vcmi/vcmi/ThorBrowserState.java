@@ -49,7 +49,8 @@ final class ThorBrowserState
 
     static boolean isDialog(final String context)
     {
-        return ThorContextIds.DIALOG_CONFIRMATION.equals(context) || ThorContextIds.DIALOG_INFORMATION.equals(context);
+        return ThorContextIds.DIALOG_CONFIRMATION.equals(context) || ThorContextIds.DIALOG_INFORMATION.equals(context)
+                || ThorContextIds.BATTLE_RESULT.equals(context) || ThorContextIds.THIEVES_GUILD.equals(context);
     }
 
     static ThorBrowserState copyOf(final String contextId, final int page, final int pageCount,

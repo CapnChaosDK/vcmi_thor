@@ -9,6 +9,7 @@ final class ThorExtendedCommands
             HERO_PREVIOUS = 9, HERO_NEXT = 10, BONUS_PREVIOUS = 11, BONUS_NEXT = 12;
     static final int MARKET_SELL = 13, MARKET_BUY = 14, MARKET_AMOUNT = 15,
             MARKET_TRADE = 16, MARKET_CLOSE = 17, MARKET_RESET = 18;
+    static final int MARKET_MODES = 39;
     static final int TAVERN_SELECT = 19, TAVERN_RECRUIT = 20, TAVERN_INVITE = 21,
             TAVERN_GUILD = 22, TAVERN_CLOSE = 23;
     static final int BLACKSMITH_BUY = 24, GUILD_RESEARCH = 25, SERVICE_CLOSE = 26;
@@ -25,7 +26,7 @@ final class ThorExtendedCommands
         this.active = active;
     }
 
-    static boolean known(final int command) { return command >= AUTO_START && command <= REFERENCE_CLOSE; }
+    static boolean known(final int command) { return command >= AUTO_START && command <= MARKET_MODES; }
 
     static int[] encode(final int version, final int command, final int target)
     {

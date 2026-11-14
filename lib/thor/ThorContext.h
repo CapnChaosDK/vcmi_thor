@@ -72,13 +72,16 @@ namespace ThorContextIds
 	inline constexpr char RESOURCE_MARKET[] = "RESOURCE_MARKET";
 	inline constexpr char TOWN_HALL[] = "TOWN_HALL";
 	inline constexpr char BUILD_CONFIRMATION[] = "BUILD_CONFIRMATION";
+	inline constexpr char SHIPYARD[] = "SHIPYARD";
 	inline constexpr char TOWN_RECRUITMENT_QUICK[] = "TOWN_RECRUITMENT_QUICK";
 	inline constexpr char TOWN_RECRUITMENT_DWELLING[] = "TOWN_RECRUITMENT_DWELLING";
+	inline constexpr char ADVENTURE_RECRUITMENT[] = "ADVENTURE_RECRUITMENT";
 	inline constexpr char HERO_MEETING[] = "HERO_MEETING";
 	inline constexpr char BATTLE[] = "BATTLE";
 	inline constexpr char BATTLE_TACTICS[] = "BATTLE_TACTICS";
 	inline constexpr char BATTLE_RESULT[] = "BATTLE_RESULT";
 	inline constexpr char KINGDOM_OVERVIEW[] = "KINGDOM_OVERVIEW";
+	inline constexpr char THIEVES_GUILD[] = "THIEVES_GUILD";
 	inline constexpr char QUEST_LOG[] = "QUEST_LOG";
 	inline constexpr char SCENARIO_EVENT_JOURNAL[] = "SCENARIO_EVENT_JOURNAL";
 	inline constexpr char PUZZLE_MAP[] = "PUZZLE_MAP";
@@ -239,7 +242,8 @@ struct DLL_LINKAGE ThorBrowserEntry
 enum class ThorRecruitmentMode : std::uint8_t
 {
 	QUICK_TOWN = 1,
-	TOWN_DWELLING = 2
+	TOWN_DWELLING = 2,
+	ADVENTURE_DWELLING = 3
 };
 
 /// One bounded creature choice owned by the exact native recruitment window.

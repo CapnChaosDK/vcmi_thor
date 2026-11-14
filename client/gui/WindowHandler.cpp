@@ -107,6 +107,15 @@ bool WindowHandler::isTopWindowWithParent(IShowActivatable * child, IShowActivat
 		&& windowsStack[windowsStack.size() - 2].get() == parent;
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+IShowActivatable * WindowHandler::thorParentOfTopWindow(const IShowActivatable * child) const
+{
+	if(windowsStack.size() < 2 || windowsStack.back().get() != child)
+		return nullptr;
+	return windowsStack[windowsStack.size() - 2].get();
+}
+#endif
+
 void WindowHandler::totalRedraw()
 {
 	totalRedrawRequested = true;

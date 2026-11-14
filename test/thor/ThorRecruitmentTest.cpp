@@ -176,6 +176,18 @@ TEST(ThorRecruitmentTest, SharedSnapshotCoversQuickAndDwellingModesAndChangesRev
 	ASSERT_TRUE(ordinary.recruitment);
 	EXPECT_EQ(ordinary.recruitment->mode, ThorRecruitmentMode::TOWN_DWELLING);
 	EXPECT_EQ(ordinary.recruitment->dwellingLevel, 2);
+
+	dwelling.contextId = ThorContextIds::ADVENTURE_RECRUITMENT;
+	dwelling.recruitment->mode = ThorRecruitmentMode::ADVENTURE_DWELLING;
+	dwelling.recruitment->dwellingLevel = -1;
+	const auto adventure = store.publishNext(dwelling);
+	ASSERT_TRUE(adventure.recruitment);
+	EXPECT_TRUE(thorRecruitmentOwnerMatches(adventure, ThorRecruitmentMode::ADVENTURE_DWELLING,
+		adventure.actionSubjectId, -1, adventure.recruitment->destinationArmyId,
+		adventure.recruitment->destinationArmyFreeSlots, true, true));
+	EXPECT_FALSE(thorRecruitmentOwnerMatches(adventure, ThorRecruitmentMode::TOWN_DWELLING,
+		adventure.actionSubjectId, -1, adventure.recruitment->destinationArmyId,
+		adventure.recruitment->destinationArmyFreeSlots, true, true));
 }
 
 TEST(ThorRecruitmentTest, MalformedBoundsDuplicatesAndOwnershipFailClosed)

@@ -4,7 +4,8 @@ package eu.vcmi.vcmi;
 final class ThorMarketControls
 {
     static final int SELL_FIRST = 1, BUY_FIRST = 10, LESS_TEN = 19, LESS = 20,
-            MORE = 21, MORE_TEN = 22, MAX = 23, TRADE = 24, RESET = 25, CLOSE = 26, PREVIOUS = 27, NEXT = 28, PAGE_SIZE = 4;
+            MORE = 21, MORE_TEN = 22, MAX = 23, TRADE = 24, RESET = 25, CLOSE = 26,
+            PREVIOUS = 27, NEXT = 28, MODES = 29, PAGE_SIZE = 4;
     static int command(final int control)
     {
         if (control >= SELL_FIRST && control < BUY_FIRST) return ThorExtendedCommands.MARKET_SELL;
@@ -13,6 +14,7 @@ final class ThorMarketControls
         if (control == TRADE) return ThorExtendedCommands.MARKET_TRADE;
         if (control == RESET) return ThorExtendedCommands.MARKET_RESET;
         if (control == CLOSE) return ThorExtendedCommands.MARKET_CLOSE;
+        if (control == MODES) return ThorExtendedCommands.MARKET_MODES;
         return 0;
     }
     static int target(final int control, final ThorMarketState state)
@@ -44,7 +46,7 @@ final class ThorMarketControls
     }
     static float[] bounds(final int control, final ThorPresentationLayout layout, final int count, final int page)
     {
-        if (!layout.hasContent() || control < SELL_FIRST || control > NEXT) return null;
+        if (!layout.hasContent() || control < SELL_FIRST || control > MODES) return null;
         final float left = layout.margin + layout.bevel * 3, width = layout.right - layout.bevel * 3 - left;
         final float top = layout.margin, height = layout.contentHeight, gap = width * .025f;
         if (control == PREVIOUS || control == NEXT)
@@ -62,14 +64,14 @@ final class ThorMarketControls
             return new float[]{x, y, x + w, y + h * .88f};
         }
         final boolean footer = control >= TRADE;
-        final int columns = footer ? 3 : 5, index = control - (footer ? TRADE : LESS_TEN);
+        final int columns = footer ? 4 : 5, index = control == MODES ? 3 : control - (footer ? TRADE : LESS_TEN);
         final float w = (width - gap * (columns - 1)) / columns;
         final float x = left + index * (w + gap), y = top + height * (footer ? .885f : .775f);
         return new float[]{x, y, x + w, y + height * .10f};
     }
     static int at(final float x, final float y, final ThorPresentationLayout layout, final int count, final int page)
     {
-        for (int control = SELL_FIRST; control <= NEXT; ++control)
+        for (int control = SELL_FIRST; control <= MODES; ++control)
         {
             final float[] b = bounds(control, layout, count, page);
             if (b != null && x >= b[0] && x < b[2] && y >= b[1] && y < b[3]) return control;

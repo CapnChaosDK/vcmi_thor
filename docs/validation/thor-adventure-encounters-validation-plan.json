@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "feature_id": "thor-adventure-encounters",
+  "title": "Adventure encounters and destination decisions",
+  "summary": "Complete native reward selection, creature-joining decisions and interactive destinations from the lower touchscreen.",
+  "preparation": "Back up saves. Verify the exact candidate receipt, APK SHA-256 and package is.xyz.vcmi.thor. Install in place. Prepare disposable saves with mandatory and cancellable rewards, long localized text and five or more choices, free and paid wandering creatures, a full army and low gold, an interactive Town Portal or other server picker, two available Castle Gates, and automatic teleports.",
+  "limitations": "Choice pages carry up to four entries. Unsupported text or layout uses the upper window. Dedicated army rearrangement uses its existing native window. No test result is implied by this checklist.",
+  "checks": [
+    {
+      "id": "reward",
+      "title": "Reward choice and details",
+      "steps": "Open a mandatory reward and a cancellable reward. Compare question, components and initial selection above and below. Browse beyond row four and page through long localized questions and selected details. Select a non-default row twice, confirm once, then repeat and cancel where offered. Change selection above while a lower row or Confirm is held.",
+      "expected": "Selection follows native order and synchronizes both screens. Rows and footer are comfortably tappable. A row never confirms. The selected choice stays identifiable across pages. One native reward or cancellation is applied. Mandatory prompts have no Cancel."
+    },
+    {
+      "id": "join",
+      "title": "Free and paid creature joining",
+      "steps": "Accept and decline free and paid offers on disposable saves. Compare quantity, creature name, offer and price. Exercise insufficient gold, full army, and native follow-up prompts. If dedicated army rearrangement opens, finish or cancel above.",
+      "expected": "Yes and No act directly and once. Army and gold follow native results. Shared follow-ups appear in sequence and the live parent returns after the dedicated window closes."
+    },
+    {
+      "id": "destinations",
+      "title": "Server destinations and Castle Gate",
+      "steps": "Open the server-driven picker and Castle Gate with several towns. Compare native ordering and current selection. Select and confirm a non-default destination. Cancel each picker. Exercise an empty Castle Gate and an offered target that becomes invalid. Check an ordinary monolith and whirlpool.",
+      "expected": "Selection can center the map where native behavior provides it. Travel requires Confirm and uses the selected native destination. Invalid choices cannot travel. Empty lists allow exit and disable Confirm. Cancel restores the parent and automatic teleport behavior follows the native route."
+    },
+    {
+      "id": "lifecycle",
+      "title": "Touch, window and display lifecycle",
+      "steps": "Hold a lower choice or action while closing or changing the native prompt above. Open two identical prompts in succession. Drag outside and back, add a second finger, and tap rapidly. Toggle and reconnect the lower display, background and resume, and recreate or rotate where supported. Recheck upper touch, controller, hotseat and single-display play.",
+      "expected": "Held or repeated input cannot act on a changed window or selection. Exactly one current lower panel returns and uses the current player and prompt. No pending control gets stuck. Upper controls and native results remain usable."
+    }
+  ]
+}

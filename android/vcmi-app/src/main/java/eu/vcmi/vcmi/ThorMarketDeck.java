@@ -41,6 +41,7 @@ final class ThorMarketDeck
             case ThorMarketControls.MAX: return context.getString(R.string.thor_market_max);
             case ThorMarketControls.TRADE: return context.getString(R.string.thor_market_trade);
             case ThorMarketControls.RESET: return context.getString(R.string.thor_market_reset);
+            case ThorMarketControls.MODES: return context.getString(R.string.thor_market_modes);
             default: return context.getString(R.string.thor_market_close);
         }
     }
@@ -69,7 +70,7 @@ final class ThorMarketDeck
         text(canvas, paint, title + " " + (page + 1) + "/" + Math.max(1, (state.count() + 3) / 4), left + width * .44f, top + h * .055f, width * .8f, h * .03f);
         text(canvas, paint, context.getString(R.string.thor_market_give) + ": " + resourceName(state.selling()), left + width * .24f, top + h * .13f, width * .45f, h * .025f);
         text(canvas, paint, context.getString(R.string.thor_market_get) + ": " + resourceName(state.buying()), left + width * .76f, top + h * .13f, width * .45f, h * .025f);
-        for (int control = 1; control <= ThorMarketControls.NEXT; ++control)
+        for (int control = 1; control <= ThorMarketControls.MODES; ++control)
         {
             final float[] b = ThorMarketControls.bounds(control, layout, state.count(), page);
             if (b == null) continue;

@@ -702,6 +702,10 @@ final class ThorSecondScreenPresentation extends Presentation
                     title = publishedTitle;
                 else if (ThorBrowserState.isSettings(contextId))
                     title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_settings_title) : publishedTitle;
+                else if (ThorContextIds.BATTLE_RESULT.equals(contextId))
+                    title = getContext().getString(R.string.thor_context_battle_result) + " " + publishedTitle;
+                else if (ThorContextIds.THIEVES_GUILD.equals(contextId))
+                    title = getContext().getString(R.string.thor_thieves_guild) + " " + publishedTitle;
                 else
                     title = getContext().getString(ThorContextIds.DIALOG_CONFIRMATION.equals(contextId)
                             ? R.string.thor_dialog_confirmation : R.string.thor_dialog_information);
@@ -718,6 +722,11 @@ final class ThorSecondScreenPresentation extends Presentation
                 {
                     title = publishedTitle;
                     status = getContext().getString(R.string.thor_build_confirmation_status);
+                }
+                else if (ThorContextIds.SHIPYARD.equals(contextId))
+                {
+                    title = publishedTitle;
+                    status = publishedStatus;
                 }
             }
             else if (ThorContextIds.ADVENTURE_MAP.equals(contextId))
@@ -759,11 +768,6 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = publishedTitle.isEmpty()
                         ? getContext().getString(R.string.thor_battle_no_active_unit) : publishedTitle;
                 status = publishedStatus;
-            }
-            else if (ThorContextIds.BATTLE_RESULT.equals(contextId))
-            {
-                title = getContext().getString(R.string.thor_context_battle_result);
-                status = getContext().getString(R.string.thor_context_battle_result_status);
             }
             else if (ThorContextIds.KINGDOM_OVERVIEW.equals(contextId))
             {
@@ -1686,12 +1690,14 @@ final class ThorSecondScreenPresentation extends Presentation
         private static boolean isRecruitmentContext(final String value)
         {
             return ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(value)
-                    || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(value);
+                    || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(value)
+                    || ThorContextIds.ADVENTURE_RECRUITMENT.equals(value);
         }
 
         private static boolean isConfirmationContext(final String value)
         {
             return ThorContextIds.BUILD_CONFIRMATION.equals(value)
+                    || ThorContextIds.SHIPYARD.equals(value)
                     || ThorContextIds.MENU_QUIT_CONFIRMATION.equals(value)
                     || ThorContextIds.HIGH_SCORE_RESET_CONFIRMATION.equals(value);
         }
@@ -1844,9 +1850,13 @@ final class ThorSecondScreenPresentation extends Presentation
                 final int action = ThorBrowserState.actionForControl(contextId, controls[i]);
                 if (!isActionEnabled(action) && controls[i] != ThorBrowserState.CONTROL_PRIMARY)
                     continue;
-                final String label = controls[i] == ThorBrowserState.CONTROL_PRIMARY && !status.isEmpty()
-                        ? getContext().getString(R.string.thor_encounter_confirm_selection, dialogText(status))
-                        : getContext().getString(labels[i]);
+                final String label;
+                if (controls[i] == ThorBrowserState.CONTROL_PRIMARY && isActionActive(action))
+                    label = getContext().getString(R.string.thor_market_pending);
+                else if (controls[i] == ThorBrowserState.CONTROL_PRIMARY && !status.isEmpty())
+                    label = getContext().getString(R.string.thor_encounter_confirm_selection, dialogText(status));
+                else
+                    label = getContext().getString(labels[i]);
                 drawLobbyScenarioButton(canvas, browserControlBounds(controls[i], frame), label,
                         browserControlEnabled(controls[i]), false, density);
             }
@@ -1902,10 +1912,12 @@ final class ThorSecondScreenPresentation extends Presentation
             drawDialogText(canvas, frame, density, frame.height() * .18f,
                     paging.top - frame.top - frame.height() * .19f);
             final boolean confirmation = ThorContextIds.DIALOG_CONFIRMATION.equals(contextId);
+            final boolean battleResult = ThorContextIds.BATTLE_RESULT.equals(contextId);
             final int[] controls = {ThorBrowserState.CONTROL_PREVIOUS, ThorBrowserState.CONTROL_NEXT,
                     ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
             final int[] labels = {R.string.thor_browser_previous_page, R.string.thor_browser_next_page,
-                    confirmation ? R.string.thor_menu_yes : R.string.thor_menu_ok, R.string.thor_menu_no};
+                    battleResult ? R.string.thor_battle_continue : confirmation ? R.string.thor_menu_yes : R.string.thor_menu_ok,
+                    battleResult ? R.string.thor_battle_replay : R.string.thor_menu_no};
             for (int index = 0; index < controls.length; ++index)
             {
                 if (!isActionEnabled(ThorBrowserState.actionForControl(contextId, controls[index]))) continue;
@@ -2097,7 +2109,10 @@ final class ThorSecondScreenPresentation extends Presentation
                     frame.width() * 0.86f, Math.min(34f * density, frame.height() * 0.07f));
             paint.setFakeBoldText(false);
             paint.setColor(PARCHMENT_DARK);
-            drawFittedText(canvas, detailLines[2], frame.centerX(), frame.top + frame.height() * 0.42f,
+            final boolean shipyard = ThorContextIds.SHIPYARD.equals(contextId);
+            final String availability = shipyard && detailLines[2].isEmpty() && !isActionEnabled(ThorActionIds.WINDOW_CONFIRM)
+                    ? getContext().getString(R.string.thor_shipyard_unavailable) : detailLines[2];
+            drawFittedText(canvas, availability, frame.centerX(), frame.top + frame.height() * 0.42f,
                     frame.width() * 0.86f, Math.min(25f * density, frame.height() * 0.05f));
             drawFittedText(canvas, detailLines[1], frame.centerX(), frame.top + frame.height() * 0.53f,
                     frame.width() * 0.86f, Math.min(25f * density, frame.height() * 0.055f));
@@ -2109,7 +2124,7 @@ final class ThorSecondScreenPresentation extends Presentation
                             ? R.string.thor_menu_yes : R.string.thor_build_confirm),
                     isActionEnabled(ThorActionIds.WINDOW_CONFIRM), false, density);
             drawLobbyScenarioButton(canvas, cancel, getContext().getString(menuConfirmation
-                            ? R.string.thor_menu_no : R.string.thor_lobby_back),
+                            ? R.string.thor_menu_no : shipyard ? R.string.thor_split_cancel : R.string.thor_lobby_back),
                     isActionEnabled(ThorActionIds.WINDOW_CLOSE), false, density);
         }
 
@@ -2399,7 +2414,8 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final int[] labels = {R.string.thor_town_service_hall, R.string.thor_town_service_recruit,
                     R.string.thor_town_service_tavern, R.string.thor_town_service_mage_guild,
-                    R.string.thor_town_service_marketplace, R.string.thor_service_blacksmith};
+                    R.string.thor_town_service_marketplace, R.string.thor_service_blacksmith,
+                    R.string.thor_town_service_shipyard};
             for (int service = 0; service < ThorTownServices.SERVICE_COUNT; ++service)
             {
                 final float[] box = ThorTownServices.bounds(service, frame.width(), frame.height());
@@ -3699,8 +3715,8 @@ final class ThorSecondScreenPresentation extends Presentation
             if (ThorContextIds.HERO_WINDOW.equals(contextId))
                 return heroManagement.description(title, status, detailLines);
 
-            if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId))
-                return title + ". " + detailLines[0] + ". " + detailLines[1] + ". "
+            if (ThorContextIds.BUILD_CONFIRMATION.equals(contextId) || ThorContextIds.SHIPYARD.equals(contextId))
+                return title + ". " + detailLines[0] + ". " + detailLines[1] + ". " + detailLines[2] + ". "
                         + getContext().getString(R.string.thor_build_confirm) + ", "
                         + getContext().getString(R.string.thor_lobby_back);
 

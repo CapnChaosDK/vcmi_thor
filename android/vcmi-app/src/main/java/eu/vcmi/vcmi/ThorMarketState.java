@@ -54,7 +54,7 @@ final class ThorMarketState
                 || !ThorExtendedCommands.validTarget(command, target)) return false;
         if (command == ThorExtendedCommands.MARKET_CLOSE) return true;
         if (data[2] != 1 || status() == 1) return false;
-        if (command == ThorExtendedCommands.MARKET_RESET) return true;
+        if (command == ThorExtendedCommands.MARKET_RESET || command == ThorExtendedCommands.MARKET_MODES) return true;
         if (command == ThorExtendedCommands.MARKET_TRADE) return amount() > 0;
         if (command == ThorExtendedCommands.MARKET_AMOUNT) return maximum() > 0 && target <= maximum();
         for (int i = 0; i < count(); ++i)

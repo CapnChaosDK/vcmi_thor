@@ -683,7 +683,8 @@ TEST(ThorActionTest, TownServiceUsesOneContextQualifiedActionAndPublishedTargets
 	EXPECT_EQ(thorTownServiceFromTarget(4), ThorTownService::MARKETPLACE);
 	EXPECT_FALSE(thorTownServiceFromTarget(-1));
 	EXPECT_EQ(thorTownServiceFromTarget(5), ThorTownService::BLACKSMITH);
-	EXPECT_FALSE(thorTownServiceFromTarget(6));
+	EXPECT_EQ(thorTownServiceFromTarget(6), ThorTownService::SHIPYARD);
+	EXPECT_FALSE(thorTownServiceFromTarget(7));
 	EXPECT_FALSE(isThorActionHapticEligible(ThorAction::TOWN_OPEN_SERVICE));
 }
 
@@ -1916,9 +1917,11 @@ TEST(ThorActionMarket, QuoteSelectionQuantityPendingAndClose)
 	EXPECT_FALSE(market.allows(ThorExtended::MARKET_AMOUNT, 11));
 	EXPECT_FALSE(market.allows(ThorExtended::MARKET_AMOUNT, -1));
 	EXPECT_TRUE(market.allows(ThorExtended::MARKET_TRADE, -1));
+	EXPECT_TRUE(market.allows(ThorExtended::MARKET_MODES, -1));
+	EXPECT_FALSE(market.allows(ThorExtended::MARKET_MODES, 0));
 	EXPECT_FALSE(market.allows(ThorExtended::MARKET_TRADE, 0));
 	market.status = 1;
-	for(int command : {13, 14, 15, 16, 18})
+	for(int command : {13, 14, 15, 16, 18, 39})
 		EXPECT_FALSE(market.allows(command, command < 16 ? 0 : -1));
 	EXPECT_TRUE(market.allows(ThorExtended::MARKET_CLOSE, -1));
 	market.status = 2; market.amount = 0;
@@ -1927,6 +1930,18 @@ TEST(ThorActionMarket, QuoteSelectionQuantityPendingAndClose)
 	market.controllable = false;
 	EXPECT_FALSE(market.allows(ThorExtended::MARKET_SELL, 0));
 	EXPECT_TRUE(market.allows(ThorExtended::MARKET_CLOSE, -1));
+}
+
+TEST(ThorActionCompanion, ServiceAndReportActionsStayWithinTheirOwners)
+{
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, ThorContextIds::SHIPYARD));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CLOSE, ThorContextIds::SHIPYARD));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::WINDOW_NEXT, ThorContextIds::SHIPYARD));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_NEXT, ThorContextIds::BATTLE_RESULT));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_CONFIRM, ThorContextIds::BATTLE_RESULT));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::LOAD_BROWSER_SELECT, ThorContextIds::BATTLE_RESULT));
+	EXPECT_TRUE(isThorActionAllowedInContext(ThorAction::WINDOW_PREVIOUS, ThorContextIds::THIEVES_GUILD));
+	EXPECT_FALSE(isThorActionAllowedInContext(ThorAction::WINDOW_CLOSE, ThorContextIds::THIEVES_GUILD));
 }
 
 TEST(ThorActionMarket, ExactOwnerRevisionAndContextIsolation)

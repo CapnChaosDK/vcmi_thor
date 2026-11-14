@@ -321,7 +321,8 @@ final class ThorSecondScreenController implements DisplayManager.DisplayListener
             final String townName, final String totalCost)
     {
         if (revision != contextRevision || !(ThorContextIds.TOWN_RECRUITMENT_QUICK.equals(contextId)
-                || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId)))
+                || ThorContextIds.TOWN_RECRUITMENT_DWELLING.equals(contextId)
+                || ThorContextIds.ADVENTURE_RECRUITMENT.equals(contextId)))
             return;
         final ThorRecruitmentState published = ThorRecruitmentState.copyOf(contextId, revision, mode, selectedTarget, targets, creatureIds,
                 available, selectedAmounts, maximum, variantIndexes, variantCounts, flags, visualKeys,

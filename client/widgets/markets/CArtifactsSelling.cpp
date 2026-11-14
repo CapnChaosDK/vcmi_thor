@@ -125,6 +125,22 @@ std::shared_ptr<CArtifactsOfHeroMarket> CArtifactsSelling::getAOHset() const
 	return heroArts;
 }
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+bool CArtifactsSelling::selectThorArtifact(ArtifactPosition position)
+{
+	const auto * artifact = hero->getArt(position);
+	if(!artifact || !artifact->getType()->isTradable())
+		return false;
+	heroArts->unmarkSlots();
+	selectedHeroSlot = position;
+	if(auto place = heroArts->getArtPlace(position))
+		place->selectSlot(true);
+	highlightingChanged();
+	redraw();
+	return true;
+}
+#endif
+
 CMarketBase::MarketShowcasesParams CArtifactsSelling::getShowcasesParams() const
 {
 	if(hero->getArt(selectedHeroSlot) && offerTradePanel->isHighlighted())

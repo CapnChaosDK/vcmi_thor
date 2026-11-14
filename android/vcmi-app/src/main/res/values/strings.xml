@@ -81,6 +81,12 @@
     <string name="thor_recruitment_buy">Buy</string>
     <string name="thor_build_confirm">Buy</string>
     <string name="thor_build_confirmation_status">Confirm construction or cancel</string>
+    <string name="thor_shipyard_unavailable">Boat purchase is unavailable</string>
+    <string name="thor_market_modes">Other trades</string>
+    <string name="thor_town_service_shipyard">Shipyard</string>
+    <string name="thor_battle_continue">Continue</string>
+    <string name="thor_battle_replay">Replay battle</string>
+    <string name="thor_thieves_guild">Thieves’ Guild</string>
     <string name="thor_recruitment_back">Back</string>
     <string name="thor_recruitment_empty">No creatures available</string>
     <string name="thor_recruitment_no_army_space">No army space</string>

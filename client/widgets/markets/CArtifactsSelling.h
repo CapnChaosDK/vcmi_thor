@@ -21,6 +21,10 @@ public:
 	void updateShowcases() override;
 	void update() override;
 	std::shared_ptr<CArtifactsOfHeroMarket> getAOHset() const;
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	bool selectThorArtifact(ArtifactPosition position);
+	ArtifactPosition thorSelectedArtifact() const { return selectedHeroSlot; }
+#endif
 
 private:
 	std::shared_ptr<CArtifactsOfHeroMarket> heroArts;

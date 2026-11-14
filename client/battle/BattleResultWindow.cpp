@@ -38,19 +38,8 @@
 #include "../../lib/texts/CGeneralTextHandler.h"
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-#include "../../lib/CAndroidVMHelper.h"
-#include "../../lib/thor/ThorContext.h"
-
-namespace
-{
-	void publishThorInGameContext(ThorInGameContext inGameContext)
-	{
-		ThorContextRecord context;
-		context.contextId = thorContextIdForInGameContext(inGameContext);
-		context = thorContextStore().publishNext(std::move(context));
-		CAndroidVMHelper().publishThorContext(context.revision, context.contextId, context.title, context.status);
-	}
-}
+#include "../windows/InfoWindows.h"
+#include "../../lib/thor/ThorDialog.h"
 #endif
 
 BattleResultWindow::BattleResultWindow(const BattleResult & br, CPlayerInterface & _owner, bool allowReplay)
@@ -152,6 +141,14 @@ BattleResultWindow::BattleResultWindow(const BattleResult & br, CPlayerInterface
 				shownCasualties.push_back(elem);
 		}
 
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+		thorSummary += "\n\n" + sideNames[static_cast<int>(step)] + " — "
+			+ LIBRARY->generaltexth->allTexts[408 + static_cast<int>(step)] + "\n";
+		if(shownCasualties.empty())
+			thorSummary += LIBRARY->generaltexth->allTexts[523];
+		for(const auto & [creature, count] : shownCasualties)
+			thorSummary += std::to_string(count) + " " + creature.toEntity(LIBRARY)->getNamePluralTranslated() + "\n";
+#endif
 		if(shownCasualties.empty())
 		{
 			labels.push_back(std::make_shared<CLabel>(235, 360 + 97 * static_cast<int>(step), FONT_SMALL, ETextAlignment::CENTER, Colors::WHITE, LIBRARY->generaltexth->allTexts[523]));
@@ -174,6 +171,9 @@ BattleResultWindow::BattleResultWindow(const BattleResult & br, CPlayerInterface
 	}
 
 	auto resources = getResources(br);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorSummary.insert(0, resources.resultText.toString(&GAME->translator()));
+#endif
 
 	description = std::make_shared<CTextBox>(resources.resultText.toString(&GAME->translator()), Rect(69, 203, 330, 68), 0, FONT_SMALL, ETextAlignment::CENTER, Colors::WHITE);
 	videoPlayer = std::make_shared<VideoWidget>(Point(107, 70), resources.prologueVideo, resources.loopedVideo, false);
@@ -274,7 +274,7 @@ void BattleResultWindow::activate()
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
 	if(!wasActive)
-		publishThorInGameContext(ThorInGameContext::BATTLE_RESULT);
+		publishThorResult();
 #endif
 }
 
@@ -284,10 +284,47 @@ void BattleResultWindow::deactivate()
 	CIntObject::deactivate();
 
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	if(wasActive)
-		publishThorInGameContext(ThorInGameContext::UNKNOWN);
+	if(wasActive && thorContextStore().snapshot().nativeOwnerToken == this)
+		publishThorEncounterContext();
 #endif
 }
+
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+void BattleResultWindow::publishThorResult()
+{
+	ThorContextRecord context;
+	context.contextId = ThorContextIds::BATTLE_RESULT;
+	context.nativeOwnerToken = this;
+	const auto pages = thorDialogPages(thorSummary, 96, 7);
+	thorEncounterText(context, pages, thorPage);
+	if(!pages.empty() && GAME->interface() == &owner)
+	{
+		if(!exit->isBlocked() && !exit->isDisabled())
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
+		if(repeat && !repeat->isBlocked() && !repeat->isDisabled())
+			context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CLOSE);
+	}
+	publishThorEncounterContext(std::move(context));
+}
+
+bool BattleResultWindow::executeThorResult(const ThorActionRequest & request)
+{
+	if(!isActive() || ENGINE->windows().topWindow<BattleResultWindow>().get() != this)
+		return false;
+	publishThorResult();
+	const auto context = thorContextStore().snapshot();
+	if(context.nativeOwnerToken != this || validateThorActionRequest(request, context) != ThorActionValidation::VALID)
+		return false;
+	if(request.action == ThorAction::WINDOW_PREVIOUS || request.action == ThorAction::WINDOW_NEXT)
+	{
+		thorPage += request.action == ThorAction::WINDOW_NEXT ? 1 : -1;
+		publishThorResult();
+		return true;
+	}
+	auto button = request.action == ThorAction::WINDOW_CONFIRM ? exit : repeat;
+	return button && button->invokeThorCallback();
+}
+#endif
 
 void BattleResultWindow::buttonPressed(int button)
 {
