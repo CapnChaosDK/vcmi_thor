@@ -59,6 +59,10 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- The candidate companion moved to
+  [CapnChaosDK/vcmi-builds](https://github.com/CapnChaosDK/vcmi-builds). Thor CI
+  publishes the game artifacts and validation plan through GitHub under the
+  [existing artifact contract](docs/THOR_CANDIDATE_COMPANION.md).
 - Slice 66 — lower-screen gameplay follow-through is hardware validated on
   candidate `c4c8c5d32bac720c2a9dcf04b2a58269be4d002d`. See the
   [slice contract and receipt](#slice-66--lower-screen-gameplay-follow-through).
@@ -2131,7 +2135,10 @@ Promotion and cleanup receipt (2026-10-22):
 - At the user’s explicit request, PR #45 merged normally into the Slice 53 branch with its head pinned to `8a35e93785ae9d94223081afad57e7e975126959`, producing `c7461d5b753ae552efa968ecc0c9db39187e3cb5`. PR #44 then merged normally into `ayn-thor-dual-screen` with that exact head pinned, producing `c606acd87b21cd03ed6a32ea38759bfadd4002fe`. No protection override or history rewrite was used.
 - Comparisons before and after promotion show no non-Markdown differences from tested integrated candidate `9e5fa181e4b9193100724ca647629302d05c23c5`. Its successful CI and user-confirmed hardware acceptance remain the release evidence; new merge-triggered preflights are not claimed passed here.
 - Verified both feature tips were ancestors of product, then deleted remote `codex/vcmi-builds-helper` and `codex/slice-53-battle-controller` plus local `codex/vcmi-builds-http415`. Local product fast-forwarded to the merge. The fork and local checkout retain product and permanent candidate branches; candidate remains pinned to the hardware-tested SHA. No open PRs remain. Upstream refs are untouched.
-- Future helper changes start from product and recreate `codex/vcmi-builds-helper` for the existing signed helper workflow; do not recreate signing credentials. Continue maintaining the current candidate checklist and using the permanent Thor candidate pipeline. This receipt changes documentation only.
+- At the time of this receipt, helper changes used the signed workflow on
+  `codex/vcmi-builds-helper`. That procedure was retired after extraction to
+  [VCMI Builds](https://github.com/CapnChaosDK/vcmi-builds). The permanent Thor
+  candidate pipeline continues to use the current validation plan.
 
 
 ## Slice 54 — Safe callback lookups and stale-action handling

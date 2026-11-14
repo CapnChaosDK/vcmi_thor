@@ -7,7 +7,7 @@ This is the concise hand-off for creating and validating future AYN Thor Android
 - For the latest hardware-validated slice, exact candidate SHA, CI/artifact receipt, and promotion state, use `AYN_THOR_BACKLOG.md` Current state. The older product commits and receipts below are historical checkpoints.
 - Repository: `https://github.com/CapnChaosDK/vcmi_thor`
 - Implementation branch: `ayn-thor-dual-screen`
-- Current hardware-accepted candidate: `4916f37f17884e3040f949c508ea5e89a4f9ff4d`
+- Historical hardware-accepted candidate: `4916f37f17884e3040f949c508ea5e89a4f9ff4d`
   (Slice 65, Adventure encounter decisions). The user reported all four AYN Thor
   checks passed on 2026-11-13. The [backlog receipt](../AYN_THOR_BACKLOG.md#slice-65-ci-and-hardware-acceptance)
   records CI, the verified APK checksum and [PR #65](https://github.com/CapnChaosDK/vcmi_thor/pull/65).
@@ -106,6 +106,11 @@ Successful full candidates upload a seven-day artifact named `thor-candidate-arm
 - `thor-ccache-stats.txt`
 
 The JSON receipt records the real candidate commit, run ID and number, package ID, APK SHA-256, artifact name, Git ref, preset, ABI, and completed test/package gates. The GitHub job summary repeats the SHA, run ID, package, digest, artifact, test status, and ccache statistics.
+
+Thor CI publishes this bundle independently. The standalone
+[VCMI Builds app](https://github.com/CapnChaosDK/vcmi-builds) retrieves it through
+GitHub and owns download, install, and local validation. Coordinate changes to the
+[artifact contract](THOR_CANDIDATE_COMPANION.md) with both repositories.
 
 ## Candidate and promotion flow
 
