@@ -4,6 +4,36 @@
 #include "../../lib/thor/ThorContext.h"
 #include "../../lib/thor/ThorDialog.h"
 
+TEST(ThorContextStoreTest, CompanionActionsRetainTheirWindowAndRejectReplacedRevisions)
+{
+	ThorContextStore store;
+	int firstOwner = 0;
+	int secondOwner = 0;
+	int parent = 0;
+	for(const auto * id : {ThorContextIds::SHIPYARD, ThorContextIds::BUILD_CONFIRMATION,
+		ThorContextIds::BATTLE_RESULT, ThorContextIds::THIEVES_GUILD, ThorContextIds::ADVENTURE_RECRUITMENT})
+	{
+		ThorContextRecord panel;
+		panel.contextId = id;
+		panel.nativeOwnerToken = &firstOwner;
+		panel.nativeParentToken = &parent;
+		panel.enabledActionMask = thorActionMask(ThorAction::WINDOW_CONFIRM) | thorActionMask(ThorAction::WINDOW_CLOSE);
+		const auto first = store.publishNext(panel);
+		EXPECT_EQ(first.nativeOwnerToken, &firstOwner) << id;
+		EXPECT_EQ(first.nativeParentToken, &parent) << id;
+		panel.nativeOwnerToken = &secondOwner;
+		const auto replacement = store.publishNext(panel);
+		EXPECT_NE(replacement.revision, first.revision) << id;
+		if(panel.contextId != ThorContextIds::SHIPYARD)
+			continue;
+		for(const auto action : {ThorAction::WINDOW_CONFIRM, ThorAction::WINDOW_CLOSE})
+		{
+			EXPECT_EQ(validateThorActionRequest({first.revision, action, -1}, first), ThorActionValidation::VALID);
+			EXPECT_EQ(validateThorActionRequest({first.revision, action, -1}, replacement), ThorActionValidation::STALE_REVISION);
+		}
+	}
+}
+
 TEST(ThorContextStoreTest, StartsUnknown)
 {
 	ThorContextStore store;

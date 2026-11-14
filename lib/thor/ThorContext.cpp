@@ -121,6 +121,11 @@ namespace
 				&& context.contextId != ThorContextIds::TAVERN
 				&& context.contextId != ThorContextIds::SETTINGS && context.contextId != ThorContextIds::SETTINGS_SELECTION
 				&& context.contextId != ThorContextIds::ENCOUNTER_CHOICE
+				&& context.contextId != ThorContextIds::SHIPYARD
+				&& context.contextId != ThorContextIds::BUILD_CONFIRMATION
+				&& context.contextId != ThorContextIds::BATTLE_RESULT
+				&& context.contextId != ThorContextIds::THIEVES_GUILD
+				&& context.contextId != ThorContextIds::ADVENTURE_RECRUITMENT
 				&& context.contextId != ThorContextIds::BLACKSMITH && context.contextId != ThorContextIds::MAGE_GUILD
 				&& context.contextId != ThorContextIds::SPELLBOOK && context.contextId != ThorContextIds::SAVE_GAME
 				&& context.contextId != ThorContextIds::QUEST_LOG && context.contextId != ThorContextIds::SCENARIO_EVENT_JOURNAL

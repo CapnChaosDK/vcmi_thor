@@ -3496,3 +3496,8 @@ The Android deck uses existing bounded dialog, browser, recruitment and purchase
 layouts. MainGUI resolves the current owner and revision before calling native
 controls. The changed Town Services layout and multi-step service and encounter
 flows require the exact candidate's physical AYN Thor checklist.
+
+On candidate `426b6836a`, device logs showed that Shipyard Buy and Cancel
+reached MainGUI but failed dispatch. The context store now retains the native
+window and parent for the shipyard and the other Slice 66 panels that check
+window identity. The replacement candidate must repeat the shipyard checklist.
