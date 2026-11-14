@@ -1172,3 +1172,28 @@ TEST(ThorContextStoreTest, EncounterQuestionAndDetailsSurviveTextPaging)
 	EXPECT_TRUE(thorEncounterPages(std::string(8193, 'x')).empty());
 	EXPECT_FALSE(thorEncounterLabelValid(std::string(129, 'x')));
 }
+
+TEST(ThorContextStoreTest, ReadOnlyRankingsRetainPageAndCloseAcrossPublication)
+{
+	ThorContextStore store;
+	int owner = 0;
+	ThorContextRecord panel;
+	panel.contextId = ThorContextIds::THIEVES_GUILD;
+	panel.nativeOwnerToken = &owner;
+	panel.browserPageCount = 3;
+	panel.enabledActionMask = thorActionMask(ThorAction::WINDOW_NEXT) | thorActionMask(ThorAction::WINDOW_CONFIRM);
+	const auto first = store.publishNext(panel);
+	EXPECT_EQ(first.browserPageCount, 3);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::WINDOW_NEXT, -1}, first), ThorActionValidation::VALID);
+	panel.browserPage = 2;
+	panel.enabledActionMask = thorActionMask(ThorAction::WINDOW_PREVIOUS) | thorActionMask(ThorAction::WINDOW_CONFIRM);
+	const auto last = store.publishNext(panel);
+	EXPECT_EQ(last.browserPage, 2);
+	EXPECT_EQ(validateThorActionRequest({first.revision, ThorAction::WINDOW_NEXT, -1}, last), ThorActionValidation::STALE_REVISION);
+	EXPECT_EQ(validateThorActionRequest({last.revision, ThorAction::WINDOW_CONFIRM, -1}, last), ThorActionValidation::VALID);
+
+	panel.browserEntries.push_back({10, "Unexpected row", true, false});
+	const auto malformed = store.publishNext(panel);
+	EXPECT_EQ(malformed.browserPageCount, 0);
+	EXPECT_TRUE(malformed.browserEntries.empty());
+}

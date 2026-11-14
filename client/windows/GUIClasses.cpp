@@ -2548,6 +2548,8 @@ void CThievesGuildWindow::publishThorGuildRankings()
 	context.nativeOwnerToken = this;
 	const auto pages = thorDialogPages(thorRankings, 96, 7);
 	thorEncounterText(context, pages, thorRankingsPage);
+	context.browserPage = thorRankingsPage;
+	context.browserPageCount = std::max(1, static_cast<int>(pages.size()));
 	if(!exitb->isDisabled() && !exitb->isBlocked())
 		context.enabledActionMask |= thorActionMask(ThorAction::WINDOW_CONFIRM);
 	publishThorEncounterContext(std::move(context));

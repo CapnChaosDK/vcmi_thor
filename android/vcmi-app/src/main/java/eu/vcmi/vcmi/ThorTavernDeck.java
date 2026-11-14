@@ -48,39 +48,26 @@ final class ThorTavernDeck
                 R.string.thor_tavern_no_heroes, R.string.thor_tavern_unavailable};
         return labels[reason];
     }
-    private void text(Canvas canvas, Paint paint, String value, float x, float y, float width, float size)
+    private void text(Canvas canvas, Paint paint, String value, float x, float y, float width, float size, int color)
     {
-        paint.setStyle(Paint.Style.FILL); paint.setColor(ThorDeckDrawing.TEXT); paint.setTextAlign(Paint.Align.CENTER);
+        paint.setStyle(Paint.Style.FILL); paint.setColor(color); paint.setTextAlign(Paint.Align.CENTER);
         canvas.save(); canvas.clipRect(x - width / 2, y - size, x + width / 2, y + size);
         ThorDeckDrawing.drawFittedText(canvas, paint, value, x, y, width, size);
         canvas.restore();
     }
-    private void paragraph(Canvas canvas, Paint paint, String value, RectF area, float size)
+    private void paragraph(Canvas canvas, String value, RectF area, float size)
     {
-        paint.setTextSize(size); paint.setColor(ThorDeckDrawing.TEXT); paint.setTextAlign(Paint.Align.LEFT);
-        canvas.save(); canvas.clipRect(area);
-        float y = area.top + size;
-        while (!value.isEmpty() && y <= area.bottom)
-        {
-            int length = paint.breakText(value, true, area.width(), null);
-            if (length <= 0) break;
-            if (length < value.length() && Character.isHighSurrogate(value.charAt(length - 1))) --length;
-            if (length <= 0) break;
-            int newline = value.indexOf('\n');
-            if (newline >= 0 && newline < length) length = newline + 1;
-            canvas.drawText(value.substring(0, length).trim(), area.left, y, paint);
-            value = value.substring(length); y += size * 1.4f;
-        }
-        canvas.restore();
+        ThorDeckDrawing.drawParagraph(canvas,
+                ThorDeckDrawing.paragraph(value, ThorDeckDrawing.PARCHMENT_DARK, size, area.width()), area, 0);
     }
     void draw(Canvas canvas, Paint paint, Context context, String title, ThorPresentationLayout layout, float density)
     {
         float left = layout.margin + layout.bevel * 3, width = layout.right - layout.bevel * 3 - left;
         float top = layout.margin, h = layout.contentHeight;
-        text(canvas, paint, title, left + width / 2, top + h * .05f, width, h * .035f);
+        text(canvas, paint, title, left + width / 2, top + h * .05f, width, h * .035f, ThorDeckDrawing.TEXT);
         text(canvas, paint, context.getString(R.string.thor_tavern_cost, state.cost(), state.gold()),
-                left + width / 2, top + h * .10f, width, h * .025f);
-        text(canvas, paint, context.getString(reason(state.reason())), left + width / 2, top + h * .145f, width, h * .021f);
+                left + width / 2, top + h * .10f, width, h * .025f, ThorDeckDrawing.TEXT);
+        text(canvas, paint, context.getString(reason(state.reason())), left + width / 2, top + h * .145f, width, h * .021f, ThorDeckDrawing.TEXT);
         for (int control = ThorTavernControls.OFFERS; control <= ThorTavernControls.CLOSE; ++control)
         {
             float[] b = ThorTavernControls.bounds(control, layout);
@@ -99,13 +86,13 @@ final class ThorTavernDeck
             }
             final String hint = tab == ThorTavernControls.INVITATIONS ? context.getString(R.string.thor_tavern_invite_hint)
                     : context.getString(ThorTavernControls.count(state, tab) == 0 ? R.string.thor_tavern_no_heroes : R.string.thor_tavern_detail_hint);
-            paragraph(canvas, paint, hint, new RectF(left, top + h * .71f, left + width, top + h * .75f), h * .016f);
+            paragraph(canvas, hint, new RectF(left, top + h * .71f, left + width, top + h * .75f), h * .019f);
         }
         else
-            paragraph(canvas, paint, ThorTavernControls.pageText(state, tab, page),
+            paragraph(canvas, ThorTavernControls.pageText(state, tab, page),
                     new RectF(left, top + h * .29f, left + width, top + h * .75f), h * .026f);
         text(canvas, paint, (page + 1) + "/" + ThorTavernControls.pages(state, tab),
-                left + width / 2, top + h * .82f, width * .4f, h * .022f);
+                left + width / 2, top + h * .795f, width * .4f, h * .022f, ThorDeckDrawing.PARCHMENT_DARK);
     }
     boolean touch(MotionEvent event, long revision, long session, ThorPresentationLayout layout, boolean currentSession)
     {

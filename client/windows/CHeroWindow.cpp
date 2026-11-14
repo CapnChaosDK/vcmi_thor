@@ -68,7 +68,7 @@ namespace
 	{
 		const auto skillName = [](PrimarySkill skill)
 		{
-			return GAME->translator().translate("core.arraytxt", 2 + skill.getNum());
+			return GAME->translator().translate("core.priskill", skill.getNum());
 		};
 		return skillName(first) + " " + std::to_string(hero->getPrimSkillLevel(first)) + " · "
 			+ skillName(second) + " " + std::to_string(hero->getPrimSkillLevel(second));

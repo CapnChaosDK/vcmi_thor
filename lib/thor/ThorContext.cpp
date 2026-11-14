@@ -56,6 +56,7 @@ namespace
 			&& context.contextId != ThorContextIds::BUILD_CONFIRMATION
 			&& context.contextId != ThorContextIds::SHIPYARD
 			&& context.contextId != ThorContextIds::ENCOUNTER_CHOICE
+			&& context.contextId != ThorContextIds::KINGDOM_OVERVIEW
 			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_QUICK
 			&& context.contextId != ThorContextIds::TOWN_RECRUITMENT_DWELLING
 			&& context.contextId != ThorContextIds::ADVENTURE_RECRUITMENT)
@@ -121,6 +122,7 @@ namespace
 				&& context.contextId != ThorContextIds::TAVERN
 				&& context.contextId != ThorContextIds::SETTINGS && context.contextId != ThorContextIds::SETTINGS_SELECTION
 				&& context.contextId != ThorContextIds::ENCOUNTER_CHOICE
+				&& context.contextId != ThorContextIds::KINGDOM_OVERVIEW
 				&& context.contextId != ThorContextIds::SHIPYARD
 				&& context.contextId != ThorContextIds::BUILD_CONFIRMATION
 				&& context.contextId != ThorContextIds::BATTLE_RESULT
@@ -273,7 +275,7 @@ namespace
 				context.browserPage = context.browserPageCount = 0;
 			}
 		}
-		if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
+		if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE || context.contextId == ThorContextIds::KINGDOM_OVERVIEW)
 		{
 			bool invalid = !context.nativeOwnerToken || !context.nativeParentToken
 				|| context.browserEntries.size() > THOR_ENCOUNTER_PAGE_SIZE
@@ -307,19 +309,22 @@ namespace
 			&& context.browserPageCount == static_cast<int>((context.browserEntries.size()
 				+ THOR_TOWN_HALL_PAGE_SIZE - 1) / THOR_TOWN_HALL_PAGE_SIZE)
 			&& context.browserNativeKeys.size() == context.browserEntries.size();
+		const bool readOnlyBrowser = (context.contextId == ThorContextIds::THIEVES_GUILD
+			|| context.contextId == ThorContextIds::BATTLE_RESULT) && context.browserEntries.empty()
+			&& context.browserNativeKeys.empty() && context.browserPageCount <= 2000;
 		const bool nativeBrowser = (context.contextId == ThorContextIds::SAVE_GAME
 			|| context.contextId == ThorContextIds::CAMPAIGN_BROWSER
 			|| context.contextId == ThorContextIds::LOBBY_LOAD_GAME_SCENARIO
 			|| context.contextId == ThorContextIds::SETTINGS || context.contextId == ThorContextIds::SETTINGS_SELECTION
-			|| context.contextId == ThorContextIds::ENCOUNTER_CHOICE
+			|| context.contextId == ThorContextIds::ENCOUNTER_CHOICE || context.contextId == ThorContextIds::KINGDOM_OVERVIEW
 			|| context.contextId == ThorContextIds::DIALOG_CONFIRMATION || context.contextId == ThorContextIds::DIALOG_INFORMATION)
 			&& context.browserNativeKeys.size() == context.browserEntries.size();
-		if((!townServices && !nativeBrowser && !townHall)
+		if((!townServices && !nativeBrowser && !townHall && !readOnlyBrowser)
 			|| context.browserEntries.size() > (context.contextId == ThorContextIds::TOWN_HALL
 				? THOR_MAX_TOWN_HALL_BUILDINGS : THOR_BROWSER_MAX_ROWS)
 			|| context.browserPage < 0 || context.browserPageCount < 0
 			|| (context.browserPageCount != 0 && context.browserPage >= context.browserPageCount)
-			|| (context.browserPageCount == 0 && !context.browserEntries.empty()))
+			|| (context.browserPageCount == 0 && (context.browserPage != 0 || !context.browserEntries.empty())))
 		{
 			context.enabledActionMask &= ~(thorActionMask(ThorAction::CAMPAIGN_BROWSER_SELECT)
 				| thorActionMask(ThorAction::CAMPAIGN_BROWSER_PREVIOUS_PAGE)

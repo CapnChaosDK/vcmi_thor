@@ -230,7 +230,8 @@ void publishThorEncounterContext(ThorContextRecord context)
 	CAndroidVMHelper bridge;
 	bridge.publishThorContext(context.revision, context.contextId, context.title, context.status, context.details);
 	bridge.publishThorActionState(context.revision, context.enabledActionMask, context.activeActionMask);
-	if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
+	if(context.contextId == ThorContextIds::ENCOUNTER_CHOICE || context.contextId == ThorContextIds::KINGDOM_OVERVIEW
+		|| context.contextId == ThorContextIds::THIEVES_GUILD || context.contextId == ThorContextIds::BATTLE_RESULT)
 		bridge.publishThorBrowser(context.revision, context.browserPage, context.browserPageCount, context.browserEntries);
 }
 

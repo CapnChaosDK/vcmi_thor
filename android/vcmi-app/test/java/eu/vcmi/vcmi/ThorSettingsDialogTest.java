@@ -6,6 +6,29 @@ import static org.junit.Assert.*;
 public class ThorSettingsDialogTest
 {
     @Test
+    public void guildPagesAndKingdomTargetsUseSeparateControls()
+    {
+        final String guild = ThorContextIds.THIEVES_GUILD;
+        final ThorBrowserState rankings = ThorBrowserState.copyOf(guild, 1, 6,
+                new int[0], new String[0], new int[0]);
+        assertEquals(6, rankings.pageCount);
+        assertEquals(ThorActionIds.WINDOW_NEXT, ThorBrowserState.actionForControl(guild, ThorBrowserState.CONTROL_NEXT));
+        assertEquals(ThorActionIds.WINDOW_CONFIRM, ThorBrowserState.actionForControl(guild, ThorBrowserState.CONTROL_PRIMARY));
+        assertEquals(ThorActionIds.NONE, ThorBrowserState.actionForControl(guild, ThorBrowserState.CONTROL_BACK));
+
+        final String kingdom = ThorContextIds.KINGDOM_OVERVIEW;
+        final ThorBrowserState roster = ThorBrowserState.copyOf(kingdom, 0, 1,
+                new int[]{Integer.MAX_VALUE, 42}, new String[]{"towns", "Saurug"}, new int[]{1, 3});
+        assertEquals(2, roster.rowCount());
+        assertEquals(42, roster.targets[1]);
+        final float[] row = ThorBrowserState.kingdomBounds(2, 1160f, 1000f);
+        assertEquals(2, ThorBrowserState.kingdomControlAt(580f, (row[1] + row[3]) / 2f, 1160f, 1000f, 2));
+        assertEquals(ThorBrowserState.CONTROL_NONE, ThorBrowserState.kingdomControlAt(580f, 235f, 1160f, 1000f, 2));
+        assertEquals(ThorBrowserState.CONTROL_NONE, ThorBrowserState.kingdomControlAt(580f,
+                (row[1] + row[3]) / 2f, 1160f, 1000f, 1));
+    }
+
+    @Test
     public void settingsRowsAndFooterRemainDisjoint()
     {
         for (String context : new String[]{ThorContextIds.SETTINGS, ThorContextIds.SETTINGS_SELECTION})

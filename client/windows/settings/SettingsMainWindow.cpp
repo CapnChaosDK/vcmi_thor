@@ -20,6 +20,7 @@
 #include "../../../lib/CAndroidVMHelper.h"
 #include "../../widgets/Slider.h"
 #include "../../widgets/TextControls.h"
+#include <iterator>
 #endif
 
 #include "CMT.h"
@@ -84,6 +85,9 @@ SettingsMainWindow::SettingsMainWindow(BattleInterface * parentBattleUi) : Inter
 
 	std::shared_ptr<CToggleGroup> mainTabs = widget<CToggleGroup>("settingsTabs");
 	mainTabs->setSelected(defaultTabIndex);
+#if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
+	thorPage = 0;
+#endif
 	
 	GAME->interface()->gamePause(true);
 }
@@ -114,7 +118,7 @@ void SettingsMainWindow::openTab(size_t index)
 	Settings lastUsedTab = settings.write["general"]["lastSettingsTab"];
 	lastUsedTab->Integer() = index;
 #if defined(VCMI_ANDROID) && defined(TARGET_AYN_THOR)
-	thorPage = 0;
+	thorPage = 1;
 	publishThorContext();
 #endif
 }
@@ -282,6 +286,8 @@ void SettingsMainWindow::collectThorControls(InterfaceObjectConfigurable & sourc
 			thorControlsValid = false;
 			return;
 		}
+		if(name == "closeSettingsButton")
+			continue; // The lower Settings deck already has a persistent Back action.
 		std::string label;
 		if(const auto * entry = findSettingsConfig(config, name))
 			label = source.readHintText((*entry)["help"]).first;
@@ -304,7 +310,14 @@ void SettingsMainWindow::collectThorControls(InterfaceObjectConfigurable & sourc
 				}
 			}
 		}
-		if(name == "musicSlider")
+		if(name == "scalingButton" || name == "longTouchButton")
+		{
+			if(const auto live = source.widget<CLabel>(name == "scalingButton" ? "scalingLabel" : "longTouchLabel"))
+				label = live->getText();
+		}
+		else if(name == "spellbookAnimationCheckbox")
+			label = "spellbook-animation";
+		else if(name == "musicSlider")
 			label = LIBRARY->generaltexth->translate("core.genrltxt.394");
 		else if(name == "soundVolumeSlider")
 			label = LIBRARY->generaltexth->translate("core.genrltxt.395");
@@ -341,11 +354,14 @@ void SettingsMainWindow::collectThorControls(InterfaceObjectConfigurable & sourc
 					rowLabel,
 					!rowLabel.empty() && settingsControlEnabled(*object) && settingsControlEnabled(*button) && !button->isBlocked(),
 					group->getSelected() == value,
-					[group, button, value]()
+					[this, group, button, value, category = name == "settingsTabs"]()
 					{
 						if(!settingsControlEnabled(*group) || !settingsControlEnabled(*button) || button->isBlocked())
 							return false;
-						group->setSelected(value);
+						if(category && group->getSelected() == value)
+							thorPage = 1;
+						else
+							group->setSelected(value);
 						return true;
 					}});
 			}
@@ -420,14 +436,26 @@ void SettingsMainWindow::publishThorContext()
 	thorControls.clear();
 	thorControlsValid = true;
 	collectThorControls(*this, "config/widgets/settings/settingsMainContainer.json");
+	// Container controls are three category selectors followed by session actions.
+	const auto categoryEnd = std::find_if(thorControls.begin(), thorControls.end(), [](const auto & control)
+	{
+		return control.key.find(":settingsTabs:") == std::string::npos;
+	});
+	const auto categoryCount = static_cast<std::size_t>(categoryEnd - thorControls.begin());
+	std::vector<ThorControl> sessionControls(std::make_move_iterator(categoryEnd), std::make_move_iterator(thorControls.end()));
+	thorControls.erase(categoryEnd, thorControls.end());
 	static const std::array<std::string, 4> tabConfigs = {
 		"config/widgets/settings/generalOptionsTab.json", "config/widgets/settings/adventureOptionsTab.json",
 		"config/widgets/settings/battleOptionsTab.json", "config/widgets/settings/otherOptionsTab.json"};
 	auto tab = std::dynamic_pointer_cast<InterfaceObjectConfigurable>(tabContentArea->getItem());
 	if(tab && tabContentArea->getActive() < tabConfigs.size())
 		collectThorControls(*tab, tabConfigs[tabContentArea->getActive()]);
+	const auto preferencesEnd = thorControls.size();
+	thorControls.insert(thorControls.end(), std::make_move_iterator(sessionControls.begin()),
+		std::make_move_iterator(sessionControls.end()));
 	ThorContextRecord context;
-	if(!thorControlsValid || thorControls.size() > thorSettingsMaximumControls)
+	if(!thorControlsValid || thorControls.size() > thorSettingsMaximumControls
+		|| categoryCount > thorSettingsPageSize || sessionControls.size() > thorSettingsPageSize)
 	{
 		thorControls.clear();
 		thorActionQueue().clear();
@@ -442,9 +470,16 @@ void SettingsMainWindow::publishThorContext()
 		+ tabTitles.at(std::min(tabContentArea->getActive(), tabTitles.size() - 1)) + ".hover");
 	context.nativeOwnerToken = this;
 	context.actionEpoch = thorEpoch;
-	context.browserPageCount = std::max(1, static_cast<int>((thorControls.size() + thorSettingsPageSize - 1) / thorSettingsPageSize));
+	const auto preferencePages = (preferencesEnd - categoryCount + thorSettingsPageSize - 1) / thorSettingsPageSize;
+	context.browserPageCount = 1 + static_cast<int>(preferencePages) + (sessionControls.empty() ? 0 : 1);
 	thorPage = std::clamp(thorPage, 0, context.browserPageCount - 1);
 	context.browserPage = thorPage;
+	const auto page = static_cast<std::size_t>(thorPage);
+	const auto begin = page == 0 ? 0 : page > preferencePages ? preferencesEnd
+		: categoryCount + (page - 1) * thorSettingsPageSize;
+	const auto end = page == 0 ? categoryCount : page > preferencePages ? thorControls.size()
+		: std::min(preferencesEnd, begin + thorSettingsPageSize);
+	context.status = page == 0 ? "categories" : page > preferencePages ? "session" : "preferences";
 	const auto back = widget<CButton>("closeSettingsButton");
 	if(back && settingsControlEnabled(*back) && !back->isBlocked())
 		context.enabledActionMask = thorActionMask(ThorAction::WINDOW_CLOSE);
@@ -463,7 +498,7 @@ void SettingsMainWindow::publishThorContext()
 		}
 		fullState.push_back(control.key + ":" + control.label
 			+ (control.enabled ? ":1" : ":0") + (control.selected ? ":1" : ":0"));
-		if(i / thorSettingsPageSize != static_cast<std::size_t>(thorPage))
+		if(i < begin || i >= end)
 			continue;
 		context.browserEntries.push_back({static_cast<int>(i), control.label, control.enabled, control.selected});
 		context.browserNativeKeys.push_back(control.key);

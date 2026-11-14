@@ -800,7 +800,7 @@ void CKingdomInterface::refreshThorKingdom()
 		return;
 	}
 	ThorContextRecord context;
-	context.contextId = ThorContextIds::ENCOUNTER_CHOICE;
+	context.contextId = ThorContextIds::KINGDOM_OVERVIEW;
 	context.nativeOwnerToken = this;
 	context.nativeParentToken = ENGINE->windows().thorParentOfTopWindow(this);
 	context.actionSubjectId = player->playerID.getNum();
@@ -810,7 +810,7 @@ void CKingdomInterface::refreshThorKingdom()
 	thorKingdomPage = std::clamp(thorKingdomPage, 0, context.browserPageCount - 1);
 	context.browserPage = thorKingdomPage;
 	auto heading = LIBRARY->generaltexth->translate(thorTownTab ? "core.jktext.24" : "core.jktext.25");
-	auto otherTab = LIBRARY->generaltexth->translate(thorTownTab ? "core.jktext.25" : "core.jktext.24");
+	const std::string otherTab = thorTownTab ? "heroes" : "towns";
 	auto question = heading + " (" + std::to_string(count) + ")";
 	for(const auto * object : entries)
 	{
@@ -829,7 +829,7 @@ void CKingdomInterface::refreshThorKingdom()
 		break;
 	}
 	const auto pages = thorEncounterPages(question);
-	if(pages.empty() || !thorEncounterLabelValid(otherTab))
+	if(pages.empty())
 	{
 		publishThorEncounterContext();
 		return;
@@ -841,7 +841,7 @@ void CKingdomInterface::refreshThorKingdom()
 		context.enabledActionMask |= thorActionMask(ThorAction::LOAD_BROWSER_NEXT_PAGE);
 	// Reserve the first row for switching tabs.
 	constexpr int tabTarget = std::numeric_limits<int>::max();
-	context.browserEntries.push_back({tabTarget, std::move(otherTab), true, false});
+	context.browserEntries.push_back({tabTarget, otherTab, true, false});
 	context.browserNativeKeys.push_back("tab");
 	for(int index = thorKingdomPage * pageSize; index < std::min(count, (thorKingdomPage + 1) * pageSize); ++index)
 	{
