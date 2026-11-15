@@ -220,6 +220,7 @@ void GameEngine::updateFrame()
 			if(!executed && request->revision == context.revision
 				&& thorContextStore().snapshot().revision == request->revision
 				&& (context.contextId == ThorContextIds::ENCOUNTER_CHOICE
+					|| context.contextId == ThorContextIds::KINGDOM_OVERVIEW
 					|| context.contextId == ThorContextIds::DIALOG_CONFIRMATION
 					|| context.contextId == ThorContextIds::DIALOG_INFORMATION
 					|| context.contextId == ThorContextIds::BATTLE_RESULT
@@ -482,8 +483,6 @@ void GameEngine::updateFrame()
 				executed = level->executeThorLevel(*request);
 			else if(auto commander = windows().topWindow<CStackWindow>(); commander && context.nativeOwnerToken == commander.get())
 				executed = commander->executeThorCommander(*request);
-			else if(auto kingdom = windows().topWindow<CKingdomInterface>(); kingdom && context.nativeOwnerToken == kingdom.get())
-				executed = kingdom->executeThorKingdom(*request);
 			else if(auto university = windows().topWindow<CUniversityWindow>(); university && context.nativeOwnerToken == university.get())
 				executed = university->executeThorUniversity(*request);
 			else if(auto garrison = windows().topWindow<CGarrisonWindow>(); garrison && context.nativeOwnerToken == garrison.get())
@@ -492,6 +491,11 @@ void GameEngine::updateFrame()
 				executed = transformer->executeThorTransformer(*request);
 			else if(auto market = windows().topWindow<CMarketWindow>(); market && context.nativeOwnerToken == market.get())
 				executed = market->executeThorSpecialMarket(*request);
+		}
+		else if(context.contextId == ThorContextIds::KINGDOM_OVERVIEW)
+		{
+			if(auto kingdom = windows().topWindow<CKingdomInterface>(); kingdom && context.nativeOwnerToken == kingdom.get())
+				executed = kingdom->executeThorKingdom(*request);
 		}
 		else if(context.contextId == ThorContextIds::SETTINGS_SELECTION)
 		{

@@ -479,7 +479,8 @@ final class ThorSecondScreenPresentation extends Presentation
                 else referenceDeck.reset();
                 if (contextId.equals(this.contextId)) serviceDeck.withdraw();
                 else serviceDeck.reset();
-                if (contextId.equals(this.contextId)) tavernDeck.withdraw();
+                if (ThorContextIds.TAVERN.equals(contextId) || ThorContextIds.THIEVES_GUILD.equals(contextId)
+                        || ThorContextIds.UNKNOWN.equals(contextId)) tavernDeck.withdraw();
                 else tavernDeck.reset();
                 if (contextId.equals(this.contextId)) marketDeck.withdraw();
                 else marketDeck.reset();
@@ -698,15 +699,24 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
                     || ThorBrowserState.isEncounter(contextId))
             {
-                if (ThorBrowserState.isEncounter(contextId))
+                if (ThorContextIds.KINGDOM_OVERVIEW.equals(contextId))
+                    title = getContext().getString(R.string.thor_context_kingdom_overview);
+                else if (ThorBrowserState.isEncounter(contextId))
                     title = publishedTitle;
                 else if (ThorBrowserState.isSettings(contextId))
-                    title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_settings_title) : publishedTitle;
+                {
+                    if ("categories".equals(publishedStatus))
+                        title = getContext().getString(R.string.thor_settings_categories);
+                    else if ("session".equals(publishedStatus))
+                        title = getContext().getString(R.string.thor_settings_session);
+                    else
+                        title = publishedTitle.isEmpty() ? getContext().getString(R.string.thor_settings_title) : publishedTitle;
+                }
                 else if (ThorContextIds.BATTLE_RESULT.equals(contextId))
-                    title = getContext().getString(R.string.thor_context_battle_result) + " " + publishedTitle;
+                    title = getContext().getString(R.string.thor_context_battle_result);
                 else if (ThorContextIds.THIEVES_GUILD.equals(contextId))
-                    title = getContext().getString(R.string.thor_thieves_guild) + " " + publishedTitle;
-                else
+                    title = getContext().getString(R.string.thor_thieves_guild);
+                else if (ThorBrowserState.isDialog(contextId))
                     title = getContext().getString(ThorContextIds.DIALOG_CONFIRMATION.equals(contextId)
                             ? R.string.thor_dialog_confirmation : R.string.thor_dialog_information);
                 status = publishedStatus;
@@ -768,11 +778,6 @@ final class ThorSecondScreenPresentation extends Presentation
                 title = publishedTitle.isEmpty()
                         ? getContext().getString(R.string.thor_battle_no_active_unit) : publishedTitle;
                 status = publishedStatus;
-            }
-            else if (ThorContextIds.KINGDOM_OVERVIEW.equals(contextId))
-            {
-                title = getContext().getString(R.string.thor_context_kingdom_overview);
-                status = getContext().getString(R.string.thor_context_kingdom_overview_status);
             }
             else if (ThorContextIds.QUEST_LOG.equals(contextId))
             {
@@ -928,7 +933,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     || ThorContextIds.LOBBY_LOAD_GAME_SCENARIO.equals(contextId)
                     || ThorContextIds.TOWN_HALL.equals(contextId);
             final boolean recruitmentContext = isRecruitmentContext(contextId);
-            final float dividerY = frame.top + contentHeight * (battleDashboard ? 0.55f
+            final float dividerY = frame.top + contentHeight * (ThorReferenceState.context(contextId) ? .235f
+                    : ThorContextIds.TAVERN.equals(contextId) ? .28f : battleDashboard ? 0.55f
                     : adventure ? ThorAdventureLayout.DIVIDER : recruitmentContext ? 0.14f : browserContext ? 0.20f
                     : lobbyScenario || campaignBonus ? 0.48f : 0.34f);
             paint.setStyle(Paint.Style.FILL);
@@ -997,7 +1003,7 @@ final class ThorSecondScreenPresentation extends Presentation
             else if (ThorContextIds.HERO_WINDOW.equals(contextId))
             {
                 heroManagement.draw(canvas, title, status, heroPortraitAssetKey, detailLines,
-                        frame, dividerY, bevel, density);
+                        frame, bevel, density);
                 drawWindowNavigation(canvas, frame, bevel, density);
             }
             else if (ThorContextIds.TOWN_WINDOW.equals(contextId))
@@ -1400,8 +1406,9 @@ final class ThorSecondScreenPresentation extends Presentation
         private RectF browserControlBounds(final int control, final RectF frame)
         {
             final boolean choice = ThorBrowserState.isEncounter(contextId);
-            final float[] bounds = choice || ThorBrowserState.isDialog(contextId)
-                    ? ThorBrowserState.encounterBounds(control, frame.width(), frame.height(),
+            final float[] bounds = ThorContextIds.KINGDOM_OVERVIEW.equals(contextId)
+                    ? ThorBrowserState.kingdomBounds(control, frame.width(), frame.height())
+                    : choice || ThorBrowserState.isDialog(contextId) ? ThorBrowserState.encounterBounds(control, frame.width(), frame.height(),
                             getResources().getDisplayMetrics().density, choice)
                     : ThorBrowserState.boundsForControl(contextId, control, frame.width(), frame.height());
             return new RectF(frame.left + bounds[0], frame.top + bounds[1],
@@ -1709,7 +1716,10 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean settings = ThorBrowserState.isSettings(contextId);
             if (ThorBrowserState.isEncounter(contextId))
             {
-                drawEncounterChoices(canvas, frame, density);
+                if (ThorContextIds.KINGDOM_OVERVIEW.equals(contextId))
+                    drawKingdomDashboard(canvas, frame, density);
+                else
+                    drawEncounterChoices(canvas, frame, density);
                 return;
             }
             if (ThorBrowserState.isDialog(contextId))
@@ -1722,17 +1732,21 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(TEXT);
+            final float headingLeft = frame.left + frame.width() * 0.11f;
+            final float headingRight = hapticsToggleBounds().left - adventureBevel();
+            final float headingCenter = (headingLeft + headingRight) * 0.5f;
+            final float headingWidth = Math.max(0f, headingRight - headingLeft);
             drawFittedText(canvas, saving ? getContext().getString(R.string.thor_context_save_game)
                             : (campaign || settings) ? title : townHallContext
                             ? getContext().getString(R.string.thor_town_hall_title)
                             : getContext().getString(R.string.thor_context_load_game),
-                    frame.centerX(), frame.top + frame.height() * 0.065f, frame.width() * 0.78f,
+                    headingCenter, frame.top + frame.height() * 0.065f, headingWidth,
                     Math.min(36f * density, frame.height() * 0.060f));
             paint.setFakeBoldText(false);
             drawFittedText(canvas, getContext().getString(R.string.thor_browser_page,
                             browser.pageCount == 0 ? 0 : (townHallContext ? townHall.page() : browser.page) + 1,
                             browser.pageCount),
-                    frame.centerX(), frame.top + frame.height() * 0.115f, frame.width() * 0.72f,
+                    headingCenter, frame.top + frame.height() * 0.115f, headingWidth,
                     Math.min(26f * density, frame.height() * 0.04f));
             if (!campaign && !townHallContext && !settings)
             {
@@ -1766,6 +1780,8 @@ final class ThorSecondScreenPresentation extends Presentation
             {
                 final int index = first + row;
                 String label = townHallContext ? townHall.labelAt(row) : browser.labels[index];
+                if (ThorContextIds.SETTINGS.equals(contextId) && "spellbook-animation".equals(label))
+                    label = getContext().getString(R.string.thor_settings_spellbook_animation);
                 if (label.isEmpty())
                     label = getContext().getString(R.string.thor_browser_unavailable);
                 if (townHallContext)
@@ -1808,14 +1824,69 @@ final class ThorSecondScreenPresentation extends Presentation
                     false, density);
         }
 
+        private void drawKingdomDashboard(final Canvas canvas, final RectF frame, final float density)
+        {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(TEXT);
+            paint.setTextAlign(Paint.Align.CENTER);
+            drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * .055f,
+                    frame.width() * .72f, Math.min(27f * density, frame.height() * .045f));
+            if (browser.rowCount() == 0)
+            {
+                paint.setColor(PARCHMENT_DARK);
+                drawFittedText(canvas, getContext().getString(R.string.thor_encounter_use_upper),
+                        frame.centerX(), frame.centerY(), frame.width() * .85f, 20f * density);
+                return;
+            }
+            final boolean towns = browser.labels[0].equals("heroes");
+            for (int tab = 0; tab < 2; ++tab)
+            {
+                final boolean selected = towns == (tab == 1);
+                drawLobbyScenarioButton(canvas, kingdomTabBounds(tab == 1, frame),
+                        getContext().getString(tab == 0 ? R.string.thor_tab_heroes : R.string.thor_tab_towns),
+                        !selected && browserControlEnabled(ThorBrowserState.CONTROL_FIRST_ROW), selected, density);
+            }
+            paint.setColor(PARCHMENT_DARK);
+            drawFittedText(canvas, getContext().getString(R.string.thor_browser_page, browser.page + 1,
+                    browser.pageCount), frame.centerX(), frame.top + frame.height() * .27f,
+                    frame.width() * .70f, Math.min(18f * density, frame.height() * .03f));
+            for (int row = 1; row < browser.rowCount(); ++row)
+            {
+                final int control = ThorBrowserState.CONTROL_FIRST_ROW + row;
+                drawLobbyScenarioButton(canvas, browserControlBounds(control, frame), browser.labels[row],
+                        browserControlEnabled(control), browser.selected(row), density);
+            }
+            if (browser.rowCount() == 1)
+            {
+                paint.setColor(PARCHMENT_DARK);
+                drawFittedText(canvas, getContext().getString(towns ? R.string.thor_no_towns : R.string.thor_no_heroes),
+                        frame.centerX(), frame.centerY(), frame.width() * .8f, 20f * density);
+            }
+            final int[] controls = {ThorBrowserState.CONTROL_PREVIOUS, ThorBrowserState.CONTROL_NEXT,
+                    ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
+            final int[] labels = {R.string.thor_browser_previous_page, R.string.thor_browser_next_page,
+                    R.string.thor_kingdom_open, R.string.thor_market_close};
+            for (int index = 0; index < controls.length; ++index)
+                drawLobbyScenarioButton(canvas, browserControlBounds(controls[index], frame),
+                        getContext().getString(labels[index]), browserControlEnabled(controls[index]), false, density);
+        }
+
+        private RectF kingdomTabBounds(final boolean towns, final RectF frame)
+        {
+            return new RectF(towns ? frame.centerX() + frame.width() * .01f : frame.left + frame.width() * .055f,
+                    frame.top + frame.height() * .095f,
+                    towns ? frame.right - frame.width() * .055f : frame.centerX() - frame.width() * .01f,
+                    frame.top + frame.height() * .185f);
+        }
+
         private void drawEncounterChoices(final Canvas canvas, final RectF frame, final float density)
         {
             if (browser.pageCount == 0) return;
             final RectF firstRow = browserControlBounds(ThorBrowserState.CONTROL_FIRST_ROW, frame);
             if (firstRow.isEmpty())
             {
-                paint.setColor(TEXT);
                 paint.setTextAlign(Paint.Align.CENTER);
+                paint.setColor(PARCHMENT_DARK);
                 drawFittedText(canvas, getContext().getString(R.string.thor_encounter_use_upper),
                         frame.centerX(), frame.centerY(), frame.width() * .85f, 20f * density);
                 return;
@@ -1893,30 +1964,34 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private void drawDialogDashboard(final Canvas canvas, final RectF frame, final float density)
         {
+            paint.setStyle(Paint.Style.FILL);
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setColor(TEXT);
             paint.setFakeBoldText(true);
             drawFittedText(canvas, title, frame.centerX(), frame.top + frame.height() * 0.075f,
                     frame.width() * 0.86f, Math.min(34f * density, frame.height() * 0.055f));
             paint.setFakeBoldText(false);
-            drawFittedText(canvas, getContext().getString(R.string.thor_browser_page, browser.page + 1,
-                    browser.pageCount), frame.centerX(), frame.top + frame.height() * 0.13f,
-                    frame.width() * 0.8f, Math.min(24f * density, frame.height() * 0.04f));
+            if (browser.pageCount > 1)
+                drawFittedText(canvas, getContext().getString(R.string.thor_browser_page, browser.page + 1,
+                        browser.pageCount), frame.centerX(), frame.top + frame.height() * 0.13f,
+                        frame.width() * 0.8f, Math.min(24f * density, frame.height() * 0.04f));
             final RectF paging = browserControlBounds(ThorBrowserState.CONTROL_PREVIOUS, frame);
-            if (paging.isEmpty())
+            if (paging.isEmpty() || browser.pageCount == 0)
             {
+                paint.setColor(PARCHMENT_DARK);
                 drawFittedText(canvas, getContext().getString(R.string.thor_encounter_use_upper),
                         frame.centerX(), frame.centerY(), frame.width() * .85f, 20f * density);
                 return;
             }
-            drawDialogText(canvas, frame, density, frame.height() * .18f,
-                    paging.top - frame.top - frame.height() * .19f);
+            drawDialogText(canvas, frame, density, frame.height() * .235f,
+                    paging.top - frame.top - frame.height() * .255f);
             final boolean confirmation = ThorContextIds.DIALOG_CONFIRMATION.equals(contextId);
             final boolean battleResult = ThorContextIds.BATTLE_RESULT.equals(contextId);
             final int[] controls = {ThorBrowserState.CONTROL_PREVIOUS, ThorBrowserState.CONTROL_NEXT,
                     ThorBrowserState.CONTROL_PRIMARY, ThorBrowserState.CONTROL_BACK};
             final int[] labels = {R.string.thor_browser_previous_page, R.string.thor_browser_next_page,
-                    battleResult ? R.string.thor_battle_continue : confirmation ? R.string.thor_menu_yes : R.string.thor_menu_ok,
+                    battleResult ? R.string.thor_battle_continue : confirmation ? R.string.thor_menu_yes
+                            : ThorContextIds.THIEVES_GUILD.equals(contextId) ? R.string.thor_market_close : R.string.thor_menu_ok,
                     battleResult ? R.string.thor_battle_replay : R.string.thor_menu_no};
             for (int index = 0; index < controls.length; ++index)
             {
@@ -2232,7 +2307,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final float right = frame.right - bevel * 2f;
             final float gap = bevel;
             final float columnWidth = (right - left - gap) / 2f;
-            final float listTop = Math.max(dividerY + bevel * 2f, frame.top + frame.height() * 0.43f);
+            final float listTop = Math.max(dividerY + bevel * 2f, frame.top + frame.height() * 0.454f);
             final float listBottom = frame.top + frame.height() * 0.83f;
             final float rowGap = Math.max(3f * density, bevel * 0.28f);
             final float rowHeight = (listBottom - listTop - rowGap * 6f) / 7f;
@@ -2245,10 +2320,10 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setFakeBoldText(true);
             paint.setColor(PARCHMENT_DARK);
             drawFittedText(canvas, getContext().getString(R.string.thor_town_garrison),
-                    left + columnWidth * 0.5f, listTop - rowGap, columnWidth * 0.92f,
+                    left + columnWidth * 0.5f, listTop - frame.height() * .018f, columnWidth * 0.92f,
                     Math.min(20f * density, rowHeight * 0.56f));
             drawFittedText(canvas, visitingTitle, left + columnWidth + gap + columnWidth * 0.5f,
-                    listTop - rowGap, columnWidth * 0.92f, Math.min(20f * density, rowHeight * 0.56f));
+                    listTop - frame.height() * .018f, columnWidth * 0.92f, Math.min(20f * density, rowHeight * 0.56f));
             paint.setFakeBoldText(false);
             for (int side = 0; side < 2; ++side)
             {
@@ -2266,7 +2341,7 @@ final class ThorSecondScreenPresentation extends Presentation
                     paint.setColor(key == selectedTownArmyKey ? GOLD : STONE_DARK);
                     canvas.drawRoundRect(row, bevel, bevel, paint);
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(occupied ? TEXT : PARCHMENT_DARK);
+                    paint.setColor(occupied ? PARCHMENT_DARK : MUTED_TEXT);
                     final String text = occupied ? townArmyName(key) + " × " + townArmyCount(key)
                             : getContext().getString(R.string.thor_army_empty);
                     drawFittedText(canvas, text, row.centerX(), row.centerY(), row.width() * 0.9f,
@@ -2285,7 +2360,7 @@ final class ThorSecondScreenPresentation extends Presentation
             final float gap = bevel;
             final float columnWidth = (right - left - gap) / 2f;
             final float rowGap = Math.max(3f * density, bevel * 0.28f);
-            final float listTop = Math.max(dividerY + bevel * 2f, frame.top + frame.height() * 0.43f);
+            final float listTop = Math.max(dividerY + bevel * 2f, frame.top + frame.height() * 0.454f);
             final float listBottom = frame.top + frame.height() * 0.83f;
             final float rowHeight = (listBottom - listTop - rowGap * 6f) / 7f;
             final float x = left + side * (columnWidth + gap);
@@ -2587,7 +2662,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 paint.setStyle(Paint.Style.FILL);
                 paint.setTextAlign(Paint.Align.CENTER);
                 paint.setFakeBoldText(enabled);
-                paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+                paint.setColor(enabled ? TEXT : MUTED_TEXT);
                 drawFittedText(canvas, getContext().getString(labels[control]), bounds.centerX(),
                         bounds.centerY(), bounds.width() * 0.88f,
                         Math.min(30f * density, bounds.height() * 0.36f));
@@ -2752,10 +2827,25 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setFakeBoldText(false);
         }
 
-        private RectF mapControlBounds(final int control)
+        private int[] mapToolbar()
+        {
+            return adventureMap.levels == 2
+                    ? new int[]{ThorMapControls.ZOOM, ThorMapControls.NAVIGATE, ThorMapControls.PAN,
+                            ThorMapControls.PLAN, ThorMapControls.FILTER, 6 - adventureMap.level}
+                    : new int[]{ThorMapControls.ZOOM, ThorMapControls.NAVIGATE, ThorMapControls.PAN,
+                            ThorMapControls.PLAN, ThorMapControls.FILTER};
+        }
+
+        private int[] mapRouteControls()
+        {
+            return java.util.stream.IntStream.rangeClosed(ThorMapControls.CONFIRM, ThorMapControls.CONTINUE)
+                    .filter(this::mapControlEnabled).toArray();
+        }
+
+        private RectF mapControlBounds(final int column, final int columns, final boolean route)
         {
             final RectF frame = adventureFrame();
-            final float[] box = ThorMapControls.bounds(control, frame.width(), frame.height());
+            final float[] box = ThorMapControls.bounds(column, columns, route, frame.width(), frame.height());
             return new RectF(frame.left + box[0], frame.top + box[1], frame.left + box[2], frame.top + box[3]);
         }
 
@@ -2763,8 +2853,9 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final RectF frame = adventureFrame();
             return new ThorMapTransform(adventureMap.width, adventureMap.height,
-                    frame.left + frame.width() * 0.035f, frame.top + frame.height() * 0.64f,
-                    frame.right - frame.width() * 0.035f, frame.bottom - frame.height() * 0.06f,
+                    frame.left + frame.width() * 0.035f, frame.top + frame.height() * ThorMapControls.MAP_TOP,
+                    frame.right - frame.width() * 0.035f, frame.top + frame.height() * (mapRouteControls().length == 0
+                            ? ThorMapControls.MAP_BOTTOM : ThorMapControls.MAP_BOTTOM_WITH_ACTIONS),
                     mapViewState.zoom, mapViewState.centerX, mapViewState.centerY);
         }
 
@@ -2773,9 +2864,16 @@ final class ThorSecondScreenPresentation extends Presentation
             final int tab = tabAt(x, y);
             if (tab >= 0)
                 return 10 + tab;
-            for (final int control : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 21, 22, 23, 24})
-                if (mapControlEnabled(control) && mapControlBounds(control).contains(x, y))
-                    return control;
+            final int toolbarControl = mapControlAt(x, y, mapToolbar(), false);
+            return toolbarControl >= 0 ? toolbarControl : mapControlAt(x, y, mapRouteControls(), true);
+        }
+
+        private int mapControlAt(final float x, final float y, final int[] controls, final boolean route)
+        {
+            for (int column = 0; column < controls.length; ++column)
+                if (mapControlEnabled(controls[column])
+                        && mapControlBounds(column, controls.length, route).contains(x, y))
+                    return controls[column];
             return -1;
         }
 
@@ -2803,34 +2901,46 @@ final class ThorSecondScreenPresentation extends Presentation
                         frame.centerY(), frame.width() * 0.8f, 24f * density);
                 return;
             }
-            for (final int control : new int[]{0, 1, 2, 3, 4, 8, 5, 6, 20, 21, 22, 23, 24})
+            drawMapControls(canvas, density, mapToolbar(), false);
+            drawMapControls(canvas, density, mapRouteControls(), true);
+            drawMapTerrain(canvas, frame, density);
+        }
+
+        private void drawMapControls(final Canvas canvas, final float density, final int[] controls,
+                                     final boolean route)
+        {
+            for (int column = 0; column < controls.length; ++column)
             {
-                if ((control == 5 || control == 6) && adventureMap.levels != 2) continue;
-                final RectF box = mapControlBounds(control);
-                final boolean selected = control == 0 && mapViewState.zoom == 1
-                        || control == 1 && mapViewState.zoom == 2 || control == 2 && mapViewState.zoom == 4
-                        || control == 3 && !mapViewState.pan && !mapViewState.plan || control == 4 && mapViewState.pan
-                        || control == 8 && mapViewState.plan
-                        || (control == 5 || control == 6) && adventureMap.level == control - 5;
+                final int control = controls[column];
+                final RectF box = mapControlBounds(column, controls.length, route);
+                final boolean selected = control == ThorMapControls.NAVIGATE && !mapViewState.pan && !mapViewState.plan
+                        || control == ThorMapControls.PAN && mapViewState.pan
+                        || control == ThorMapControls.PLAN && mapViewState.plan;
                 paint.setColor(selected ? PARCHMENT_DARK : STONE_DARK);
                 canvas.drawRoundRect(box, adventureBevel(), adventureBevel(), paint);
-                paint.setColor(mapControlEnabled(control) || selected ? TEXT : STONE_LIGHT);
+                paint.setColor(mapControlEnabled(control) || selected ? TEXT : MUTED_TEXT);
                 paint.setFakeBoldText(selected);
-                drawFittedText(canvas, getContext().getString(ThorMapControls.label(control)), box.centerX(),
+                drawFittedText(canvas, mapControlLabel(control), box.centerX(),
                         box.centerY(), box.width() * 0.9f, Math.min(20f * density, box.height() * 0.4f));
             }
             paint.setFakeBoldText(false);
-            paint.setColor(TEXT);
-            final RectF filterBox = mapControlBounds(7);
-            paint.setColor(STONE_DARK);
-            canvas.drawRoundRect(filterBox, adventureBevel(), adventureBevel(), paint);
-            paint.setColor(TEXT);
+        }
+
+        private String mapControlLabel(final int control)
+        {
+            if (control == ThorMapControls.ZOOM)
+                return getContext().getString(R.string.thor_map_zoom_format, getContext().getString(
+                        ThorMapControls.label(mapViewState.zoom == 4 ? 2 : mapViewState.zoom == 2 ? 1 : 0)));
+            if (control != ThorMapControls.FILTER)
+                return getContext().getString(ThorMapControls.label(control));
             final int[] filterLabels = {R.string.thor_map_filter_all, R.string.thor_map_filter_resources,
                     R.string.thor_map_filter_mines, R.string.thor_map_filter_dwellings,
                     R.string.thor_map_filter_travel, R.string.thor_map_filter_sites};
-            drawFittedText(canvas, getContext().getString(filterLabels[mapViewState.categoryFilter]),
-                    filterBox.centerX(), filterBox.centerY(), filterBox.width() * 0.9f, 14f * density);
-            drawRouteStatus(canvas, frame, density);
+            return getContext().getString(filterLabels[mapViewState.categoryFilter]);
+        }
+
+        private void drawMapTerrain(final Canvas canvas, final RectF frame, final float density)
+        {
             final ThorMapTransform transform = mapTransform();
             canvas.save();
             canvas.clipRect(transform.left, transform.top, transform.right, transform.bottom);
@@ -2895,10 +3005,12 @@ final class ThorSecondScreenPresentation extends Presentation
                     ? (clusters.count[inspectedCluster] == 1
                         ? adventureMap.objectLabels[clusters.row[inspectedCluster]]
                         : getContext().getString(R.string.thor_map_cluster_info, clusters.count[inspectedCluster]))
-                    : getContext().getString(adventureMap.objectsLimited
-                        ? R.string.thor_map_inspection_limited : R.string.thor_map_inspection_hint);
-            drawEllipsizedText(canvas, info, frame.centerX(), frame.top + frame.height() * 0.34f,
-                    frame.width() * 0.93f, 16f * density);
+                    : mapViewState.plan || (adventureRoute.fits(adventureMap) && adventureRoute.value(1) > 1)
+                        ? routeStatusText() : getContext().getString(adventureMap.objectsLimited
+                            ? R.string.thor_map_inspection_limited : R.string.thor_map_inspection_hint);
+            paint.setColor(PARCHMENT_DARK);
+            drawEllipsizedText(canvas, info, frame.centerX(), frame.top + frame.height() * 0.98f,
+                    frame.width() * 0.93f, Math.min(14f * density, frame.height() * .026f));
         }
 
         private String routeStatusText()
@@ -2938,20 +3050,6 @@ final class ThorSecondScreenPresentation extends Presentation
         private String routeMetadataText()
         {
             return routePositionText() + " • " + routeDestinationText();
-        }
-
-        private void drawRouteStatus(final Canvas canvas, final RectF frame, final float density)
-        {
-            paint.setColor(TEXT);
-            paint.setTextAlign(Paint.Align.CENTER);
-            drawFittedText(canvas, routeStatusText(), frame.centerX(), frame.top + frame.height() * 0.565f,
-                    frame.width() * 0.93f, 17f * density);
-            drawFittedText(canvas, routePositionText(), frame.centerX(), frame.top + frame.height() * 0.594f,
-                    frame.width() * 0.93f, 15f * density);
-            drawFittedText(canvas, routeDestinationText(), frame.centerX(), frame.top + frame.height() * 0.621f,
-                    frame.width() * 0.93f, 14f * density);
-            drawFittedText(canvas, getContext().getString(R.string.thor_route_legend), frame.centerX(),
-                    frame.top + frame.height() * 0.963f, frame.width() * 0.93f, 12f * density);
         }
 
         private void drawAdventureRoute(final Canvas canvas, final ThorMapTransform transform, final float density)
@@ -3077,8 +3175,8 @@ final class ThorSecondScreenPresentation extends Presentation
                     event.getEventTime() - event.getDownTime());
             if (release.localControl >= 10 && release.localControl <= 13)
                 adventureTab = release.localControl - 10;
-            else if (release.localControl >= 0 && release.localControl < 3)
-                mapViewState.setZoom(release.localControl == 0 ? 1 : (release.localControl == 1 ? 2 : 4));
+            else if (release.localControl == ThorMapControls.ZOOM)
+                mapViewState.setZoom(mapViewState.zoom == 4 ? 1 : mapViewState.zoom * 2);
             else if (release.localControl == 3 || release.localControl == 4 || release.localControl == 8)
             {
                 mapViewState.pan = release.localControl == 4;
@@ -3288,7 +3386,7 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(enabled ? GOLD : PARCHMENT_DARK);
             canvas.drawRoundRect(bounds, bevel, bevel, paint);
             paint.setStyle(Paint.Style.FILL);
-            paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+            paint.setColor(enabled ? TEXT : MUTED_TEXT);
             paint.setTextAlign(Paint.Align.CENTER);
             drawFittedText(canvas, getContext().getString(label), bounds.centerX(), bounds.centerY(), bounds.width() * 0.75f,
                     Math.min(20f * density, bounds.height() * 0.5f));
@@ -3349,7 +3447,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 canvas.drawRoundRect(button, bevel, bevel, paint);
                 paint.setStyle(Paint.Style.FILL);
                 paint.setFakeBoldText(enabled);
-                paint.setColor(enabled ? TEXT : PARCHMENT_DARK);
+                paint.setColor(enabled ? TEXT : MUTED_TEXT);
                 drawFittedText(canvas, labels[index], button.centerX(), button.centerY(), button.width() * 0.84f,
                         Math.min(28f * density, button.height() * 0.28f));
             }
@@ -3404,6 +3502,14 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final RectF frame = adventureFrame();
             final boolean choice = ThorBrowserState.isEncounter(contextId);
+            if (ThorContextIds.KINGDOM_OVERVIEW.equals(contextId))
+            {
+                if (browser.rowCount() == 0) return ThorBrowserState.CONTROL_NONE;
+                if (kingdomTabBounds(browser.labels[0].equals("towns"), frame).contains(x, y))
+                    return ThorBrowserState.CONTROL_FIRST_ROW;
+                return ThorBrowserState.kingdomControlAt(x - frame.left, y - frame.top,
+                        frame.width(), frame.height(), browser.rowCount());
+            }
             if (choice || ThorBrowserState.isDialog(contextId))
                 return ThorBrowserState.encounterControlAt(x - frame.left, y - frame.top,
                         frame.width(), frame.height(), getResources().getDisplayMetrics().density,
@@ -3749,7 +3855,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 return heroMeeting.description(title, status);
 
             if (ThorBrowserState.isDialog(contextId) || ThorBrowserState.isEncounter(contextId))
-                return dialogText(String.join("", detailLines)) + ". " + dialogText(status);
+                return title + ". " + dialogText(String.join("", detailLines)) + ". " + dialogText(status);
             if (ThorContextIds.SAVE_GAME.equals(contextId))
                 return title + ". " + saveFilename() + ". " + status + ". " + detailLines[3] + ". "
                         + getContext().getString(R.string.thor_save_edit) + ", "
@@ -3770,6 +3876,7 @@ final class ThorSecondScreenPresentation extends Presentation
                                 ? R.string.thor_map_underground : R.string.thor_map_surface)
                         + ". " + getContext().getString(R.string.thor_map_inspection_hint)
                         + ". " + routeStatusText() + ". " + routeMetadataText()
+                        + ". " + getContext().getString(R.string.thor_route_legend)
                         + ". " + getContext().getString(R.string.thor_route_controls_accessibility)
                         + (mapInspection != null && inspectedCluster >= 0 && inspectedCluster < mapInspection.size
                             ? ". " + (mapInspection.count[inspectedCluster] == 1

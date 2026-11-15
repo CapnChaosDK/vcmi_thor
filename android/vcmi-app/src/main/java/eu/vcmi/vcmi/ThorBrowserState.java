@@ -44,7 +44,7 @@ final class ThorBrowserState
 
     static boolean isEncounter(final String context)
     {
-        return ThorContextIds.ENCOUNTER_CHOICE.equals(context);
+        return ThorContextIds.ENCOUNTER_CHOICE.equals(context) || ThorContextIds.KINGDOM_OVERVIEW.equals(context);
     }
 
     static boolean isDialog(final String context)
@@ -157,7 +157,8 @@ final class ThorBrowserState
             if (control == CONTROL_NEXT) return dialog ? ThorActionIds.WINDOW_NEXT : ThorActionIds.LOAD_BROWSER_NEXT_PAGE;
             if (control == CONTROL_PRIMARY) return dialog || ThorContextIds.SETTINGS_SELECTION.equals(contextId)
                     ? ThorActionIds.WINDOW_CONFIRM : ThorActionIds.NONE;
-            if (control == CONTROL_BACK) return ThorContextIds.DIALOG_INFORMATION.equals(contextId)
+            if (control == CONTROL_BACK) return (ThorContextIds.DIALOG_INFORMATION.equals(contextId)
+                    || ThorContextIds.THIEVES_GUILD.equals(contextId))
                     ? ThorActionIds.NONE : ThorActionIds.WINDOW_CLOSE;
             return ThorActionIds.NONE;
         }
@@ -233,6 +234,29 @@ final class ThorBrowserState
                     side + column * (buttonWidth + gap) + buttonWidth, bottom};
         }
         return new float[]{0f, 0f, 0f, 0f};
+    }
+
+    static float[] kingdomBounds(final int control, final float width, final float height)
+    {
+        if (control > CONTROL_FIRST_ROW && control < CONTROL_FIRST_ROW + ENCOUNTER_ROWS)
+        {
+            final float top = height * (.32f + (control - CONTROL_FIRST_ROW - 1) * .135f);
+            return new float[]{width * .055f, top, width * .945f, top + height * .115f};
+        }
+        return control >= CONTROL_PREVIOUS && control <= CONTROL_BACK
+                ? boundsForControl(ThorContextIds.SETTINGS, control, width, height) : new float[4];
+    }
+
+    static int kingdomControlAt(final float x, final float y, final float width, final float height,
+                                final int rowCount)
+    {
+        for (int control = CONTROL_FIRST_ROW + 1; control <= CONTROL_BACK; ++control)
+        {
+            if (isRowControl(control) && control - CONTROL_FIRST_ROW >= rowCount) continue;
+            final float[] bounds = kingdomBounds(control, width, height);
+            if (x >= bounds[0] && x < bounds[2] && y >= bounds[1] && y < bounds[3]) return control;
+        }
+        return CONTROL_NONE;
     }
 
     static float[] encounterBounds(final int control, final float width, final float height,

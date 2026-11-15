@@ -313,7 +313,7 @@ std::optional<ThorTownService> thorTownServiceFromTarget(int targetId)
 
 bool isThorActionAllowedInContext(ThorAction action, const std::string & contextId)
 {
-	if(contextId == ThorContextIds::ENCOUNTER_CHOICE)
+	if(contextId == ThorContextIds::ENCOUNTER_CHOICE || contextId == ThorContextIds::KINGDOM_OVERVIEW)
 		return action == ThorAction::LOAD_BROWSER_SELECT || action == ThorAction::LOAD_BROWSER_PREVIOUS_PAGE
 			|| action == ThorAction::LOAD_BROWSER_NEXT_PAGE || action == ThorAction::WINDOW_CONFIRM
 			|| action == ThorAction::WINDOW_CLOSE || action == ThorAction::WINDOW_PREVIOUS || action == ThorAction::WINDOW_NEXT;
@@ -713,7 +713,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 {
 	const bool filename = context.contextId == ThorContextIds::SAVE_GAME
 		&& request.action == ThorAction::WINDOW_NEXT && request.commandVersion == 0 && request.commandId == 0;
-	if((context.contextId == ThorContextIds::SAVE_GAME || context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
+	if((context.contextId == ThorContextIds::SAVE_GAME || context.contextId == ThorContextIds::ENCOUNTER_CHOICE
+		|| context.contextId == ThorContextIds::KINGDOM_OVERVIEW)
 		&& request.recruitmentOperation != ThorRecruitmentOperation::NONE)
 		return ThorActionValidation::INVALID_TARGET;
 	if(filename ? !thorSaveFilenamePayloadValid(request.text) : !request.text.empty())
@@ -788,7 +789,8 @@ ThorActionValidation validateThorActionRequest(const ThorActionRequest & request
 		return ThorActionValidation::UNKNOWN_ACTION;
 	if(request.revision != context.revision)
 		return ThorActionValidation::STALE_REVISION;
-	if((context.contextId == ThorContextIds::SAVE_GAME || context.contextId == ThorContextIds::ENCOUNTER_CHOICE)
+	if((context.contextId == ThorContextIds::SAVE_GAME || context.contextId == ThorContextIds::ENCOUNTER_CHOICE
+		|| context.contextId == ThorContextIds::KINGDOM_OVERVIEW)
 		&& (!context.nativeOwnerToken || !context.nativeParentToken))
 		return ThorActionValidation::WRONG_CONTEXT;
 	if(!isThorActionAllowedInContext(request.action, context.contextId))

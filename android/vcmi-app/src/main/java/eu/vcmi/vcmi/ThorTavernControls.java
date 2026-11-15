@@ -71,7 +71,7 @@ final class ThorTavernControls
         if (control >= OFFERS && control <= RUMOR)
         {
             float x = left + (control - OFFERS) * width / 4;
-            return new float[]{x, top + height * .16f, x + width * .24f, top + height * .26f};
+            return new float[]{x, top + height * .17f, x + width * .24f, top + height * .27f};
         }
         if (control >= ROW_FIRST && control <= ROW_LAST)
         {

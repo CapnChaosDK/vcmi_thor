@@ -59,6 +59,10 @@ Status values: `planned`, `proposed`, `approved`, `in progress`, `awaiting CI`, 
 
 ## Current state
 
+- Thor layout and menu audit fixes are implemented locally. See the
+  [current contract](#slice-67--thor-layout-and-menu-audit-fixes) and
+  [device validation plan](CI/thor-validation-plan.json).
+
 - The candidate companion moved to
   [CapnChaosDK/vcmi-builds](https://github.com/CapnChaosDK/vcmi-builds). Thor CI
   publishes the game artifacts and validation plan through GitHub under the
@@ -3480,7 +3484,7 @@ encounter checklist and is covered by Slice 66.
 
 ## Slice 66 — lower-screen gameplay follow-through
 
-[Integrated device checklist](CI/thor-validation-plan.json) ·
+[Integrated device checklist](docs/validation/thor-companion-gameplay-validation-plan.json) ·
 [Slice 65 checklist](docs/validation/thor-adventure-encounters-validation-plan.json)
 
 - Shipyards share the native boat purchase window for Adventure and Town, with
@@ -3516,3 +3520,23 @@ candidate `c4c8c5d32bac720c2a9dcf04b2a58269be4d002d` and authorized merging
 passed preflight and ARM64 packaging. The downloaded artifact matched its
 GitHub digest, and the APK matched receipt SHA-256
 `efd5c76975abe5a85450e168d23e8729b679133e1926e04c1340015d5f31c807`.
+
+
+## Slice 67 — Thor layout and menu audit fixes
+
+- Status: local implementation, awaiting candidate CI and hardware validation.
+- The lower Thieves’ Guild and Battle Results use bounded native page snapshots.
+  Guild Close returns to the live parent, and Tavern retains its selected tab
+  during the Guild visit. Kingdom shows dedicated Heroes and Towns tabs with
+  native selection and an explicit Open action.
+- The lower Settings list separates categories, preferences, and game-session
+  actions. Scaling uses the live setting label, and the spellbook toggle has a
+  player-readable label.
+- Hero tabs and list rows have disjoint drawing and hit regions. Confirmation,
+  Map, Town Army, Events and Tavern text have reserved space and improved
+  contrast. Journal text uses word wrapping and preserves local pagination.
+- Native changes are limited to the Thor owner adapters and existing bounded
+  browser transport. The changes carry forward with these adapters during an
+  upstream update. Native game rules and window callbacks are unchanged.
+- [Candidate hardware checklist](CI/thor-validation-plan.json).
+  [Historical Slice 66 checklist](docs/validation/thor-companion-gameplay-validation-plan.json).

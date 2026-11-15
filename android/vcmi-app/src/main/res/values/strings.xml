@@ -235,6 +235,7 @@
     <string name="shortcut_editor">Open VCMI Editor</string>
     <string name="thor_tab_map">Map</string>
     <string name="thor_map_fit">Fit</string>
+    <string name="thor_map_zoom_format">Zoom: %1$s</string>
     <string name="thor_map_detail_two">Detail 2×</string>
     <string name="thor_map_detail_four">Detail 4×</string>
     <string name="thor_map_navigate">Navigate</string>
@@ -247,12 +248,12 @@
     <string name="thor_map_inspection_hint">Hold a marker to inspect • Resources / Mines / Dwellings / Travel / Sites</string>
     <string name="thor_map_inspection_limited">Hold to inspect • Showing the first 1024 visible objects</string>
     <string name="thor_map_cluster_info">%1$d objects • Use Detail and Pan to separate markers</string>
-    <string name="thor_map_filter_all">Objects: All • Tap to filter</string>
-    <string name="thor_map_filter_resources">Objects: Resources • Tap to filter</string>
-    <string name="thor_map_filter_mines">Objects: Mines • Tap to filter</string>
-    <string name="thor_map_filter_dwellings">Objects: Dwellings • Tap to filter</string>
-    <string name="thor_map_filter_travel">Objects: Travel • Tap to filter</string>
-    <string name="thor_map_filter_sites">Objects: Sites • Tap to filter</string>
+    <string name="thor_map_filter_all">Objects: All</string>
+    <string name="thor_map_filter_resources">Resources</string>
+    <string name="thor_map_filter_mines">Mines</string>
+    <string name="thor_map_filter_dwellings">Dwellings</string>
+    <string name="thor_map_filter_travel">Travel</string>
+    <string name="thor_map_filter_sites">Sites</string>
     <string name="thor_map_plan">Plan</string>
     <string name="thor_route_confirm">Confirm</string>
     <string name="thor_route_cancel">Cancel preview</string>
@@ -338,6 +339,10 @@
     <string name="thor_service_blacksmith_hint">Confirm replacement in the dialog.</string>
     <string name="thor_service_guild_hint">Select a spell to read it. Research opens a confirmation dialog.</string>
     <string name="thor_settings_title">Settings</string>
+    <string name="thor_settings_categories">Settings categories</string>
+    <string name="thor_settings_session">Game session</string>
+    <string name="thor_settings_spellbook_animation">Spellbook animation</string>
+    <string name="thor_kingdom_open">Open selected</string>
     <string name="thor_encounter_pages">Text %1$s · Choices %2$d / %3$d</string>
     <string name="thor_encounter_use_upper">Use the upper screen to continue</string>
     <string name="thor_encounter_empty">No choices available</string>

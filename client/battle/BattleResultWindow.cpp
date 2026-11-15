@@ -297,6 +297,8 @@ void BattleResultWindow::publishThorResult()
 	context.nativeOwnerToken = this;
 	const auto pages = thorDialogPages(thorSummary, 96, 7);
 	thorEncounterText(context, pages, thorPage);
+	context.browserPage = thorPage;
+	context.browserPageCount = static_cast<int>(pages.size());
 	if(!pages.empty() && GAME->interface() == &owner)
 	{
 		if(!exit->isBlocked() && !exit->isDisabled())

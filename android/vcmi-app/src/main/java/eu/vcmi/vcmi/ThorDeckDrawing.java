@@ -4,6 +4,10 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
+import android.text.TextUtils;
 
 /** Existing deck palette and paint primitives, shared without retaining a view. */
 final class ThorDeckDrawing
@@ -14,6 +18,7 @@ final class ThorDeckDrawing
     static final int PARCHMENT = Color.rgb(189, 166, 119);
     static final int PARCHMENT_DARK = Color.rgb(91, 69, 42);
     static final int GOLD = Color.rgb(205, 166, 66);
+    static final int MUTED_TEXT = Color.rgb(194, 186, 163);
     static final int TEXT = Color.rgb(244, 229, 184);
 
     static void drawChoiceButton(final Canvas canvas, final Paint paint, final RectF bounds, final String label,
@@ -30,7 +35,7 @@ final class ThorDeckDrawing
         paint.setStyle(Paint.Style.FILL);
         paint.setTextAlign(Paint.Align.CENTER);
         paint.setFakeBoldText(enabled || selected);
-        paint.setColor(enabled || selected ? TEXT : PARCHMENT_DARK);
+        paint.setColor(enabled || selected ? TEXT : MUTED_TEXT);
         drawFittedText(canvas, paint, label, bounds.centerX(), bounds.centerY(), bounds.width() * 0.88f,
                 Math.min(25f * density, bounds.height() * 0.36f));
         paint.setFakeBoldText(false);
@@ -46,7 +51,27 @@ final class ThorDeckDrawing
             textSize -= 1f;
             paint.setTextSize(textSize);
         }
-        canvas.drawText(text, centerX, baseline - (paint.ascent() + paint.descent()) * 0.5f, paint);
+        final String label = paint.measureText(text) <= maxWidth ? text
+                : TextUtils.ellipsize(text, new TextPaint(paint), Math.max(0f, maxWidth), TextUtils.TruncateAt.END).toString();
+        canvas.drawText(label, centerX, baseline - (paint.ascent() + paint.descent()) * 0.5f, paint);
+    }
+
+    static StaticLayout paragraph(final String text, final int color, final float size, final float width)
+    {
+        final TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(color);
+        paint.setTextSize(size);
+        return StaticLayout.Builder.obtain(text, 0, text.length(), paint, Math.max(1, (int) width))
+                .setAlignment(Layout.Alignment.ALIGN_NORMAL).setIncludePad(false).build();
+    }
+
+    static void drawParagraph(final Canvas canvas, final StaticLayout text, final RectF area, final int offset)
+    {
+        canvas.save();
+        canvas.clipRect(area);
+        canvas.translate(area.left, area.top - offset);
+        text.draw(canvas);
+        canvas.restore();
     }
 
     static RectF frame(final ThorPresentationLayout layout)

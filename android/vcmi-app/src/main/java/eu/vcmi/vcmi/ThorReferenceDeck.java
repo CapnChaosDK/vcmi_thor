@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.text.StaticLayout;
 import android.view.MotionEvent;
 
 /** Shared journal reader and one-shot, already-covered native Puzzle Map image. */
@@ -53,6 +54,7 @@ final class ThorReferenceDeck
     private boolean visible(int control)
     {
         if (journey.state.kind() == 3) return control == ThorReferenceJourney.CLOSE;
+        if (journey.reading && (control == ThorReferenceJourney.QUESTS || control == ThorReferenceJourney.EVENTS)) return false;
         if (control == ThorReferenceJourney.READ) return !journey.reading;
         if (control == ThorReferenceJourney.LIST) return journey.reading;
         if (control >= ThorReferenceJourney.ROW_FIRST)
@@ -82,9 +84,9 @@ final class ThorReferenceDeck
             default: return R.string.thor_market_close;
         }
     }
-    private static void text(Canvas canvas, Paint paint, String value, float x, float y, float width, float size)
+    private static void text(Canvas canvas, Paint paint, String value, float x, float y, float width, float size, int color)
     {
-        paint.setStyle(Paint.Style.FILL); paint.setColor(ThorDeckDrawing.TEXT); paint.setTextAlign(Paint.Align.CENTER);
+        paint.setStyle(Paint.Style.FILL); paint.setColor(color); paint.setTextAlign(Paint.Align.CENTER);
         ThorDeckDrawing.drawFittedText(canvas, paint, value, x, y, width, size);
     }
     void draw(Canvas canvas, Paint paint, Context context, ThorPresentationLayout layout, float density)
@@ -94,15 +96,15 @@ final class ThorReferenceDeck
         ThorReferenceState state = journey.state;
         int title = state.kind() == 3 ? R.string.thor_context_puzzle_map
                 : state.kind() == 2 ? R.string.thor_reference_events : R.string.thor_reference_quests;
-        text(canvas, paint, context.getString(title), left + width * .29f, top + h * .05f, width * .58f, h * .035f);
+        text(canvas, paint, context.getString(title), left + width * .29f, top + h * .05f, width * .58f, h * .035f, ThorDeckDrawing.TEXT);
         if (state == ThorReferenceState.EMPTY)
         {
-            text(canvas, paint, context.getString(R.string.thor_reference_unavailable), center, top + h * .4f, width, h * .025f);
+            text(canvas, paint, context.getString(R.string.thor_reference_unavailable), center, top + h * .4f, width, h * .025f, ThorDeckDrawing.PARCHMENT_DARK);
             return;
         }
         if (state.kind() == 3)
         {
-            text(canvas, paint, context.getString(R.string.thor_reference_progress, state.progress()), center, top + h * .17f, width, h * .025f);
+            text(canvas, paint, context.getString(R.string.thor_reference_progress, state.progress()), center, top + h * .17f, width, h * .025f, ThorDeckDrawing.TEXT);
             if (puzzle != null)
             {
                 float scale = Math.min(width / puzzle.getWidth(), h * .61f / puzzle.getHeight());
@@ -110,41 +112,34 @@ final class ThorReferenceDeck
                 paint.setStyle(Paint.Style.FILL); paint.setAlpha(255); paint.setFilterBitmap(true);
                 canvas.drawBitmap(puzzle, null, new RectF(center - w / 2, top + h * .23f, center + w / 2, top + h * .23f + height), paint);
             }
-            else text(canvas, paint, context.getString(R.string.thor_reference_image_pending), center, top + h * .5f, width, h * .024f);
+            else text(canvas, paint, context.getString(R.string.thor_reference_image_pending), center, top + h * .5f, width, h * .024f, ThorDeckDrawing.PARCHMENT_DARK);
         }
         else if (journey.reading)
         {
-            // Keep a readable font even for descriptions with many explicit newlines.
-            // Local subpages preserve all lines within each native transport page.
-            float size = Math.min(h * .028f, width / 42);
-            java.util.ArrayList<String> lines = new java.util.ArrayList<>();
-            paint.setTextSize(size);
-            String rest = state.body();
-            while (!rest.isEmpty())
-            {
-                int n = paint.breakText(rest, true, width, null);
-                if (n > 0 && n < rest.length() && Character.isHighSurrogate(rest.charAt(n - 1))) --n;
-                if (n <= 0) n = Character.charCount(rest.codePointAt(0));
-                int newline = rest.indexOf('\n');
-                if (newline >= 0 && newline < n) n = newline + 1;
-                lines.add(rest.substring(0, n).trim()); rest = rest.substring(n);
-            }
-            int capacity = Math.max(1, (int)(h * .45f / (size * 1.3f)));
-            journey.localPages = Math.max(1, (lines.size() + capacity - 1) / capacity);
+            final RectF area = new RectF(left, top + h * .25f, left + width, top + h * .71f);
+            final StaticLayout body = ThorDeckDrawing.paragraph(state.body(), ThorDeckDrawing.PARCHMENT_DARK,
+                    Math.min(h * .03f, width / 38f), width);
+            final java.util.ArrayList<Integer> starts = new java.util.ArrayList<>();
+            starts.add(0);
+            for (int line = 1; line < body.getLineCount(); ++line)
+                if (body.getLineBottom(line) - starts.get(starts.size() - 1) > area.height())
+                    starts.add(body.getLineTop(line));
+            journey.localPages = starts.size();
             journey.localPage = Math.min(journey.localPage, journey.localPages - 1);
-            paint.setTextSize(size); paint.setStyle(Paint.Style.FILL); paint.setColor(ThorDeckDrawing.TEXT); paint.setTextAlign(Paint.Align.LEFT);
-            float y = top + h * .26f + size;
-            for (int i = journey.localPage * capacity; i < Math.min(lines.size(), (journey.localPage + 1) * capacity); ++i)
-            { canvas.drawText(lines.get(i), left, y, paint); y += size * 1.3f; }
+            final int start = starts.get(journey.localPage);
+            if (journey.localPage + 1 < journey.localPages)
+                area.bottom = area.top + starts.get(journey.localPage + 1) - start;
+            ThorDeckDrawing.drawParagraph(canvas, body, area, start);
         }
         else if (state.count() == 0)
-            text(canvas, paint, context.getString(R.string.thor_reference_empty), center, top + h * .42f, width, h * .025f);
+            text(canvas, paint, context.getString(R.string.thor_reference_empty), center, top + h * .42f, width, h * .025f, ThorDeckDrawing.PARCHMENT_DARK);
         for (int c = 1; c <= ThorReferenceJourney.CLOSE; ++c)
         {
             if (!visible(c)) continue;
             float[] b = bounds(c, layout);
             ThorDeckDrawing.drawChoiceButton(canvas, paint, new RectF(b[0], b[1], b[2], b[3]), context.getString(label(c)),
-                    journey.enabled(c), false, density);
+                    journey.enabled(c), c == (state.kind() == 1 ? ThorReferenceJourney.QUESTS
+                            : state.kind() == 2 ? ThorReferenceJourney.EVENTS : -1), density);
         }
         if (state.kind() != 3)
         {
@@ -157,9 +152,9 @@ final class ThorReferenceDeck
             }
             text(canvas, paint, (journey.reading ? state.textPage() + 1 : state.pages() == 0 ? 0 : state.page() + 1)
                     + "/" + (journey.reading ? state.textPages() : state.pages())
-                    + (journey.reading && journey.localPages > 1 ? " (" + (journey.localPage + 1) + "/" + journey.localPages + ")" : ""), center, top + h * .79f, width * .45f, h * .025f);
+                    + (journey.reading && journey.localPages > 1 ? " (" + (journey.localPage + 1) + "/" + journey.localPages + ")" : ""), center, top + h * .79f, width * .45f, h * .025f, ThorDeckDrawing.PARCHMENT_DARK);
             if (!journey.reading && state.selected() >= 0 && state.textPages() == 0)
-                text(canvas, paint, context.getString(R.string.thor_reference_unavailable), center, top + h * .715f, width, h * .018f);
+                text(canvas, paint, context.getString(R.string.thor_reference_unavailable), center, top + h * .715f, width, h * .018f, ThorDeckDrawing.PARCHMENT_DARK);
         }
     }
     boolean touch(MotionEvent event, long revision, long session, ThorPresentationLayout layout, boolean currentSession)
