@@ -1732,17 +1732,21 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setTextAlign(Paint.Align.CENTER);
             paint.setFakeBoldText(true);
             paint.setColor(TEXT);
+            final float headingLeft = frame.left + frame.width() * 0.11f;
+            final float headingRight = hapticsToggleBounds().left - adventureBevel();
+            final float headingCenter = (headingLeft + headingRight) * 0.5f;
+            final float headingWidth = Math.max(0f, headingRight - headingLeft);
             drawFittedText(canvas, saving ? getContext().getString(R.string.thor_context_save_game)
                             : (campaign || settings) ? title : townHallContext
                             ? getContext().getString(R.string.thor_town_hall_title)
                             : getContext().getString(R.string.thor_context_load_game),
-                    frame.centerX(), frame.top + frame.height() * 0.065f, frame.width() * 0.78f,
+                    headingCenter, frame.top + frame.height() * 0.065f, headingWidth,
                     Math.min(36f * density, frame.height() * 0.060f));
             paint.setFakeBoldText(false);
             drawFittedText(canvas, getContext().getString(R.string.thor_browser_page,
                             browser.pageCount == 0 ? 0 : (townHallContext ? townHall.page() : browser.page) + 1,
                             browser.pageCount),
-                    frame.centerX(), frame.top + frame.height() * 0.115f, frame.width() * 0.72f,
+                    headingCenter, frame.top + frame.height() * 0.115f, headingWidth,
                     Math.min(26f * density, frame.height() * 0.04f));
             if (!campaign && !townHallContext && !settings)
             {

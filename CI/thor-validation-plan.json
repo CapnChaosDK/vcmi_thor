@@ -22,13 +22,19 @@
       "id": "settings",
       "title": "Settings order and warnings",
       "steps": "Open Settings on the upper screen. Enter each lower category, page its preferences, inspect Interface Scaling and Spellbook animation, and page to Game session. Open Load Game, Main Menu and Restart prompts and decline each. Check Save and Back.",
-      "expected": "Category choices, preferences and session actions have separate pages. Back has one persistent control. Setting names and their current values are readable. Warning text stays clear of the divider, and decline follows the native parent behavior."
+      "expected": "Category choices, preferences and session actions have separate pages. The full heading and page counter stay clear of Haptics. Back has one persistent control. Setting names and their current values are readable. Warning text stays clear of the divider, and decline follows the native parent behavior."
     },
     {
       "id": "text",
       "title": "Adventure, Town and journal legibility",
       "steps": "Review Adventure Actions and Map in Fit, Detail and Plan; inspect a marker and preview then cancel a route. Read a multi-page Event, return to List, and close. Check Town Army, Tavern Details and Rumor, and disabled controls in Town Services and Save.",
       "expected": "Tabs, text and rows do not collide. Body text wraps at words where possible and all event text remains accessible. Disabled and empty states are readable and disabled controls remain inert."
+    },
+    {
+      "id": "handheld",
+      "title": "Handheld readability and touch targets",
+      "steps": "Hold the Thor normally and read both screens at default and preferred sizing. Check Map status and legend, Tavern Rumor and Details, and Settings labels and warnings. Tap adjacent Map controls, Hero tabs, Guild paging, Haptics and Back with a thumb, including near their edges.",
+      "expected": "Text can be read without bringing the device closer. Labels remain clear of adjacent elements. Each deliberate tap activates only its intended control, and disabled controls remain inert."
     },
     {
       "id": "lifecycle",
