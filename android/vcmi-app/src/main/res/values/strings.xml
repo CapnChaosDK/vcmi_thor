@@ -235,6 +235,8 @@
     <string name="shortcut_editor">Open VCMI Editor</string>
     <string name="thor_tab_map">Map</string>
     <string name="thor_map_fit">Fit</string>
+    <string name="thor_map_focus">Map first</string>
+    <string name="thor_map_full_deck">Full deck</string>
     <string name="thor_map_zoom_format">Zoom: %1$s</string>
     <string name="thor_map_detail_two">Detail 2×</string>
     <string name="thor_map_detail_four">Detail 4×</string>

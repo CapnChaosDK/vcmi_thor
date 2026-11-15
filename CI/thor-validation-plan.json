@@ -1,11 +1,17 @@
 {
   "schema_version": 1,
-  "feature_id": "thor-layout-menu-audit",
-  "title": "Thor layout and menu fixes",
-  "summary": "Restore lower-screen Guild paging and Close, add dedicated Kingdom tabs, group Settings menus, and improve text contrast, wrapping and spacing across Adventure, Hero, Town, Tavern and dialogs.",
+  "feature_id": "thor-map-first",
+  "title": "Map-first Adventure view",
+  "summary": "Give the lower-screen map an optional compact hero header and remember the chosen view between sessions. Keep contextual route actions and an explicit return to the full deck.",
   "preparation": "Install the checksum-verified is.xyz.vcmi.thor candidate. Use a disposable save with a multi-page scenario event, two or more heroes and towns, and access to a Tavern and Mage Guild. Start at default display and font sizing.",
-  "limitations": "The candidate fixes the panels covered by the original audit. Check physical text readability and touch accuracy on both displays.",
+  "limitations": "Check physical text readability and touch accuracy on both displays. Map-first applies only to the Adventure map.",
   "checks": [
+    {
+      "id": "map-first",
+      "title": "Map-first layout and persistence",
+      "steps": "Open the lower Map tab and tap Map first. Check the hero and movement summary, zoom, pan and preview then cancel a route. Open a Town or Hero window from the upper display, close it, and check the map returns. Background and resume, toggle the lower display, and relaunch the game. Select Full deck, check that the Map tab is selected, and confirm that a relaunch uses the full deck again.",
+      "expected": "Map-first gives the map more room with legible controls. Route actions show only when available. Other windows still display their own lower panels. The Adventure map returns in the chosen view after lifecycle changes and the view switch never moves a hero."
+    },
     {
       "id": "guild",
       "title": "Thieves’ Guild return and paging",

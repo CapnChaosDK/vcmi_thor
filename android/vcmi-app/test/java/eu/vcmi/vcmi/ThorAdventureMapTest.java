@@ -597,14 +597,18 @@ public class ThorAdventureMapTest
             float previousRight = 0f;
             for (int column = 0; column < columns; ++column)
             {
-                final float[] toolbar = ThorMapControls.bounds(column, columns, false, 1080, 1240);
-                final float[] route = ThorMapControls.bounds(column, columns, true, 1080, 1240);
+                final float[] toolbar = ThorMapControls.bounds(column, columns, false, false, 1080, 1240);
+                final float[] compact = ThorMapControls.bounds(column, columns, false, true, 1080, 1240);
+                final float[] route = ThorMapControls.bounds(column, columns, true, false, 1080, 1240);
                 assertTrue(toolbar[0] >= previousRight && toolbar[2] <= 1080);
                 assertTrue(toolbar[2] - toolbar[0] >= 150);
                 assertTrue(toolbar[3] - toolbar[1] >= 130);
                 assertTrue(toolbar[1] >= 1240 * (ThorAdventureLayout.DIVIDER
                         + (1f - ThorAdventureLayout.DIVIDER) * ThorAdventureLayout.TAB_END));
                 assertTrue(toolbar[3] < 1240 * ThorMapControls.MAP_TOP);
+                assertTrue(compact[1] > 1240 * ThorMapControls.MAP_FIRST_DIVIDER);
+                assertTrue(compact[3] < 1240 * ThorMapControls.mapTop(true));
+                assertEquals(toolbar[3] - toolbar[1], compact[3] - compact[1], 0.01f);
                 assertTrue(route[1] > 1240 * ThorMapControls.MAP_BOTTOM_WITH_ACTIONS);
                 assertTrue(route[3] < 1240 * 0.96f);
                 previousRight = toolbar[2];
@@ -615,6 +619,21 @@ public class ThorAdventureMapTest
         assertNotEquals(navigate, view.modeKey()); assertTrue(view.copy().plan);
         view.plan = false; view.pan = true;
         assertNotEquals(navigate, view.modeKey());
+    }
+
+    @Test
+    public void mapFirstToggleRequiresReleaseOverTheSameControlAndStaysLocal()
+    {
+        final ThorAdventureMap map = map(36, 36, 0, new int[0]);
+        final ThorMapGesture gesture = new ThorMapGesture();
+        final ThorMapTransform transform = new ThorMapTransform(map.width, map.height, 0, 0, 400, 400, 1, 0, 0);
+        final int toggle = ThorMapControls.TOGGLE_MAP_FIRST;
+        gesture.begin(7, 8, 3, map.level, 4, toggle, 30, 40, transform);
+        final ThorMapGesture.Release accepted = release(gesture, map, false, 30, 40, toggle, 0L);
+        assertEquals(toggle, accepted.localControl);
+        assertEquals(ThorActionIds.NONE, accepted.action);
+        gesture.begin(7, 8, 3, map.level, 4, toggle, 30, 40, transform);
+        assertEquals(-1, release(gesture, map, false, 30, 40, -1, 0L).localControl);
     }
 
 }

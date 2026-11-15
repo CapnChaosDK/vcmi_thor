@@ -93,7 +93,8 @@ final class ThorMapGesture
             final int action = ThorMapControls.routeAction(pressedControl, map, route, enabledActions);
             if (action != ThorActionIds.NONE)
                 return new Release(action, ThorMapControls.routeTarget(pressedControl), -1);
-            if (pressedControl == 8 || pressedControl == 7 || pressedControl >= 0 && pressedControl < 5)
+            if (pressedControl == ThorMapControls.TOGGLE_MAP_FIRST || pressedControl == 8
+                    || pressedControl == 7 || pressedControl >= 0 && pressedControl < 5)
                 return new Release(ThorActionIds.NONE, ThorActionIds.NO_TARGET, pressedControl);
             if (pressedControl >= 5 && pressedControl <= 6 && map.levels == 2
                     && map.level != pressedControl - 5
