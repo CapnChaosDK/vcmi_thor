@@ -3546,7 +3546,12 @@ GitHub digest, and the APK matched receipt SHA-256
 
 ## Slice 68 — Map-first Adventure view
 
-- Status: implemented, pending exact-candidate device validation.
+- Status: hardware validated. The user confirmed the handheld checks passed
+  on the AYN Thor with candidate `5c05bd237` and authorized merging
+  [PR #69](https://github.com/CapnChaosDK/vcmi_thor/pull/69).
+  [Thor CI](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/43755777951)
+  passed preflight and ARM64 packaging for that commit. The artifact and APK
+  checksums matched before installation.
 - Map first replaces the large Adventure header and tabs with the active hero's
   movement summary and a Full deck button. The preference survives reopening the
   app and applies only when Adventure owns the lower panel.
