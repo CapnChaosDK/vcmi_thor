@@ -27,8 +27,8 @@
     {
       "id": "text",
       "title": "Adventure, Town and journal legibility",
-      "steps": "Review Adventure Actions and Map in Fit, Detail and Plan; inspect a marker and preview then cancel a route. Read a multi-page Event, return to List, and close. Check Town Army, Tavern Details and Rumor, and disabled controls in Town Services and Save.",
-      "expected": "Tabs, text and rows do not collide. Body text wraps at words where possible and all event text remains accessible. Disabled and empty states are readable and disabled controls remain inert."
+      "steps": "Review Adventure Actions and Map. Cycle Zoom through Fit, Detail 2× and Detail 4×, pan in Detail, cycle the object filter, switch levels on a two-level map, and hold a marker. Enter Plan, preview and cancel a route, then tap Navigate. Read a multi-page Event, return to List, and close. Check Town Army, Tavern Details and Rumor, and disabled controls in Town Services and Save.",
+      "expected": "Map view has one toolbar and gains space when there are no available route actions. Preview shows its available actions below the map, and cancelling leaves the hero in place. Tabs, text and rows do not collide. Body text wraps at words where possible and all event text remains accessible. Disabled controls remain inert."
     },
     {
       "id": "handheld",

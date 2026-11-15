@@ -182,20 +182,10 @@ public class ThorAdventureMapTest
     }
 
     @Test
-    public void fixedControlsAreDistinctBoundedAndHaveAccessibleLocalizedLabels()
+    public void fixedControlsHaveLocalizedLabels()
     {
         for (int control = 0; control < 7; ++control)
-        {
             assertTrue(ThorMapControls.label(control) != 0);
-            final float[] box = ThorMapControls.bounds(control, 900, 1100);
-            assertTrue(box[0] >= 0 && box[2] <= 900 && box[1] > 0 && box[3] < 1100 * 0.54f);
-            assertTrue(box[0] < box[2] && box[1] < box[3]);
-            for (int other = 0; other < control; ++other)
-            {
-                final float[] previous = ThorMapControls.bounds(other, 900, 1100);
-                assertTrue(box[0] >= previous[2] || box[1] >= previous[3]);
-            }
-        }
         assertEquals(R.string.thor_map_navigate, ThorMapControls.label(3));
         assertEquals(R.string.thor_map_pan, ThorMapControls.label(4));
     }
@@ -600,16 +590,24 @@ public class ThorAdventureMapTest
     @Test
     public void movementControlsFitMeasuredDisplayWithoutTabMapOrControlOverlap()
     {
-        final int[] controls = {0,1,2,3,4,5,6,7,8,20,21,22,23,24};
-        for (int i = 0; i < controls.length; ++i)
+        assertTrue(ThorMapControls.MAP_BOTTOM - ThorMapControls.MAP_TOP > 0.48f);
+        assertTrue(ThorMapControls.MAP_BOTTOM_WITH_ACTIONS - ThorMapControls.MAP_TOP > 0.36f);
+        for (int columns = 1; columns <= 6; ++columns)
         {
-            final float[] box = ThorMapControls.bounds(controls[i], 1080, 1240);
-            assertTrue(box[2] - box[0] >= 190); assertTrue(box[3] - box[1] >= 65);
-            assertTrue(box[1] >= 1240 * 0.36f); assertTrue(box[3] <= 1240 * 0.55f);
-            for (int j = 0; j < i; ++j)
+            float previousRight = 0f;
+            for (int column = 0; column < columns; ++column)
             {
-                final float[] other = ThorMapControls.bounds(controls[j], 1080, 1240);
-                assertTrue(box[0] >= other[2] || other[0] >= box[2] || box[1] >= other[3] || other[1] >= box[3]);
+                final float[] toolbar = ThorMapControls.bounds(column, columns, false, 1080, 1240);
+                final float[] route = ThorMapControls.bounds(column, columns, true, 1080, 1240);
+                assertTrue(toolbar[0] >= previousRight && toolbar[2] <= 1080);
+                assertTrue(toolbar[2] - toolbar[0] >= 150);
+                assertTrue(toolbar[3] - toolbar[1] >= 130);
+                assertTrue(toolbar[1] >= 1240 * (ThorAdventureLayout.DIVIDER
+                        + (1f - ThorAdventureLayout.DIVIDER) * ThorAdventureLayout.TAB_END));
+                assertTrue(toolbar[3] < 1240 * ThorMapControls.MAP_TOP);
+                assertTrue(route[1] > 1240 * ThorMapControls.MAP_BOTTOM_WITH_ACTIONS);
+                assertTrue(route[3] < 1240 * 0.96f);
+                previousRight = toolbar[2];
             }
         }
         final ThorMapViewState view = new ThorMapViewState();

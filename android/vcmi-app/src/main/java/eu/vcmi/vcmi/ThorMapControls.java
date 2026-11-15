@@ -36,28 +36,17 @@ final class ThorMapControls
         }
     }
 
-    static float[] bounds(final int control, final float width, final float height)
+    static final int ZOOM = 0, NAVIGATE = 3, PAN = 4, FILTER = 7;
+    static final float MAP_TOP = 0.46f, MAP_BOTTOM = 0.945f, MAP_BOTTOM_WITH_ACTIONS = 0.825f;
+
+    static float[] bounds(final int column, final int columns, final boolean route,
+            final float width, final float height)
     {
-        final int columns, column;
-        final float top;
-        if (control >= 20 && control <= 24)
-        {
-            columns = 5; column = control - 20; top = 0.491f;
-        }
-        else if (control == 3 || control == 4 || control == 8 || control == 5 || control == 6)
-        {
-            columns = 5;
-            column = control == 3 ? 0 : control == 4 ? 1 : control == 8 ? 2 : control - 2;
-            top = 0.428f;
-        }
-        else
-        {
-            columns = 4; column = control == 7 ? 3 : control; top = 0.365f;
-        }
+        final float top = route ? 0.835f : 0.34f;
         final float left = width * 0.035f, gap = width * 0.008f;
         final float cell = (width * 0.93f - gap * (columns - 1)) / columns;
         return new float[]{left + column * (cell + gap), height * top,
-                left + column * (cell + gap) + cell, height * (top + 0.056f)};
+                left + column * (cell + gap) + cell, height * (top + 0.113f)};
     }
 
     static int label(final int control)
