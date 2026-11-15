@@ -3524,7 +3524,10 @@ GitHub digest, and the APK matched receipt SHA-256
 
 ## Slice 67 — Thor layout and menu audit fixes
 
-- Status: local implementation, awaiting candidate CI and hardware validation.
+- Status: merged and hardware validated. The user confirmed the final candidate
+  `2a90bcad9` on the AYN Thor. [PR #68](https://github.com/CapnChaosDK/vcmi_thor/pull/68)
+  merged as `d0c757038` after [ARM64 CI](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/43753378068)
+  passed. The final candidate also includes the compact map toolbar and contextual route controls.
 - The lower Thieves’ Guild and Battle Results use bounded native page snapshots.
   Guild Close returns to the live parent, and Tavern retains its selected tab
   during the Guild visit. Kingdom shows dedicated Heroes and Towns tabs with
@@ -3540,3 +3543,19 @@ GitHub digest, and the APK matched receipt SHA-256
   upstream update. Native game rules and window callbacks are unchanged.
 - [Candidate hardware checklist](CI/thor-validation-plan.json).
   [Historical Slice 66 checklist](docs/validation/thor-companion-gameplay-validation-plan.json).
+
+## Slice 68 — Map-first Adventure view
+
+- Status: hardware validated. The user confirmed the handheld checks passed
+  on the AYN Thor with candidate `5c05bd237` and authorized merging
+  [PR #69](https://github.com/CapnChaosDK/vcmi_thor/pull/69).
+  [Thor CI](https://github.com/CapnChaosDK/vcmi_thor/actions/runs/43755777951)
+  passed preflight and ARM64 packaging for that commit. The artifact and APK
+  checksums matched before installation.
+- Map first replaces the large Adventure header and tabs with the active hero's
+  movement summary and a Full deck button. The preference survives reopening the
+  app and applies only when Adventure owns the lower panel.
+- The layout switch is local to the Android presentation. Existing map gestures,
+  native route authority and contextual actions serve both layouts.
+- The [candidate checklist](CI/thor-validation-plan.json) covers returning from
+  native child windows, panel recreation, relaunch and the full-deck fallback.

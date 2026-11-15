@@ -36,13 +36,20 @@ final class ThorMapControls
         }
     }
 
-    static final int ZOOM = 0, NAVIGATE = 3, PAN = 4, FILTER = 7;
+    static final int ZOOM = 0, NAVIGATE = 3, PAN = 4, FILTER = 7, TOGGLE_MAP_FIRST = 9;
     static final float MAP_TOP = 0.46f, MAP_BOTTOM = 0.945f, MAP_BOTTOM_WITH_ACTIONS = 0.825f;
+    static final float MAP_FIRST_DIVIDER = 0.125f;
+    private static final float MAP_FIRST_OFFSET = 0.195f;
 
-    static float[] bounds(final int column, final int columns, final boolean route,
+    static float mapTop(final boolean mapFirst)
+    {
+        return mapFirst ? MAP_TOP - MAP_FIRST_OFFSET : MAP_TOP;
+    }
+
+    static float[] bounds(final int column, final int columns, final boolean route, final boolean mapFirst,
             final float width, final float height)
     {
-        final float top = route ? 0.835f : 0.34f;
+        final float top = route ? 0.835f : mapFirst ? 0.34f - MAP_FIRST_OFFSET : 0.34f;
         final float left = width * 0.035f, gap = width * 0.008f;
         final float cell = (width * 0.93f - gap * (columns - 1)) / columns;
         return new float[]{left + column * (cell + gap), height * top,

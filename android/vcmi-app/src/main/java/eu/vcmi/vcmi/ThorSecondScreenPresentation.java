@@ -4,6 +4,7 @@ import static eu.vcmi.vcmi.ThorDeckDrawing.*;
 
 import android.app.Presentation;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -340,6 +341,9 @@ final class ThorSecondScreenPresentation extends Presentation
         private ThorRecruitmentState recruitment = ThorRecruitmentState.EMPTY;
         private ThorTownManagement townManagement = ThorTownManagement.EMPTY;
         private int adventureTab;
+        private static final String MAP_FIRST_PREFERENCE = "adventure_map_first";
+        private final SharedPreferences deckPreferences;
+        private boolean mapFirst;
         private final android.graphics.DashPathEffect routePreviewEffect =
                 new android.graphics.DashPathEffect(new float[]{12f, 8f}, 0);
         private ThorAdventureRoute adventureRoute = ThorAdventureRoute.EMPTY;
@@ -377,6 +381,8 @@ final class ThorSecondScreenPresentation extends Presentation
                            final ThorSaveNameEditor saveNameEditor)
         {
             super(context);
+            deckPreferences = context.getSharedPreferences(ThorHapticPreference.FILE_NAME, Context.MODE_PRIVATE);
+            mapFirst = deckPreferences.getBoolean(MAP_FIRST_PREFERENCE, false);
             this.saveNameEditor = saveNameEditor;
             this.visualAssets = visualAssets;
             this.hapticsEnabled = hapticsEnabled;
@@ -935,7 +941,8 @@ final class ThorSecondScreenPresentation extends Presentation
             final boolean recruitmentContext = isRecruitmentContext(contextId);
             final float dividerY = frame.top + contentHeight * (ThorReferenceState.context(contextId) ? .235f
                     : ThorContextIds.TAVERN.equals(contextId) ? .28f : battleDashboard ? 0.55f
-                    : adventure ? ThorAdventureLayout.DIVIDER : recruitmentContext ? 0.14f : browserContext ? 0.20f
+                    : adventure ? (isMapFirst() ? ThorMapControls.MAP_FIRST_DIVIDER : ThorAdventureLayout.DIVIDER)
+                    : recruitmentContext ? 0.14f : browserContext ? 0.20f
                     : lobbyScenario || campaignBonus ? 0.48f : 0.34f);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(PARCHMENT_DARK);
@@ -948,6 +955,14 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setColor(GOLD);
             canvas.drawLine(frame.left + bevel * 2f, dividerY, frame.right - bevel * 2f, dividerY, paint);
 
+            if (isMapFirst())
+            {
+                drawMapHeaderStatus(canvas, frame, density, 0.070f);
+                drawLobbyScenarioButton(canvas, mapFirstToggleBounds(), getContext().getString(R.string.thor_map_full_deck),
+                        true, false, density);
+                drawAdventureMap(canvas, density);
+                return;
+            }
             if (ThorReferenceState.context(contextId))
             {
                 referenceDeck.draw(canvas, paint, getContext(), layout, density);
@@ -1058,7 +1073,10 @@ final class ThorSecondScreenPresentation extends Presentation
 
                 paint.setFakeBoldText(false);
                 paint.setColor(adventure ? TEXT : PARCHMENT_DARK);
-                drawFittedText(canvas, status, getWidth() * 0.5f,
+                if (adventure && adventureTab == 3)
+                    drawMapHeaderStatus(canvas, frame, density, ThorAdventureLayout.STATUS);
+                else
+                    drawFittedText(canvas, status, getWidth() * 0.5f,
                         adventure ? frame.top + contentHeight * ThorAdventureLayout.STATUS
                                 : dividerY + contentHeight * 0.075f,
                         contentWidth * 0.78f, Math.min(30f * density, contentHeight * 0.055f));
@@ -1072,7 +1090,11 @@ final class ThorSecondScreenPresentation extends Presentation
                 else if (adventureTab == 2)
                     drawTowns(canvas, frame, dividerY, bevel, density);
                 else if (adventureTab == 3)
+                {
+                    drawLobbyScenarioButton(canvas, mapFirstToggleBounds(), getContext().getString(R.string.thor_map_focus),
+                            true, false, density);
                     drawAdventureMap(canvas, density);
+                }
                 else
                     drawAdventureActions(canvas, frame, dividerY, bevel, density);
             }
@@ -1093,6 +1115,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 return true;
             }
             if (action == MotionEvent.ACTION_DOWN
+                    && !isMapFirst()
                     && hapticsToggleGesture.begin(hapticsToggleBounds().contains(event.getX(), event.getY())))
             {
                 marketDeck.cancel();
@@ -1164,7 +1187,7 @@ final class ThorSecondScreenPresentation extends Presentation
                 invalidate();
                 return true;
             }
-            if (ThorContextIds.ADVENTURE_MAP.equals(contextId) && adventureTab == 3)
+            if (ThorContextIds.ADVENTURE_MAP.equals(contextId) && (isMapFirst() || adventureTab == 3))
                 return handleAdventureMapTouch(event);
             if ((ThorContextIds.CAMPAIGN_BROWSER.equals(contextId)
                     || ThorBrowserState.isSettings(contextId) || ThorBrowserState.isDialog(contextId)
@@ -2827,6 +2850,31 @@ final class ThorSecondScreenPresentation extends Presentation
             paint.setFakeBoldText(false);
         }
 
+        private boolean isMapFirst()
+        {
+            return mapFirst && ThorContextIds.ADVENTURE_MAP.equals(contextId);
+        }
+
+        private RectF mapFirstToggleBounds()
+        {
+            final RectF frame = adventureFrame();
+            final RectF bounds = hapticsToggleBounds();
+            bounds.top = frame.top + frame.height() * (isMapFirst() ? 0.009f : 0.113f);
+            bounds.bottom = bounds.top + frame.height() * 0.106f;
+            return bounds;
+        }
+
+        private void drawMapHeaderStatus(final Canvas canvas, final RectF frame, final float density,
+                                         final float baseline)
+        {
+            final float left = frame.left + adventureBevel() * 3f;
+            final float right = mapFirstToggleBounds().left - adventureBevel();
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setColor(TEXT);
+            drawFittedText(canvas, status, (left + right) * 0.5f, frame.top + frame.height() * baseline,
+                    Math.max(0f, right - left), Math.min(28f * density, frame.height() * 0.047f));
+        }
+
         private int[] mapToolbar()
         {
             return adventureMap.levels == 2
@@ -2845,7 +2893,7 @@ final class ThorSecondScreenPresentation extends Presentation
         private RectF mapControlBounds(final int column, final int columns, final boolean route)
         {
             final RectF frame = adventureFrame();
-            final float[] box = ThorMapControls.bounds(column, columns, route, frame.width(), frame.height());
+            final float[] box = ThorMapControls.bounds(column, columns, route, isMapFirst(), frame.width(), frame.height());
             return new RectF(frame.left + box[0], frame.top + box[1], frame.left + box[2], frame.top + box[3]);
         }
 
@@ -2853,7 +2901,7 @@ final class ThorSecondScreenPresentation extends Presentation
         {
             final RectF frame = adventureFrame();
             return new ThorMapTransform(adventureMap.width, adventureMap.height,
-                    frame.left + frame.width() * 0.035f, frame.top + frame.height() * ThorMapControls.MAP_TOP,
+                    frame.left + frame.width() * 0.035f, frame.top + frame.height() * ThorMapControls.mapTop(isMapFirst()),
                     frame.right - frame.width() * 0.035f, frame.top + frame.height() * (mapRouteControls().length == 0
                             ? ThorMapControls.MAP_BOTTOM : ThorMapControls.MAP_BOTTOM_WITH_ACTIONS),
                     mapViewState.zoom, mapViewState.centerX, mapViewState.centerY);
@@ -2861,7 +2909,9 @@ final class ThorSecondScreenPresentation extends Presentation
 
         private int mapControlAt(final float x, final float y)
         {
-            final int tab = tabAt(x, y);
+            if (mapFirstToggleBounds().contains(x, y))
+                return ThorMapControls.TOGGLE_MAP_FIRST;
+            final int tab = isMapFirst() ? -1 : tabAt(x, y);
             if (tab >= 0)
                 return 10 + tab;
             final int toolbarControl = mapControlAt(x, y, mapToolbar(), false);
@@ -3175,6 +3225,12 @@ final class ThorSecondScreenPresentation extends Presentation
                     event.getEventTime() - event.getDownTime());
             if (release.localControl >= 10 && release.localControl <= 13)
                 adventureTab = release.localControl - 10;
+            else if (release.localControl == ThorMapControls.TOGGLE_MAP_FIRST)
+            {
+                mapFirst = !mapFirst;
+                adventureTab = 3;
+                deckPreferences.edit().putBoolean(MAP_FIRST_PREFERENCE, mapFirst).apply();
+            }
             else if (release.localControl == ThorMapControls.ZOOM)
                 mapViewState.setZoom(mapViewState.zoom == 4 ? 1 : mapViewState.zoom * 2);
             else if (release.localControl == 3 || release.localControl == 4 || release.localControl == 8)
@@ -3864,8 +3920,10 @@ final class ThorSecondScreenPresentation extends Presentation
             if (!ThorContextIds.ADVENTURE_MAP.equals(contextId))
                 return title + ". " + status;
 
-            if (adventureTab == 3)
+            if (isMapFirst() || adventureTab == 3)
                 return getContext().getString(R.string.thor_tab_map) + ". "
+                        + status + ". " + getContext().getString(isMapFirst() ? R.string.thor_map_full_deck
+                                : R.string.thor_map_focus) + ". "
                         + getContext().getString(!adventureMap.valid() ? R.string.thor_map_unavailable
                                 : R.string.thor_map_accessibility) + ". "
                         + getContext().getString(mapViewState.zoom == 1 ? R.string.thor_map_fit
